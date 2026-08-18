@@ -1,0 +1,97 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_template\n             (id, name, description, type, content, is_built_in, match_rules, field_mappings, priority, tags, user_id)\n           VALUES ($1, $2, $3, $4, $5, false, $6, $7, $8, $9, $10)\n           RETURNING id, name, description, type AS template_type, content, is_built_in,\n                     match_rules AS \"match_rules: Json<MatchRules>\",\n                     field_mappings AS \"field_mappings: Json<Vec<FieldMapping>>\",\n                     priority, tags, user_id,\n                     created_at AS \"created_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "template_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_built_in",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "match_rules: Json<MatchRules>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "field_mappings: Json<Vec<FieldMapping>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "priority",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "tags",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 10,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Int4",
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "80cd027bc187325025e0997ad3df6d54db480ec0895e362da2c0912edca95e6f"
+}

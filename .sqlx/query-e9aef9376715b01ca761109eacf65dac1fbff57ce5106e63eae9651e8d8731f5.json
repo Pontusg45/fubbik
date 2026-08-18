@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_template (id, name, type, content, is_built_in, user_id)\n           VALUES ($1, $2, 'note', '', true, NULL)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e9aef9376715b01ca761109eacf65dac1fbff57ce5106e63eae9651e8d8731f5"
+}

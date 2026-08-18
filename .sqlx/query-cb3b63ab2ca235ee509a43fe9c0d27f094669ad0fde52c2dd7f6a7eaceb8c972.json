@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk_template SET\n             name = COALESCE($3, name),\n             description = CASE WHEN $4 THEN $5 ELSE description END,\n             type = COALESCE($6, type),\n             content = COALESCE($7, content),\n             match_rules = CASE WHEN $8 THEN $9 ELSE match_rules END,\n             field_mappings = CASE WHEN $10 THEN $11 ELSE field_mappings END,\n             priority = COALESCE($12, priority),\n             tags = COALESCE($13, tags)\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, name, description, type AS template_type, content, is_built_in,\n                     match_rules AS \"match_rules: Json<MatchRules>\",\n                     field_mappings AS \"field_mappings: Json<Vec<FieldMapping>>\",\n                     priority, tags, user_id,\n                     created_at AS \"created_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "template_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_built_in",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "match_rules: Json<MatchRules>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "field_mappings: Json<Vec<FieldMapping>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "priority",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "tags",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 10,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Jsonb",
+        "Bool",
+        "Jsonb",
+        "Int4",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "cb3b63ab2ca235ee509a43fe9c0d27f094669ad0fde52c2dd7f6a7eaceb8c972"
+}

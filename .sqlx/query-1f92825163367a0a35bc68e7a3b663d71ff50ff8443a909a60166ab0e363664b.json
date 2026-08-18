@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, description, type AS template_type, content, is_built_in,\n                  match_rules AS \"match_rules: Json<MatchRules>\",\n                  field_mappings AS \"field_mappings: Json<Vec<FieldMapping>>\",\n                  priority, tags, user_id,\n                  created_at AS \"created_at: UtcTimestamp\"\n           FROM chunk_template\n           WHERE is_built_in = true OR user_id = $1\n           ORDER BY name ASC, id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "template_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_built_in",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "match_rules: Json<MatchRules>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "field_mappings: Json<Vec<FieldMapping>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "priority",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "tags",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 10,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "1f92825163367a0a35bc68e7a3b663d71ff50ff8443a909a60166ab0e363664b"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk_proposal SET created_at = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c2c5f62241f1d312c250c7d1a51f8980d7447365095dd43e6ca370cf264b7b7b"
+}

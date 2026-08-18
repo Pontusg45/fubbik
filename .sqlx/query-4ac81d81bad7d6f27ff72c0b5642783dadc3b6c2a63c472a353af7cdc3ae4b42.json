@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DROP INDEX template_user_name_idx",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "4ac81d81bad7d6f27ff72c0b5642783dadc3b6c2a63c472a353af7cdc3ae4b42"
+}

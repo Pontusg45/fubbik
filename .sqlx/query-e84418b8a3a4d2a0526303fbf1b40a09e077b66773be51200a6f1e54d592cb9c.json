@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ANALYZE chunk_proposal",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e84418b8a3a4d2a0526303fbf1b40a09e077b66773be51200a6f1e54d592cb9c"
+}

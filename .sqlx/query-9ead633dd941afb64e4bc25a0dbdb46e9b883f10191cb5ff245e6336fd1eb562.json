@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT match_rules AS \"match_rules!: serde_json::Value\" FROM chunk_template WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "match_rules!: serde_json::Value",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "9ead633dd941afb64e4bc25a0dbdb46e9b883f10191cb5ff245e6336fd1eb562"
+}

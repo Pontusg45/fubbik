@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT uc.id, uc.name, uc.description, uc.space_id, uc.user_id, uc.\"order\",\n                  uc.parent_id, uc.created_at, uc.updated_at,\n                  (SELECT count(*) FROM use_case uc2 WHERE uc2.parent_id = uc.id) AS \"child_count!\",\n                  (SELECT count(*) FROM requirement r WHERE r.use_case_id = uc.id AND r.user_id = uc.user_id) AS \"requirement_count!\"\n           FROM use_case uc\n           WHERE uc.user_id = $1 AND ($2::text IS NULL OR uc.space_id = $2)\n           ORDER BY uc.\"order\" ASC, uc.name ASC, uc.id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "parent_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 9,
+        "name": "child_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
+        "name": "requirement_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "3205c9ebdb31c1426a72a8cbc429c297df707c17ddb0323425a3af13429edb4e"
+}
