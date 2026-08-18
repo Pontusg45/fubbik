@@ -18,5 +18,6 @@ pub mod stats;
 pub mod tag;
 pub mod tag_type;
 pub mod template;
+pub mod use_case;
 pub mod user;
 pub mod workspace;
