@@ -17,6 +17,7 @@ pub mod staleness;
 pub mod stats;
 pub mod tag_types;
 pub mod tags;
+pub mod templates;
 pub mod workspaces;
 
 use axum::extract::State;
@@ -65,6 +66,7 @@ pub fn router(state: AppState) -> Router {
         .merge(stats::routes::router())
         .merge(tag_types::routes::router())
         .merge(tags::routes::router())
+        .merge(templates::routes::router())
         .merge(workspaces::routes::router())
         .route("/api/health", get(health))
         .with_state(state)
