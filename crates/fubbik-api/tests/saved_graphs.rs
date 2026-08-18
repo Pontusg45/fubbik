@@ -132,11 +132,7 @@ async fn update_saved_graph(
     .unwrap()
 }
 
-async fn delete_saved_graph(
-    app: axum::Router,
-    cookie: &str,
-    id: &str,
-) -> axum::response::Response {
+async fn delete_saved_graph(app: axum::Router, cookie: &str, id: &str) -> axum::response::Response {
     app.oneshot(
         Request::delete(format!("/api/saved-graphs/{id}"))
             .header("cookie", cookie)
@@ -254,10 +250,9 @@ async fn list_filters_by_space_id_query_param(pool: sqlx::PgPool) {
     let body = json_body(list_saved_graphs(app.clone(), &cookie, "").await).await;
     assert_eq!(body.as_array().unwrap().len(), 2);
 
-    let body = json_body(
-        list_saved_graphs(app.clone(), &cookie, &format!("?spaceId={space_id}")).await,
-    )
-    .await;
+    let body =
+        json_body(list_saved_graphs(app.clone(), &cookie, &format!("?spaceId={space_id}")).await)
+            .await;
     let names: Vec<&str> = body
         .as_array()
         .unwrap()
@@ -362,8 +357,13 @@ async fn update_rejects_blank_name_with_distinct_message(pool: sqlx::PgPool) {
     let created = json_body(create_saved_graph(app.clone(), &cookie, a_graph_body()).await).await;
     let id = created["id"].as_str().unwrap();
 
-    let res = update_saved_graph(app.clone(), &cookie, id, serde_json::json!({ "name": "  " }))
-        .await;
+    let res = update_saved_graph(
+        app.clone(),
+        &cookie,
+        id,
+        serde_json::json!({ "name": "  " }),
+    )
+    .await;
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let body = json_body(res).await;
     assert_eq!(

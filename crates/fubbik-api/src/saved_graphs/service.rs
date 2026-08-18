@@ -8,7 +8,11 @@ use super::dto::{CreateSavedGraphBody, UpdateSavedGraphBody};
 /// (`packages/api/src/saved-graphs/service.ts:12-14`): a thin pass-through,
 /// no ownership pre-check beyond what the repository's `WHERE user_id = $1`
 /// already does.
-pub async fn list(pool: &PgPool, user_id: &str, space_id: Option<&str>) -> AppResult<Vec<SavedGraph>> {
+pub async fn list(
+    pool: &PgPool,
+    user_id: &str,
+    space_id: Option<&str>,
+) -> AppResult<Vec<SavedGraph>> {
     saved_graph::list(pool, user_id, space_id).await
 }
 
@@ -26,7 +30,11 @@ pub async fn get_detail(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Sav
 /// required"`, trims the stored name, defaults `layoutAlgorithm` to
 /// `"force"` when omitted, and otherwise passes every field through
 /// untouched (no trim on `description`, matching Node).
-pub async fn create(pool: &PgPool, user_id: &str, body: CreateSavedGraphBody) -> AppResult<SavedGraph> {
+pub async fn create(
+    pool: &PgPool,
+    user_id: &str,
+    body: CreateSavedGraphBody,
+) -> AppResult<SavedGraph> {
     let trimmed_name = body.name.trim();
     if trimmed_name.is_empty() {
         return Err(AppError::Validation(
@@ -67,12 +75,12 @@ pub async fn update(
         .await?
         .ok_or_else(|| AppError::NotFound("SavedGraph".into()))?;
 
-    if let Some(name) = &body.name {
-        if name.trim().is_empty() {
-            return Err(AppError::Validation(
-                "Saved graph name cannot be empty".to_string(),
-            ));
-        }
+    if let Some(name) = &body.name
+        && name.trim().is_empty()
+    {
+        return Err(AppError::Validation(
+            "Saved graph name cannot be empty".to_string(),
+        ));
     }
 
     saved_graph::update(

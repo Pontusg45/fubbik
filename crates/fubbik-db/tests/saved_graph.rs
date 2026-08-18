@@ -335,11 +335,7 @@ async fn delete_removes_row_and_is_user_scoped(pool: sqlx::PgPool) {
         "Bob's saved graph must survive Alice's rejected delete"
     );
 
-    assert!(
-        saved_graph::delete(&pool, &bob, &created.id)
-            .await
-            .unwrap()
-    );
+    assert!(saved_graph::delete(&pool, &bob, &created.id).await.unwrap());
     assert!(
         saved_graph::find_by_id(&pool, &bob, &created.id)
             .await
