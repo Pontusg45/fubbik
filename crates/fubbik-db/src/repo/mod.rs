@@ -21,4 +21,5 @@ pub mod tag_type;
 pub mod template;
 pub mod use_case;
 pub mod user;
+pub mod vocabulary;
 pub mod workspace;
