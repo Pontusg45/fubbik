@@ -9,6 +9,7 @@ pub mod notification;
 pub mod plan;
 pub mod proposal;
 pub mod requirement;
+pub mod saved_graph;
 pub mod saved_query;
 pub mod session;
 pub mod settings;
