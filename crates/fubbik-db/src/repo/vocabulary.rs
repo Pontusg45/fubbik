@@ -244,7 +244,11 @@ const STANDARD_MODIFIERS: [&str; 16] = [
 /// Same guard shape as `create_entries`: one ownership check up front, then
 /// one `INSERT ... ON CONFLICT DO NOTHING RETURNING` per modifier inside a
 /// transaction.
-pub async fn seed_modifiers(pool: &PgPool, user_id: &str, space_id: &str) -> AppResult<Vec<VocabularyEntry>> {
+pub async fn seed_modifiers(
+    pool: &PgPool,
+    user_id: &str,
+    space_id: &str,
+) -> AppResult<Vec<VocabularyEntry>> {
     let owned = sqlx::query_scalar!(
         r#"SELECT EXISTS (SELECT 1 FROM space s WHERE s.id = $1 AND s.user_id = $2) AS "owned!""#,
         space_id,
