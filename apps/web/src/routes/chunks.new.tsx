@@ -113,7 +113,7 @@ function NewChunk() {
     };
     const templatesQuery = useApiQuery<TemplateRow[]>({
         queryKey: ["templates"],
-        queryFn: () => legacyApi.api.templates.get(),
+        queryFn: () => api.api.templates.get(),
         fallback: []
     });
 

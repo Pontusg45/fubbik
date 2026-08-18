@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { ProposalDiff } from "./proposal-diff";
@@ -43,14 +43,13 @@ export function ProposalCard({ proposal, showChunkInfo = true, onUpdate }: Propo
         enabled: expanded
     });
 
-    // proposals is a Node-only domain (no Rust route) — must stay on legacyApi.
     const approveMutation = useMutation({
-        mutationFn: async () => unwrapEden(await legacyApi.api.proposals({ proposalId: proposal.id }).approve.post({})),
+        mutationFn: async () => unwrapEden(await api.api.proposals({ proposalId: proposal.id }).approve.post({})),
         onSuccess: () => onUpdate()
     });
 
     const rejectMutation = useMutation({
-        mutationFn: async () => unwrapEden(await legacyApi.api.proposals({ proposalId: proposal.id }).reject.post({})),
+        mutationFn: async () => unwrapEden(await api.api.proposals({ proposalId: proposal.id }).reject.post({})),
         onSuccess: () => onUpdate()
     });
 

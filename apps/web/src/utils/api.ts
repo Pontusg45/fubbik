@@ -19,14 +19,14 @@ import { createClient } from "./api-proxy.future";
 // authentication regardless), so nothing user-facing degrades while the
 // port is incomplete.
 //
-// As of this writing, Rust's `openapi.json` has no entry at all for 20
+// As of this writing, Rust's `openapi.json` has no entry at all for 17
 // domains:
 //
 //   ai, chunk-types, comments, connection-relations, context, density,
 //   documents, features, file-refs (top-level list/lookup — the
 //   chunks/{id}/file-refs sub-resource IS on Rust), graph, health,
-//   learning-paths, matrices, proposals, requirements, saved-graphs,
-//   templates, timeline, use-cases, vocabulary
+//   learning-paths, matrices, requirements, saved-graphs, timeline,
+//   vocabulary
 //
 // Every call site under those top-level segments (`api.api.<domain>...`)
 // is on `legacyApi` instead. This list SHRINKS as Rust ports each domain —

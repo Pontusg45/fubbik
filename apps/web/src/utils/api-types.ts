@@ -196,6 +196,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/{id}/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_chunk_proposals"];
+        put?: never;
+        post: operations["create_proposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/{id}/scan-impact": {
         parameters: {
             query?: never;
@@ -839,6 +855,160 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The global proposal queue — `status` defaults to `"pending"`, not "every
+         *     status", and (Phase 2e wave 1) is scoped to the caller: only proposals on
+         *     chunks the caller owns appear. See `service::list_proposals`'s doc
+         *     comment.
+         */
+        get: operations["list_proposals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["bulk_action_proposals"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `{ pending: N }` — see `dto::PendingCountResponse`'s doc comment for why
+         *     this is the shape, and why it matters (`stats-bar.tsx` reads `.pending`).
+         */
+        get: operations["proposal_count"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/{proposalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Scoped to the caller (Phase 2e wave 1) — a proposal on a chunk the
+         *     caller doesn't own 404s, matching Node no longer. See
+         *     `service::get_proposal`'s doc comment.
+         */
+        get: operations["get_proposal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/{proposalId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Applies the proposal's changes to the underlying chunk and flips the
+         *     proposal to `approved` in one atomic transaction (Phase 2e wave 1 — see
+         *     `service::approve_proposal`'s doc comment). A caller who does not own the
+         *     chunk 404s here, and the proposal row is left untouched.
+         */
+        post: operations["approve_proposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/{proposalId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Scoped through the parent chunk (Phase 2e wave 1) — a caller who does
+         *     not own the chunk 404s here, closing the asymmetry with `approve` Node
+         *     itself has. See `service::reject_proposal`'s doc comment.
+         */
+        post: operations["reject_proposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/saved-graphs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_saved_graphs"];
+        put?: never;
+        post: operations["create_saved_graph"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/saved-graphs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_saved_graph"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_saved_graph"];
+        options?: never;
+        head?: never;
+        patch: operations["update_saved_graph"];
+        trace?: never;
+    };
     "/api/search/autocomplete": {
         parameters: {
             query?: never;
@@ -1206,6 +1376,184 @@ export interface paths {
         patch: operations["update_tag"];
         trace?: never;
     };
+    "/api/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_templates"];
+        put?: never;
+        post: operations["create_template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_template"];
+        options?: never;
+        head?: never;
+        patch: operations["update_template"];
+        trace?: never;
+    };
+    "/api/use-cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bare array, matching Node's `listUseCases` return
+         *     (`packages/api/src/use-cases/routes.ts:9-16`) — not the `{chunks,...}`
+         *     envelope, same shape convention as `notifications`/`workspaces`.
+         */
+        get: operations["list_use_cases"];
+        put?: never;
+        post: operations["create_use_case"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/use-cases/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_use_case"];
+        options?: never;
+        head?: never;
+        patch: operations["update_use_case"];
+        trace?: never;
+    };
+    "/api/use-cases/{id}/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bare array of full `requirement` rows — see
+         *     `fubbik_db::repo::use_case::UseCaseRequirement`'s doc comment for why
+         *     this projection lives in the `use_case` repo module rather than a
+         *     `requirement` one.
+         */
+        get: operations["use_case_requirements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vocabulary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `spaceId` absent -> `[]` without ever reaching the service layer,
+         *     matching Node's `if (!ctx.query.spaceId) return [];`
+         *     (`packages/api/src/vocabulary/routes.ts:30`) exactly — note this is
+         *     *not* a 404 the way every other endpoint in this domain treats a
+         *     missing/foreign space.
+         */
+        get: operations["list_vocabulary"];
+        put?: never;
+        post: operations["create_entry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vocabulary/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["bulk_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vocabulary/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["parse_step"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vocabulary/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["suggest_vocabulary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vocabulary/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_entry"];
+        options?: never;
+        head?: never;
+        patch: operations["update_entry"];
+        trace?: never;
+    };
     "/api/workspaces": {
         parameters: {
             query?: never;
@@ -1362,6 +1710,54 @@ export interface components {
             pattern: string;
         };
         /**
+         * @description `t.Union([t.Literal("approve"), t.Literal("reject")])`
+         *     (`packages/api/src/proposals/routes.ts:78`) — the one closed set in this
+         *     domain's wire shapes, unlike `status` (see `ProposedChanges`'s doc
+         *     comment on why that one stays a plain unvalidated-at-the-DTO-layer
+         *     string). Lowercase to match the literal strings Node's schema accepts.
+         * @enum {string}
+         */
+        BulkAction: "approve" | "reject";
+        /**
+         * @description Body of `POST /proposals/bulk`. Processed sequentially and fails fast on
+         *     the first error — matching Node's `Effect.forEach(actions, ..., {
+         *     concurrency: 1 })` (`packages/api/src/proposals/service.ts:92-99`), which
+         *     short-circuits the whole request on the first `approveProposal`/
+         *     `rejectProposal` failure. Writes already committed by earlier entries in
+         *     the array are **not** rolled back — there is no transaction around the
+         *     loop in Node, and none is added here.
+         */
+        BulkActionBody: {
+            actions: components["schemas"]["BulkActionItem"][];
+        };
+        /**
+         * @description One entry of `POST /proposals/bulk`'s `actions` array
+         *     (`packages/api/src/proposals/routes.ts:75-81`).
+         */
+        BulkActionItem: {
+            action: components["schemas"]["BulkAction"];
+            note?: string | null;
+            proposalId: string;
+        };
+        /** @description Body of `POST /api/vocabulary/bulk` (`routes.ts:69-73`). */
+        BulkCreateBody: {
+            entries: components["schemas"]["EntryInput"][];
+            spaceId: string;
+        };
+        /**
+         * @description The six literals Elysia's `CategorySchema` accepts
+         *     (`packages/api/src/vocabulary/routes.ts:7-14`, a genuine `t.Union` of
+         *     literals — unlike `notification.type`/`connection.relation`, this *is*
+         *     a real input constraint). Modelled as an enum only at this input-body
+         *     layer, the same shape as `connections::dto::Origin`: the stored
+         *     `vocabulary_entry.category` column and
+         *     `fubbik_db::repo::vocabulary::VocabularyEntry::category` stay a plain
+         *     `String` end to end, since the DB has no matching check constraint and
+         *     Node's `SELECT *` never re-validates on read.
+         * @enum {string}
+         */
+        Category: "actor" | "action" | "target" | "outcome" | "state" | "modifier";
+        /**
          * @description `camelCase` serialisation is mandatory, not cosmetic: the 106 web files
          *     that consume this API were written against Drizzle's camelCase output.
          *     Emitting snake_case would silently break every one of them.
@@ -1416,6 +1812,21 @@ export interface components {
             offset: number;
             /** Format: int64 */
             total: number;
+        };
+        /** @description `camelCase` serialisation matches every other wire type in this crate. */
+        ChunkProposal: {
+            changes: components["schemas"]["ProposedChanges"];
+            chunkId: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            proposedBy: string;
+            reason?: string | null;
+            reviewNote?: string | null;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            reviewedBy?: string | null;
+            status: string;
         };
         ChunkVersion: {
             chunkId: string;
@@ -1547,6 +1958,13 @@ export interface components {
             sourceId: string;
             targetId: string;
         };
+        /** @description Body of `POST /api/vocabulary` (`routes.ts:105-110`). */
+        CreateEntryBody: {
+            category: components["schemas"]["Category"];
+            expects?: string[] | null;
+            spaceId: string;
+            word: string;
+        };
         /**
          * @description Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):
          *     `chunkId` only, a plain `String` with no length cap. Node's schema
@@ -1579,6 +1997,44 @@ export interface components {
             spaceId?: string | null;
             tasks?: components["schemas"]["CreateTaskInput"][] | null;
             title: string;
+        };
+        /**
+         * @description Body of `POST /chunks/{id}/proposals`
+         *     (`packages/api/src/proposals/routes.ts:24-39`). `changes` is required as
+         *     an object but every one of its eight keys is itself optional — see
+         *     `ProposedChanges`'s doc comment. The service rejects an all-omitted
+         *     `changes` (`{}`) with 400, matching Node's
+         *     `Object.keys(body.changes).length === 0` check
+         *     (`packages/api/src/proposals/service.ts:17-18`).
+         */
+        CreateProposalBody: {
+            changes: components["schemas"]["ProposedChanges"];
+            reason?: string | null;
+        };
+        /**
+         * @description Body of `POST /api/saved-graphs`
+         *     (`packages/api/src/saved-graphs/routes.ts:29-37`). `chunkIds` and
+         *     `positions` are structurally validated by Elysia's schema (`t.Array(t.String())`,
+         *     `t.Record(t.String(), t.Object({ x: t.Number(), y: t.Number() }))`) —
+         *     not opaque JSON the way `collection.filter` / `saved_query.query` are —
+         *     so this keeps the same concrete Rust types end to end rather than
+         *     falling back to `serde_json::Value`. `spaceId` accepts both omission and
+         *     explicit `null` (`t.Optional(t.Union([t.String(), t.Null()]))`); both
+         *     produce the same `NULL` insert in Node's `.values(params)` (an
+         *     `undefined` key and an explicit `null` value behave identically for a
+         *     nullable Drizzle column), so a plain `Option<String>` — not the
+         *     `deserialize_some` tri-state — is correct here, unlike `description` on
+         *     the PATCH body below.
+         */
+        CreateSavedGraphBody: {
+            chunkIds: string[];
+            description?: string | null;
+            layoutAlgorithm?: string | null;
+            name: string;
+            positions: {
+                [key: string]: components["schemas"]["Position"];
+            };
+            spaceId?: string | null;
         };
         /**
          * @description Body of `POST /api/search/saved`
@@ -1633,6 +2089,50 @@ export interface components {
             title: string;
         };
         /**
+         * @description Body of `POST /api/templates` (`packages/api/src/templates/routes.ts:48-73`).
+         *
+         *     `description`/`matchRules`/`fieldMappings` are all `t.Optional(t.Union([
+         *     Schema, t.Null()]))` in Node, but on *create* there's no existing value
+         *     to distinguish "leave untouched" from — Node's `createTemplateRepo`
+         *     collapses omitted and explicit `null` to the same stored `NULL`
+         *     (`packages/db/src/repository/template.ts:42,46-47`) — so plain
+         *     `Option<T>` (not the tri-state `Option<Option<T>>` `UpdateTemplateBody`
+         *     needs) is correct here.
+         *
+         *     `name`/`description`/`type`/`content`/tag length caps (`maxLength: 100/
+         *     500/20/50000/50`, `tags` `maxItems: 20`) are Elysia-only request
+         *     validation in Node; matching `favorites::dto::CreateFavoriteBody`'s
+         *     precedent, this port does not enforce them — an over-long value simply
+         *     gets stored as-is instead of being rejected up front.
+         *
+         *     `type` is free text with only a length cap in Node (no enum, no CHECK
+         *     constraint) despite looking like it should be one of the five chunk
+         *     kinds — see `fubbik_db::repo::template::Template`'s doc comment.
+         */
+        CreateTemplateBody: {
+            content: string;
+            description?: string | null;
+            fieldMappings?: components["schemas"]["FieldMapping"][] | null;
+            matchRules?: null | components["schemas"]["MatchRules"];
+            name: string;
+            /** Format: int32 */
+            priority?: number | null;
+            tags?: string[] | null;
+            type: string;
+        };
+        /**
+         * @description Body of `POST /api/use-cases` (`packages/api/src/use-cases/routes.ts:26-33`).
+         *     `order` is deliberately absent — Node's create body doesn't accept it,
+         *     so a new use case always gets the DB's `order` default (`0`); it can
+         *     only be set afterward via `PATCH`.
+         */
+        CreateUseCaseBody: {
+            description?: string | null;
+            name: string;
+            parentId?: string | null;
+            spaceId?: string | null;
+        };
+        /**
          * @description Body of `POST /api/workspaces` (`packages/api/src/workspaces/routes.ts:11-30`):
          *     `name` (required, trimmed and validated non-blank at the service layer —
          *     see `service::create`) and `description` (optional, passed through
@@ -1657,6 +2157,25 @@ export interface components {
          * @enum {string}
          */
         Enrichment: "missing" | "complete";
+        /**
+         * @description One entry of `POST /api/vocabulary/bulk`'s `entries` array
+         *     (`routes.ts:16-20`). `word` has no length cap enforced here — Node
+         *     declares `t.String({ maxLength: 100 })`, but (matching
+         *     `favorites::dto::CreateFavoriteBody`'s accepted divergence) this port
+         *     does not enforce it; an over-length word simply round-trips into the
+         *     `text` column, which has no length constraint of its own either.
+         */
+        EntryInput: {
+            category: components["schemas"]["Category"];
+            expects?: string[] | null;
+            word: string;
+        };
+        /**
+         * @description The six chunk fields a template's field mappings can populate — a real
+         *     `t.Union` of literals (`packages/api/src/templates/routes.ts:29-36`).
+         * @enum {string}
+         */
+        ExtractionTarget: "rationale" | "alternatives" | "consequences" | "summary" | "scope" | "content";
         /**
          * @description `user_favorite` row shape. `order` is `"order"` in every SQL statement
          *     in this module — it is a SQL reserved word, quoted exactly the way
@@ -1706,10 +2225,27 @@ export interface components {
             semanticSearchEnabled: boolean;
             vocabularySuggestEnabled: boolean;
         };
+        FieldMapping: {
+            headings: string[];
+            match: components["schemas"]["MatchMode"];
+            target: components["schemas"]["ExtractionTarget"];
+        };
         FileRef: {
             chunkId: string;
             id: string;
             path: string;
+        };
+        /**
+         * @description `"exact" | "oneOf" | "exists"` — likewise a real `t.Union` of literals
+         *     (`packages/api/src/templates/routes.ts:18`).
+         * @enum {string}
+         */
+        FrontmatterMatchMode: "exact" | "oneOf" | "exists";
+        FrontmatterRule: {
+            key: string;
+            match: components["schemas"]["FrontmatterMatchMode"];
+            value?: string | null;
+            values?: string[] | null;
         };
         GraphContext: {
             /** Format: int64 */
@@ -1729,6 +2265,27 @@ export interface components {
             pathEdges?: components["schemas"]["PathEdgeInfo"][] | null;
             referenceChunk?: string | null;
             type: string;
+        };
+        HeadingRule: {
+            /** Format: int32 */
+            level?: number | null;
+            match: components["schemas"]["MatchMode"];
+            patterns: string[];
+            required: boolean;
+        };
+        /**
+         * @description `"exact" | "prefix" | "contains"` — a real Elysia `t.Union` of literals
+         *     in Node (`packages/api/src/templates/routes.ts:7`), not free text, so
+         *     modelling it as an enum here matches the contract rather than adding a
+         *     constraint Node lacks.
+         * @enum {string}
+         */
+        MatchMode: "exact" | "prefix" | "contains";
+        MatchRules: {
+            frontmatter: components["schemas"]["FrontmatterRule"][];
+            headings: components["schemas"]["HeadingRule"][];
+            /** Format: double */
+            minScore: number;
         };
         MergeBody: {
             sourceId: string;
@@ -1788,11 +2345,29 @@ export interface components {
         /** @enum {string} */
         Origin: "human" | "ai";
         /**
+         * @description Body of `POST /api/vocabulary/parse` (`routes.ts:86-89`). `text` has no
+         *     length cap enforced, same accepted divergence as `EntryInput::word`
+         *     (Node: `t.String({ maxLength: 1000 })`).
+         */
+        ParseBody: {
+            spaceId: string;
+            text: string;
+        };
+        /**
          * @description `GET /api/search/parse` response: `{clauses: [...]}` — the raw clause
          *     array, not a normalised query string or a validation verdict.
          */
         ParseResponse: {
             clauses: components["schemas"]["QueryClause"][];
+        };
+        ParseResult: {
+            tokens: components["schemas"]["ParsedToken"][];
+            warnings: components["schemas"]["VocabularyWarning"][];
+        };
+        ParsedToken: {
+            category?: string | null;
+            position: components["schemas"]["Position"];
+            text: string;
         };
         PathEdgeInfo: {
             relation: string;
@@ -1804,6 +2379,19 @@ export interface components {
         };
         PatternsBody: {
             patterns: string[];
+        };
+        /**
+         * @description Shape of `GET /proposals/count`
+         *     (`packages/api/src/proposals/routes.ts:57-64`): `{ pending: N }` — Node's
+         *     route does `Effect.map(pending => ({ pending }))` explicitly, not a bare
+         *     number and not `{ count: N }` like the sibling `notifications` count
+         *     endpoint. The web dashboard's `stats-bar.tsx` reads `.pending` off this
+         *     response — the whole reason this domain is on the phase-2e critical
+         *     path, see this crate's proposals module doc comment.
+         */
+        PendingCountResponse: {
+            /** Format: int64 */
+            pending: number;
         };
         /** @description `camelCase` serialisation matches every other wire type in this crate. */
         Plan: {
@@ -2009,6 +2597,74 @@ export interface components {
             taskId: string;
             url: string;
         };
+        Position: {
+            end: number;
+            start: number;
+        };
+        /**
+         * @description Row shape for `GET /api/proposals` — the global queue joins `chunk` for
+         *     `chunkTitle`/`chunkType` (`packages/db/src/repository/chunk-proposal.ts:41-63`),
+         *     which `find_by_id` and `list_for_chunk` do not carry. A separate struct
+         *     rather than optional extra fields on [`ChunkProposal`] keeps the two
+         *     shapes from being confusable at the type level.
+         */
+        ProposalWithChunk: {
+            changes: components["schemas"]["ProposedChanges"];
+            chunkId: string;
+            chunkTitle: string;
+            chunkType: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            proposedBy: string;
+            reason?: string | null;
+            reviewNote?: string | null;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            reviewedBy?: string | null;
+            status: string;
+        };
+        /**
+         * @description The eight fields Node's `ProposedChanges` interface accepts
+         *     (`packages/db/src/schema/chunk-proposal.ts:40-49`), stored and echoed
+         *     back verbatim as one JSON blob — `chunk_proposal.changes` has no
+         *     per-field columns. `#[serde(skip_serializing_if = "Option::is_none")]`
+         *     on every field keeps a proposal that only touched one or two fields from
+         *     growing the rest back in as explicit `null`s on the way out, matching
+         *     Node's plain object (`Object.keys` only sees the keys actually present).
+         *
+         *     **All eight fields are now applied to the chunk on approve** —
+         *     `title`/`content`/`type`/`rationale`/`consequences`/`alternatives`/`scope`
+         *     via [`approve`]'s chunk `UPDATE`, and `tags` via the same `UPDATE`'s
+         *     find-or-create-then-replace pass over `chunk_tag`. Previously only the
+         *     first five were applied and `tags`/`alternatives`/`scope` were silently
+         *     discarded, because `ChunkPatch` (Phase 1) had no fields for them and
+         *     `approve` had no path for the join table either — a real data-loss bug
+         *     versus Node's `updateChunk`, which applies all eight
+         *     (`packages/api/src/chunks/chunk-mutations.ts:181-212` handles `tags` via
+         *     a separate `setChunkTags` tap; `scope`/`alternatives` pass straight
+         *     through `UpdateChunkParams`). Closed in Phase 2e wave 1.
+         */
+        ProposedChanges: {
+            /** @default null */
+            alternatives: string[] | null;
+            /** @default null */
+            consequences: string | null;
+            /** @default null */
+            content: string | null;
+            /** @default null */
+            rationale: string | null;
+            /** @default null */
+            scope: {
+                [key: string]: string;
+            } | null;
+            /** @default null */
+            tags: string[] | null;
+            /** @default null */
+            title: string | null;
+            /** @default null */
+            type: string | null;
+        };
         QueryClause: {
             field: string;
             negate?: boolean | null;
@@ -2093,6 +2749,14 @@ export interface components {
             requirementsDeleted: number;
         };
         /**
+         * @description Body of `POST /proposals/{id}/approve` and `POST /proposals/{id}/reject`
+         *     (`packages/api/src/proposals/routes.ts:126-129,142-144`) — identical
+         *     shape for both.
+         */
+        ReviewBody: {
+            note?: string | null;
+        };
+        /**
          * @description Matches Node's body schema exactly (`packages/api/src/tags/routes.ts:39`):
          *     `t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"),
          *     t.Literal("approved")]))`. Modelled the same way as
@@ -2105,6 +2769,26 @@ export interface components {
          * @enum {string}
          */
         ReviewStatus: "draft" | "reviewed" | "approved";
+        /**
+         * @description `camelCase` serialisation matches every other wire type in this crate —
+         *     see the note on `chunk::Chunk` for why that's mandatory, not cosmetic.
+         */
+        SavedGraph: {
+            chunkIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            layoutAlgorithm: string;
+            name: string;
+            positions: {
+                [key: string]: components["schemas"]["Position"];
+            };
+            spaceId?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
         /**
          * @description `camelCase` serialisation matches every other wire type in this crate —
          *     see the note on `chunk::Chunk` for why that's mandatory, not cosmetic.
@@ -2320,6 +3004,15 @@ export interface components {
             /** Format: int64 */
             tags: number;
         };
+        /** @description Body of `POST /api/vocabulary/suggest` (`routes.ts:51-53`). */
+        SuggestBody: {
+            spaceId: string;
+        };
+        SuggestedEntry: {
+            category: string;
+            expects?: string[] | null;
+            word: string;
+        };
         /**
          * @description Body of `POST /api/chunks/suppress-duplicate`
          *     (`packages/api/src/staleness/routes.ts:63-66`).
@@ -2412,6 +3105,36 @@ export interface components {
             updatedAt: string;
         };
         /**
+         * @description `camelCase` serialisation matches every other wire type in this crate.
+         *     `type`/`content` default to `"note"`/`""` at the column level
+         *     (`packages/db/src/schema/template.ts:34-35`) but Node's `createTemplate`
+         *     always supplies both explicitly, so those defaults are never actually
+         *     observed through the API — kept here only because the column itself
+         *     isn't `NOT NULL`-without-default.
+         *
+         *     `type` is `text NOT NULL` with only a `maxLength: 20` Elysia check
+         *     (`packages/api/src/templates/routes.ts:65`), not an enum or CHECK
+         *     constraint, despite the five chunk kinds (note/document/reference/
+         *     schema/checklist) listed in CLAUDE.md — matching the established
+         *     "constrained-looking free text" trap, this stays `String`.
+         */
+        Template: {
+            content: string;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            fieldMappings?: components["schemas"]["FieldMapping"][] | null;
+            id: string;
+            isBuiltIn: boolean;
+            matchRules?: null | components["schemas"]["MatchRules"];
+            name: string;
+            /** Format: int32 */
+            priority: number;
+            tags?: string[] | null;
+            type: string;
+            userId?: string | null;
+        };
+        /**
          * @description Body of `PATCH /api/plans/{id}/analyze/{itemId}` (`analyze.ts:79-97`).
          *     `kind` is deliberately absent — Node's own body schema has no field for
          *     it, so an analyze item's kind can never change after creation.
@@ -2447,6 +3170,17 @@ export interface components {
             name?: string | null;
         };
         /**
+         * @description Body of `PATCH /api/vocabulary/{id}` (`routes.ts:124-128`). All three
+         *     fields are two-state (`None` = leave untouched) — see
+         *     `fubbik_db::repo::vocabulary::VocabularyPatch`'s doc comment for why
+         *     there is no explicit-null-clear variant.
+         */
+        UpdateEntryBody: {
+            category?: null | components["schemas"]["Category"];
+            expects?: string[] | null;
+            word?: string | null;
+        };
+        /**
          * @description Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).
          *
          *     `description` and `space_id` are tri-state, matching Node's
@@ -2463,6 +3197,26 @@ export interface components {
             spaceId?: string | null;
             status?: string | null;
             title?: string | null;
+        };
+        /**
+         * @description Body of `PATCH /api/saved-graphs/{id}`
+         *     (`packages/api/src/saved-graphs/routes.ts:53-59`). `description` is
+         *     tri-state, matching Node's `t.Optional(t.Union([t.String(), t.Null()]))`:
+         *     omitted (`None`) leaves it untouched, explicit `null` (`Some(None)`)
+         *     clears it, a string (`Some(Some(..))`) sets it — same `deserialize_some`
+         *     trick as `workspaces::dto::UpdateWorkspaceBody::description`. Every
+         *     other field here is plain two-state (`t.Optional(...)` with no
+         *     `t.Null()` variant) — `spaceId` is deliberately absent, matching Node:
+         *     there is no way to change a saved graph's space through this endpoint.
+         */
+        UpdateSavedGraphBody: {
+            chunkIds?: string[] | null;
+            description?: string | null;
+            layoutAlgorithm?: string | null;
+            name?: string | null;
+            positions?: {
+                [key: string]: components["schemas"]["Position"];
+            } | null;
         };
         /**
          * @description `description` and `remote_url` are tri-state, matching Node's
@@ -2546,6 +3300,52 @@ export interface components {
             title?: string | null;
         };
         /**
+         * @description Body of `PATCH /api/templates/{id}` (`packages/api/src/templates/routes.ts:74-94`).
+         *
+         *     `description`/`matchRules`/`fieldMappings` are tri-state: omitted
+         *     (`None`) leaves the column untouched, explicit `null` (`Some(None)`)
+         *     clears it, a value (`Some(Some(..))`) sets it — matching Node's
+         *     `params.field !== undefined` conditional spread
+         *     (`packages/db/src/repository/template.ts:74-83`), which forwards an
+         *     explicit `null` through as a real update. Same `deserialize_some` trick
+         *     as `workspaces::dto::UpdateWorkspaceBody::description`.
+         *
+         *     `priority`/`tags` have no `t.Null()` variant in Node's schema, so they
+         *     stay plain `Option<T>` — omitted leaves them untouched, there is no way
+         *     to explicitly clear either through this endpoint.
+         */
+        UpdateTemplateBody: {
+            content?: string | null;
+            description?: string | null;
+            fieldMappings?: components["schemas"]["FieldMapping"][] | null;
+            matchRules?: null | components["schemas"]["MatchRules"];
+            name?: string | null;
+            /** Format: int32 */
+            priority?: number | null;
+            tags?: string[] | null;
+            type?: string | null;
+        };
+        /**
+         * @description Body of `PATCH /api/use-cases/{id}` (`packages/api/src/use-cases/routes.ts:50-58`).
+         *
+         *     `description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),
+         *     t.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`
+         *     (`Some(None)`) clears it, a string (`Some(Some(..))`) sets it. `parentId`
+         *     is tri-state the same way, matching `t.Optional(t.Union([t.String(),
+         *     t.Null()]))` — explicit `null` detaches this use case from its parent
+         *     with no re-nesting validation (see `service::update`'s doc comment for
+         *     exactly which branch of Node's validation that skips). `order` is plain
+         *     two-state — the DB column is `NOT NULL DEFAULT 0`, so there is no way to
+         *     clear it, only set or leave it.
+         */
+        UpdateUseCaseBody: {
+            description?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            order?: number | null;
+            parentId?: string | null;
+        };
+        /**
          * @description Body of `PATCH /api/workspaces/{id}` (`packages/api/src/workspaces/routes.ts:36-50`).
          *
          *     `description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),
@@ -2559,6 +3359,110 @@ export interface components {
             description?: string | null;
             name?: string | null;
         };
+        /**
+         * @description Bare `use_case` row — the shape `POST /use-cases` and `PATCH
+         *     /use-cases/{id}` both return (`createUseCaseRepo`/`updateUseCaseRepo`
+         *     `.returning()`). **Not** the shape `GET /use-cases` (list) returns — see
+         *     [`UseCaseListItem`] for that one, which adds `childCount` and
+         *     `requirementCount`.
+         */
+        UseCase: {
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            name: string;
+            /** Format: int32 */
+            order: number;
+            parentId?: string | null;
+            spaceId?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /**
+         * @description Shape of each entry in `GET /use-cases` (`listUseCasesRepo`,
+         *     `packages/db/src/repository/use-case.ts:46-86`): the bare row plus two
+         *     computed counts — `childCount` (a correlated subquery over `use_case`
+         *     itself) and `requirementCount` (looked up from a separate grouped query
+         *     over `requirement`, defaulting to `0` when the map has no entry for this
+         *     id). Both counts are `i64` here (`count(*)` is `bigint` in Postgres) even
+         *     though Node's `Number(...)` coercion loses that distinction on the wire —
+         *     JSON has no int64 type either way.
+         */
+        UseCaseListItem: {
+            /** Format: int64 */
+            childCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            name: string;
+            /** Format: int32 */
+            order: number;
+            parentId?: string | null;
+            /** Format: int64 */
+            requirementCount: number;
+            spaceId?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /**
+         * @description One `requirement` row, in full — the projection `GET
+         *     /use-cases/{id}/requirements` returns (`listRequirementsByUseCase`,
+         *     `packages/db/src/repository/use-case.ts:133-140`, a bare
+         *     `db.select().from(requirement).where(...)` with every column). Lives here
+         *     rather than in a `requirement` repo module because no such module exists
+         *     yet in this port (`crate::repo::requirement` is deliberately minimal —
+         *     see its module doc — reserved for the full `requirements` domain task
+         *     this one unblocks). Do not grow this into a general-purpose requirement
+         *     type; a real port belongs in its own module.
+         */
+        UseCaseRequirement: {
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            /** Format: int32 */
+            order: number;
+            origin: string;
+            priority?: string | null;
+            reviewStatus: string;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            reviewedBy?: string | null;
+            spaceId?: string | null;
+            status: string;
+            steps: unknown[];
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            useCaseId?: string | null;
+            userId: string;
+        };
+        /** @description `camelCase` serialisation matches every other wire type in this crate. */
+        VocabularyEntry: {
+            category: string;
+            /** Format: date-time */
+            createdAt: string;
+            definition?: string | null;
+            expects?: string[] | null;
+            id: string;
+            spaceId: string;
+            /** Format: date-time */
+            updatedAt: string;
+            userId?: string | null;
+            word: string;
+        };
+        VocabularyWarning: {
+            message: string;
+            position: components["schemas"]["Position"];
+            type: components["schemas"]["WarningType"];
+            word: string;
+        };
+        /** @enum {string} */
+        WarningType: "unknown_word" | "unexpected_category" | "expects_not_satisfied";
         /**
          * @description `camelCase` serialisation matches every other wire type in this crate —
          *     see the note on `chunk::Chunk` for why that's mandatory, not cosmetic.
@@ -3049,6 +3953,60 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ChunkVersion"][];
                 };
+            };
+        };
+    };
+    list_chunk_proposals: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkProposal"][];
+                };
+            };
+        };
+    };
+    create_proposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProposalBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkProposal"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4382,6 +5340,332 @@ export interface operations {
             };
         };
     };
+    list_proposals: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                chunkId?: string | null;
+                limit?: number | null;
+                offset?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalWithChunk"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    bulk_action_proposals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkActionBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkProposal"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    proposal_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingCountResponse"];
+                };
+            };
+        };
+    };
+    get_proposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkProposal"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    approve_proposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkProposal"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reject_proposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkProposal"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_saved_graphs: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedGraph"][];
+                };
+            };
+        };
+    };
+    create_saved_graph: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSavedGraphBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedGraph"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_saved_graph: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedGraph"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_saved_graph: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_saved_graph: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSavedGraphBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedGraph"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     autocomplete: {
         parameters: {
             query: {
@@ -5104,6 +6388,460 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_templates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template"][];
+                };
+            };
+        };
+    };
+    create_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template"];
+                };
+            };
+        };
+    };
+    delete_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTemplateBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_use_cases: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UseCaseListItem"][];
+                };
+            };
+        };
+    };
+    create_use_case: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUseCaseBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UseCase"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_use_case: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_use_case: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUseCaseBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UseCase"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    use_case_requirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UseCaseRequirement"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_vocabulary: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VocabularyEntry"][];
+                };
+            };
+        };
+    };
+    create_entry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEntryBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VocabularyEntry"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    bulk_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkCreateBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VocabularyEntry"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    parse_step: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParseResult"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    suggest_vocabulary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuggestBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestedEntry"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_entry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_entry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEntryBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VocabularyEntry"];
+                };
             };
             404: {
                 headers: {

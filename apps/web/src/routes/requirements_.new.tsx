@@ -13,7 +13,7 @@ import { StepBuilder } from "@/features/requirements/step-builder";
 import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { legacyApi } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/requirements_/new")({
@@ -86,7 +86,7 @@ function NewRequirement() {
             try {
                 const query: { spaceId?: string } = {};
                 if (spaceId) query.spaceId = spaceId;
-                const result = unwrapEden(await legacyApi.api["use-cases"].get({ query })) as Array<{ id: string; name: string }>;
+                const result = unwrapEden(await api.api["use-cases"].get({ query })) as Array<{ id: string; name: string }>;
                 return result ?? [];
             } catch {
                 return [];

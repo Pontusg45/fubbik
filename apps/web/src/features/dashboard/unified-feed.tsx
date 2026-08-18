@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -114,9 +114,8 @@ function KindBadge({ kind, action }: { kind: FeedKind; action?: string }) {
 }
 
 function ProposalActions({ proposalId, onUpdate }: { proposalId: string; onUpdate: () => void }) {
-    // proposals is a Node-only domain (no Rust route) — must stay on legacyApi.
     const approveMutation = useMutation({
-        mutationFn: async () => unwrapEden(await legacyApi.api.proposals({ proposalId }).approve.post({})),
+        mutationFn: async () => unwrapEden(await api.api.proposals({ proposalId }).approve.post({})),
         onSuccess: () => {
             toast.success("Proposal approved");
             onUpdate();
@@ -125,7 +124,7 @@ function ProposalActions({ proposalId, onUpdate }: { proposalId: string; onUpdat
     });
 
     const rejectMutation = useMutation({
-        mutationFn: async () => unwrapEden(await legacyApi.api.proposals({ proposalId }).reject.post({})),
+        mutationFn: async () => unwrapEden(await api.api.proposals({ proposalId }).reject.post({})),
         onSuccess: () => {
             toast.success("Proposal rejected");
             onUpdate();
@@ -167,11 +166,10 @@ export function UnifiedFeed() {
 
     const proposalsQuery = useQuery({
         queryKey: ["proposals-pending-feed"],
-        // proposals is a Node-only domain (no Rust route) — must stay on legacyApi.
-        // Bridge through `unknown`: Eden's inferred shape (Date fields, a narrower `changes`
+        // Bridge through `unknown`: the client's inferred shape (Date fields, a narrower `changes`
         // type) doesn't structurally overlap the local `ProposalData` shape used for rendering.
         queryFn: async () =>
-            unwrapEden(await legacyApi.api.proposals.get({ query: { status: "pending" } })) as unknown as ProposalData[]
+            unwrapEden(await api.api.proposals.get({ query: { status: "pending" } })) as unknown as ProposalData[]
     });
 
     const staleQuery = useQuery({

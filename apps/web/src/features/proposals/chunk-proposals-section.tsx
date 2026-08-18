@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { ProposalCard, type Proposal } from "./proposal-card";
@@ -13,12 +13,11 @@ export interface ChunkProposalsSectionProps {
 export function ChunkProposalsSection({ chunkId }: ChunkProposalsSectionProps) {
     const proposalsQuery = useQuery({
         queryKey: ["chunk-proposals", chunkId],
-        // /chunks/:id/proposals is part of the Node-only proposals domain — must stay on legacyApi.
-        // Bridge through `unknown`: Eden's inferred shape doesn't structurally overlap
+        // Bridge through `unknown`: the client's inferred shape doesn't structurally overlap
         // the local `Proposal` shape used for rendering.
         queryFn: async () =>
             unwrapEden(
-                await legacyApi.api.chunks({ id: chunkId }).proposals.get({ query: { status: "pending" } })
+                await api.api.chunks({ id: chunkId }).proposals.get({ query: { status: "pending" } })
             ) as unknown as Proposal[]
     });
 
