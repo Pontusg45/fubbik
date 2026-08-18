@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ANALYZE saved_graph",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "be700b5bb8d3e5a3dc95b26594785fc7887aa8cd6800c40c644f9c34988cc713"
+}

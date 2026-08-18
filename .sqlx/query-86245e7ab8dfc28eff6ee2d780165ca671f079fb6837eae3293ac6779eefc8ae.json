@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE saved_graph SET\n                 name = COALESCE($3, name),\n                 description = CASE WHEN $4::bool THEN $5::text ELSE description END,\n                 chunk_ids = COALESCE($6, chunk_ids),\n                 positions = COALESCE($7, positions),\n                 layout_algorithm = COALESCE($8, layout_algorithm),\n                 updated_at = now()\n               WHERE id = $1 AND user_id = $2\n               RETURNING id, name, description,\n                         chunk_ids AS \"chunk_ids: Json<Vec<String>>\",\n                         positions AS \"positions: Json<HashMap<String, Position>>\",\n                         layout_algorithm, user_id, space_id,\n                         created_at AS \"created_at: UtcTimestamp\",\n                         updated_at AS \"updated_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "chunk_ids: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "positions: Json<HashMap<String, Position>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "layout_algorithm",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "86245e7ab8dfc28eff6ee2d780165ca671f079fb6837eae3293ac6779eefc8ae"
+}
