@@ -743,6 +743,91 @@
         }
       }
     },
+    "/api/chunks/{id}/proposals": {
+      "get": {
+        "tags": [
+          "crate::proposals::routes"
+        ],
+        "operationId": "list_chunk_proposals",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChunkProposal"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::proposals::routes"
+        ],
+        "operationId": "create_proposal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProposalBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkProposal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks/{id}/scan-impact": {
       "post": {
         "tags": [
@@ -2577,6 +2662,268 @@
         }
       }
     },
+    "/api/proposals": {
+      "get": {
+        "tags": [
+          "crate::proposals::routes"
+        ],
+        "summary": "The global proposal queue — `status` defaults to `\"pending\"`, not \"every\nstatus\". See `service::list_proposals`'s doc comment.",
+        "operationId": "list_proposals",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "chunkId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalWithChunk"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/proposals/bulk": {
+      "post": {
+        "tags": [
+          "crate::proposals::routes"
+        ],
+        "operationId": "bulk_action_proposals",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkActionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChunkProposal"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/proposals/count": {
+      "get": {
+        "tags": [
+          "crate::proposals::routes"
+        ],
+        "summary": "`{ pending: N }` — see `dto::PendingCountResponse`'s doc comment for why\nthis is the shape, and why it matters (`stats-bar.tsx` reads `.pending`).",
+        "operationId": "proposal_count",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingCountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/proposals/{proposalId}": {
+      "get": {
+        "tags": [
+          "crate::proposals::routes"
+        ],
+        "operationId": "get_proposal",
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkProposal"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/proposals/{proposalId}/approve": {
+      "post": {
+        "tags": [
+          "crate::proposals::routes"
+        ],
+        "summary": "Applies the proposal's changes to the underlying chunk, then flips the\nproposal to `approved` — two non-atomic writes, matching Node exactly.\nSee `service::approve_proposal`'s doc comment. A caller who does not own\nthe chunk 404s here (derived through `chunks::service::update`), and the\nproposal row is left untouched.",
+        "operationId": "approve_proposal",
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkProposal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/proposals/{proposalId}/reject": {
+      "post": {
+        "tags": [
+          "crate::proposals::routes"
+        ],
+        "summary": "**No chunk-ownership check** — any authenticated user may reject any\npending proposal. See `service::reject_proposal`'s doc comment; this is a\nfaithful port of Node's asymmetry with `approve`, not a bug introduced\nhere.",
+        "operationId": "reject_proposal",
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkProposal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/search/autocomplete": {
       "get": {
         "tags": [
@@ -3495,6 +3842,322 @@
         }
       }
     },
+    "/api/templates": {
+      "get": {
+        "tags": [
+          "crate::templates::routes"
+        ],
+        "operationId": "list_templates",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Template"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::templates::routes"
+        ],
+        "operationId": "create_template",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Template"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/templates/{id}": {
+      "delete": {
+        "tags": [
+          "crate::templates::routes"
+        ],
+        "operationId": "delete_template",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::templates::routes"
+        ],
+        "operationId": "update_template",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTemplateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Template"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/use-cases": {
+      "get": {
+        "tags": [
+          "crate::use_cases::routes"
+        ],
+        "summary": "Bare array, matching Node's `listUseCases` return\n(`packages/api/src/use-cases/routes.ts:9-16`) — not the `{chunks,...}`\nenvelope, same shape convention as `notifications`/`workspaces`.",
+        "operationId": "list_use_cases",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UseCaseListItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::use_cases::routes"
+        ],
+        "operationId": "create_use_case",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUseCaseBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UseCase"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/use-cases/{id}": {
+      "delete": {
+        "tags": [
+          "crate::use_cases::routes"
+        ],
+        "operationId": "delete_use_case",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::use_cases::routes"
+        ],
+        "operationId": "update_use_case",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUseCaseBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UseCase"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/use-cases/{id}/requirements": {
+      "get": {
+        "tags": [
+          "crate::use_cases::routes"
+        ],
+        "summary": "Bare array of full `requirement` rows — see\n`fubbik_db::repo::use_case::UseCaseRequirement`'s doc comment for why\nthis projection lives in the `use_case` repo module rather than a\n`requirement` one.",
+        "operationId": "use_case_requirements",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UseCaseRequirement"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/workspaces": {
       "get": {
         "tags": [
@@ -3942,6 +4605,51 @@
           }
         }
       },
+      "BulkAction": {
+        "type": "string",
+        "description": "`t.Union([t.Literal(\"approve\"), t.Literal(\"reject\")])`\n(`packages/api/src/proposals/routes.ts:78`) — the one closed set in this\ndomain's wire shapes, unlike `status` (see `ProposedChanges`'s doc\ncomment on why that one stays a plain unvalidated-at-the-DTO-layer\nstring). Lowercase to match the literal strings Node's schema accepts.",
+        "enum": [
+          "approve",
+          "reject"
+        ]
+      },
+      "BulkActionBody": {
+        "type": "object",
+        "description": "Body of `POST /proposals/bulk`. Processed sequentially and fails fast on\nthe first error — matching Node's `Effect.forEach(actions, ..., {\nconcurrency: 1 })` (`packages/api/src/proposals/service.ts:92-99`), which\nshort-circuits the whole request on the first `approveProposal`/\n`rejectProposal` failure. Writes already committed by earlier entries in\nthe array are **not** rolled back — there is no transaction around the\nloop in Node, and none is added here.",
+        "required": [
+          "actions"
+        ],
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkActionItem"
+            }
+          }
+        }
+      },
+      "BulkActionItem": {
+        "type": "object",
+        "description": "One entry of `POST /proposals/bulk`'s `actions` array\n(`packages/api/src/proposals/routes.ts:75-81`).",
+        "required": [
+          "proposalId",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/BulkAction"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proposalId": {
+            "type": "string"
+          }
+        }
+      },
       "Chunk": {
         "type": "object",
         "description": "`camelCase` serialisation is mandatory, not cosmetic: the 106 web files\nthat consume this API were written against Drizzle's camelCase output.\nEmitting snake_case would silently break every one of them.",
@@ -4120,6 +4828,64 @@
           "total": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "ChunkProposal": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.",
+        "required": [
+          "id",
+          "chunkId",
+          "changes",
+          "status",
+          "proposedBy",
+          "createdAt"
+        ],
+        "properties": {
+          "changes": {
+            "$ref": "#/components/schemas/ProposedChanges"
+          },
+          "chunkId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "proposedBy": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
           }
         }
       },
@@ -4549,6 +5315,24 @@
           }
         }
       },
+      "CreateProposalBody": {
+        "type": "object",
+        "description": "Body of `POST /chunks/{id}/proposals`\n(`packages/api/src/proposals/routes.ts:24-39`). `changes` is required as\nan object but every one of its eight keys is itself optional — see\n`ProposedChanges`'s doc comment. The service rejects an all-omitted\n`changes` (`{}`) with 400, matching Node's\n`Object.keys(body.changes).length === 0` check\n(`packages/api/src/proposals/service.ts:17-18`).",
+        "required": [
+          "changes"
+        ],
+        "properties": {
+          "changes": {
+            "$ref": "#/components/schemas/ProposedChanges"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CreateSavedQueryBody": {
         "type": "object",
         "description": "Body of `POST /api/search/saved`\n(`packages/api/src/search/routes.ts:93-103`).",
@@ -4723,6 +5507,97 @@
           }
         }
       },
+      "CreateTemplateBody": {
+        "type": "object",
+        "description": "Body of `POST /api/templates` (`packages/api/src/templates/routes.ts:48-73`).\n\n`description`/`matchRules`/`fieldMappings` are all `t.Optional(t.Union([\nSchema, t.Null()]))` in Node, but on *create* there's no existing value\nto distinguish \"leave untouched\" from — Node's `createTemplateRepo`\ncollapses omitted and explicit `null` to the same stored `NULL`\n(`packages/db/src/repository/template.ts:42,46-47`) — so plain\n`Option<T>` (not the tri-state `Option<Option<T>>` `UpdateTemplateBody`\nneeds) is correct here.\n\n`name`/`description`/`type`/`content`/tag length caps (`maxLength: 100/\n500/20/50000/50`, `tags` `maxItems: 20`) are Elysia-only request\nvalidation in Node; matching `favorites::dto::CreateFavoriteBody`'s\nprecedent, this port does not enforce them — an over-long value simply\ngets stored as-is instead of being rejected up front.\n\n`type` is free text with only a length cap in Node (no enum, no CHECK\nconstraint) despite looking like it should be one of the five chunk\nkinds — see `fubbik_db::repo::template::Template`'s doc comment.",
+        "required": [
+          "name",
+          "type",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fieldMappings": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/FieldMapping"
+            }
+          },
+          "matchRules": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MatchRules"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "tags": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateUseCaseBody": {
+        "type": "object",
+        "description": "Body of `POST /api/use-cases` (`packages/api/src/use-cases/routes.ts:26-33`).\n`order` is deliberately absent — Node's create body doesn't accept it,\nso a new use case always gets the DB's `order` default (`0`); it can\nonly be set afterward via `PATCH`.",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CreateWorkspaceBody": {
         "type": "object",
         "description": "Body of `POST /api/workspaces` (`packages/api/src/workspaces/routes.ts:11-30`):\n`name` (required, trimmed and validated non-blank at the service layer —\nsee `service::create`) and `description` (optional, passed through\nas-is).",
@@ -4767,6 +5642,18 @@
         "enum": [
           "missing",
           "complete"
+        ]
+      },
+      "ExtractionTarget": {
+        "type": "string",
+        "description": "The six chunk fields a template's field mappings can populate — a real\n`t.Union` of literals (`packages/api/src/templates/routes.ts:29-36`).",
+        "enum": [
+          "rationale",
+          "alternatives",
+          "consequences",
+          "summary",
+          "scope",
+          "content"
         ]
       },
       "Favorite": {
@@ -4827,6 +5714,28 @@
           }
         }
       },
+      "FieldMapping": {
+        "type": "object",
+        "required": [
+          "headings",
+          "match",
+          "target"
+        ],
+        "properties": {
+          "headings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "match": {
+            "$ref": "#/components/schemas/MatchMode"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ExtractionTarget"
+          }
+        }
+      },
       "FileRef": {
         "type": "object",
         "required": [
@@ -4843,6 +5752,45 @@
           },
           "path": {
             "type": "string"
+          }
+        }
+      },
+      "FrontmatterMatchMode": {
+        "type": "string",
+        "description": "`\"exact\" | \"oneOf\" | \"exists\"` — likewise a real `t.Union` of literals\n(`packages/api/src/templates/routes.ts:18`).",
+        "enum": [
+          "exact",
+          "oneOf",
+          "exists"
+        ]
+      },
+      "FrontmatterRule": {
+        "type": "object",
+        "required": [
+          "key",
+          "match"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "match": {
+            "$ref": "#/components/schemas/FrontmatterMatchMode"
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "values": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -4911,6 +5859,70 @@
           },
           "type": {
             "type": "string"
+          }
+        }
+      },
+      "HeadingRule": {
+        "type": "object",
+        "required": [
+          "patterns",
+          "match",
+          "required"
+        ],
+        "properties": {
+          "level": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "match": {
+            "$ref": "#/components/schemas/MatchMode"
+          },
+          "patterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MatchMode": {
+        "type": "string",
+        "description": "`\"exact\" | \"prefix\" | \"contains\"` — a real Elysia `t.Union` of literals\nin Node (`packages/api/src/templates/routes.ts:7`), not free text, so\nmodelling it as an enum here matches the contract rather than adding a\nconstraint Node lacks.",
+        "enum": [
+          "exact",
+          "prefix",
+          "contains"
+        ]
+      },
+      "MatchRules": {
+        "type": "object",
+        "required": [
+          "minScore",
+          "headings",
+          "frontmatter"
+        ],
+        "properties": {
+          "frontmatter": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FrontmatterRule"
+            }
+          },
+          "headings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeadingRule"
+            }
+          },
+          "minScore": {
+            "type": "number",
+            "format": "double"
           }
         }
       },
@@ -5079,6 +6091,19 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "PendingCountResponse": {
+        "type": "object",
+        "description": "Shape of `GET /proposals/count`\n(`packages/api/src/proposals/routes.ts:57-64`): `{ pending: N }` — Node's\nroute does `Effect.map(pending => ({ pending }))` explicitly, not a bare\nnumber and not `{ count: N }` like the sibling `notifications` count\nendpoint. The web dashboard's `stats-bar.tsx` reads `.pending` off this\nresponse — the whole reason this domain is on the phase-2e critical\npath, see this crate's proposals module doc comment.",
+        "required": [
+          "pending"
+        ],
+        "properties": {
+          "pending": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -5592,6 +6617,146 @@
           }
         }
       },
+      "ProposalWithChunk": {
+        "type": "object",
+        "description": "Row shape for `GET /api/proposals` — the global queue joins `chunk` for\n`chunkTitle`/`chunkType` (`packages/db/src/repository/chunk-proposal.ts:41-63`),\nwhich `find_by_id` and `list_for_chunk` do not carry. A separate struct\nrather than optional extra fields on [`ChunkProposal`] keeps the two\nshapes from being confusable at the type level.",
+        "required": [
+          "id",
+          "chunkId",
+          "changes",
+          "status",
+          "proposedBy",
+          "createdAt",
+          "chunkTitle",
+          "chunkType"
+        ],
+        "properties": {
+          "changes": {
+            "$ref": "#/components/schemas/ProposedChanges"
+          },
+          "chunkId": {
+            "type": "string"
+          },
+          "chunkTitle": {
+            "type": "string"
+          },
+          "chunkType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "proposedBy": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ProposedChanges": {
+        "type": "object",
+        "description": "The eight fields Node's `ProposedChanges` interface accepts\n(`packages/db/src/schema/chunk-proposal.ts:40-49`), stored and echoed\nback verbatim as one JSON blob — `chunk_proposal.changes` has no\nper-field columns. `#[serde(skip_serializing_if = \"Option::is_none\")]`\non every field keeps a proposal that only touched one or two fields from\ngrowing the rest back in as explicit `null`s on the way out, matching\nNode's plain object (`Object.keys` only sees the keys actually present).\n\n**Only `title`/`content`/`type`/`rationale`/`consequences` are ever\napplied to the chunk on approve** — `tags`, `alternatives`, and `scope`\nround-trip through this struct (create, list, get) but are silently\ndropped when `approve` calls `chunks::service::update`, because\n`ChunkPatch` (Phase 1) has no fields for them yet. Node's `updateChunk`\n*does* apply all eight (`packages/api/src/chunks/chunk-mutations.ts:181-212`\nhandles `tags` via a separate `setChunkTags` tap, and `scope`/\n`alternatives` pass straight through `UpdateChunkParams`). This is a real\nbehavioral gap versus Node, not a deliberate scoping choice — flagged in\nthe phase report rather than silently accepted.",
+        "properties": {
+          "alternatives": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "default": null
+          },
+          "consequences": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "scope": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "default": null,
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "default": null
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        }
+      },
       "QueryClause": {
         "type": "object",
         "required": [
@@ -5754,6 +6919,18 @@
           "requirementsDeleted": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "ReviewBody": {
+        "type": "object",
+        "description": "Body of `POST /proposals/{id}/approve` and `POST /proposals/{id}/reject`\n(`packages/api/src/proposals/routes.ts:126-129,142-144`) — identical\nshape for both.",
+        "properties": {
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -6450,6 +7627,84 @@
           }
         }
       },
+      "Template": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.\n`type`/`content` default to `\"note\"`/`\"\"` at the column level\n(`packages/db/src/schema/template.ts:34-35`) but Node's `createTemplate`\nalways supplies both explicitly, so those defaults are never actually\nobserved through the API — kept here only because the column itself\nisn't `NOT NULL`-without-default.\n\n`type` is `text NOT NULL` with only a `maxLength: 20` Elysia check\n(`packages/api/src/templates/routes.ts:65`), not an enum or CHECK\nconstraint, despite the five chunk kinds (note/document/reference/\nschema/checklist) listed in CLAUDE.md — matching the established\n\"constrained-looking free text\" trap, this stays `String`.",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "content",
+          "isBuiltIn",
+          "priority",
+          "createdAt"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fieldMappings": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/FieldMapping"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "isBuiltIn": {
+            "type": "boolean"
+          },
+          "matchRules": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MatchRules"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tags": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "type": "string"
+          },
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateAnalyzeItemBody": {
         "type": "object",
         "description": "Body of `PATCH /api/plans/{id}/analyze/{itemId}` (`analyze.ts:79-97`).\n`kind` is deliberately absent — Node's own body schema has no field for\nit, so an analyze item's kind can never change after creation.",
@@ -6688,6 +7943,102 @@
           }
         }
       },
+      "UpdateTemplateBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/templates/{id}` (`packages/api/src/templates/routes.ts:74-94`).\n\n`description`/`matchRules`/`fieldMappings` are tri-state: omitted\n(`None`) leaves the column untouched, explicit `null` (`Some(None)`)\nclears it, a value (`Some(Some(..))`) sets it — matching Node's\n`params.field !== undefined` conditional spread\n(`packages/db/src/repository/template.ts:74-83`), which forwards an\nexplicit `null` through as a real update. Same `deserialize_some` trick\nas `workspaces::dto::UpdateWorkspaceBody::description`.\n\n`priority`/`tags` have no `t.Null()` variant in Node's schema, so they\nstay plain `Option<T>` — omitted leaves them untouched, there is no way\nto explicitly clear either through this endpoint.",
+        "properties": {
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fieldMappings": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/FieldMapping"
+            }
+          },
+          "matchRules": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MatchRules"
+              }
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "priority": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "tags": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateUseCaseBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/use-cases/{id}` (`packages/api/src/use-cases/routes.ts:50-58`).\n\n`description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),\nt.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it. `parentId`\nis tri-state the same way, matching `t.Optional(t.Union([t.String(),\nt.Null()]))` — explicit `null` detaches this use case from its parent\nwith no re-nesting validation (see `service::update`'s doc comment for\nexactly which branch of Node's validation that skips). `order` is plain\ntwo-state — the DB column is `NOT NULL DEFAULT 0`, so there is no way to\nclear it, only set or leave it.",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateWorkspaceBody": {
         "type": "object",
         "description": "Body of `PATCH /api/workspaces/{id}` (`packages/api/src/workspaces/routes.ts:36-50`).\n\n`description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),\nt.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same\n`deserialize_some` trick as `spaces::dto::UpdateSpaceBody::description`,\nneeded because a plain `Option<Option<T>>` collapses \"omitted\" and\n\"explicit null\" to the same `None` without it.",
@@ -6703,6 +8054,211 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "UseCase": {
+        "type": "object",
+        "description": "Bare `use_case` row — the shape `POST /use-cases` and `PATCH\n/use-cases/{id}` both return (`createUseCaseRepo`/`updateUseCaseRepo`\n`.returning()`). **Not** the shape `GET /use-cases` (list) returns — see\n[`UseCaseListItem`] for that one, which adds `childCount` and\n`requirementCount`.",
+        "required": [
+          "id",
+          "name",
+          "userId",
+          "order",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "UseCaseListItem": {
+        "type": "object",
+        "description": "Shape of each entry in `GET /use-cases` (`listUseCasesRepo`,\n`packages/db/src/repository/use-case.ts:46-86`): the bare row plus two\ncomputed counts — `childCount` (a correlated subquery over `use_case`\nitself) and `requirementCount` (looked up from a separate grouped query\nover `requirement`, defaulting to `0` when the map has no entry for this\nid). Both counts are `i64` here (`count(*)` is `bigint` in Postgres) even\nthough Node's `Number(...)` coercion loses that distinction on the wire —\nJSON has no int64 type either way.",
+        "required": [
+          "id",
+          "name",
+          "userId",
+          "order",
+          "createdAt",
+          "updatedAt",
+          "childCount",
+          "requirementCount"
+        ],
+        "properties": {
+          "childCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requirementCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "UseCaseRequirement": {
+        "type": "object",
+        "description": "One `requirement` row, in full — the projection `GET\n/use-cases/{id}/requirements` returns (`listRequirementsByUseCase`,\n`packages/db/src/repository/use-case.ts:133-140`, a bare\n`db.select().from(requirement).where(...)` with every column). Lives here\nrather than in a `requirement` repo module because no such module exists\nyet in this port (`crate::repo::requirement` is deliberately minimal —\nsee its module doc — reserved for the full `requirements` domain task\nthis one unblocks). Do not grow this into a general-purpose requirement\ntype; a real port belongs in its own module.",
+        "required": [
+          "id",
+          "title",
+          "steps",
+          "order",
+          "status",
+          "userId",
+          "createdAt",
+          "updatedAt",
+          "origin",
+          "reviewStatus"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {}
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "useCaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userId": {
+            "type": "string"
           }
         }
       },
