@@ -82,17 +82,20 @@ pub async fn bulk_action_proposals(
 }
 
 /// The global proposal queue — `status` defaults to `"pending"`, not "every
-/// status". See `service::list_proposals`'s doc comment.
+/// status", and (Phase 2e wave 1) is scoped to the caller: only proposals on
+/// chunks the caller owns appear. See `service::list_proposals`'s doc
+/// comment.
 #[utoipa::path(get, path = "/api/proposals", params(ListProposalsQuery),
     responses((status = 200, body = Vec<fubbik_db::repo::proposal::ProposalWithChunk>), (status = 400)))]
 pub async fn list_proposals(
     State(state): State<AppState>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     Query(query): Query<ListProposalsQuery>,
 ) -> ApiResult<Json<Vec<fubbik_db::repo::proposal::ProposalWithChunk>>> {
     Ok(Json(
         service::list_proposals(
             &state.pool,
+            &user.id,
             query.chunk_id.as_deref(),
             query.status.as_deref(),
             query.limit,
@@ -102,24 +105,26 @@ pub async fn list_proposals(
     ))
 }
 
+/// Scoped to the caller (Phase 2e wave 1) — a proposal on a chunk the
+/// caller doesn't own 404s, matching Node no longer. See
+/// `service::get_proposal`'s doc comment.
 #[utoipa::path(get, path = "/api/proposals/{proposalId}",
     params(("proposalId" = String, Path,)),
     responses((status = 200, body = ChunkProposal), (status = 404)))]
 pub async fn get_proposal(
     State(state): State<AppState>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     Path(proposal_id): Path<String>,
 ) -> ApiResult<Json<ChunkProposal>> {
     Ok(Json(
-        service::get_proposal(&state.pool, &proposal_id).await?,
+        service::get_proposal(&state.pool, &user.id, &proposal_id).await?,
     ))
 }
 
-/// Applies the proposal's changes to the underlying chunk, then flips the
-/// proposal to `approved` — two non-atomic writes, matching Node exactly.
-/// See `service::approve_proposal`'s doc comment. A caller who does not own
-/// the chunk 404s here (derived through `chunks::service::update`), and the
-/// proposal row is left untouched.
+/// Applies the proposal's changes to the underlying chunk and flips the
+/// proposal to `approved` in one atomic transaction (Phase 2e wave 1 — see
+/// `service::approve_proposal`'s doc comment). A caller who does not own the
+/// chunk 404s here, and the proposal row is left untouched.
 #[utoipa::path(post, path = "/api/proposals/{proposalId}/approve", request_body = ReviewBody,
     params(("proposalId" = String, Path,)),
     responses((status = 200, body = ChunkProposal), (status = 400), (status = 404)))]
@@ -134,10 +139,9 @@ pub async fn approve_proposal(
     ))
 }
 
-/// **No chunk-ownership check** — any authenticated user may reject any
-/// pending proposal. See `service::reject_proposal`'s doc comment; this is a
-/// faithful port of Node's asymmetry with `approve`, not a bug introduced
-/// here.
+/// Scoped through the parent chunk (Phase 2e wave 1) — a caller who does
+/// not own the chunk 404s here, closing the asymmetry with `approve` Node
+/// itself has. See `service::reject_proposal`'s doc comment.
 #[utoipa::path(post, path = "/api/proposals/{proposalId}/reject", request_body = ReviewBody,
     params(("proposalId" = String, Path,)),
     responses((status = 200, body = ChunkProposal), (status = 400), (status = 404)))]

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE OR REPLACE FUNCTION test_boom() RETURNS trigger AS $$\n           BEGIN RAISE EXCEPTION 'injected failure for atomicity test'; END;\n           $$ LANGUAGE plpgsql",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3c2f71f337abe41736b5f2f16a5d3c58cd6962efcb8b264a9b93bcfdb4f52517"
+}

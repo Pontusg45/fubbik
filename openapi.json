@@ -2667,7 +2667,7 @@
         "tags": [
           "crate::proposals::routes"
         ],
-        "summary": "The global proposal queue — `status` defaults to `\"pending\"`, not \"every\nstatus\". See `service::list_proposals`'s doc comment.",
+        "summary": "The global proposal queue — `status` defaults to `\"pending\"`, not \"every\nstatus\", and (Phase 2e wave 1) is scoped to the caller: only proposals on\nchunks the caller owns appear. See `service::list_proposals`'s doc\ncomment.",
         "operationId": "list_proposals",
         "parameters": [
           {
@@ -2802,6 +2802,7 @@
         "tags": [
           "crate::proposals::routes"
         ],
+        "summary": "Scoped to the caller (Phase 2e wave 1) — a proposal on a chunk the\ncaller doesn't own 404s, matching Node no longer. See\n`service::get_proposal`'s doc comment.",
         "operationId": "get_proposal",
         "parameters": [
           {
@@ -2835,7 +2836,7 @@
         "tags": [
           "crate::proposals::routes"
         ],
-        "summary": "Applies the proposal's changes to the underlying chunk, then flips the\nproposal to `approved` — two non-atomic writes, matching Node exactly.\nSee `service::approve_proposal`'s doc comment. A caller who does not own\nthe chunk 404s here (derived through `chunks::service::update`), and the\nproposal row is left untouched.",
+        "summary": "Applies the proposal's changes to the underlying chunk and flips the\nproposal to `approved` in one atomic transaction (Phase 2e wave 1 — see\n`service::approve_proposal`'s doc comment). A caller who does not own the\nchunk 404s here, and the proposal row is left untouched.",
         "operationId": "approve_proposal",
         "parameters": [
           {
@@ -2882,7 +2883,7 @@
         "tags": [
           "crate::proposals::routes"
         ],
-        "summary": "**No chunk-ownership check** — any authenticated user may reject any\npending proposal. See `service::reject_proposal`'s doc comment; this is a\nfaithful port of Node's asymmetry with `approve`, not a bug introduced\nhere.",
+        "summary": "Scoped through the parent chunk (Phase 2e wave 1) — a caller who does\nnot own the chunk 404s here, closing the asymmetry with `approve` Node\nitself has. See `service::reject_proposal`'s doc comment.",
         "operationId": "reject_proposal",
         "parameters": [
           {
@@ -6685,7 +6686,7 @@
       },
       "ProposedChanges": {
         "type": "object",
-        "description": "The eight fields Node's `ProposedChanges` interface accepts\n(`packages/db/src/schema/chunk-proposal.ts:40-49`), stored and echoed\nback verbatim as one JSON blob — `chunk_proposal.changes` has no\nper-field columns. `#[serde(skip_serializing_if = \"Option::is_none\")]`\non every field keeps a proposal that only touched one or two fields from\ngrowing the rest back in as explicit `null`s on the way out, matching\nNode's plain object (`Object.keys` only sees the keys actually present).\n\n**Only `title`/`content`/`type`/`rationale`/`consequences` are ever\napplied to the chunk on approve** — `tags`, `alternatives`, and `scope`\nround-trip through this struct (create, list, get) but are silently\ndropped when `approve` calls `chunks::service::update`, because\n`ChunkPatch` (Phase 1) has no fields for them yet. Node's `updateChunk`\n*does* apply all eight (`packages/api/src/chunks/chunk-mutations.ts:181-212`\nhandles `tags` via a separate `setChunkTags` tap, and `scope`/\n`alternatives` pass straight through `UpdateChunkParams`). This is a real\nbehavioral gap versus Node, not a deliberate scoping choice — flagged in\nthe phase report rather than silently accepted.",
+        "description": "The eight fields Node's `ProposedChanges` interface accepts\n(`packages/db/src/schema/chunk-proposal.ts:40-49`), stored and echoed\nback verbatim as one JSON blob — `chunk_proposal.changes` has no\nper-field columns. `#[serde(skip_serializing_if = \"Option::is_none\")]`\non every field keeps a proposal that only touched one or two fields from\ngrowing the rest back in as explicit `null`s on the way out, matching\nNode's plain object (`Object.keys` only sees the keys actually present).\n\n**All eight fields are now applied to the chunk on approve** —\n`title`/`content`/`type`/`rationale`/`consequences`/`alternatives`/`scope`\nvia [`approve`]'s chunk `UPDATE`, and `tags` via the same `UPDATE`'s\nfind-or-create-then-replace pass over `chunk_tag`. Previously only the\nfirst five were applied and `tags`/`alternatives`/`scope` were silently\ndiscarded, because `ChunkPatch` (Phase 1) had no fields for them and\n`approve` had no path for the join table either — a real data-loss bug\nversus Node's `updateChunk`, which applies all eight\n(`packages/api/src/chunks/chunk-mutations.ts:181-212` handles `tags` via\na separate `setChunkTags` tap; `scope`/`alternatives` pass straight\nthrough `UpdateChunkParams`). Closed in Phase 2e wave 1.",
         "properties": {
           "alternatives": {
             "type": [

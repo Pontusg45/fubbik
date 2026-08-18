@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_tag (chunk_id, tag_id)\n                   SELECT $1, t FROM unnest($2::text[]) AS t\n                   ON CONFLICT (chunk_id, tag_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "369bc4494c860f601e1136aac240391e2f55b6c2c4cbb65ddea86b1662387846"
+}

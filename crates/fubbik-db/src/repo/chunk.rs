@@ -61,6 +61,18 @@ pub struct NewChunk {
     pub rationale: Option<String>,
 }
 
+/// `alternatives`/`scope` are plain two-state (`None` = leave untouched,
+/// `Some` = replace wholesale) — matching Node's `UpdateChunkParams`, which
+/// has no explicit-null variant for either
+/// (`packages/db/src/repository/chunk.ts:311-328`: both are typed
+/// `alternatives?: string[]` / `scope?: Record<string, string>`, never
+/// `| null`). Added so `chunk::update` can carry the two fields Node's
+/// `updateChunk` applies that this struct was previously missing — see
+/// `fubbik_api::proposals::service::approve_proposal`'s doc comment for why
+/// that mattered (proposal approval was silently dropping them). Both
+/// default to `None` via `#[derive(Default)]`, so every pre-existing caller
+/// that builds a `ChunkPatch` without naming these two fields keeps its
+/// exact prior behaviour (`COALESCE` leaves the column untouched).
 #[derive(Default)]
 pub struct ChunkPatch {
     pub title: Option<String>,
@@ -68,6 +80,8 @@ pub struct ChunkPatch {
     pub chunk_type: Option<String>,
     pub rationale: Option<String>,
     pub consequences: Option<String>,
+    pub alternatives: Option<Vec<String>>,
+    pub scope: Option<serde_json::Value>,
 }
 
 pub async fn create(pool: &PgPool, user_id: &str, new: NewChunk) -> AppResult<Chunk> {
@@ -146,6 +160,8 @@ pub async fn update(
              type = COALESCE($5, type),
              rationale = COALESCE($6, rationale),
              consequences = COALESCE($7, consequences),
+             alternatives = COALESCE($8, alternatives),
+             scope = COALESCE($9, scope),
              updated_at = now()
            WHERE id = $1 AND user_id = $2
            RETURNING id, title, content, type AS chunk_type, user_id, summary,
@@ -169,7 +185,9 @@ pub async fn update(
         patch.content,
         patch.chunk_type,
         patch.rationale,
-        patch.consequences
+        patch.consequences,
+        patch.alternatives.map(Json) as _,
+        patch.scope.map(Json) as _
     )
     .fetch_optional(pool)
     .await?;

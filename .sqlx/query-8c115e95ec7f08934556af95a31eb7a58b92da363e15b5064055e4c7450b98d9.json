@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE chunk SET\n             title = COALESCE($3, title),\n             content = COALESCE($4, content),\n             type = COALESCE($5, type),\n             rationale = COALESCE($6, rationale),\n             consequences = COALESCE($7, consequences),\n             updated_at = now()\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, title, content, type AS chunk_type, user_id, summary,\n                     aliases AS \"aliases: Json<Vec<String>>\",\n                     not_about AS \"not_about: Json<Vec<String>>\",\n                     scope AS \"scope: Json<serde_json::Value>\",\n                     rationale,\n                     alternatives AS \"alternatives: Json<Vec<String>>\",\n                     consequences,\n                     embedding::text AS \"embedding: EmbeddingVec\",\n                     embedding_updated_at AS \"embedding_updated_at: UtcTimestamp\",\n                     origin, review_status, reviewed_by,\n                     reviewed_at AS \"reviewed_at: UtcTimestamp\",\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\",\n                     archived_at AS \"archived_at: UtcTimestamp\",\n                     document_id, document_order, is_entry_point",
+  "query": "UPDATE chunk SET\n             title = COALESCE($3, title),\n             content = COALESCE($4, content),\n             type = COALESCE($5, type),\n             rationale = COALESCE($6, rationale),\n             consequences = COALESCE($7, consequences),\n             alternatives = COALESCE($8, alternatives),\n             scope = COALESCE($9, scope),\n             updated_at = now()\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, title, content, type AS chunk_type, user_id, summary,\n                     aliases AS \"aliases: Json<Vec<String>>\",\n                     not_about AS \"not_about: Json<Vec<String>>\",\n                     scope AS \"scope: Json<serde_json::Value>\",\n                     rationale,\n                     alternatives AS \"alternatives: Json<Vec<String>>\",\n                     consequences,\n                     embedding::text AS \"embedding: EmbeddingVec\",\n                     embedding_updated_at AS \"embedding_updated_at: UtcTimestamp\",\n                     origin, review_status, reviewed_by,\n                     reviewed_at AS \"reviewed_at: UtcTimestamp\",\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\",\n                     archived_at AS \"archived_at: UtcTimestamp\",\n                     document_id, document_order, is_entry_point",
   "describe": {
     "columns": [
       {
@@ -132,7 +132,9 @@
         "Text",
         "Text",
         "Text",
-        "Text"
+        "Text",
+        "Jsonb",
+        "Jsonb"
       ]
     },
     "nullable": [
@@ -162,5 +164,5 @@
       false
     ]
   },
-  "hash": "5585c0e283da935be80cb5e028eeb08391e331d116dbb360f64dfc096e1a9e5b"
+  "hash": "8c115e95ec7f08934556af95a31eb7a58b92da363e15b5064055e4c7450b98d9"
 }

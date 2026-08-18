@@ -1,21 +1,19 @@
 //! HTTP-level tests for the `proposals` domain
 //! (`packages/api/src/proposals/`).
 //!
-//! **Ownership guard-removal proof for `approve` lives here, not in
-//! `fubbik-db`'s test suite.** `approve_proposal` enforces chunk ownership
-//! only by delegating to `chunks::service::update`, whose `chunk::update`
-//! repository call carries `WHERE id = .. AND user_id = ..` in its own SQL
-//! — there is no separate pre-check anywhere in the proposals service layer
-//! that could mask a removed guard, so an API-level request is exactly
-//! where a regression there would first go red (see
-//! `cross_user_approve_is_404_and_leaves_both_chunk_and_proposal_unchanged`).
-//! `crates/fubbik-db/tests/proposal.rs` documents why the equivalent DB-only
-//! proof isn't meaningful there: this repository's own functions carry no
-//! `user_id` parameter at all.
-//!
-//! **`reject` has no such guard, and that is Node's actual behavior, not a
-//! gap this port introduces** — see
-//! `cross_user_reject_succeeds_because_node_has_no_ownership_check`.
+//! **The mandatory guard-removal proofs (Phase 2e wave 1: `list`/`get`
+//! scoping and `reject`'s ownership check) live in
+//! `crates/fubbik-db/tests/proposal.rs`, at the repository layer** — per the
+//! task brief, an API-level request alone can't prove a SQL-level guard is
+//! load-bearing when nothing else in the call path would mask its removal.
+//! `approve`'s cross-user case is the one exception still proven here too:
+//! its ownership check has always lived on the chunk `UPDATE` itself, with
+//! no service-level pre-check anywhere upstream that could mask a
+//! regression, so an API-level request is a meaningful (if not sufficient
+//! on its own) additional proof — see
+//! `cross_user_approve_is_404_and_leaves_both_chunk_and_proposal_unchanged`.
+//! The tests below for `list`/`get`/`reject` are end-to-end confirmations of
+//! the same behaviour, not substitutes for the repo-level proofs.
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
@@ -320,6 +318,85 @@ async fn global_list_defaults_to_pending_and_validates_status(pool: sqlx::PgPool
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
+/// End-to-end confirmation of Phase 2e wave 1's `list` scoping — the
+/// mandatory SQL-level proof lives in
+/// `fubbik-db/tests/proposal.rs::list_is_scoped_to_the_caller`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn global_list_does_not_leak_another_users_proposals(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-list-scope@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "bob-list-scope@b.test", "Bob").await;
+    let alice_chunk = create_chunk(app.clone(), &alice_cookie, "Alice's chunk").await;
+    let bob_chunk = create_chunk(app.clone(), &bob_cookie, "Bob's chunk").await;
+    create_pending_proposal(app.clone(), &alice_cookie, &alice_chunk, "a-change").await;
+    create_pending_proposal(app.clone(), &bob_cookie, &bob_chunk, "b-change").await;
+
+    let alice_view = json_body(
+        app.clone()
+            .oneshot(
+                Request::get("/api/proposals")
+                    .header("cookie", &alice_cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap(),
+    )
+    .await;
+    let alice_chunks: Vec<&str> = alice_view
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["chunkId"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        alice_chunks,
+        vec![alice_chunk.as_str()],
+        "Alice must not see Bob's proposal in the global queue"
+    );
+
+    let bob_view = json_body(
+        app.oneshot(
+            Request::get("/api/proposals")
+                .header("cookie", &bob_cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap(),
+    )
+    .await;
+    let bob_chunks: Vec<&str> = bob_view
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["chunkId"].as_str().unwrap())
+        .collect();
+    assert_eq!(bob_chunks, vec![bob_chunk.as_str()]);
+}
+
+/// End-to-end confirmation of Phase 2e wave 1's `get` scoping — the
+/// mandatory SQL-level proof lives in
+/// `fubbik-db/tests/proposal.rs::find_by_id_for_owner_is_scoped`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn get_by_id_is_404_for_a_proposal_on_another_users_chunk(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-get-scope@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "bob-get-scope@b.test", "Bob").await;
+    let chunk_id = create_chunk(app.clone(), &alice_cookie, "Alice's chunk").await;
+    let proposal_id = create_pending_proposal(app.clone(), &alice_cookie, &chunk_id, "v2").await;
+
+    let res = get_proposal(app.clone(), &bob_cookie, &proposal_id).await;
+    assert_eq!(
+        res.status(),
+        StatusCode::NOT_FOUND,
+        "Bob must not be able to read Alice's proposal by id"
+    );
+
+    let res = get_proposal(app, &alice_cookie, &proposal_id).await;
+    assert_eq!(res.status(), StatusCode::OK, "Alice can read her own");
+}
+
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn count_returns_pending_object_shape(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool.clone()));
@@ -382,6 +459,48 @@ async fn approve_applies_changes_to_the_chunk_and_marks_the_proposal_approved(po
     // Re-fetching the proposal directly also reflects the approval.
     let refetched = json_body(get_proposal(app, &cookie, &proposal_id).await).await;
     assert_eq!(refetched["status"], "approved");
+}
+
+/// End-to-end confirmation of Fix 1 (the data-loss bug): `alternatives` and
+/// `scope` used to be silently dropped on approve. The mandatory proof,
+/// including `tags` (which has no `GET /chunks/{id}` field to check here —
+/// `chunk_tag` is a join table), lives in
+/// `fubbik-db/tests/proposal.rs::approve_applies_every_proposed_changes_field`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn approve_no_longer_drops_alternatives_and_scope(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-fields@b.test", "Alice").await;
+    let chunk_id = create_chunk(app.clone(), &cookie, "Original title").await;
+
+    let res = create_proposal(
+        app.clone(),
+        &cookie,
+        &chunk_id,
+        serde_json::json!({
+            "changes": {
+                "alternatives": ["do nothing", "wait and see"],
+                "scope": { "area": "backend" }
+            }
+        }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let proposal_id = json_body(res).await["id"].as_str().unwrap().to_string();
+
+    let res = approve(app.clone(), &cookie, &proposal_id).await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let chunk = get_chunk(app, &cookie, &chunk_id).await;
+    assert_eq!(
+        chunk["alternatives"],
+        serde_json::json!(["do nothing", "wait and see"]),
+        "alternatives must land on the chunk, not be silently dropped"
+    );
+    assert_eq!(
+        chunk["scope"],
+        serde_json::json!({ "area": "backend" }),
+        "scope must land on the chunk, not be silently dropped"
+    );
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
@@ -470,15 +589,16 @@ async fn reject_marks_the_proposal_rejected_without_touching_the_chunk(pool: sql
     );
 }
 
-/// Documents Node's actual (asymmetric, arguably surprising) behavior: does
-/// **not** wrap it in a check this port doesn't have — `rejectProposal`
-/// never calls `updateChunk`, so it never derives chunk ownership at all.
-/// Bob, who does not own Alice's chunk, can reject a proposal against it.
-/// See `fubbik_db::repo::proposal`'s module doc comment; this is flagged in
-/// the phase report as a concern for a human decision, not silently
-/// "fixed" here.
+/// Phase 2e wave 1: `reject` is now scoped through the parent chunk, the
+/// same as `approve` — Node itself has no such check
+/// (`rejectProposal` never calls `updateChunk`), but this port now
+/// deliberately diverges. Bob, who does not own Alice's chunk, must be
+/// rejected with 404, and the proposal must remain `pending` — the SQL-level
+/// guard-removal proof for this lives in
+/// `fubbik-db/tests/proposal.rs::reject_is_scoped_through_the_parent_chunk`;
+/// this is the end-to-end confirmation.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
-async fn cross_user_reject_succeeds_because_node_has_no_ownership_check(pool: sqlx::PgPool) {
+async fn cross_user_reject_is_404_and_leaves_the_proposal_pending(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-crossreject@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-crossreject@b.test", "Bob").await;
@@ -486,18 +606,17 @@ async fn cross_user_reject_succeeds_because_node_has_no_ownership_check(pool: sq
     let proposal_id =
         create_pending_proposal(app.clone(), &alice_cookie, &chunk_id, "Some change").await;
 
-    let res = reject(app, &bob_cookie, &proposal_id).await;
+    let res = reject(app.clone(), &bob_cookie, &proposal_id).await;
     assert_eq!(
         res.status(),
-        StatusCode::OK,
-        "faithfully reproducing Node: reject has no chunk-ownership check at all"
+        StatusCode::NOT_FOUND,
+        "a non-owner must not be able to reject a proposal against someone else's chunk"
     );
-    let body = json_body(res).await;
-    assert_eq!(body["status"], "rejected");
-    assert!(
-        body["reviewedBy"].is_string(),
-        "reviewedBy must be set to Bob's user id, proving his (unauthorized-by-ownership) \
-         reject actually went through"
+
+    let proposal = json_body(get_proposal(app, &alice_cookie, &proposal_id).await).await;
+    assert_eq!(
+        proposal["status"], "pending",
+        "Bob's rejected reject attempt must leave the proposal pending"
     );
 }
 

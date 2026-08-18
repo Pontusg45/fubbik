@@ -274,6 +274,48 @@ async fn create_parent_lookup_is_user_scoped(pool: sqlx::PgPool) {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
+/// Phase 2e wave 1: `spaceId` ownership is now checked on create — Node's
+/// `createUseCaseRepo` has no such guard at all. Bob passing Alice's space
+/// id must 404 and create nothing; the mandatory SQL-level guard-removal
+/// proof lives in
+/// `fubbik-db/tests/use_case.rs::create_rejects_another_users_space_and_creates_nothing`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn create_rejects_another_users_space_id(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let alice_cookie = signup(app.clone(), "alice-spacescope@b.test", "Alice").await;
+    let bob_cookie = signup(app.clone(), "bob-spacescope@b.test", "Bob").await;
+
+    let alice_space = json_body(
+        app.clone()
+            .oneshot(
+                axum::http::Request::post("/api/spaces")
+                    .header("cookie", &alice_cookie)
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        serde_json::json!({ "name": "Alice's space", "kind": "notes" }).to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap(),
+    )
+    .await;
+
+    let res = create_use_case(
+        app.clone(),
+        &bob_cookie,
+        serde_json::json!({ "name": "hijack", "spaceId": alice_space["id"] }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let bobs = json_body(list_use_cases(app, &bob_cookie, "").await).await;
+    assert!(
+        bobs.as_array().unwrap().is_empty(),
+        "the rejected create must not have left a row behind"
+    );
+}
+
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_renames_and_returns_bare_row(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool.clone()));

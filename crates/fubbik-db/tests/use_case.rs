@@ -29,6 +29,7 @@ async fn create_and_find_by_id_round_trips(pool: sqlx::PgPool) {
 
     let created = use_case::create(&pool, &alice, new_use_case("Login flow", None, None))
         .await
+        .unwrap()
         .unwrap();
     assert_eq!(created.name, "Login flow");
     assert_eq!(created.order, 0);
@@ -52,6 +53,7 @@ async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
 
     let created = use_case::create(&pool, &alice, new_use_case("Alice's use case", None, None))
         .await
+        .unwrap()
         .unwrap();
 
     let bob_view = use_case::find_by_id(&pool, &bob, &created.id)
@@ -66,6 +68,80 @@ async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
         .await
         .unwrap();
     assert!(alice_view.is_some());
+}
+
+#[sqlx::test]
+async fn create_with_owned_space_succeeds(pool: sqlx::PgPool) {
+    let alice = make_user(&pool, "a@b.test", "Alice").await;
+    let the_space = space::create(
+        &pool,
+        &alice,
+        space::NewSpace {
+            name: "Alice's space".to_string(),
+            kind: "notes".to_string(),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap();
+
+    let created = use_case::create(
+        &pool,
+        &alice,
+        new_use_case("Scoped", Some(the_space.id.clone()), None),
+    )
+    .await
+    .unwrap()
+    .expect("creating in one's own space must succeed");
+    assert_eq!(created.space_id.as_deref(), Some(the_space.id.as_str()));
+}
+
+/// Load-bearing proof for Fix 2's `use_case::create` guard: the `EXISTS`
+/// predicate in its own SQL, not a service-level pre-check — a caller who
+/// bypasses `use_cases::service::create` (as this repo-level test does)
+/// must still be rejected. Node's `createUseCaseRepo` has no such guard at
+/// all (`packages/db/src/repository/use-case.ts:17-22`); this is a
+/// deliberate divergence, same shape as `collection::create`'s own
+/// `space_id` guard (`tests/collection.rs::create_rejects_another_users_space_and_creates_nothing`).
+/// The write must be rejected outright (`None`, not a row that then gets
+/// cleaned up) and must leave both users' use cases completely unaffected.
+#[sqlx::test]
+async fn create_rejects_another_users_space_and_creates_nothing(pool: sqlx::PgPool) {
+    let alice = make_user(&pool, "a@b.test", "Alice").await;
+    let bob = make_user(&pool, "c@d.test", "Bob").await;
+    let alices_space = space::create(
+        &pool,
+        &alice,
+        space::NewSpace {
+            name: "Alice's space".to_string(),
+            kind: "notes".to_string(),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap();
+
+    let result = use_case::create(
+        &pool,
+        &bob,
+        new_use_case("hijack", Some(alices_space.id.clone()), None),
+    )
+    .await
+    .unwrap();
+    assert!(
+        result.is_none(),
+        "write against another user's space must be rejected"
+    );
+
+    let bobs_use_cases = use_case::list(&pool, &bob, None).await.unwrap();
+    assert!(
+        bobs_use_cases.is_empty(),
+        "the rejected write must not have created a row at all"
+    );
+    let alices_use_cases = use_case::list(&pool, &alice, None).await.unwrap();
+    assert!(alices_use_cases.is_empty(), "Alice gained nothing either");
 }
 
 #[sqlx::test]
@@ -136,6 +212,7 @@ async fn list_orders_by_order_then_name_and_computes_counts(pool: sqlx::PgPool) 
 
     let parent = use_case::create(&pool, &alice, new_use_case("Zebra", None, None))
         .await
+        .unwrap()
         .unwrap();
     use_case::create(
         &pool,
@@ -181,6 +258,7 @@ async fn list_requirement_count_is_scoped_to_the_caller(pool: sqlx::PgPool) {
 
     let alice_uc = use_case::create(&pool, &alice, new_use_case("Alice's UC", None, None))
         .await
+        .unwrap()
         .unwrap();
 
     // A requirement belonging to Bob, but (contrived, to prove the scoping)
@@ -208,6 +286,7 @@ async fn update_applies_only_provided_fields(pool: sqlx::PgPool) {
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let created = use_case::create(&pool, &alice, new_use_case("Original", None, None))
         .await
+        .unwrap()
         .unwrap();
 
     let updated = use_case::update(
@@ -234,7 +313,7 @@ async fn update_description_tri_state(pool: sqlx::PgPool) {
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let mut new = new_use_case("Has description", None, None);
     new.description = Some("original".to_string());
-    let created = use_case::create(&pool, &alice, new).await.unwrap();
+    let created = use_case::create(&pool, &alice, new).await.unwrap().unwrap();
     assert_eq!(created.description.as_deref(), Some("original"));
 
     // Omitted -> untouched.
@@ -278,6 +357,7 @@ async fn update_is_user_scoped_and_leaves_the_victims_row_intact(pool: sqlx::PgP
 
     let created = use_case::create(&pool, &alice, new_use_case("Alice's", None, None))
         .await
+        .unwrap()
         .unwrap();
 
     let result = use_case::update(
@@ -315,6 +395,7 @@ async fn update_with_no_fields_does_not_touch_updated_at(pool: sqlx::PgPool) {
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let created = use_case::create(&pool, &alice, new_use_case("Static", None, None))
         .await
+        .unwrap()
         .unwrap();
 
     let result = use_case::update(
@@ -338,6 +419,7 @@ async fn delete_removes_the_row(pool: sqlx::PgPool) {
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let created = use_case::create(&pool, &alice, new_use_case("Doomed", None, None))
         .await
+        .unwrap()
         .unwrap();
 
     assert!(use_case::delete(&pool, &alice, &created.id).await.unwrap());
@@ -359,6 +441,7 @@ async fn delete_is_user_scoped_and_leaves_the_victims_row_intact(pool: sqlx::PgP
 
     let created = use_case::create(&pool, &alice, new_use_case("Alice's", None, None))
         .await
+        .unwrap()
         .unwrap();
 
     let deleted = use_case::delete(&pool, &bob, &created.id).await.unwrap();
@@ -383,6 +466,7 @@ async fn delete_nulls_dependent_requirements_via_db_cascade(pool: sqlx::PgPool) 
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let created = use_case::create(&pool, &alice, new_use_case("Parent UC", None, None))
         .await
+        .unwrap()
         .unwrap();
 
     let req_id = fubbik_db::new_id();
@@ -426,6 +510,7 @@ async fn delete_by_non_owner_does_not_unlink_the_owners_requirements(pool: sqlx:
 
     let created = use_case::create(&pool, &alice, new_use_case("Alice's UC", None, None))
         .await
+        .unwrap()
         .unwrap();
 
     let req_id = fubbik_db::new_id();
@@ -462,9 +547,11 @@ async fn list_requirements_scopes_by_use_case_and_user(pool: sqlx::PgPool) {
 
     let alice_uc = use_case::create(&pool, &alice, new_use_case("Alice UC", None, None))
         .await
+        .unwrap()
         .unwrap();
     let bob_uc = use_case::create(&pool, &bob, new_use_case("Bob UC", None, None))
         .await
+        .unwrap()
         .unwrap();
 
     sqlx::query!(

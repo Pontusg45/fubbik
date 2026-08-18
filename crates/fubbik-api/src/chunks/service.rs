@@ -88,6 +88,14 @@ pub async fn update(
             chunk_type: body.chunk_type,
             rationale: body.rationale,
             consequences: body.consequences,
+            // `UpdateChunkBody` (the regular `PATCH /chunks/{id}` body) has
+            // no `alternatives`/`scope` fields — only the proposals domain's
+            // atomic approve path sets these, via its own dedicated repo
+            // function. Leaving both `None` here keeps this call's observed
+            // behaviour byte-for-byte identical to before `ChunkPatch` grew
+            // the two fields.
+            alternatives: None,
+            scope: None,
         },
     )
     .await?

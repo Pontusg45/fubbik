@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DROP FUNCTION test_boom()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "fc11d200666db50f9be57081bcad5a12788f0ddb87533307d0f648d80edb097f"
+}

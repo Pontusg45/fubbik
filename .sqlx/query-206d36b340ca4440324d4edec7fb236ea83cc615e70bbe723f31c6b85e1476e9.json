@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk SET\n             title = COALESCE($3, title),\n             content = COALESCE($4, content),\n             type = COALESCE($5, type),\n             rationale = COALESCE($6, rationale),\n             consequences = COALESCE($7, consequences),\n             alternatives = COALESCE($8, alternatives),\n             scope = COALESCE($9, scope),\n             updated_at = now()\n           WHERE id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "206d36b340ca4440324d4edec7fb236ea83cc615e70bbe723f31c6b85e1476e9"
+}

@@ -6,46 +6,46 @@
 //! `collection.filter` uses (see `collection::CollectionFilter`'s doc
 //! comment).
 //!
-//! **Creation and read access are deliberately global — this is not a
-//! divergence, it is faithfully porting Node.** Node's `createProposal`
-//! (`packages/api/src/proposals/service.ts:15-29`) never checks that the
-//! caller owns (or that anyone owns) `chunkId` before inserting — any
-//! authenticated user can propose changes to any chunk, and an unknown
-//! `chunkId` fails only via the `chunk_proposal_chunk_id_chunk_id_fk`
-//! foreign key (surfacing as a 500, not a 404 — see `create`'s doc
-//! comment). `getProposal`, `listProposals`, and `listProposalsForChunk`
-//! (`packages/api/src/proposals/service.ts:31-54`) carry no `user_id` /
-//! `space_id` filter of any kind — the proposal queue is global across
-//! every user. This port keeps all of that: `find_by_id`, `list`, and
-//! `list_for_chunk` below take no `user_id` parameter at all.
+//! **Creation stays deliberately global, faithfully porting Node.** Node's
+//! `createProposal` (`packages/api/src/proposals/service.ts:15-29`) never
+//! checks that the caller owns (or that anyone owns) `chunkId` before
+//! inserting — any authenticated user can propose changes to any chunk, and
+//! an unknown `chunkId` fails only via the `chunk_proposal_chunk_id_chunk_id_fk`
+//! foreign key (surfacing as a 500, not a 404 — see `create`'s doc comment).
+//! `list_for_chunk` (`GET /chunks/{id}/proposals`) is unchanged too — still
+//! no `user_id` filter, matching Node's `listProposalsForChunk`.
 //!
-//! **Only the review step is scoped, and only by derivation through the
-//! parent chunk — approve asymmetrically, reject not at all.** Node's
-//! `approveProposal` (`packages/api/src/proposals/service.ts:56-78`) applies
-//! the proposal's changes by calling `updateChunk(proposal.chunkId,
-//! reviewerId, ...)`, whose `getChunkById(chunkId, userId)` is `WHERE id = ..
-//! AND user_id = ..` — a non-owner's approve attempt 404s there, before the
-//! proposal row is ever touched. `rejectProposal`
-//! (`packages/api/src/proposals/service.ts:80-90`) does **not** call
-//! `updateChunk` or check chunk ownership at all — any authenticated user
-//! can reject any pending proposal regardless of who owns the underlying
-//! chunk. This port mirrors both halves of that asymmetry exactly: see
-//! `fubbik_api::proposals::service::approve` (which delegates to
-//! `chunks::service::update` for the ownership-scoped write) and `::reject`
-//! (which does not). Flagged for the human, not silently "fixed" — see the
-//! phase report.
+//! **`list` (the global queue, `GET /proposals`) and the single-proposal
+//! lookup backing `GET /proposals/{id}` are now scoped to the caller —
+//! a deliberate Phase 2e wave-1 divergence from Node, the same shape as
+//! accepted divergences #4/#9/#10/#13/#14/#15/#17/#19.** Node's
+//! `getProposal`/`listProposals` (`packages/api/src/proposals/service.ts:31-50`)
+//! carry no `user_id` filter at all, so any authenticated user could
+//! previously read every other user's proposal queue. `list` now joins
+//! `chunk` on `c.user_id = $user_id`; the id lookup for `GET /proposals/{id}`
+//! goes through the new [`find_by_id_for_owner`] rather than the still-unscoped
+//! [`find_by_id`] (which stays as-is: `approve`/`reject`'s internal
+//! pending-check deliberately keeps using the unscoped form, since ownership
+//! for those two is enforced independently at the write layer below).
 //!
-//! **Approve is two sequential, non-atomic writes, matching Node exactly.**
-//! `approveProposal` awaits `updateChunk(...)` (itself: version snapshot +
-//! chunk `UPDATE`) and only then awaits `updateProposalStatus(...)`; there
-//! is no transaction wrapping the pair in Node, and none is added here. If
-//! the process dies between the two, the chunk carries the applied changes
-//! but the proposal row is left `pending` forever (re-approving would
-//! reapply the same changes on top of the chunk's now-already-updated
-//! state). This is the same *shape* as divergence #12 (a non-atomic Node
-//! pair some earlier phase wrapped in a transaction) — this port does
-//! **not** make that call unilaterally; it is flagged in the phase report
-//! for a human decision instead.
+//! **`reject` is now scoped through the parent chunk, closing the asymmetry
+//! with `approve` — also a deliberate divergence from Node, same shape as
+//! the list above.** Node's `rejectProposal`
+//! (`packages/api/src/proposals/service.ts:80-90`) never calls `updateChunk`
+//! or checks chunk ownership at all; this port's [`reject`] now carries its
+//! own `EXISTS`-through-`chunk` guard on the `UPDATE`, independent of
+//! `approve`'s guard (which lives on the chunk `UPDATE` inside [`approve`]).
+//!
+//! **`approve` is now one atomic transaction, not two sequential writes.**
+//! Node's `approveProposal` awaits `updateChunk(...)` and only then awaits
+//! `updateProposalStatus(...)` with no transaction wrapping the pair — the
+//! same *shape* as divergence #12, which an earlier phase already decided to
+//! fix rather than reproduce. [`approve`] wraps the chunk-version-snapshot +
+//! chunk `UPDATE` + tag replace + proposal-status `UPDATE` in a single
+//! `sqlx` transaction: either all of it commits, or none of it does. All
+//! eight `ProposedChanges` fields are now applied (previously only five were
+//! — see [`ProposedChanges`]'s doc comment for the data-loss bug this
+//! closes).
 
 use fubbik_core::error::AppResult;
 use sqlx::PgPool;
@@ -61,16 +61,17 @@ use crate::timestamp::UtcTimestamp;
 /// growing the rest back in as explicit `null`s on the way out, matching
 /// Node's plain object (`Object.keys` only sees the keys actually present).
 ///
-/// **Only `title`/`content`/`type`/`rationale`/`consequences` are ever
-/// applied to the chunk on approve** — `tags`, `alternatives`, and `scope`
-/// round-trip through this struct (create, list, get) but are silently
-/// dropped when `approve` calls `chunks::service::update`, because
-/// `ChunkPatch` (Phase 1) has no fields for them yet. Node's `updateChunk`
-/// *does* apply all eight (`packages/api/src/chunks/chunk-mutations.ts:181-212`
-/// handles `tags` via a separate `setChunkTags` tap, and `scope`/
-/// `alternatives` pass straight through `UpdateChunkParams`). This is a real
-/// behavioral gap versus Node, not a deliberate scoping choice — flagged in
-/// the phase report rather than silently accepted.
+/// **All eight fields are now applied to the chunk on approve** —
+/// `title`/`content`/`type`/`rationale`/`consequences`/`alternatives`/`scope`
+/// via [`approve`]'s chunk `UPDATE`, and `tags` via the same `UPDATE`'s
+/// find-or-create-then-replace pass over `chunk_tag`. Previously only the
+/// first five were applied and `tags`/`alternatives`/`scope` were silently
+/// discarded, because `ChunkPatch` (Phase 1) had no fields for them and
+/// `approve` had no path for the join table either — a real data-loss bug
+/// versus Node's `updateChunk`, which applies all eight
+/// (`packages/api/src/chunks/chunk-mutations.ts:181-212` handles `tags` via
+/// a separate `setChunkTags` tap; `scope`/`alternatives` pass straight
+/// through `UpdateChunkParams`). Closed in Phase 2e wave 1.
 #[derive(
     Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
 )]
@@ -207,6 +208,35 @@ pub async fn find_by_id(pool: &PgPool, id: &str) -> AppResult<Option<ChunkPropos
     Ok(row)
 }
 
+/// Scoped counterpart to [`find_by_id`], backing `GET /proposals/{id}` —
+/// see this module's doc comment for why this is a separate function
+/// rather than a change to `find_by_id` itself (which stays unscoped for
+/// `approve`/`reject`'s internal pending-check; ownership for those two is
+/// enforced independently, at the write layer). A caller who doesn't own
+/// the proposal's underlying chunk gets `Ok(None)`, indistinguishable from
+/// an unknown id — both map to the same 404 at the service layer.
+pub async fn find_by_id_for_owner(
+    pool: &PgPool,
+    user_id: &str,
+    id: &str,
+) -> AppResult<Option<ChunkProposal>> {
+    let row = sqlx::query_as!(
+        ChunkProposal,
+        r#"SELECT p.id, p.chunk_id, p.changes AS "changes: Json<ProposedChanges>",
+                  p.reason, p.status, p.proposed_by, p.reviewed_by,
+                  p.reviewed_at AS "reviewed_at: UtcTimestamp", p.review_note,
+                  p.created_at AS "created_at: UtcTimestamp"
+           FROM chunk_proposal p
+           WHERE p.id = $1
+             AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = p.chunk_id AND c.user_id = $2)"#,
+        id,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
+}
+
 pub struct ListProposalsFilter<'a> {
     pub chunk_id: Option<&'a str>,
     /// Always `Some` by the time this reaches the repo — the service layer
@@ -220,8 +250,9 @@ pub struct ListProposalsFilter<'a> {
     pub offset: i64,
 }
 
-/// Backs `GET /api/proposals`, the global queue. `INNER JOIN chunk` mirrors
-/// Node's `listProposals`
+/// Backs `GET /api/proposals`, the global queue — scoped to the caller
+/// (`c.user_id = $1`), a deliberate divergence from Node; see this module's
+/// doc comment. `INNER JOIN chunk` otherwise mirrors Node's `listProposals`
 /// (`packages/db/src/repository/chunk-proposal.ts:41-63`) — a proposal whose
 /// chunk has been deleted cannot appear (moot in practice: `chunk_id`
 /// cascades on chunk delete, so the proposal row would already be gone).
@@ -235,6 +266,7 @@ pub struct ListProposalsFilter<'a> {
 /// a stable order.
 pub async fn list(
     pool: &PgPool,
+    user_id: &str,
     filter: ListProposalsFilter<'_>,
 ) -> AppResult<Vec<ProposalWithChunk>> {
     let rows = sqlx::query_as!(
@@ -246,9 +278,10 @@ pub async fn list(
                   c.title AS chunk_title, c.type AS chunk_type
            FROM chunk_proposal p
            INNER JOIN chunk c ON c.id = p.chunk_id
-           WHERE p.status = $1 AND ($2::text IS NULL OR p.chunk_id = $2)
+           WHERE c.user_id = $1 AND p.status = $2 AND ($3::text IS NULL OR p.chunk_id = $3)
            ORDER BY p.created_at DESC, p.id ASC
-           LIMIT $3 OFFSET $4"#,
+           LIMIT $4 OFFSET $5"#,
+        user_id,
         filter.status,
         filter.chunk_id,
         filter.limit,
@@ -292,13 +325,17 @@ pub async fn list_for_chunk(
     Ok(rows)
 }
 
-/// Sets a proposal's terminal review state. Returns `None` — not an error —
-/// if `id` doesn't exist, matching the *shape* of every other `Option`-
-/// returning update in this crate; in practice this is unreachable through
-/// the HTTP surface, because both `proposals::service::approve` and
-/// `::reject` already fetched the proposal by id (404-ing if absent) before
-/// reaching here — see this module's doc comment on the two-call,
-/// non-atomic approve sequence.
+/// Bare, unscoped terminal-review-state setter. Returns `None` — not an
+/// error — if `id` doesn't exist, matching the *shape* of every other
+/// `Option`-returning update in this crate.
+///
+/// No longer called by `proposals::service::approve`/`::reject` — those now
+/// go through [`approve`] (one atomic transaction) and [`reject`] (its own
+/// chunk-ownership-scoped `UPDATE`) respectively. Kept as a low-level,
+/// unscoped primitive (and its own direct test coverage) rather than
+/// removed outright: nothing in this port's behaviour depends on it being
+/// gone, and deleting a working, independently-useful function isn't part
+/// of either fix.
 pub async fn update_status(
     pool: &PgPool,
     id: &str,
@@ -323,6 +360,219 @@ pub async fn update_status(
     .fetch_optional(pool)
     .await?;
     Ok(row)
+}
+
+/// Rejects a pending proposal, scoped through its parent chunk — the SQL
+/// counterpart to [`approve`]'s chunk-owned `UPDATE`, closing the asymmetry
+/// this module's doc comment used to flag: Node's `rejectProposal`
+/// (`packages/api/src/proposals/service.ts:80-90`) has no ownership check of
+/// any kind. This port now diverges deliberately (same shape as accepted
+/// divergences #4/#9/#10/#13/#14/#15/#17/#19): `EXISTS (... c.user_id = $2)`
+/// is bound against `chunk_proposal.chunk_id`, the same "guard through the
+/// parent" shape `use_case::create`'s `space_id` guard and
+/// `tag::set_chunk_tags`'s ownership `EXISTS` use both follow.
+///
+/// A reviewer who doesn't own the underlying chunk matches zero rows and
+/// gets `Ok(None)` — not an error, identical to an unknown `id` — so the
+/// service layer's single `.ok_or_else(NotFound)` handles both cases the
+/// same way `approve`'s chunk-ownership-miss already does.
+pub async fn reject(
+    pool: &PgPool,
+    id: &str,
+    reviewer_id: &str,
+    review_note: Option<&str>,
+) -> AppResult<Option<ChunkProposal>> {
+    let row = sqlx::query_as!(
+        ChunkProposal,
+        r#"UPDATE chunk_proposal SET
+             status = 'rejected', reviewed_by = $2, reviewed_at = now(), review_note = $3
+           WHERE id = $1
+             AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = chunk_proposal.chunk_id AND c.user_id = $2)
+           RETURNING id, chunk_id, changes AS "changes: Json<ProposedChanges>",
+                     reason, status, proposed_by, reviewed_by,
+                     reviewed_at AS "reviewed_at: UtcTimestamp", review_note,
+                     created_at AS "created_at: UtcTimestamp""#,
+        id,
+        reviewer_id,
+        review_note
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
+}
+
+/// The chunk-side changes [`approve`] applies inside its transaction.
+/// Mirrors `chunk::ChunkPatch`'s five scalar fields plus the two it grew for
+/// this fix (`alternatives`/`scope`), plus `tags` — never a `ChunkPatch`
+/// field, since `chunk_tag` is a join table, not a column (see
+/// `tag::set_chunk_tags`'s doc comment for the ownership pattern this
+/// mirrors). `tags` holds tag *names*, matching `ProposedChanges::tags` and
+/// Node's `findOrCreateTag(name, userId)` resolution — not tag ids.
+pub struct ApproveChunkChanges {
+    pub title: Option<String>,
+    pub content: Option<String>,
+    pub chunk_type: Option<String>,
+    pub rationale: Option<String>,
+    pub consequences: Option<String>,
+    pub alternatives: Option<Vec<String>>,
+    pub scope: Option<serde_json::Value>,
+    pub tags: Option<Vec<String>>,
+}
+
+/// Applies a pending proposal's changes to its chunk and flips the proposal
+/// to `approved` — all in **one transaction**, closing the non-atomicity
+/// this module's doc comment used to flag (the same *shape* as divergence
+/// #12). A failure between the chunk write and the proposal-status write can
+/// no longer leave the chunk changed with the proposal still `pending`:
+/// either both commit, or the whole transaction rolls back and neither does.
+///
+/// Ownership is enforced by the chunk `UPDATE`'s own
+/// `WHERE id = $1 AND user_id = $2` — the same guard `chunk::update` uses.
+/// A non-owner `reviewer_id` matches zero rows on the very first read (the
+/// pre-edit snapshot fetch), the whole transaction rolls back, and this
+/// returns `Ok(None)` without ever touching the proposal row — the same
+/// "reject the write before it reaches the proposal" behaviour `approve` had
+/// before this fix, just derived one step earlier.
+///
+/// All eight `ProposedChanges` fields Node's `approveProposal` applies are
+/// now carried through: five plain chunk columns, two more added by this
+/// fix (`alternatives`/`scope`), and `tags` — a join-table replace via the
+/// same delete-then-insert, ownership-guarded-through-both-parents shape as
+/// `tag::set_chunk_tags` (this cannot literally call that function: it
+/// commits its own transaction internally, which cannot compose with this
+/// one). Tag names with no existing `(name, user_id)` row for `reviewer_id`
+/// are created on the fly, mirroring Node's `findOrCreateTag`.
+pub async fn approve(
+    pool: &PgPool,
+    proposal_id: &str,
+    chunk_id: &str,
+    reviewer_id: &str,
+    changes: ApproveChunkChanges,
+    note: Option<&str>,
+) -> AppResult<Option<ChunkProposal>> {
+    let mut tx = pool.begin().await?;
+
+    // Pre-edit snapshot for chunk_version, scoped by owner in the same
+    // breath — a non-owner reviewer_id matches nothing here, and the
+    // transaction below is rolled back before any write happens.
+    let current = sqlx::query!(
+        r#"SELECT title, content, type, rationale, consequences
+           FROM chunk WHERE id = $1 AND user_id = $2"#,
+        chunk_id,
+        reviewer_id
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+    let Some(current) = current else {
+        tx.rollback().await?;
+        return Ok(None);
+    };
+
+    let version_id = crate::new_id();
+    sqlx::query!(
+        r#"INSERT INTO chunk_version
+             (id, chunk_id, version, title, content, type, tags,
+              rationale, consequences, created_at)
+           SELECT $1, $2, COALESCE(MAX(v.version), 0) + 1, $3, $4, $5,
+                  '[]'::jsonb, $6, $7, now()
+           FROM chunk_version v WHERE v.chunk_id = $2"#,
+        version_id,
+        chunk_id,
+        current.title,
+        current.content,
+        current.r#type,
+        current.rationale,
+        current.consequences
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query!(
+        r#"UPDATE chunk SET
+             title = COALESCE($3, title),
+             content = COALESCE($4, content),
+             type = COALESCE($5, type),
+             rationale = COALESCE($6, rationale),
+             consequences = COALESCE($7, consequences),
+             alternatives = COALESCE($8, alternatives),
+             scope = COALESCE($9, scope),
+             updated_at = now()
+           WHERE id = $1 AND user_id = $2"#,
+        chunk_id,
+        reviewer_id,
+        changes.title,
+        changes.content,
+        changes.chunk_type,
+        changes.rationale,
+        changes.consequences,
+        changes.alternatives.map(Json) as _,
+        changes.scope.map(Json) as _
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    if let Some(names) = &changes.tags {
+        let mut tag_ids: Vec<String> = Vec::with_capacity(names.len());
+        for name in names {
+            let existing = sqlx::query_scalar!(
+                "SELECT id FROM tag WHERE name = $1 AND user_id = $2",
+                name,
+                reviewer_id
+            )
+            .fetch_optional(&mut *tx)
+            .await?;
+            let tag_id = match existing {
+                Some(id) => id,
+                None => {
+                    let id = crate::new_id();
+                    sqlx::query!(
+                        "INSERT INTO tag (id, name, user_id) VALUES ($1, $2, $3)",
+                        id,
+                        name,
+                        reviewer_id
+                    )
+                    .execute(&mut *tx)
+                    .await?;
+                    id
+                }
+            };
+            tag_ids.push(tag_id);
+        }
+
+        sqlx::query!("DELETE FROM chunk_tag WHERE chunk_id = $1", chunk_id)
+            .execute(&mut *tx)
+            .await?;
+        if !tag_ids.is_empty() {
+            sqlx::query!(
+                r#"INSERT INTO chunk_tag (chunk_id, tag_id)
+                   SELECT $1, t FROM unnest($2::text[]) AS t
+                   ON CONFLICT (chunk_id, tag_id) DO NOTHING"#,
+                chunk_id,
+                &tag_ids
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+    }
+
+    let proposal = sqlx::query_as!(
+        ChunkProposal,
+        r#"UPDATE chunk_proposal SET
+             status = 'approved', reviewed_by = $2, reviewed_at = now(), review_note = $3
+           WHERE id = $1
+           RETURNING id, chunk_id, changes AS "changes: Json<ProposedChanges>",
+                     reason, status, proposed_by, reviewed_by,
+                     reviewed_at AS "reviewed_at: UtcTimestamp", review_note,
+                     created_at AS "created_at: UtcTimestamp""#,
+        proposal_id,
+        reviewer_id,
+        note
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(proposal)
 }
 
 /// Global pending count — no `user_id` filter, matching Node's

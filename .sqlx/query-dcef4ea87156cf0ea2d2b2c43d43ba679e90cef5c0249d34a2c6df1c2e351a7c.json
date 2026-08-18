@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT p.id, p.chunk_id, p.changes AS \"changes: Json<ProposedChanges>\",\n                  p.reason, p.status, p.proposed_by, p.reviewed_by,\n                  p.reviewed_at AS \"reviewed_at: UtcTimestamp\", p.review_note,\n                  p.created_at AS \"created_at: UtcTimestamp\",\n                  c.title AS chunk_title, c.type AS chunk_type\n           FROM chunk_proposal p\n           INNER JOIN chunk c ON c.id = p.chunk_id\n           WHERE p.status = $1 AND ($2::text IS NULL OR p.chunk_id = $2)\n           ORDER BY p.created_at DESC, p.id ASC\n           LIMIT $3 OFFSET $4",
+  "query": "UPDATE chunk_proposal SET\n             status = 'rejected', reviewed_by = $2, reviewed_at = now(), review_note = $3\n           WHERE id = $1\n             AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = chunk_proposal.chunk_id AND c.user_id = $2)\n           RETURNING id, chunk_id, changes AS \"changes: Json<ProposedChanges>\",\n                     reason, status, proposed_by, reviewed_by,\n                     reviewed_at AS \"reviewed_at: UtcTimestamp\", review_note,\n                     created_at AS \"created_at: UtcTimestamp\"",
   "describe": {
     "columns": [
       {
@@ -52,24 +52,13 @@
         "ordinal": 9,
         "name": "created_at: UtcTimestamp",
         "type_info": "Timestamp"
-      },
-      {
-        "ordinal": 10,
-        "name": "chunk_title",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 11,
-        "name": "chunk_type",
-        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
         "Text",
         "Text",
-        "Int8",
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -82,10 +71,8 @@
       true,
       true,
       true,
-      false,
-      false,
       false
     ]
   },
-  "hash": "3772090e927a4ff3a599e7b78694a1e65a9b6e168117e94fdfca5d20f4405bc6"
+  "hash": "dcef4ea87156cf0ea2d2b2c43d43ba679e90cef5c0249d34a2c6df1c2e351a7c"
 }

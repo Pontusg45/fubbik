@@ -1,4 +1,5 @@
 use fubbik_core::error::{AppError, AppResult};
+use fubbik_db::repo::space;
 use fubbik_db::repo::use_case::{
     self, NewUseCase, UseCase, UseCaseListItem, UseCasePatch, UseCaseRequirement,
 };
@@ -18,12 +19,17 @@ pub async fn list(
 /// (`packages/api/src/use-cases/service.ts:24-45`): when `parentId` is
 /// given, the parent must exist (scoped to the caller — `getUseCaseById`
 /// always receives `userId`) and must not itself already have a parent
-/// (Node enforces exactly one level of nesting). No `spaceId` ownership
-/// check — Node's `createUseCaseRepo` is a bare insert with none either;
-/// this stays a faithful match rather than adding the `EXISTS` guard
-/// `collections::service::create` uses for the analogous field (that guard
-/// is a documented divergence elsewhere in this port, not extended here
-/// since the task didn't call for it — flagged for follow-up).
+/// (Node enforces exactly one level of nesting).
+///
+/// **`spaceId` ownership is now checked (Phase 2e wave 1)** — a deliberate
+/// divergence from Node, whose `createUseCaseRepo` is a bare insert with no
+/// such guard, same shape as accepted divergences #4/#9/#10/#13/#14/#15/#17/
+/// #19 and matching `collections::service::create`'s own pre-check for the
+/// analogous field. This service-level `space::find_by_id` pre-check gives
+/// the precise 404, but the *real* guard is the `EXISTS` in
+/// `use_case::create`'s own SQL — see that function's doc comment and
+/// `tests/use_case.rs` for why the SQL guard, not this pre-check, is what's
+/// proven load-bearing.
 pub async fn create(pool: &PgPool, user_id: &str, body: CreateUseCaseBody) -> AppResult<UseCase> {
     if let Some(parent_id) = &body.parent_id {
         let parent = use_case::find_by_id(pool, user_id, parent_id)
@@ -34,6 +40,11 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateUseCaseBody) -> Ap
                 "Cannot nest more than one level deep".into(),
             ));
         }
+    }
+    if let Some(space_id) = &body.space_id {
+        space::find_by_id(pool, user_id, space_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Space".into()))?;
     }
 
     use_case::create(
@@ -46,7 +57,8 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateUseCaseBody) -> Ap
             parent_id: body.parent_id,
         },
     )
-    .await
+    .await?
+    .ok_or_else(|| AppError::NotFound("Space".into()))
 }
 
 /// Mirrors Node's `updateUseCase`

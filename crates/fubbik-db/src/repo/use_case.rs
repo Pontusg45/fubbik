@@ -93,32 +93,59 @@ pub struct NewUseCase {
     pub parent_id: Option<String>,
 }
 
-/// Plain insert, no `space_id`/`parent_id` ownership guard beyond the
-/// `parent_id` existence check the service layer performs beforehand — Node's
+/// `space_id`, when given, must belong to `user_id` — an `EXISTS` guard on
+/// the `INSERT`, the same "guard through the parent" shape
+/// `collection::create` uses for its own `space_id` (Phase 2e wave 1: this
+/// module used to explicitly *not* have this guard, contrasting itself with
+/// `collection::create`'s — see the git history of this doc comment). Node's
 /// `createUseCaseRepo` (`packages/db/src/repository/use-case.ts:17-22`) is a
-/// bare `db.insert(useCase).values(params).returning()` with no such guard
-/// either, and this stays a faithful match rather than adding one Node
-/// doesn't have (contrast `collection::create`'s `space_id` `EXISTS` guard,
-/// which is a documented, deliberate divergence elsewhere in this port —
-/// not extended here since the task didn't call for it).
-pub async fn create(pool: &PgPool, user_id: &str, new: NewUseCase) -> AppResult<UseCase> {
+/// bare `db.insert(useCase).values(params).returning()` with no such check
+/// at all — this is a deliberate divergence, same shape as accepted
+/// divergences #4/#9/#10/#13/#14/#15/#17/#19, not a faithful port. Returns
+/// `Ok(None)` (not an error) when `space_id` is given but not owned by
+/// `user_id`, matching `collection::create`'s shape exactly — see
+/// `tests/use_case.rs` for the load-bearing proof.
+pub async fn create(pool: &PgPool, user_id: &str, new: NewUseCase) -> AppResult<Option<UseCase>> {
     let id = crate::new_id();
-    let row = sqlx::query_as!(
-        UseCase,
-        r#"INSERT INTO use_case (id, name, description, space_id, user_id, parent_id)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           RETURNING id, name, description, space_id, user_id, "order",
-                     parent_id, created_at AS "created_at: UtcTimestamp",
-                     updated_at AS "updated_at: UtcTimestamp""#,
-        id,
-        new.name,
-        new.description,
-        new.space_id,
-        user_id,
-        new.parent_id
-    )
-    .fetch_one(pool)
-    .await?;
+    let row = match &new.space_id {
+        Some(space_id) => {
+            sqlx::query_as!(
+                UseCase,
+                r#"INSERT INTO use_case (id, name, description, space_id, user_id, parent_id)
+                   SELECT $1, $2, $3, $4, $5, $6
+                   WHERE EXISTS (SELECT 1 FROM space s WHERE s.id = $4 AND s.user_id = $5)
+                   RETURNING id, name, description, space_id, user_id, "order",
+                             parent_id, created_at AS "created_at: UtcTimestamp",
+                             updated_at AS "updated_at: UtcTimestamp""#,
+                id,
+                new.name,
+                new.description,
+                space_id,
+                user_id,
+                new.parent_id
+            )
+            .fetch_optional(pool)
+            .await?
+        }
+        None => Some(
+            sqlx::query_as!(
+                UseCase,
+                r#"INSERT INTO use_case (id, name, description, space_id, user_id, parent_id)
+                   VALUES ($1, $2, $3, $4, $5, $6)
+                   RETURNING id, name, description, space_id, user_id, "order",
+                             parent_id, created_at AS "created_at: UtcTimestamp",
+                             updated_at AS "updated_at: UtcTimestamp""#,
+                id,
+                new.name,
+                new.description,
+                new.space_id,
+                user_id,
+                new.parent_id
+            )
+            .fetch_one(pool)
+            .await?,
+        ),
+    };
     Ok(row)
 }
 

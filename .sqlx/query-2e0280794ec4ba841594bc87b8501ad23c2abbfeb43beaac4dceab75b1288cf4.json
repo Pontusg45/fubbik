@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DROP TRIGGER test_boom_trigger ON chunk_proposal",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2e0280794ec4ba841594bc87b8501ad23c2abbfeb43beaac4dceab75b1288cf4"
+}
