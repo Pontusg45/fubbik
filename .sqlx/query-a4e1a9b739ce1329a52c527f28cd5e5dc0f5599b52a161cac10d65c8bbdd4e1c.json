@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO requirement (id, title, steps, user_id, use_case_id)\n           VALUES ($1, 'Alice req', '[]'::jsonb, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a4e1a9b739ce1329a52c527f28cd5e5dc0f5599b52a161cac10d65c8bbdd4e1c"
+}
