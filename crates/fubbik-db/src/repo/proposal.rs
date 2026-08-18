@@ -233,7 +233,10 @@ pub struct ListProposalsFilter<'a> {
 /// created in the same millisecond) share a tied `created_at` and an
 /// `ORDER BY` with no deterministic tiebreaker is a query-plan artifact, not
 /// a stable order.
-pub async fn list(pool: &PgPool, filter: ListProposalsFilter<'_>) -> AppResult<Vec<ProposalWithChunk>> {
+pub async fn list(
+    pool: &PgPool,
+    filter: ListProposalsFilter<'_>,
+) -> AppResult<Vec<ProposalWithChunk>> {
     let rows = sqlx::query_as!(
         ProposalWithChunk,
         r#"SELECT p.id, p.chunk_id, p.changes AS "changes: Json<ProposedChanges>",

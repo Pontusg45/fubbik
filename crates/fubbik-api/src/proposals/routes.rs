@@ -110,7 +110,9 @@ pub async fn get_proposal(
     CurrentUser(_user): CurrentUser,
     Path(proposal_id): Path<String>,
 ) -> ApiResult<Json<ChunkProposal>> {
-    Ok(Json(service::get_proposal(&state.pool, &proposal_id).await?))
+    Ok(Json(
+        service::get_proposal(&state.pool, &proposal_id).await?,
+    ))
 }
 
 /// Applies the proposal's changes to the underlying chunk, then flips the
@@ -160,6 +162,9 @@ pub fn router() -> Router<AppState> {
         .route("/api/proposals/bulk", post(bulk_action_proposals))
         .route("/api/proposals", get(list_proposals))
         .route("/api/proposals/{proposalId}", get(get_proposal))
-        .route("/api/proposals/{proposalId}/approve", post(approve_proposal))
+        .route(
+            "/api/proposals/{proposalId}/approve",
+            post(approve_proposal),
+        )
         .route("/api/proposals/{proposalId}/reject", post(reject_proposal))
 }
