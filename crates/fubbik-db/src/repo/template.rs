@@ -36,7 +36,9 @@ use crate::timestamp::UtcTimestamp;
 /// in Node (`packages/api/src/templates/routes.ts:7`), not free text, so
 /// modelling it as an enum here matches the contract rather than adding a
 /// constraint Node lacks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum MatchMode {
     Exact,
@@ -46,7 +48,9 @@ pub enum MatchMode {
 
 /// `"exact" | "oneOf" | "exists"` — likewise a real `t.Union` of literals
 /// (`packages/api/src/templates/routes.ts:18`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum FrontmatterMatchMode {
     Exact,
@@ -56,7 +60,9 @@ pub enum FrontmatterMatchMode {
 
 /// The six chunk fields a template's field mappings can populate — a real
 /// `t.Union` of literals (`packages/api/src/templates/routes.ts:29-36`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum ExtractionTarget {
     Rationale,
