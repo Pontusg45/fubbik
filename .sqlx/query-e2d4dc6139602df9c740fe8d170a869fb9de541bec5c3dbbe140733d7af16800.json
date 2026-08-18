@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) AS \"count!\" FROM vocabulary_entry\n           WHERE space_id = $1\n             AND EXISTS (SELECT 1 FROM space s WHERE s.id = $1 AND s.user_id = $2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e2d4dc6139602df9c740fe8d170a869fb9de541bec5c3dbbe140733d7af16800"
+}

@@ -2925,6 +2925,181 @@
         }
       }
     },
+    "/api/saved-graphs": {
+      "get": {
+        "tags": [
+          "crate::saved_graphs::routes"
+        ],
+        "operationId": "list_saved_graphs",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SavedGraph"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::saved_graphs::routes"
+        ],
+        "operationId": "create_saved_graph",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSavedGraphBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedGraph"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/saved-graphs/{id}": {
+      "get": {
+        "tags": [
+          "crate::saved_graphs::routes"
+        ],
+        "operationId": "get_saved_graph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedGraph"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::saved_graphs::routes"
+        ],
+        "operationId": "delete_saved_graph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::saved_graphs::routes"
+        ],
+        "operationId": "update_saved_graph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSavedGraphBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedGraph"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/search/autocomplete": {
       "get": {
         "tags": [
@@ -4159,6 +4334,253 @@
         }
       }
     },
+    "/api/vocabulary": {
+      "get": {
+        "tags": [
+          "crate::vocabulary::routes"
+        ],
+        "summary": "`spaceId` absent -> `[]` without ever reaching the service layer,\nmatching Node's `if (!ctx.query.spaceId) return [];`\n(`packages/api/src/vocabulary/routes.ts:30`) exactly — note this is\n*not* a 404 the way every other endpoint in this domain treats a\nmissing/foreign space.",
+        "operationId": "list_vocabulary",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VocabularyEntry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::vocabulary::routes"
+        ],
+        "operationId": "create_entry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEntryBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VocabularyEntry"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/vocabulary/bulk": {
+      "post": {
+        "tags": [
+          "crate::vocabulary::routes"
+        ],
+        "operationId": "bulk_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkCreateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VocabularyEntry"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/vocabulary/parse": {
+      "post": {
+        "tags": [
+          "crate::vocabulary::routes"
+        ],
+        "operationId": "parse_step",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/vocabulary/suggest": {
+      "post": {
+        "tags": [
+          "crate::vocabulary::routes"
+        ],
+        "operationId": "suggest_vocabulary",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuggestedEntry"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/vocabulary/{id}": {
+      "delete": {
+        "tags": [
+          "crate::vocabulary::routes"
+        ],
+        "operationId": "delete_entry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::vocabulary::routes"
+        ],
+        "operationId": "update_entry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEntryBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VocabularyEntry"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/workspaces": {
       "get": {
         "tags": [
@@ -4650,6 +5072,37 @@
             "type": "string"
           }
         }
+      },
+      "BulkCreateBody": {
+        "type": "object",
+        "description": "Body of `POST /api/vocabulary/bulk` (`routes.ts:69-73`).",
+        "required": [
+          "entries",
+          "spaceId"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntryInput"
+            }
+          },
+          "spaceId": {
+            "type": "string"
+          }
+        }
+      },
+      "Category": {
+        "type": "string",
+        "description": "The six literals Elysia's `CategorySchema` accepts\n(`packages/api/src/vocabulary/routes.ts:7-14`, a genuine `t.Union` of\nliterals — unlike `notification.type`/`connection.relation`, this *is*\na real input constraint). Modelled as an enum only at this input-body\nlayer, the same shape as `connections::dto::Origin`: the stored\n`vocabulary_entry.category` column and\n`fubbik_db::repo::vocabulary::VocabularyEntry::category` stay a plain\n`String` end to end, since the DB has no matching check constraint and\nNode's `SELECT *` never re-validates on read.",
+        "enum": [
+          "actor",
+          "action",
+          "target",
+          "outcome",
+          "state",
+          "modifier"
+        ]
       },
       "Chunk": {
         "type": "object",
@@ -5237,6 +5690,35 @@
           }
         }
       },
+      "CreateEntryBody": {
+        "type": "object",
+        "description": "Body of `POST /api/vocabulary` (`routes.ts:105-110`).",
+        "required": [
+          "word",
+          "category",
+          "spaceId"
+        ],
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "expects": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "spaceId": {
+            "type": "string"
+          },
+          "word": {
+            "type": "string"
+          }
+        }
+      },
       "CreateFavoriteBody": {
         "type": "object",
         "description": "Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):\n`chunkId` only, a plain `String` with no length cap. Node's schema\ndeclares `t.String({ maxLength: 100 })`, but this port does not enforce\nthat bound — an accepted, deliberate divergence (a `chunkId` over 100\nchars simply fails the downstream chunk-ownership lookup instead of\nbeing rejected up front), not something silently missing.",
@@ -5327,6 +5809,53 @@
             "$ref": "#/components/schemas/ProposedChanges"
           },
           "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateSavedGraphBody": {
+        "type": "object",
+        "description": "Body of `POST /api/saved-graphs`\n(`packages/api/src/saved-graphs/routes.ts:29-37`). `chunkIds` and\n`positions` are structurally validated by Elysia's schema (`t.Array(t.String())`,\n`t.Record(t.String(), t.Object({ x: t.Number(), y: t.Number() }))`) —\nnot opaque JSON the way `collection.filter` / `saved_query.query` are —\nso this keeps the same concrete Rust types end to end rather than\nfalling back to `serde_json::Value`. `spaceId` accepts both omission and\nexplicit `null` (`t.Optional(t.Union([t.String(), t.Null()]))`); both\nproduce the same `NULL` insert in Node's `.values(params)` (an\n`undefined` key and an explicit `null` value behave identically for a\nnullable Drizzle column), so a plain `Option<String>` — not the\n`deserialize_some` tri-state — is correct here, unlike `description` on\nthe PATCH body below.",
+        "required": [
+          "name",
+          "chunkIds",
+          "positions"
+        ],
+        "properties": {
+          "chunkIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "layoutAlgorithm": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "positions": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Position"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "spaceId": {
             "type": [
               "string",
               "null"
@@ -5644,6 +6173,31 @@
           "missing",
           "complete"
         ]
+      },
+      "EntryInput": {
+        "type": "object",
+        "description": "One entry of `POST /api/vocabulary/bulk`'s `entries` array\n(`routes.ts:16-20`). `word` has no length cap enforced here — Node\ndeclares `t.String({ maxLength: 100 })`, but (matching\n`favorites::dto::CreateFavoriteBody`'s accepted divergence) this port\ndoes not enforce it; an over-length word simply round-trips into the\n`text` column, which has no length constraint of its own either.",
+        "required": [
+          "word",
+          "category"
+        ],
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "expects": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "word": {
+            "type": "string"
+          }
+        }
       },
       "ExtractionTarget": {
         "type": "string",
@@ -6033,6 +6587,22 @@
           "ai"
         ]
       },
+      "ParseBody": {
+        "type": "object",
+        "description": "Body of `POST /api/vocabulary/parse` (`routes.ts:86-89`). `text` has no\nlength cap enforced, same accepted divergence as `EntryInput::word`\n(Node: `t.String({ maxLength: 1000 })`).",
+        "required": [
+          "text",
+          "spaceId"
+        ],
+        "properties": {
+          "spaceId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
       "ParseResponse": {
         "type": "object",
         "description": "`GET /api/search/parse` response: `{clauses: [...]}` — the raw clause\narray, not a normalised query string or a validation verdict.",
@@ -6045,6 +6615,48 @@
             "items": {
               "$ref": "#/components/schemas/QueryClause"
             }
+          }
+        }
+      },
+      "ParseResult": {
+        "type": "object",
+        "required": [
+          "tokens",
+          "warnings"
+        ],
+        "properties": {
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParsedToken"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VocabularyWarning"
+            }
+          }
+        }
+      },
+      "ParsedToken": {
+        "type": "object",
+        "required": [
+          "text",
+          "position"
+        ],
+        "properties": {
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "$ref": "#/components/schemas/Position"
+          },
+          "text": {
+            "type": "string"
           }
         }
       },
@@ -6618,6 +7230,23 @@
           }
         }
       },
+      "Position": {
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "properties": {
+          "end": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "ProposalWithChunk": {
         "type": "object",
         "description": "Row shape for `GET /api/proposals` — the global queue joins `chunk` for\n`chunkTitle`/`chunkType` (`packages/db/src/repository/chunk-proposal.ts:41-63`),\nwhich `find_by_id` and `list_for_chunk` do not carry. A separate struct\nrather than optional extra fields on [`ChunkProposal`] keeps the two\nshapes from being confusable at the type level.",
@@ -6943,6 +7572,69 @@
           "reviewed",
           "approved"
         ]
+      },
+      "SavedGraph": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.",
+        "required": [
+          "id",
+          "name",
+          "chunkIds",
+          "positions",
+          "layoutAlgorithm",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "chunkIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "layoutAlgorithm": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "positions": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Position"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
       },
       "SavedQuery": {
         "type": "object",
@@ -7397,6 +8089,42 @@
           }
         }
       },
+      "SuggestBody": {
+        "type": "object",
+        "description": "Body of `POST /api/vocabulary/suggest` (`routes.ts:51-53`).",
+        "required": [
+          "spaceId"
+        ],
+        "properties": {
+          "spaceId": {
+            "type": "string"
+          }
+        }
+      },
+      "SuggestedEntry": {
+        "type": "object",
+        "required": [
+          "word",
+          "category"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "expects": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "word": {
+            "type": "string"
+          }
+        }
+      },
       "SuppressDuplicateBody": {
         "type": "object",
         "description": "Body of `POST /api/chunks/suppress-duplicate`\n(`packages/api/src/staleness/routes.ts:63-66`).",
@@ -7794,6 +8522,37 @@
           }
         }
       },
+      "UpdateEntryBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/vocabulary/{id}` (`routes.ts:124-128`). All three\nfields are two-state (`None` = leave untouched) — see\n`fubbik_db::repo::vocabulary::VocabularyPatch`'s doc comment for why\nthere is no explicit-null-clear variant.",
+        "properties": {
+          "category": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Category"
+              }
+            ]
+          },
+          "expects": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "word": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdatePlanBody": {
         "type": "object",
         "description": "Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).\n\n`description` and `space_id` are tri-state, matching Node's\n`t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted\n(`None`) leaves the field untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same\n`deserialize_some` trick as `workspaces::dto::UpdateWorkspaceBody::description`.\n`status` and `metadata` are plain two-state (Node declares neither with\na `t.Null()` union).",
@@ -7822,6 +8581,51 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "UpdateSavedGraphBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/saved-graphs/{id}`\n(`packages/api/src/saved-graphs/routes.ts:53-59`). `description` is\ntri-state, matching Node's `t.Optional(t.Union([t.String(), t.Null()]))`:\nomitted (`None`) leaves it untouched, explicit `null` (`Some(None)`)\nclears it, a string (`Some(Some(..))`) sets it — same `deserialize_some`\ntrick as `workspaces::dto::UpdateWorkspaceBody::description`. Every\nother field here is plain two-state (`t.Optional(...)` with no\n`t.Null()` variant) — `spaceId` is deliberately absent, matching Node:\nthere is no way to change a saved graph's space through this endpoint.",
+        "properties": {
+          "chunkIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "layoutAlgorithm": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "positions": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Position"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
           }
         }
       },
@@ -8262,6 +9066,92 @@
             "type": "string"
           }
         }
+      },
+      "VocabularyEntry": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.",
+        "required": [
+          "id",
+          "word",
+          "category",
+          "spaceId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "definition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expects": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "word": {
+            "type": "string"
+          }
+        }
+      },
+      "VocabularyWarning": {
+        "type": "object",
+        "required": [
+          "position",
+          "type",
+          "word",
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Position"
+          },
+          "type": {
+            "$ref": "#/components/schemas/WarningType"
+          },
+          "word": {
+            "type": "string"
+          }
+        }
+      },
+      "WarningType": {
+        "type": "string",
+        "enum": [
+          "unknown_word",
+          "unexpected_category",
+          "expects_not_satisfied"
+        ]
       },
       "Workspace": {
         "type": "object",

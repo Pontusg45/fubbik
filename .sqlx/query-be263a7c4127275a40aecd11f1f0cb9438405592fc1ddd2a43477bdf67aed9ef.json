@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM vocabulary_entry\n           WHERE id = $1\n             AND EXISTS (SELECT 1 FROM space s WHERE s.id = vocabulary_entry.space_id AND s.user_id = $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "be263a7c4127275a40aecd11f1f0cb9438405592fc1ddd2a43477bdf67aed9ef"
+}
