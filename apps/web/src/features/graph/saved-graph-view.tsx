@@ -140,6 +140,16 @@ function SavedGraphViewInner() {
     // Fetch saved graph
     const { data: savedGraph, isLoading: isLoadingSavedGraph } = useQuery({
         queryKey: ["saved-graphs", graphId],
+        // Stays on legacyApi: Rust's openapi.json documents `SavedGraph.positions`
+        // as `Record<string, {start, end}>` (the vocabulary-parser `Position`
+        // struct) instead of `Record<string, {x, y}>` (the actual
+        // `saved_graph::Position` struct) — a utoipa schema-name collision
+        // between `fubbik_db::repo::saved_graph::Position` and
+        // `fubbik_api::vocabulary::parser::Position` (both register as
+        // `#/components/schemas/Position`, one silently overwrites the
+        // other). Runtime is presumably still {x, y}, but the generated
+        // types are wrong, so this can't move until the crate disambiguates
+        // the two schemas.
         queryFn: async () => unwrapEden(await legacyApi.api["saved-graphs"]({ id: graphId }).get()),
         enabled: !!graphId
     });
@@ -151,7 +161,7 @@ function SavedGraphViewInner() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async () => unwrapEden(await legacyApi.api["saved-graphs"]({ id: graphId }).delete()),
+        mutationFn: async () => unwrapEden(await api.api["saved-graphs"]({ id: graphId }).delete()),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["saved-graphs"] });
             toast.success("Saved graph deleted");
@@ -162,6 +172,7 @@ function SavedGraphViewInner() {
     // Update positions mutation (for saving repositioned nodes)
     const updatePositionsMutation = useMutation({
         mutationFn: async (positions: Record<string, { x: number; y: number }>) => {
+            // Stays on legacyApi — see the `Position` schema-collision note above.
             return unwrapEden(await legacyApi.api["saved-graphs"]({ id: graphId }).patch({ positions }));
         },
         onSuccess: () => {
@@ -173,6 +184,7 @@ function SavedGraphViewInner() {
     // Save edit changes mutation
     const saveEditMutation = useMutation({
         mutationFn: async (payload: { chunkIds: string[]; positions: Record<string, { x: number; y: number }> }) => {
+            // Stays on legacyApi — see the `Position` schema-collision note above.
             return unwrapEden(await legacyApi.api["saved-graphs"]({ id: graphId }).patch(payload));
         },
         onSuccess: () => {

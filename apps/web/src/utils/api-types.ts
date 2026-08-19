@@ -318,6 +318,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_documents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["import_document"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/import-dir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["import_documents_dir"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `q` must be at least 2 characters, matching Node's `t.String({ minLength:
+         *     2 })` (`packages/api/src/documents/routes.ts:32`) — enforced here rather
+         *     than left unchecked, unlike this port's usual "Elysia-only length caps
+         *     go unenforced" precedent (see `ImportDocumentBody`'s doc comment):
+         *     `minLength` here shapes actual query behaviour (an unbounded `ILIKE
+         *     '%_%'` scan for a 0-1 char query), not just a request-size guard.
+         */
+        get: operations["search_documents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_document"];
+        put?: never;
+        post?: never;
+        /**
+         * Returns the deleted row directly (not a `{message: "Deleted"}` wrapper)
+         *     — matching Node's route, whose handler resolves to whatever
+         *     `removeDocument` returns (`deleteDocumentRepo`'s deleted row), unlike
+         *     most other domains' delete endpoints in this port.
+         */
+        delete: operations["delete_document"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/render": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["render_document"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sync_document"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/favorites": {
         parameters: {
             query?: never;
@@ -2142,6 +2268,99 @@ export interface components {
             description?: string | null;
             name: string;
         };
+        /**
+         * @description `camelCase` serialisation matches every other wire type in this crate.
+         *     This is the bare `document` row — what create/update/the `document` half
+         *     of `render` return. List endpoints use the wider [`DocumentListItem`]/
+         *     [`DocumentWithTagsItem`] shapes instead (aggregated chunk stats), and
+         *     `GET /api/documents/{id}` flattens this shape together with `chunks`
+         *     rather than nesting it (see `fubbik_api::documents::dto::DocumentDetail`,
+         *     mirroring Node's `{ ...doc, chunks }` spread in `getDocument`,
+         *     `packages/api/src/documents/service.ts:293`).
+         */
+        Document: {
+            contentHash: string;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            sourcePath: string;
+            spaceId?: string | null;
+            /** Format: int32 */
+            splitLevel?: number | null;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /**
+         * @description Shape of `GET /api/documents/{id}`, matching Node's `getDocument`
+         *     return expression: `{ ...doc, chunks }`
+         *     (`packages/api/src/documents/service.ts:288-295`) — a genuine object
+         *     spread, so the document's own fields sit at the *top level* alongside
+         *     `chunks`, not nested under a `document` key. Modelled as an explicit
+         *     flat struct (rather than `#[serde(flatten)]` on a nested `Document`)
+         *     since no other DTO in this crate uses `flatten` and this keeps the
+         *     utoipa-generated schema unambiguous.
+         */
+        DocumentDetail: {
+            chunks: components["schemas"]["Chunk"][];
+            contentHash: string;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            sourcePath: string;
+            spaceId?: string | null;
+            /** Format: int32 */
+            splitLevel?: number | null;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /**
+         * @description Shape of `GET /api/documents/search` items, matching
+         *     `searchDocumentChunks` (`packages/db/src/repository/document.ts:138-159`).
+         */
+        DocumentSearchResult: {
+            chunkContent: string;
+            chunkId: string;
+            chunkTitle: string;
+            documentId: string;
+            /** Format: int32 */
+            documentOrder?: number | null;
+            documentTitle: string;
+            sourcePath: string;
+        };
+        /**
+         * @description Shape of `GET /api/documents` (the route Node actually wires,
+         *     `packages/api/src/documents/routes.ts:8-21`) — [`DocumentListItem`] plus
+         *     `type` (the first section's chunk type, `document_order = 0`, defaulting
+         *     to `"document"` when absent) and `tags` (union of every chunk's tags in
+         *     the document, deduped). Matches
+         *     `packages/db/src/repository/document.ts:76-112`.
+         */
+        DocumentWithTagsItem: {
+            /** Format: int64 */
+            chunkCount: number;
+            contentHash: string;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            /** Format: date-time */
+            lastChunkUpdatedAt?: string | null;
+            /** Format: date-time */
+            oldestChunkUpdatedAt?: string | null;
+            sourcePath: string;
+            spaceId?: string | null;
+            tags: string[];
+            title: string;
+            type: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         DuplicateHint: {
             chunkIdA: string;
             chunkIdB: string;
@@ -2273,6 +2492,66 @@ export interface components {
             patterns: string[];
             required: boolean;
         };
+        /**
+         * @description Body of `POST /api/documents/import-dir`. `files`' `maxItems: 200` is
+         *     likewise unenforced — see [`ImportDocumentBody`]'s doc comment.
+         */
+        ImportDirBody: {
+            files: components["schemas"]["ImportFileEntry"][];
+            spaceId?: string | null;
+        };
+        /**
+         * @description Body of `POST /api/documents/import`
+         *     (`packages/api/src/documents/routes.ts:57-63`). `sourcePath`/`content`
+         *     length caps (`maxLength: 500`/`200000`) are Elysia-only request
+         *     validation Node never re-checks past the transport layer; matching
+         *     this port's established precedent (see
+         *     `crate::templates::dto::CreateTemplateBody`'s doc comment), they go
+         *     unenforced here — an over-long value is simply stored as-is.
+         *
+         *     Node's route never accepts or forwards a `templateId`
+         *     (`packages/api/src/documents/service.ts`'s `importDocument` takes one,
+         *     but no caller — HTTP or otherwise — ever supplies it), so this body has
+         *     no such field either; see `service::import_document`'s doc comment.
+         */
+        ImportDocumentBody: {
+            content: string;
+            sourcePath: string;
+            spaceId?: string | null;
+        };
+        /**
+         * @description One entry of `POST /api/documents/import-dir`'s `files` array
+         *     (`packages/api/src/documents/routes.ts:78-85`).
+         */
+        ImportFileEntry: {
+            content: string;
+            sourcePath: string;
+        };
+        /**
+         * @description Shape of `POST /api/documents/import` and each element of
+         *     `POST /api/documents/import-dir`'s response array, matching Node's
+         *     `importDocument` return object exactly
+         *     (`packages/api/src/documents/service.ts:45-158`).
+         */
+        ImportResult: {
+            /** Format: int32 */
+            created: number;
+            document: components["schemas"]["Document"];
+            firstChunkId?: string | null;
+            status: components["schemas"]["ImportStatus"];
+            /** Format: int32 */
+            updated: number;
+        };
+        /**
+         * @description `"unchanged" | "created" | "synced"` — the three literal values
+         *     `importDocument`/`syncDocument` actually return
+         *     (`packages/api/src/documents/service.ts:53,59,114,157,168,237`). There
+         *     is no `"updated"` variant: a re-sync with content changes reports
+         *     `status: "synced"` regardless of whether any section was individually
+         *     created vs. updated (see `created`/`updated` counts for that detail).
+         * @enum {string}
+         */
+        ImportStatus: "unchanged" | "created" | "synced";
         /**
          * @description `"exact" | "prefix" | "contains"` — a real Elysia `t.Union` of literals
          *     in Node (`packages/api/src/templates/routes.ts:7`), not free text, so
@@ -2711,6 +2990,16 @@ export interface components {
             rowCount: number;
             rows: unknown[];
         };
+        /**
+         * @description Shape of `GET /api/documents/{id}/render`, matching Node's
+         *     `renderDocument` return object (`packages/api/src/documents/service.ts:241-278`):
+         *     `{ document, markdown }`, nested — **not** flattened, unlike
+         *     [`DocumentDetail`].
+         */
+        RenderResult: {
+            document: components["schemas"]["Document"];
+            markdown: string;
+        };
         /** @description Body of `POST /api/plans/{id}/analyze/reorder` (`analyze.ts:107-120`). */
         ReorderAnalyzeItemsBody: {
             itemIds: string[];
@@ -3020,6 +3309,30 @@ export interface components {
         SuppressDuplicateBody: {
             chunkIdA: string;
             chunkIdB: string;
+        };
+        /**
+         * @description Body of `POST /api/documents/{id}/sync`
+         *     (`packages/api/src/documents/routes.ts:100-106`).
+         */
+        SyncDocumentBody: {
+            content: string;
+            spaceId?: string | null;
+        };
+        /**
+         * @description Shape of `POST /api/documents/{id}/sync`, matching Node's
+         *     `syncDocument` return object (`packages/api/src/documents/service.ts:161-239`).
+         *     **`document` is the pre-sync snapshot, not the freshly-updated row** —
+         *     see `service::sync_document`'s doc comment; this is Node's actual
+         *     return expression (`doc` is never reassigned after the `updateDocument`
+         *     call), reproduced deliberately rather than "fixed".
+         */
+        SyncResult: {
+            /** Format: int32 */
+            created: number;
+            document: components["schemas"]["Document"];
+            status: components["schemas"]["ImportStatus"];
+            /** Format: int32 */
+            updated: number;
         };
         /**
          * @description `camelCase` serialisation matches every other wire type in this crate —
@@ -4232,6 +4545,213 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_documents: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentWithTagsItem"][];
+                };
+            };
+        };
+    };
+    import_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportDocumentBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+        };
+    };
+    import_documents_dir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportDirBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"][];
+                };
+            };
+        };
+    };
+    search_documents: {
+        parameters: {
+            query: {
+                q: string;
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentSearchResult"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDetail"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    render_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenderResult"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sync_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncDocumentBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncResult"];
                 };
             };
             404: {

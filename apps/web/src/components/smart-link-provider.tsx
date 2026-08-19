@@ -195,7 +195,7 @@ export function SmartLinkProvider({ children }: { children: ReactNode }) {
             try {
                 // Vocabulary requires a codebaseId — fetch without to get all.
                 // If this fails (no codebase selected), return empty.
-                const result = unwrapEden(await legacyApi.api.vocabulary.get({ query: {} as any }));
+                const result = unwrapEden(await api.api.vocabulary.get({ query: {} as any }));
                 return (result as any[]) ?? [];
             } catch {
                 return [];

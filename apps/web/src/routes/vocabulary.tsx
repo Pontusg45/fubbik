@@ -13,7 +13,7 @@ import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/
 import { Separator } from "@/components/ui/separator";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/vocabulary")({
@@ -41,8 +41,10 @@ interface VocabEntry {
     expects: string[] | null;
     spaceId: string;
     userId: string | null;
-    createdAt: Date;
-    updatedAt: Date;
+    // ISO date-time strings over the wire — see the note on
+    // `DocumentListItem` in `document-types.ts` for why this was wrong.
+    createdAt: string;
+    updatedAt: string;
 }
 
 interface SuggestedEntry {
@@ -95,7 +97,7 @@ function VocabularyPage() {
         queryFn: async () => {
             if (!spaceId) return [];
             try {
-                return unwrapEden(await legacyApi.api.vocabulary.get({ query: { spaceId } })) as VocabEntry[];
+                return unwrapEden(await api.api.vocabulary.get({ query: { spaceId } })) as VocabEntry[];
             } catch {
                 return [];
             }
@@ -107,7 +109,7 @@ function VocabularyPage() {
 
     const createMutation = useMutation({
         mutationFn: async (body: { word: string; category: Category; expects?: string[]; spaceId: string }) => {
-            return unwrapEden(await legacyApi.api.vocabulary.post(body));
+            return unwrapEden(await api.api.vocabulary.post(body));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["vocabulary", spaceId] });
@@ -121,7 +123,7 @@ function VocabularyPage() {
 
     const updateMutation = useMutation({
         mutationFn: async ({ id, body }: { id: string; body: { word?: string; category?: Category; expects?: string[] } }) => {
-            return unwrapEden(await legacyApi.api.vocabulary({ id }).patch(body));
+            return unwrapEden(await api.api.vocabulary({ id }).patch(body));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["vocabulary", spaceId] });
@@ -135,7 +137,7 @@ function VocabularyPage() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            return unwrapEden(await legacyApi.api.vocabulary({ id }).delete());
+            return unwrapEden(await api.api.vocabulary({ id }).delete());
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["vocabulary", spaceId] });
@@ -149,7 +151,7 @@ function VocabularyPage() {
     const suggestMutation = useMutation({
         mutationFn: async () => {
             if (!spaceId) throw new Error("No space");
-            return unwrapEden(await legacyApi.api.vocabulary.suggest.post({ spaceId })) as SuggestedEntry[];
+            return unwrapEden(await api.api.vocabulary.suggest.post({ spaceId })) as SuggestedEntry[];
         },
         onSuccess: data => {
             const suggested = Array.isArray(data) ? data : [];
@@ -168,7 +170,7 @@ function VocabularyPage() {
         mutationFn: async (entriesToAdd: SuggestedEntry[]) => {
             if (!spaceId) throw new Error("No space");
             return unwrapEden(
-                await legacyApi.api.vocabulary.bulk.post({
+                await api.api.vocabulary.bulk.post({
                     entries: entriesToAdd.map(e => ({
                         word: e.word,
                         category: e.category as Category,

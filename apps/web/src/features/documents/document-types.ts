@@ -6,9 +6,13 @@ export interface DocumentListItem {
     sourcePath: string;
     description: string | null;
     chunkCount: number;
-    updatedAt: Date;
-    lastChunkUpdatedAt: Date | null;
-    oldestChunkUpdatedAt: Date | null;
+    // ISO date-time strings over the wire (both Node and Rust) — these were
+    // incorrectly typed as `Date` even under `legacyApi`/Eden; fixed while
+    // moving this call site to `api` since openapi-typescript's precise
+    // string types caught what Eden's looser inference let through.
+    updatedAt: string;
+    lastChunkUpdatedAt: string | null;
+    oldestChunkUpdatedAt: string | null;
     tags: string[];
     type: string;
 }

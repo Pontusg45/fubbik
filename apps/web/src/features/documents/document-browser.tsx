@@ -104,7 +104,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         queryKey: ["documents", activeSpaceId],
         queryFn: async () => {
             try {
-                const result = unwrapEden(await legacyApi.api.documents.get({ query: activeSpaceId ? { spaceId: activeSpaceId } : {} }));
+                const result = unwrapEden(await api.api.documents.get({ query: activeSpaceId ? { spaceId: activeSpaceId } : {} }));
                 return result as DocumentListItem[];
             } catch {
                 return [];
@@ -118,7 +118,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         queryFn: async () => {
             if (!selectedId) return null;
             try {
-                return unwrapEden(await legacyApi.api.documents({ id: selectedId }).get()) as DocumentDetail;
+                return unwrapEden(await api.api.documents({ id: selectedId }).get()) as DocumentDetail;
             } catch {
                 return null;
             }
@@ -134,7 +134,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
             try {
                 const q: Record<string, string> = { q: debouncedSearch };
                 if (activeSpaceId) q.spaceId = activeSpaceId;
-                const results = unwrapEden(await legacyApi.api.documents.search.get({ query: q as any })) as {
+                const results = unwrapEden(await api.api.documents.search.get({ query: q as any })) as {
                     chunkId: string;
                     chunkTitle: string;
                     chunkContent: string;
@@ -179,7 +179,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
             const details: DocumentDetail[] = [];
             for (const id of groupDocIds) {
                 try {
-                    const d = unwrapEden(await legacyApi.api.documents({ id }).get()) as DocumentDetail;
+                    const d = unwrapEden(await api.api.documents({ id }).get()) as DocumentDetail;
                     details.push(d);
                 } catch {}
             }
