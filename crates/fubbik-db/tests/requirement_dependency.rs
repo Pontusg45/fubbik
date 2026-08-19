@@ -15,9 +15,21 @@ async fn seed_req(pool: &sqlx::PgPool, user_id: &str, title: &str) -> String {
             title: title.to_string(),
             description: None,
             steps: vec![
-                RequirementStep { keyword: StepKeyword::Given, text: "x".into(), params: None },
-                RequirementStep { keyword: StepKeyword::When, text: "y".into(), params: None },
-                RequirementStep { keyword: StepKeyword::Then, text: "z".into(), params: None },
+                RequirementStep {
+                    keyword: StepKeyword::Given,
+                    text: "x".into(),
+                    params: None,
+                },
+                RequirementStep {
+                    keyword: StepKeyword::When,
+                    text: "y".into(),
+                    params: None,
+                },
+                RequirementStep {
+                    keyword: StepKeyword::Then,
+                    text: "z".into(),
+                    params: None,
+                },
             ],
             priority: None,
             space_id: None,
@@ -60,10 +72,17 @@ async fn add_is_idempotent(pool: sqlx::PgPool) {
     let b = seed_req(&pool, &alice, "B").await;
 
     assert!(dep::add(&pool, &a, &b).await.unwrap());
-    assert!(!dep::add(&pool, &a, &b).await.unwrap(), "second insert of the same edge must affect zero rows");
+    assert!(
+        !dep::add(&pool, &a, &b).await.unwrap(),
+        "second insert of the same edge must affect zero rows"
+    );
 
     let deps = dep::get(&pool, &a).await.unwrap();
-    assert_eq!(deps.depends_on.len(), 1, "must not have duplicated the edge");
+    assert_eq!(
+        deps.depends_on.len(),
+        1,
+        "must not have duplicated the edge"
+    );
 }
 
 #[sqlx::test]
@@ -88,7 +107,10 @@ async fn self_dependency_is_rejected_by_the_database_check_constraint(pool: sqlx
     let a = seed_req(&pool, &alice, "A").await;
 
     let result = dep::add(&pool, &a, &a).await;
-    assert!(result.is_err(), "the DB's no_self_dependency CHECK must reject requirement_id == depends_on_id");
+    assert!(
+        result.is_err(),
+        "the DB's no_self_dependency CHECK must reject requirement_id == depends_on_id"
+    );
 }
 
 #[sqlx::test]
@@ -106,7 +128,10 @@ async fn check_circular_detects_a_would_be_cycle(pool: sqlx::PgPool) {
     // `c -> a` (check_circular(requirement_id=c, depends_on_id=a)) would
     // close the cycle a -> b -> c -> a and must be flagged.
     let would_cycle = dep::check_circular(&pool, &c, &a).await.unwrap();
-    assert!(would_cycle, "adding c -> a must be detected as closing the a -> b -> c -> a cycle");
+    assert!(
+        would_cycle,
+        "adding c -> a must be detected as closing the a -> b -> c -> a cycle"
+    );
 
     // Non-cyclic addition should not be flagged.
     let d = seed_req(&pool, &alice, "D").await;
@@ -128,8 +153,16 @@ async fn transitive_walks_ancestors_descendants_and_edges(pool: sqlx::PgPool) {
     let from_b = dep::transitive(&pool, &b).await.unwrap();
     let ancestor_ids: Vec<String> = from_b.ancestors.iter().map(|r| r.id.clone()).collect();
     let descendant_ids: Vec<String> = from_b.descendants.iter().map(|r| r.id.clone()).collect();
-    assert_eq!(ancestor_ids, vec![c.clone()], "b's ancestors (what b depends on) must include c");
-    assert_eq!(descendant_ids, vec![a.clone()], "b's descendants (what depends on b) must include a");
+    assert_eq!(
+        ancestor_ids,
+        vec![c.clone()],
+        "b's ancestors (what b depends on) must include c"
+    );
+    assert_eq!(
+        descendant_ids,
+        vec![a.clone()],
+        "b's descendants (what depends on b) must include a"
+    );
     assert!(from_b.edges.iter().any(|e| e.source == a && e.target == b));
     assert!(from_b.edges.iter().any(|e| e.source == b && e.target == c));
 }

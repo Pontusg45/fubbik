@@ -15,7 +15,11 @@ use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
-    fubbik_api::AppState { pool, implicit_dev_session: false, better_auth_secret: "test-secret".into() }
+    fubbik_api::AppState {
+        pool,
+        implicit_dev_session: false,
+        better_auth_secret: "test-secret".into(),
+    }
 }
 
 async fn signup(app: axum::Router, email: &str, name: &str) -> String {
@@ -23,13 +27,23 @@ async fn signup(app: axum::Router, email: &str, name: &str) -> String {
         .oneshot(
             Request::post("/api/auth/sign-up/email")
                 .header("content-type", "application/json")
-                .body(Body::from(format!(r#"{{"email":"{email}","password":"hunter22","name":"{name}"}}"#)))
+                .body(Body::from(format!(
+                    r#"{{"email":"{email}","password":"hunter22","name":"{name}"}}"#
+                )))
                 .unwrap(),
         )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK, "signup must succeed");
-    res.headers().get("set-cookie").expect("signup should set a session cookie").to_str().unwrap().split(';').next().unwrap().to_string()
+    res.headers()
+        .get("set-cookie")
+        .expect("signup should set a session cookie")
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_string()
 }
 
 async fn json_body(response: axum::response::Response) -> serde_json::Value {
@@ -50,7 +64,11 @@ fn gwt_steps() -> serde_json::Value {
     ])
 }
 
-async fn create_requirement(app: axum::Router, cookie: &str, title: &str) -> axum::response::Response {
+async fn create_requirement(
+    app: axum::Router,
+    cookie: &str,
+    title: &str,
+) -> axum::response::Response {
     let body = serde_json::json!({"title": title, "steps": gwt_steps()});
     app.oneshot(
         Request::post("/api/requirements")
@@ -95,12 +113,20 @@ async fn create_then_get_round_trip(pool: sqlx::PgPool) {
 
     let res = app
         .clone()
-        .oneshot(Request::get(format!("/api/requirements/{id}")).header("cookie", &cookie).body(Body::empty()).unwrap())
+        .oneshot(
+            Request::get(format!("/api/requirements/{id}"))
+                .header("cookie", &cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let detail = json_body(res).await;
-    assert_eq!(detail["title"], "Login flow", "detail must flatten the requirement's own fields at the top level");
+    assert_eq!(
+        detail["title"], "Login flow",
+        "detail must flatten the requirement's own fields at the top level"
+    );
     assert_eq!(detail["chunks"], serde_json::json!([]));
 }
 
@@ -124,7 +150,13 @@ async fn create_rejects_steps_that_fail_validation_with_structured_errors(pool: 
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let payload = json_body(res).await;
     assert_eq!(payload["message"], "Invalid steps");
-    assert!(payload["errors"].as_array().unwrap().iter().any(|e| e["error"] == "First step must be 'given'"));
+    assert!(
+        payload["errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["error"] == "First step must be 'given'")
+    );
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
@@ -133,11 +165,26 @@ async fn get_is_user_scoped(pool: sqlx::PgPool) {
     let alice_cookie = signup(app.clone(), "alice-scope@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-scope@b.test", "Bob").await;
 
-    let created = json_body(create_requirement(app.clone(), &alice_cookie, "Alice's requirement").await).await;
+    let created =
+        json_body(create_requirement(app.clone(), &alice_cookie, "Alice's requirement").await)
+            .await;
     let id = created["requirement"]["id"].as_str().unwrap();
 
-    let res = app.clone().oneshot(Request::get(format!("/api/requirements/{id}")).header("cookie", &bob_cookie).body(Body::empty()).unwrap()).await.unwrap();
-    assert_eq!(res.status(), StatusCode::NOT_FOUND, "Bob must not be able to read Alice's requirement");
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get(format!("/api/requirements/{id}"))
+                .header("cookie", &bob_cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        res.status(),
+        StatusCode::NOT_FOUND,
+        "Bob must not be able to read Alice's requirement"
+    );
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
@@ -153,7 +200,9 @@ async fn update_and_delete_round_trip(pool: sqlx::PgPool) {
             Request::patch(format!("/api/requirements/{id}"))
                 .header("content-type", "application/json")
                 .header("cookie", &cookie)
-                .body(Body::from(serde_json::json!({"title": "Renamed"}).to_string()))
+                .body(Body::from(
+                    serde_json::json!({"title": "Renamed"}).to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -162,11 +211,32 @@ async fn update_and_delete_round_trip(pool: sqlx::PgPool) {
     let updated = json_body(res).await;
     assert_eq!(updated["requirement"]["title"], "Renamed");
 
-    let res = app.clone().oneshot(Request::delete(format!("/api/requirements/{id}")).header("cookie", &cookie).body(Body::empty()).unwrap()).await.unwrap();
+    let res = app
+        .clone()
+        .oneshot(
+            Request::delete(format!("/api/requirements/{id}"))
+                .header("cookie", &cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(json_body(res).await, serde_json::json!({"message": "Deleted"}));
+    assert_eq!(
+        json_body(res).await,
+        serde_json::json!({"message": "Deleted"})
+    );
 
-    let res = app.clone().oneshot(Request::get(format!("/api/requirements/{id}")).header("cookie", &cookie).body(Body::empty()).unwrap()).await.unwrap();
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get(format!("/api/requirements/{id}"))
+                .header("cookie", &cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -183,14 +253,19 @@ async fn update_status_and_bare_number_bulk_response(pool: sqlx::PgPool) {
             Request::patch(format!("/api/requirements/{id}/status"))
                 .header("content-type", "application/json")
                 .header("cookie", &cookie)
-                .body(Body::from(serde_json::json!({"status": "passing"}).to_string()))
+                .body(Body::from(
+                    serde_json::json!({"status": "passing"}).to_string(),
+                ))
                 .unwrap(),
         )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let updated = json_body(res).await;
-    assert_eq!(updated["status"], "passing", "status route returns the bare requirement, not wrapped");
+    assert_eq!(
+        updated["status"], "passing",
+        "status route returns the bare requirement, not wrapped"
+    );
 
     // Bulk action returns a bare number, not an envelope — matches Node's
     // `bulkAction` returning `bulkUpdateRequirements`'s raw row count.
@@ -200,14 +275,20 @@ async fn update_status_and_bare_number_bulk_response(pool: sqlx::PgPool) {
             Request::patch("/api/requirements/bulk")
                 .header("content-type", "application/json")
                 .header("cookie", &cookie)
-                .body(Body::from(serde_json::json!({"ids": [id], "action": "set_status", "status": "failing"}).to_string()))
+                .body(Body::from(
+                    serde_json::json!({"ids": [id], "action": "set_status", "status": "failing"})
+                        .to_string(),
+                ))
                 .unwrap(),
         )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let body = text_body(res).await;
-    assert_eq!(body, "1", "bulk action must respond with a bare JSON number, not {{count: n}}");
+    assert_eq!(
+        body, "1",
+        "bulk action must respond with a bare JSON number, not {{count: n}}"
+    );
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
@@ -224,14 +305,19 @@ async fn set_chunks_returns_join_rows_and_verifies_every_id(pool: sqlx::PgPool) 
             Request::put(format!("/api/requirements/{id}/chunks"))
                 .header("content-type", "application/json")
                 .header("cookie", &cookie)
-                .body(Body::from(serde_json::json!({"chunkIds": [chunk_id]}).to_string()))
+                .body(Body::from(
+                    serde_json::json!({"chunkIds": [chunk_id]}).to_string(),
+                ))
                 .unwrap(),
         )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let links = json_body(res).await;
-    assert_eq!(links, serde_json::json!([{"requirementId": id, "chunkId": chunk_id}]));
+    assert_eq!(
+        links,
+        serde_json::json!([{"requirementId": id, "chunkId": chunk_id}])
+    );
 
     // A nonexistent chunk id must reject the WHOLE call with 404, not
     // silently drop it.
@@ -241,7 +327,9 @@ async fn set_chunks_returns_join_rows_and_verifies_every_id(pool: sqlx::PgPool) 
             Request::put(format!("/api/requirements/{id}/chunks"))
                 .header("content-type", "application/json")
                 .header("cookie", &cookie)
-                .body(Body::from(serde_json::json!({"chunkIds": ["does-not-exist"]}).to_string()))
+                .body(Body::from(
+                    serde_json::json!({"chunkIds": ["does-not-exist"]}).to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -258,12 +346,20 @@ async fn export_returns_bare_text(pool: sqlx::PgPool) {
 
     let res = app
         .clone()
-        .oneshot(Request::get(format!("/api/requirements/{id}/export?format=gherkin")).header("cookie", &cookie).body(Body::empty()).unwrap())
+        .oneshot(
+            Request::get(format!("/api/requirements/{id}/export?format=gherkin"))
+                .header("cookie", &cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let text = text_body(res).await;
-    assert!(text.starts_with("Feature: Login"), "export must return bare Gherkin text, not JSON: {text}");
+    assert!(
+        text.starts_with("Feature: Login"),
+        "export must return bare Gherkin text, not JSON: {text}"
+    );
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
@@ -273,7 +369,16 @@ async fn stats_reports_totals(pool: sqlx::PgPool) {
     create_requirement(app.clone(), &cookie, "One").await;
     create_requirement(app.clone(), &cookie, "Two").await;
 
-    let res = app.clone().oneshot(Request::get("/api/requirements/stats").header("cookie", &cookie).body(Body::empty()).unwrap()).await.unwrap();
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get("/api/requirements/stats")
+                .header("cookie", &cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let stats = json_body(res).await;
     assert_eq!(stats["total"], 2);
@@ -305,10 +410,17 @@ async fn batch_create_resolves_use_case_names(pool: sqlx::PgPool) {
     assert_eq!(res.status(), StatusCode::CREATED);
     let result = json_body(res).await;
     assert_eq!(result["created"], 2);
-    assert_eq!(result["useCasesCreated"].as_array().unwrap().len(), 1, "the same use case name must be created only once across the batch");
+    assert_eq!(
+        result["useCasesCreated"].as_array().unwrap().len(),
+        1,
+        "the same use case name must be created only once across the batch"
+    );
     let uc1 = result["requirements"][0]["useCaseId"].as_str().unwrap();
     let uc2 = result["requirements"][1]["useCaseId"].as_str().unwrap();
-    assert_eq!(uc1, uc2, "both requirements must share the same resolved use case id");
+    assert_eq!(
+        uc1, uc2,
+        "both requirements must share the same resolved use case id"
+    );
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
@@ -328,10 +440,16 @@ async fn reorder_rejects_ids_not_owned_by_the_caller(pool: sqlx::PgPool) {
             Request::patch("/api/requirements/reorder")
                 .header("content-type", "application/json")
                 .header("cookie", &alice_cookie)
-                .body(Body::from(serde_json::json!({"requirementIds": [a_id, b_id]}).to_string()))
+                .body(Body::from(
+                    serde_json::json!({"requirementIds": [a_id, b_id]}).to_string(),
+                ))
                 .unwrap(),
         )
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST, "must reject a reorder list containing another user's requirement id");
+    assert_eq!(
+        res.status(),
+        StatusCode::BAD_REQUEST,
+        "must reject a reorder list containing another user's requirement id"
+    );
 }

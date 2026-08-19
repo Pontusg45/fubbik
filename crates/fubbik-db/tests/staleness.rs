@@ -603,18 +603,38 @@ async fn flag_requirement_failing_flags_every_linked_chunk_once(pool: sqlx::PgPo
     let c1 = seed_chunk(&pool, &alice).await;
     let c2 = seed_chunk(&pool, &alice).await;
 
-    let flagged = staleness::flag_requirement_failing(&pool, &alice, "req-1", "Login flow", &[c1.clone(), c2.clone()])
-        .await
-        .unwrap();
+    let flagged = staleness::flag_requirement_failing(
+        &pool,
+        &alice,
+        "req-1",
+        "Login flow",
+        &[c1.clone(), c2.clone()],
+    )
+    .await
+    .unwrap();
     assert_eq!(flagged, 2);
 
-    let flags = staleness::list(&pool, &alice, ListParams::default()).await.unwrap();
-    assert_eq!(flags.iter().filter(|f| f.reason == "requirement_failing").count(), 2);
+    let flags = staleness::list(&pool, &alice, ListParams::default())
+        .await
+        .unwrap();
+    assert_eq!(
+        flags
+            .iter()
+            .filter(|f| f.reason == "requirement_failing")
+            .count(),
+        2
+    );
 
     // Idempotent: calling again with the same requirement/title/chunks must
     // not double-flag (the `alreadyFlagged` pre-filter, matching Node).
-    let flagged_again = staleness::flag_requirement_failing(&pool, &alice, "req-1", "Login flow", &[c1, c2]).await.unwrap();
-    assert_eq!(flagged_again, 0, "must not re-flag chunks that already carry an undismissed flag for this exact requirement");
+    let flagged_again =
+        staleness::flag_requirement_failing(&pool, &alice, "req-1", "Login flow", &[c1, c2])
+            .await
+            .unwrap();
+    assert_eq!(
+        flagged_again, 0,
+        "must not re-flag chunks that already carry an undismissed flag for this exact requirement"
+    );
 }
 
 /// Empty `chunk_ids` short-circuits without writing anything — matches
@@ -622,7 +642,9 @@ async fn flag_requirement_failing_flags_every_linked_chunk_once(pool: sqlx::PgPo
 #[sqlx::test]
 async fn flag_requirement_failing_with_no_chunks_is_a_no_op(pool: sqlx::PgPool) {
     let alice = seed_user(&pool, "alice-req-failing-empty@b.test").await;
-    let flagged = staleness::flag_requirement_failing(&pool, &alice, "req-1", "Empty", &[]).await.unwrap();
+    let flagged = staleness::flag_requirement_failing(&pool, &alice, "req-1", "Empty", &[])
+        .await
+        .unwrap();
     assert_eq!(flagged, 0);
 }
 
@@ -634,9 +656,25 @@ async fn flag_requirement_failing_requires_ownership_of_the_target_chunk(pool: s
     let bob = seed_user(&pool, "bob-req-failing-guard@b.test").await;
     let bobs_chunk = seed_chunk(&pool, &bob).await;
 
-    let flagged = staleness::flag_requirement_failing(&pool, &alice, "req-1", "Cross-user", &[bobs_chunk.clone()]).await.unwrap();
-    assert_eq!(flagged, 0, "Alice must not be able to flag a chunk she doesn't own");
+    let flagged = staleness::flag_requirement_failing(
+        &pool,
+        &alice,
+        "req-1",
+        "Cross-user",
+        std::slice::from_ref(&bobs_chunk),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        flagged, 0,
+        "Alice must not be able to flag a chunk she doesn't own"
+    );
 
-    let bobs_flags = staleness::list(&pool, &bob, ListParams::default()).await.unwrap();
-    assert!(bobs_flags.is_empty(), "the rejected flag must not have been written for Bob either");
+    let bobs_flags = staleness::list(&pool, &bob, ListParams::default())
+        .await
+        .unwrap();
+    assert!(
+        bobs_flags.is_empty(),
+        "the rejected flag must not have been written for Bob either"
+    );
 }

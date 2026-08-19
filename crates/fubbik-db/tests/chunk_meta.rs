@@ -469,26 +469,70 @@ async fn get_file_refs_breaks_path_ties_by_id(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn file_ref_path_exists_finds_a_matching_path(pool: sqlx::PgPool) {
-    let uid = user::create(&pool, "cross-ref@b.test", "Alice", None).await.unwrap().id;
-    let c = chunk::create(&pool, &uid, chunk::NewChunk { title: "T".into(), content: String::new(), chunk_type: "note".into(), rationale: None })
+    let uid = user::create(&pool, "cross-ref@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
+    let c = chunk::create(
+        &pool,
+        &uid,
+        chunk::NewChunk {
+            title: "T".into(),
+            content: String::new(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap();
+    chunk_meta::replace_file_refs(&pool, &c.id, &uid, &["src/lib.rs".to_string()])
         .await
         .unwrap();
-    chunk_meta::replace_file_refs(&pool, &c.id, &uid, &["src/lib.rs".to_string()]).await.unwrap();
 
-    assert!(chunk_meta::file_ref_path_exists(&pool, &uid, "src/lib.rs").await.unwrap());
-    assert!(!chunk_meta::file_ref_path_exists(&pool, &uid, "src/missing.rs").await.unwrap());
+    assert!(
+        chunk_meta::file_ref_path_exists(&pool, &uid, "src/lib.rs")
+            .await
+            .unwrap()
+    );
+    assert!(
+        !chunk_meta::file_ref_path_exists(&pool, &uid, "src/missing.rs")
+            .await
+            .unwrap()
+    );
 }
 
 /// Proves the `c.user_id = $2` scope: Bob must not see Alice's file
 /// reference as "existing" through this check.
 #[sqlx::test]
 async fn file_ref_path_exists_is_user_scoped(pool: sqlx::PgPool) {
-    let alice = user::create(&pool, "cross-ref-owner@b.test", "Alice", None).await.unwrap().id;
-    let bob = user::create(&pool, "cross-ref-other@b.test", "Bob", None).await.unwrap().id;
-    let c = chunk::create(&pool, &alice, chunk::NewChunk { title: "T".into(), content: String::new(), chunk_type: "note".into(), rationale: None })
+    let alice = user::create(&pool, "cross-ref-owner@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
+    let bob = user::create(&pool, "cross-ref-other@b.test", "Bob", None)
+        .await
+        .unwrap()
+        .id;
+    let c = chunk::create(
+        &pool,
+        &alice,
+        chunk::NewChunk {
+            title: "T".into(),
+            content: String::new(),
+            chunk_type: "note".into(),
+            rationale: None,
+        },
+    )
+    .await
+    .unwrap();
+    chunk_meta::replace_file_refs(&pool, &c.id, &alice, &["src/lib.rs".to_string()])
         .await
         .unwrap();
-    chunk_meta::replace_file_refs(&pool, &c.id, &alice, &["src/lib.rs".to_string()]).await.unwrap();
 
-    assert!(!chunk_meta::file_ref_path_exists(&pool, &bob, "src/lib.rs").await.unwrap(), "must not see another user's file reference as existing");
+    assert!(
+        !chunk_meta::file_ref_path_exists(&pool, &bob, "src/lib.rs")
+            .await
+            .unwrap(),
+        "must not see another user's file reference as existing"
+    );
 }
