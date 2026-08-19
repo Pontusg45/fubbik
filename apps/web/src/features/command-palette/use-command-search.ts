@@ -146,10 +146,10 @@ export function useCommandSearch({
             if (!debouncedQuery.trim()) return null;
             try {
                 return unwrapEden(
-                    await legacyApi.api.requirements.get({
+                    await api.api.requirements.get({
                         query: { search: debouncedQuery, limit: "5" }
                     })
-                ) as { requirements: Array<{ id: string; title: string; status: string; priority: string }>; total: number };
+                );
             } catch {
                 return null;
             }

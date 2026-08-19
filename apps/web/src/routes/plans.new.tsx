@@ -9,15 +9,11 @@ import { Label } from "@/components/ui/label";
 import { PageContainer, PageHeader } from "@/components/ui/page";
 import { Textarea } from "@/components/ui/textarea";
 import { useApiQuery } from "@/hooks/use-api-query";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
+import type { components } from "@/utils/api-types";
 import { unwrapEden } from "@/utils/eden";
 
-interface RequirementRow {
-    id: string;
-    title: string;
-    status: string;
-    priority?: string | null;
-}
+type RequirementRow = components["schemas"]["Requirement"];
 
 export const Route = createFileRoute("/plans/new")({ component: NewPlanPage });
 
@@ -39,16 +35,11 @@ function NewPlanPage() {
         fallback: []
     });
 
-    // The endpoint may return either { requirements, total } or a bare array —
-    // keep a small queryFn wrapper to normalise the shape before the fallback
-    // short-circuits.
     const requirementsListQuery = useApiQuery<RequirementRow[]>({
         queryKey: ["requirements-for-plan-picker"],
         queryFn: async () => {
-            const response = await legacyApi.api.requirements.get({ query: {} });
-            const raw = unwrapEden(response);
-            const arr = Array.isArray(raw) ? raw : ((raw as { requirements?: RequirementRow[] })?.requirements ?? []);
-            return { data: arr as RequirementRow[], error: null };
+            const response = await api.api.requirements.get({ query: {} });
+            return { data: response.data?.requirements ?? null, error: response.error };
         },
         fallback: [],
         enabled: requirementsExpanded

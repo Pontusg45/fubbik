@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export interface PlanRequirementsSectionProps {
@@ -24,19 +24,18 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
         queryKey: ["plan-requirements-detail", reqIds],
         queryFn: async () => {
             if (reqIds.length === 0) return [];
-            const res = unwrapEden(await legacyApi.api.requirements.get({ query: {} as any })) as any;
-            const all: any[] = res?.requirements ?? res ?? [];
-            return all.filter((r: any) => reqIds.includes(r.id));
+            const res = unwrapEden(await api.api.requirements.get({ query: {} }));
+            return res.requirements.filter(r => reqIds.includes(r.id));
         }
     });
 
     const searchQuery = useQuery({
         queryKey: ["requirements-search", pickerQuery],
         queryFn: async () => {
-            const res = unwrapEden(await legacyApi.api.requirements.get({ query: {} as any })) as any;
-            const all: any[] = res?.requirements ?? res ?? [];
+            const res = unwrapEden(await api.api.requirements.get({ query: {} }));
+            const all = res.requirements;
             if (!pickerQuery) return all.slice(0, 10);
-            return all.filter((r: any) => r.title.toLowerCase().includes(pickerQuery.toLowerCase())).slice(0, 10);
+            return all.filter(r => r.title.toLowerCase().includes(pickerQuery.toLowerCase())).slice(0, 10);
         },
         enabled: pickerOpen
     });

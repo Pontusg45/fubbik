@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface DependencySectionProps {
@@ -20,13 +20,6 @@ const STATUS_STYLES: Record<string, string> = {
     untested: "bg-muted text-muted-foreground"
 };
 
-interface DepItem {
-    id: string;
-    title: string;
-    status: string;
-    priority: string | null;
-}
-
 export function DependencySection({ requirementId }: DependencySectionProps) {
     const queryClient = useQueryClient();
     const [showAdd, setShowAdd] = useState(false);
@@ -35,20 +28,14 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
     const { data } = useQuery({
         queryKey: ["dependencies", requirementId],
         queryFn: async () => {
-            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).dependencies.get()) as {
-                dependsOn: DepItem[];
-                dependedOnBy: DepItem[];
-            };
+            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies.get());
         }
     });
 
     const searchQuery = useQuery({
         queryKey: ["requirements-search", search],
         queryFn: async () => {
-            const result = unwrapEden(await legacyApi.api.requirements.get({ query: { search } })) as {
-                requirements: Array<{ id: string; title: string; status: string }>;
-                total: number;
-            };
+            const result = unwrapEden(await api.api.requirements.get({ query: { search } }));
             return result.requirements;
         },
         enabled: showAdd && search.length > 0
@@ -56,7 +43,7 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
 
     const addMutation = useMutation({
         mutationFn: async (dependsOnId: string) => {
-            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).dependencies.post({ dependsOnId }));
+            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies.post({ dependsOnId }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["dependencies", requirementId] });
@@ -68,7 +55,7 @@ export function DependencySection({ requirementId }: DependencySectionProps) {
 
     const removeMutation = useMutation({
         mutationFn: async (dependsOnId: string) => {
-            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).dependencies({ dependsOnId }).delete());
+            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies({ dependsOnId }).delete());
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["dependencies", requirementId] });

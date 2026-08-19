@@ -118,10 +118,8 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
     const reqSearchQuery = useQuery({
         queryKey: ["requirements", "search-bulk", reqSearch],
         queryFn: async () => {
-            const result = unwrapEden(await legacyApi.api.requirements.get({ query: { search: reqSearch, limit: "10" } })) as {
-                requirements?: Array<{ id: string; title: string }>;
-            } | null;
-            return result?.requirements ?? [];
+            const result = unwrapEden(await api.api.requirements.get({ query: { search: reqSearch, limit: "10" } }));
+            return result.requirements;
         },
         enabled: showReqSearch && reqSearch.trim().length > 0
     });
@@ -129,7 +127,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
     const linkRequirementMutation = useMutation({
         mutationFn: async ({ reqId, existingChunkIds }: { reqId: string; existingChunkIds: string[] }) => {
             const merged = Array.from(new Set([...existingChunkIds, ...selectedIds]));
-            const { error } = await legacyApi.api.requirements({ id: reqId }).chunks.put({ chunkIds: merged });
+            const { error } = await api.api.requirements({ id: reqId }).chunks.put({ chunkIds: merged });
             if (error) throw new Error("Failed to link requirement");
         },
         onSuccess: () => {
@@ -170,8 +168,8 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
 
     async function handleLinkRequirement(req: { id: string; title: string }) {
         try {
-            const result = unwrapEden(await legacyApi.api.requirements({ id: req.id }).get()) as { chunkIds?: string[] } | null;
-            linkRequirementMutation.mutate({ reqId: req.id, existingChunkIds: result?.chunkIds ?? [] });
+            const result = unwrapEden(await api.api.requirements({ id: req.id }).get());
+            linkRequirementMutation.mutate({ reqId: req.id, existingChunkIds: result.chunks.map(c => c.id) });
         } catch {
             linkRequirementMutation.mutate({ reqId: req.id, existingChunkIds: [] });
         }

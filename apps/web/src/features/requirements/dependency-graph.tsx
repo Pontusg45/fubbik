@@ -6,24 +6,11 @@ import { Background, Controls, ReactFlow, ReactFlowProvider, type Edge, type Nod
 import { useState, useCallback, useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface DependencyGraphProps {
     requirementId: string;
-}
-
-interface GraphNode {
-    id: string;
-    title: string;
-    status: string;
-    priority: string | null;
-    isCurrent: boolean;
-}
-
-interface GraphEdge {
-    source: string;
-    target: string;
 }
 
 const statusColors: Record<string, { bg: string; border: string }> = {
@@ -51,10 +38,7 @@ function DependencyGraphInner({ requirementId }: DependencyGraphProps) {
     const { data, isLoading } = useQuery({
         queryKey: ["dependency-graph", requirementId],
         queryFn: async () => {
-            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).dependencies.graph.get()) as {
-                nodes: GraphNode[];
-                edges: GraphEdge[];
-            };
+            return unwrapEden(await api.api.requirements({ id: requirementId }).dependencies.graph.get());
         }
     });
 

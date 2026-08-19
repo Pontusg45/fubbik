@@ -42,6 +42,7 @@ export function TraceabilityContent() {
         queryFn: async () => {
             const query: { codebaseId?: string } = {};
             if (spaceId) query.codebaseId = spaceId;
+            // `requirements/traceability` has no Rust route yet — stays on legacyApi.
             return unwrapEden(await legacyApi.api.requirements.traceability.get({ query })) as TraceabilityRow[];
         }
     });

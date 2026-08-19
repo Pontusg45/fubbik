@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface BulkActionsProps {
@@ -27,7 +27,7 @@ export function BulkActions({ selectedIds, onClearSelection, useCases }: BulkAct
             useCaseId?: string | null;
         }) => {
             pendingCountRef.current = body.ids.length;
-            return unwrapEden(await legacyApi.api.requirements.bulk.patch(body));
+            return unwrapEden(await api.api.requirements.bulk.patch(body));
         },
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["requirements"] });

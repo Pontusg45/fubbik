@@ -13,7 +13,7 @@ import { StepBuilder } from "@/features/requirements/step-builder";
 import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api, legacyApi } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api"; // legacyApi still used for `ai["structure-requirement"]` below
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/requirements_/new")({
@@ -132,15 +132,12 @@ function NewRequirement() {
             if (spaceId) body.spaceId = spaceId;
             if (useCaseId) body.useCaseId = useCaseId;
 
-            const result = unwrapEden(await legacyApi.api.requirements.post(body)) as unknown as {
-                requirement: { id: string };
-                warnings: Array<{ step: number; type: string; reference: string }>;
-            };
+            const result = unwrapEden(await api.api.requirements.post(body));
 
             // Link chunks if any selected
             if (selectedChunkIds.length > 0) {
                 try {
-                    await legacyApi.api.requirements({ id: result.requirement.id }).chunks.put({
+                    await api.api.requirements({ id: result.requirement.id }).chunks.put({
                         chunkIds: selectedChunkIds
                     });
                 } catch {
@@ -150,7 +147,7 @@ function NewRequirement() {
 
             return result;
         },
-        onSuccess: (result: { requirement: { id: string }; warnings: Array<{ step: number; type: string; reference: string }> }) => {
+        onSuccess: result => {
             queryClient.invalidateQueries({ queryKey: ["requirements"] });
             queryClient.invalidateQueries({ queryKey: ["requirements-stats"] });
 

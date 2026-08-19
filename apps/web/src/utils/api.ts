@@ -19,18 +19,38 @@ import { createClient } from "./api-proxy.future";
 // authentication regardless), so nothing user-facing degrades while the
 // port is incomplete.
 //
-// As of this writing, Rust's `openapi.json` has no entry at all for 14
+// As of this writing, Rust's `openapi.json` has no entry at all for 13
 // domains:
 //
 //   ai, chunk-types, comments, connection-relations, context, density,
 //   features, file-refs (top-level list/lookup — the chunks/{id}/file-refs
 //   sub-resource IS on Rust), graph, health, learning-paths, matrices,
-//   requirements, timeline
+//   timeline
 //
 // Every call site under those top-level segments (`api.api.<domain>...`)
 // is on `legacyApi` instead. This list SHRINKS as Rust ports each domain —
 // when one lands, move its call sites back to `api` and drop it from the
 // list above (both here and in the call sites themselves).
+//
+// `requirements` was ported off this list once every call site's request
+// body and response shape was checked field-by-field against Rust's DTOs
+// (see `RequirementDetail`/`Requirement`/etc. doc comments in
+// `openapi.json`) — all matched except one query-param casing bug (see the
+// `requirements/stats` note below), so every call site moved to `api`
+// except two sub-routes Rust doesn't serve at all yet:
+//   - `GET /requirements/coverage` (`src/routes/coverage.tsx`)
+//   - `GET /requirements/traceability` (`src/features/coverage/
+//     traceability-content.tsx`)
+// Also found in that audit: `GET /api/requirements/stats`'s query param is
+// `space_id` (snake_case) while every sibling route in the domain uses
+// `spaceId` (camelCase) — Rust's `StatsQuery`
+// (`crates/fubbik-api/src/requirements/dto.rs:148-151`) is missing the
+// `#[serde(rename_all = "camelCase")]` its neighbor `ExportAllQuery` has.
+// The request client's query type is untyped (`Record<string, unknown>`),
+// so this compiles either way — passing `spaceId` would silently be
+// ignored by the server. The call site in `src/routes/requirements.tsx`
+// sends `space_id` to match Rust's actual (buggy) contract; the mismatch
+// itself is a Rust-side fix this migration didn't make.
 //
 // `documents` and `vocabulary` were ported off this list once their DTOs
 // were checked field-by-field against every call site's request body and

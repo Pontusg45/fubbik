@@ -14,11 +14,14 @@ import { DependencyGraph } from "@/features/requirements/dependency-graph";
 import { DependencySection } from "@/features/requirements/dependency-section";
 import { RequirementPlans } from "@/features/requirements/requirement-plans";
 import { StepBuilder } from "@/features/requirements/step-builder";
-import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
+import { validateSteps, type StepRow, type StepError } from "@/features/requirements/validation";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
+import type { components } from "@/utils/api-types";
 import { unwrapEden } from "@/utils/eden";
+
+type UpdateRequirementBody = components["schemas"]["UpdateRequirementBody"];
 
 export const Route = createFileRoute("/requirements_/$requirementId")({
     component: RequirementDetail,
@@ -75,9 +78,9 @@ function RequirementDetail() {
     const { data, isLoading, error } = useQuery({
         queryKey: ["requirement", requirementId],
         queryFn: async () => {
-            const res = await legacyApi.api.requirements({ id: requirementId }).get();
-            if (res.error) throw new Error("Failed to fetch");
-            return res.data as Record<string, unknown>;
+            const res = await api.api.requirements({ id: requirementId }).get();
+            if (res.error || !res.data) throw new Error("Failed to fetch");
+            return res.data;
         }
     });
 
@@ -93,7 +96,7 @@ function RequirementDetail() {
 
     const statusMutation = useMutation({
         mutationFn: async (status: Status) => {
-            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).status.patch({ status }));
+            return unwrapEden(await api.api.requirements({ id: requirementId }).status.patch({ status }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["requirement", requirementId] });
@@ -105,7 +108,7 @@ function RequirementDetail() {
 
     const reviewMutation = useMutation({
         mutationFn: async (reviewStatus: "reviewed" | "approved") => {
-            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).patch({ reviewStatus }));
+            return unwrapEden(await api.api.requirements({ id: requirementId }).patch({ reviewStatus }));
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["requirement", requirementId] });
@@ -116,7 +119,7 @@ function RequirementDetail() {
 
     const deleteMutation = useMutation({
         mutationFn: async () => {
-            return unwrapEden(await legacyApi.api.requirements({ id: requirementId }).delete());
+            return unwrapEden(await api.api.requirements({ id: requirementId }).delete());
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["requirements"] });
@@ -128,22 +131,22 @@ function RequirementDetail() {
 
     const updateMutation = useMutation({
         mutationFn: async () => {
-            const body: Record<string, unknown> = {};
+            const body: UpdateRequirementBody = {};
             if (editTitle.trim() !== title) body.title = editTitle.trim();
             if (editDescription.trim() !== (description ?? "")) body.description = editDescription.trim() || null;
-            if (editPriority !== (priority ?? "")) body.priority = editPriority || null;
-            if (editUseCaseId !== ((data!.useCaseId as string) ?? "")) body.useCaseId = editUseCaseId || null;
+            if (editPriority !== (priority ?? "")) body.priority = (editPriority || null) as UpdateRequirementBody["priority"];
+            if (editUseCaseId !== (data!.useCaseId ?? "")) body.useCaseId = editUseCaseId || null;
 
             const stepsChanged = JSON.stringify(editSteps) !== JSON.stringify(steps);
             if (stepsChanged) body.steps = editSteps.map(s => ({ keyword: s.keyword, text: s.text.trim() }));
 
             if (Object.keys(body).length > 0) {
-                await unwrapEden(await legacyApi.api.requirements({ id: requirementId }).patch(body));
+                await unwrapEden(await api.api.requirements({ id: requirementId }).patch(body));
             }
 
             const chunksChanged = JSON.stringify([...editChunkIds].sort()) !== JSON.stringify(chunks.map(c => c.id).sort());
             if (chunksChanged) {
-                await unwrapEden(await legacyApi.api.requirements({ id: requirementId }).chunks.put({ chunkIds: editChunkIds }));
+                await unwrapEden(await api.api.requirements({ id: requirementId }).chunks.put({ chunkIds: editChunkIds }));
             }
         },
         onSuccess: () => {
@@ -159,8 +162,8 @@ function RequirementDetail() {
         setEditTitle(title);
         setEditDescription(description ?? "");
         setEditPriority(priority ?? "");
-        setEditUseCaseId((data!.useCaseId as string) ?? "");
-        setEditSteps(steps.map(s => ({ keyword: s.keyword as Keyword, text: s.text })));
+        setEditUseCaseId(data!.useCaseId ?? "");
+        setEditSteps(steps.map(s => ({ keyword: s.keyword, text: s.text })));
         setEditChunkIds(chunks.map(c => c.id));
         setEditStepErrors([]);
         setEditing(true);
@@ -179,9 +182,8 @@ function RequirementDetail() {
 
     async function handleExport(format: "gherkin" | "vitest" | "markdown") {
         try {
-            const result = unwrapEden(await legacyApi.api.requirements({ id: requirementId }).export.get({ query: { format } }));
-            const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
-            await navigator.clipboard.writeText(text);
+            const result = unwrapEden(await api.api.requirements({ id: requirementId }).export.get({ query: { format } }));
+            await navigator.clipboard.writeText(result);
             toast.success(`${format.charAt(0).toUpperCase() + format.slice(1)} copied to clipboard`);
         } catch {
             toast.error("Failed to export");
@@ -205,17 +207,19 @@ function RequirementDetail() {
         );
     }
 
-    const title = (data.title as string) ?? "Untitled";
-    const description = data.description as string | null;
-    const status = ((data.status as string) ?? "untested") as Status;
-    const priority = data.priority as string | null;
-    const origin = data.origin as string | undefined;
-    const reviewStatus = (data.reviewStatus as string) ?? "approved";
+    const title = data.title || "Untitled";
+    const description = data.description;
+    // `status` is genuinely free-form `text` at the DB layer — Rust only
+    // constrains it on the routes that write it directly (see
+    // `Requirement::status`'s doc comment in the generated types), so the
+    // UI's narrower literal union still needs an explicit cast here.
+    const status = (data.status || "untested") as Status;
+    const priority = data.priority;
+    const origin = data.origin;
+    const reviewStatus = data.reviewStatus || "approved";
     const isAi = origin === "ai";
-    const steps = (data.steps as Array<{ keyword: string; text: string }>) ?? [];
-    const chunks = (data.chunks as Array<{ id: string; title: string }>) ?? [];
-    const warnings = (data.warnings as Array<{ step: number; warning: string }>) ?? [];
-    const vocabWarnings = (data.vocabularyWarnings as Array<{ step: number; type: string; word: string; message: string }>) ?? [];
+    const steps = data.steps;
+    const chunks = data.chunks;
 
     return (
         <Shell>
@@ -402,34 +406,6 @@ function RequirementDetail() {
                         <DependencySection requirementId={requirementId} />
                     </div>
                     <DependencyGraph requirementId={requirementId} />
-
-                    {/* Warnings */}
-                    {warnings.length > 0 && (
-                        <div className="mb-6 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
-                            <h3 className="mb-2 text-xs font-semibold tracking-wide text-yellow-600 uppercase dark:text-yellow-400">
-                                Cross-reference Warnings
-                            </h3>
-                            {warnings.map((w, i) => (
-                                <p key={i} className="text-sm text-yellow-700 dark:text-yellow-300">
-                                    {w.step >= 0 ? `Step ${w.step + 1}: ` : ""}
-                                    {w.warning}
-                                </p>
-                            ))}
-                        </div>
-                    )}
-
-                    {vocabWarnings.length > 0 && (
-                        <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-                            <h3 className="mb-2 text-xs font-semibold tracking-wide text-amber-600 uppercase dark:text-amber-400">
-                                Vocabulary Warnings
-                            </h3>
-                            {vocabWarnings.map((w, i) => (
-                                <p key={i} className="text-sm text-amber-700 dark:text-amber-300">
-                                    Step {w.step + 1}: {w.message}
-                                </p>
-                            ))}
-                        </div>
-                    )}
 
                     {/* Linked Chunks */}
                     {chunks.length > 0 && (

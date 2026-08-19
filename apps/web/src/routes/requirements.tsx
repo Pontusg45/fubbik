@@ -10,10 +10,10 @@ import { SkeletonList } from "@/components/ui/skeleton-list";
 import { TraceabilityContent } from "@/features/coverage/traceability-content";
 import { BulkActions } from "@/features/requirements/bulk-actions";
 import { SidebarFilters } from "@/features/requirements/sidebar-filters";
-import { SortableRequirementList, type RequirementRecord } from "@/features/requirements/sortable-requirement-list";
+import { SortableRequirementList } from "@/features/requirements/sortable-requirement-list";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/requirements")({
@@ -81,9 +81,18 @@ function RequirementsPage() {
     const statsQuery = useQuery({
         queryKey: ["requirements-stats", spaceId],
         queryFn: async () => {
-            const query: { spaceId?: string } = {};
-            if (spaceId) query.spaceId = spaceId;
-            return unwrapEden(await legacyApi.api.requirements.stats.get({ query }));
+            // NOTE: `GET /api/requirements/stats` is the one route in this domain whose
+            // query param is `space_id` (snake_case) instead of `spaceId` — Rust's
+            // `StatsQuery` (crates/fubbik-api/src/requirements/dto.rs:148-151) is missing
+            // the `#[serde(rename_all = "camelCase")]` every sibling query struct in the
+            // same file has (see `ExportAllQuery` right below it). The request client's
+            // query type is untyped (`Record<string, unknown>`), so passing `spaceId` here
+            // compiles fine but is silently ignored by the server — flagged in the
+            // migration report instead of being "fixed" here, since fixing it means
+            // editing a Rust file.
+            const query: { space_id?: string } = {};
+            if (spaceId) query.space_id = spaceId;
+            return unwrapEden(await api.api.requirements.stats.get({ query }));
         }
     });
 
@@ -144,13 +153,13 @@ function RequirementsPage() {
             if (activeUseCaseIds && activeUseCaseIds.size === 1) {
                 query.useCaseId = activeUseCaseId!;
             }
-            return unwrapEden(await legacyApi.api.requirements.get({ query }));
+            return unwrapEden(await api.api.requirements.get({ query }));
         },
         enabled: activeTab === "requirements"
     });
 
-    const stats = statsQuery.data as { total: number; passing: number; failing: number; untested: number } | undefined;
-    const data = listQuery.data as { requirements: RequirementRecord[]; total: number } | undefined;
+    const stats = statsQuery.data;
+    const data = listQuery.data;
     const useCaseMap = new Map(useCases.map(uc => [uc.id, uc]));
 
     // Client-side post-filtering for multi-select status/priority and parent use cases
