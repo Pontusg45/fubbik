@@ -1106,6 +1106,294 @@
         }
       }
     },
+    "/api/documents": {
+      "get": {
+        "tags": [
+          "crate::documents::routes"
+        ],
+        "operationId": "list_documents",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentWithTagsItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/import": {
+      "post": {
+        "tags": [
+          "crate::documents::routes"
+        ],
+        "operationId": "import_document",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportDocumentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/import-dir": {
+      "post": {
+        "tags": [
+          "crate::documents::routes"
+        ],
+        "operationId": "import_documents_dir",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportDirBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportResult"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/search": {
+      "get": {
+        "tags": [
+          "crate::documents::routes"
+        ],
+        "summary": "`q` must be at least 2 characters, matching Node's `t.String({ minLength:\n2 })` (`packages/api/src/documents/routes.ts:32`) — enforced here rather\nthan left unchecked, unlike this port's usual \"Elysia-only length caps\ngo unenforced\" precedent (see `ImportDocumentBody`'s doc comment):\n`minLength` here shapes actual query behaviour (an unbounded `ILIKE\n'%_%'` scan for a 0-1 char query), not just a request-size guard.",
+        "operationId": "search_documents",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentSearchResult"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/documents/{id}": {
+      "get": {
+        "tags": [
+          "crate::documents::routes"
+        ],
+        "operationId": "get_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::documents::routes"
+        ],
+        "summary": "Returns the deleted row directly (not a `{message: \"Deleted\"}` wrapper)\n— matching Node's route, whose handler resolves to whatever\n`removeDocument` returns (`deleteDocumentRepo`'s deleted row), unlike\nmost other domains' delete endpoints in this port.",
+        "operationId": "delete_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/render": {
+      "get": {
+        "tags": [
+          "crate::documents::routes"
+        ],
+        "operationId": "render_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/sync": {
+      "post": {
+        "tags": [
+          "crate::documents::routes"
+        ],
+        "operationId": "sync_document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncDocumentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/favorites": {
       "get": {
         "tags": [
@@ -6146,6 +6434,242 @@
           }
         }
       },
+      "Document": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.\nThis is the bare `document` row — what create/update/the `document` half\nof `render` return. List endpoints use the wider [`DocumentListItem`]/\n[`DocumentWithTagsItem`] shapes instead (aggregated chunk stats), and\n`GET /api/documents/{id}` flattens this shape together with `chunks`\nrather than nesting it (see `fubbik_api::documents::dto::DocumentDetail`,\nmirroring Node's `{ ...doc, chunks }` spread in `getDocument`,\n`packages/api/src/documents/service.ts:293`).",
+        "required": [
+          "id",
+          "title",
+          "sourcePath",
+          "contentHash",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "contentHash": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "sourcePath": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "splitLevel": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "DocumentDetail": {
+        "type": "object",
+        "description": "Shape of `GET /api/documents/{id}`, matching Node's `getDocument`\nreturn expression: `{ ...doc, chunks }`\n(`packages/api/src/documents/service.ts:288-295`) — a genuine object\nspread, so the document's own fields sit at the *top level* alongside\n`chunks`, not nested under a `document` key. Modelled as an explicit\nflat struct (rather than `#[serde(flatten)]` on a nested `Document`)\nsince no other DTO in this crate uses `flatten` and this keeps the\nutoipa-generated schema unambiguous.",
+        "required": [
+          "id",
+          "title",
+          "sourcePath",
+          "contentHash",
+          "userId",
+          "createdAt",
+          "updatedAt",
+          "chunks"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Chunk"
+            }
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "sourcePath": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "splitLevel": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "DocumentSearchResult": {
+        "type": "object",
+        "description": "Shape of `GET /api/documents/search` items, matching\n`searchDocumentChunks` (`packages/db/src/repository/document.ts:138-159`).",
+        "required": [
+          "chunkId",
+          "chunkTitle",
+          "chunkContent",
+          "documentId",
+          "documentTitle",
+          "sourcePath"
+        ],
+        "properties": {
+          "chunkContent": {
+            "type": "string"
+          },
+          "chunkId": {
+            "type": "string"
+          },
+          "chunkTitle": {
+            "type": "string"
+          },
+          "documentId": {
+            "type": "string"
+          },
+          "documentOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "documentTitle": {
+            "type": "string"
+          },
+          "sourcePath": {
+            "type": "string"
+          }
+        }
+      },
+      "DocumentWithTagsItem": {
+        "type": "object",
+        "description": "Shape of `GET /api/documents` (the route Node actually wires,\n`packages/api/src/documents/routes.ts:8-21`) — [`DocumentListItem`] plus\n`type` (the first section's chunk type, `document_order = 0`, defaulting\nto `\"document\"` when absent) and `tags` (union of every chunk's tags in\nthe document, deduped). Matches\n`packages/db/src/repository/document.ts:76-112`.",
+        "required": [
+          "id",
+          "title",
+          "sourcePath",
+          "contentHash",
+          "createdAt",
+          "updatedAt",
+          "chunkCount",
+          "type",
+          "tags"
+        ],
+        "properties": {
+          "chunkCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastChunkUpdatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "oldestChunkUpdatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "sourcePath": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "DuplicateHint": {
         "type": "object",
         "required": [
@@ -6445,6 +6969,106 @@
             "type": "boolean"
           }
         }
+      },
+      "ImportDirBody": {
+        "type": "object",
+        "description": "Body of `POST /api/documents/import-dir`. `files`' `maxItems: 200` is\nlikewise unenforced — see [`ImportDocumentBody`]'s doc comment.",
+        "required": [
+          "files"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportFileEntry"
+            }
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ImportDocumentBody": {
+        "type": "object",
+        "description": "Body of `POST /api/documents/import`\n(`packages/api/src/documents/routes.ts:57-63`). `sourcePath`/`content`\nlength caps (`maxLength: 500`/`200000`) are Elysia-only request\nvalidation Node never re-checks past the transport layer; matching\nthis port's established precedent (see\n`crate::templates::dto::CreateTemplateBody`'s doc comment), they go\nunenforced here — an over-long value is simply stored as-is.\n\nNode's route never accepts or forwards a `templateId`\n(`packages/api/src/documents/service.ts`'s `importDocument` takes one,\nbut no caller — HTTP or otherwise — ever supplies it), so this body has\nno such field either; see `service::import_document`'s doc comment.",
+        "required": [
+          "sourcePath",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "sourcePath": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ImportFileEntry": {
+        "type": "object",
+        "description": "One entry of `POST /api/documents/import-dir`'s `files` array\n(`packages/api/src/documents/routes.ts:78-85`).",
+        "required": [
+          "sourcePath",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "sourcePath": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportResult": {
+        "type": "object",
+        "description": "Shape of `POST /api/documents/import` and each element of\n`POST /api/documents/import-dir`'s response array, matching Node's\n`importDocument` return object exactly\n(`packages/api/src/documents/service.ts:45-158`).",
+        "required": [
+          "document",
+          "created",
+          "updated",
+          "status"
+        ],
+        "properties": {
+          "created": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "document": {
+            "$ref": "#/components/schemas/Document"
+          },
+          "firstChunkId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportStatus"
+          },
+          "updated": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ImportStatus": {
+        "type": "string",
+        "description": "`\"unchanged\" | \"created\" | \"synced\"` — the three literal values\n`importDocument`/`syncDocument` actually return\n(`packages/api/src/documents/service.ts:53,59,114,157,168,237`). There\nis no `\"updated\"` variant: a re-sync with content changes reports\n`status: \"synced\"` regardless of whether any section was individually\ncreated vs. updated (see `created`/`updated` counts for that detail).",
+        "enum": [
+          "unchanged",
+          "created",
+          "synced"
+        ]
       },
       "MatchMode": {
         "type": "string",
@@ -7458,6 +8082,22 @@
           }
         }
       },
+      "RenderResult": {
+        "type": "object",
+        "description": "Shape of `GET /api/documents/{id}/render`, matching Node's\n`renderDocument` return object (`packages/api/src/documents/service.ts:241-278`):\n`{ document, markdown }`, nested — **not** flattened, unlike\n[`DocumentDetail`].",
+        "required": [
+          "document",
+          "markdown"
+        ],
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/Document"
+          },
+          "markdown": {
+            "type": "string"
+          }
+        }
+      },
       "ReorderAnalyzeItemsBody": {
         "type": "object",
         "description": "Body of `POST /api/plans/{id}/analyze/reorder` (`analyze.ts:107-120`).",
@@ -8138,6 +8778,50 @@
           },
           "chunkIdB": {
             "type": "string"
+          }
+        }
+      },
+      "SyncDocumentBody": {
+        "type": "object",
+        "description": "Body of `POST /api/documents/{id}/sync`\n(`packages/api/src/documents/routes.ts:100-106`).",
+        "required": [
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SyncResult": {
+        "type": "object",
+        "description": "Shape of `POST /api/documents/{id}/sync`, matching Node's\n`syncDocument` return object (`packages/api/src/documents/service.ts:161-239`).\n**`document` is the pre-sync snapshot, not the freshly-updated row** —\nsee `service::sync_document`'s doc comment; this is Node's actual\nreturn expression (`doc` is never reassigned after the `updateDocument`\ncall), reproduced deliberately rather than \"fixed\".",
+        "required": [
+          "document",
+          "created",
+          "updated",
+          "status"
+        ],
+        "properties": {
+          "created": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "document": {
+            "$ref": "#/components/schemas/Document"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportStatus"
+          },
+          "updated": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
