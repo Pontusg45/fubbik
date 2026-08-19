@@ -386,6 +386,78 @@ async fn stats_reports_totals(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn stats_filters_by_space_using_the_camel_case_param(pool: sqlx::PgPool) {
+    // `StatsQuery` deserializes `space_id`, but Node's route takes `spaceId`
+    // (`packages/api/src/requirements/routes.ts:34`) and so does every other
+    // query in this domain. Without `rename_all = "camelCase"` the param is
+    // silently IGNORED rather than rejected — stats come back unscoped, which
+    // looks like a working endpoint returning wrong numbers. Serde ignores
+    // unknown fields, so nothing surfaces the mistake but a test that asserts
+    // the filter actually filtered.
+    let app = fubbik_api::router(state(pool));
+    let cookie = signup(app.clone(), "alice-stats-space@b.test", "Alice").await;
+
+    let space_res = app
+        .clone()
+        .oneshot(
+            Request::post("/api/spaces")
+                .header("content-type", "application/json")
+                .header("cookie", &cookie)
+                .body(Body::from(
+                    serde_json::json!({"name": "Scoped", "kind": "code"}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(space_res.status(), StatusCode::CREATED);
+    let space_id = json_body(space_res).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // One requirement inside the space, one outside it.
+    let in_space = app
+        .clone()
+        .oneshot(
+            Request::post("/api/requirements")
+                .header("content-type", "application/json")
+                .header("cookie", &cookie)
+                .body(Body::from(
+                    serde_json::json!({
+                        "title": "In space",
+                        "steps": gwt_steps(),
+                        "spaceId": space_id,
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(in_space.status(), StatusCode::CREATED);
+    create_requirement(app.clone(), &cookie, "Outside space").await;
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get(format!("/api/requirements/stats?spaceId={space_id}"))
+                .header("cookie", &cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let stats = json_body(res).await;
+    assert_eq!(
+        stats["total"], 1,
+        "`spaceId` must scope the stats; got {stats} — if this is 2 the param \
+         was ignored and the endpoint is reporting every requirement"
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn batch_create_resolves_use_case_names(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-batch@b.test", "Alice").await;

@@ -146,6 +146,7 @@ pub struct ListRequirementsQuery {
 }
 
 #[derive(serde::Deserialize, utoipa::IntoParams)]
+#[serde(rename_all = "camelCase")]
 pub struct StatsQuery {
     pub space_id: Option<String>,
 }

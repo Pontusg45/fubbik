@@ -81,17 +81,8 @@ function RequirementsPage() {
     const statsQuery = useQuery({
         queryKey: ["requirements-stats", spaceId],
         queryFn: async () => {
-            // NOTE: `GET /api/requirements/stats` is the one route in this domain whose
-            // query param is `space_id` (snake_case) instead of `spaceId` — Rust's
-            // `StatsQuery` (crates/fubbik-api/src/requirements/dto.rs:148-151) is missing
-            // the `#[serde(rename_all = "camelCase")]` every sibling query struct in the
-            // same file has (see `ExportAllQuery` right below it). The request client's
-            // query type is untyped (`Record<string, unknown>`), so passing `spaceId` here
-            // compiles fine but is silently ignored by the server — flagged in the
-            // migration report instead of being "fixed" here, since fixing it means
-            // editing a Rust file.
-            const query: { space_id?: string } = {};
-            if (spaceId) query.space_id = spaceId;
+            const query: { spaceId?: string } = {};
+            if (spaceId) query.spaceId = spaceId;
             return unwrapEden(await api.api.requirements.stats.get({ query }));
         }
     });
