@@ -591,3 +591,31 @@ async fn list_requirements_scopes_by_use_case_and_user(pool: sqlx::PgPool) {
         "another user must not see requirements through someone else's use case id"
     );
 }
+
+// ---------------------------------------------------------------------
+// find_by_name (backs requirements::batch_service's auto-vivification)
+// ---------------------------------------------------------------------
+
+#[sqlx::test]
+async fn find_by_name_finds_an_exact_match(pool: sqlx::PgPool) {
+    let alice = make_user(&pool, "find-by-name@b.test", "Alice").await;
+    let created = use_case::create(&pool, &alice, new_use_case("Checkout flow", None, None)).await.unwrap().unwrap();
+
+    let found = use_case::find_by_name(&pool, &alice, "Checkout flow").await.unwrap().unwrap();
+    assert_eq!(found.id, created.id);
+
+    let missing = use_case::find_by_name(&pool, &alice, "Nonexistent").await.unwrap();
+    assert!(missing.is_none());
+}
+
+/// Proves the `user_id` scope: Bob searching for Alice's use case name by
+/// exact string match must not find it.
+#[sqlx::test]
+async fn find_by_name_is_user_scoped(pool: sqlx::PgPool) {
+    let alice = make_user(&pool, "find-by-name-owner@b.test", "Alice").await;
+    let bob = make_user(&pool, "find-by-name-other@b.test", "Bob").await;
+    use_case::create(&pool, &alice, new_use_case("Shared name", None, None)).await.unwrap().unwrap();
+
+    let bobs_view = use_case::find_by_name(&pool, &bob, "Shared name").await.unwrap();
+    assert!(bobs_view.is_none(), "must not resolve another user's use case by name");
+}

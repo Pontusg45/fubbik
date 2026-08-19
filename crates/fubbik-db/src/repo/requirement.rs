@@ -501,6 +501,21 @@ pub struct RequirementChunk {
     pub chunk_type: String,
 }
 
+/// One `requirement_chunk` join row, matching Node's `setRequirementChunks`
+/// return shape exactly: `.returning()` on the raw Drizzle insert, no
+/// column projection, so both columns come back
+/// (`packages/db/src/repository/requirement.ts:158-180`). This is the
+/// actual response body of `PUT /requirements/{id}/chunks` — **not** the
+/// linked chunks' own title/content/type (that shape is
+/// [`RequirementChunk`], returned only by `GET /requirements/{id}` and
+/// nothing else).
+#[derive(Debug, Clone, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RequirementChunkLink {
+    pub requirement_id: String,
+    pub chunk_id: String,
+}
+
 /// Deletes and reinserts a requirement's full chunk-link set in one
 /// transaction. `requirement_chunk` has no `user_id` of its own — ownership
 /// derives entirely from its two parent rows, and BOTH are independently
@@ -517,14 +532,20 @@ pub struct RequirementChunk {
 ///   chunk, or linking chunks to another user's requirement, are both
 ///   rejected by the same query.
 ///
-/// Returns the number of rows actually inserted, so a caller can detect a
-/// rejected attach (`0` inserted despite a non-empty `chunk_ids`).
+/// Both guards are a defensive backstop here, not the primary rejection
+/// path: `fubbik_api::requirements::service::set_chunks` independently
+/// verifies every `chunk_id` exists and belongs to `user_id` *before*
+/// calling this at all (matching Node's `setChunks` service, which fails
+/// the whole call with a 404 naming the missing chunk rather than silently
+/// dropping it — `packages/api/src/requirements/service.ts:219-238`), so
+/// this function's own guard should never actually reject anything through
+/// that call site in practice.
 pub async fn set_chunks(
     pool: &PgPool,
     user_id: &str,
     requirement_id: &str,
     chunk_ids: &[String],
-) -> AppResult<u64> {
+) -> AppResult<Vec<RequirementChunkLink>> {
     let mut tx = pool.begin().await?;
 
     sqlx::query!(
@@ -537,9 +558,10 @@ pub async fn set_chunks(
     .await?;
 
     let inserted = if chunk_ids.is_empty() {
-        0
+        vec![]
     } else {
-        sqlx::query!(
+        sqlx::query_as!(
+            RequirementChunkLink,
             r#"INSERT INTO requirement_chunk (requirement_id, chunk_id)
                SELECT r.id, c.id
                FROM requirement r
@@ -547,14 +569,14 @@ pub async fn set_chunks(
                WHERE r.id = $2
                  AND r.user_id = $1
                  AND c.user_id = $1
-               ON CONFLICT (requirement_id, chunk_id) DO NOTHING"#,
+               ON CONFLICT (requirement_id, chunk_id) DO NOTHING
+               RETURNING requirement_id, chunk_id"#,
             user_id,
             requirement_id,
             chunk_ids
         )
-        .execute(&mut *tx)
+        .fetch_all(&mut *tx)
         .await?
-        .rows_affected()
     };
 
     tx.commit().await?;
