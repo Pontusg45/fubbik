@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.title, count(rc.requirement_id) AS \"requirement_count!\"\n           FROM chunk c\n           LEFT JOIN requirement_chunk rc ON rc.chunk_id = c.id\n           WHERE c.user_id = $1\n             AND c.archived_at IS NULL\n             AND ($2::text IS NULL\n                  OR EXISTS (SELECT 1 FROM chunk_space cs\n                              WHERE cs.chunk_id = c.id AND cs.space_id = $2))\n           GROUP BY c.id, c.title",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "requirement_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "b86927397cf31e364ef366740729cf26b489092fd6bb0d060dd5b7602a14730b"
+}

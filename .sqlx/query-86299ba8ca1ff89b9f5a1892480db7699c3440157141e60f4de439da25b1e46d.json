@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT rc.chunk_id, c.title AS chunk_title,\n                  rc.requirement_id, r.title AS requirement_title,\n                  r.status AS requirement_status\n           FROM requirement_chunk rc\n           JOIN chunk c ON c.id = rc.chunk_id\n           JOIN requirement r ON r.id = rc.requirement_id\n           WHERE c.user_id = $1\n             AND c.archived_at IS NULL\n             AND ($2::text IS NULL\n                  OR EXISTS (SELECT 1 FROM chunk_space cs\n                              WHERE cs.chunk_id = c.id AND cs.space_id = $2))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunk_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "requirement_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "requirement_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "requirement_status",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "86299ba8ca1ff89b9f5a1892480db7699c3440157141e60f4de439da25b1e46d"
+}
