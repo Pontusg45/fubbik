@@ -28,6 +28,8 @@ pub struct VocabEntry {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
+// Distinct OpenAPI name — see the note on `saved_graph::Position`.
+#[schema(as = TextSpan)]
 pub struct Position {
     pub start: usize,
     pub end: usize,

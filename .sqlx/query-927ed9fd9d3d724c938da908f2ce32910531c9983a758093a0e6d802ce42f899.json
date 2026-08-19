@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.title, c.content, c.type AS \"chunk_type\"\n           FROM requirement_chunk rc\n           JOIN chunk c ON c.id = rc.chunk_id\n           WHERE rc.requirement_id = $1\n             AND EXISTS (SELECT 1 FROM requirement r WHERE r.id = $1 AND r.user_id = $2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "chunk_type",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "927ed9fd9d3d724c938da908f2ce32910531c9983a758093a0e6d802ce42f899"
+}

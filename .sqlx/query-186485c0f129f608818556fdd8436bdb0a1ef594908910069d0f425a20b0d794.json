@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT chunk_id FROM chunk_staleness\n           WHERE reason = 'requirement_failing'\n             AND detail = $1\n             AND dismissed_at IS NULL\n             AND chunk_id = ANY($2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "186485c0f129f608818556fdd8436bdb0a1ef594908910069d0f425a20b0d794"
+}

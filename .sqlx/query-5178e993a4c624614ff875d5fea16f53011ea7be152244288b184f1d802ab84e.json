@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE requirement SET\n             status = COALESCE($4, status),\n             use_case_id = CASE WHEN $3 THEN $5 ELSE use_case_id END\n           WHERE id = ANY($1) AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Text",
+        "Bool",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5178e993a4c624614ff875d5fea16f53011ea7be152244288b184f1d802ab84e"
+}

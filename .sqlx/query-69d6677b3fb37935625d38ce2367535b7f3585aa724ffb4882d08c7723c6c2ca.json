@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH RECURSIVE chain AS (\n               SELECT requirement_id AS id FROM requirement_dependency WHERE depends_on_id = $1\n               UNION\n               SELECT rd.requirement_id FROM requirement_dependency rd\n               INNER JOIN chain c ON rd.depends_on_id = c.id\n           )\n           SELECT id AS \"id!\" FROM chain",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "69d6677b3fb37935625d38ce2367535b7f3585aa724ffb4882d08c7723c6c2ca"
+}

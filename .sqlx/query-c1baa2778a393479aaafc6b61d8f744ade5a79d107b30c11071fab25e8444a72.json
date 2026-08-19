@@ -1,0 +1,120 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO requirement (id, title, description, steps, priority, space_id, use_case_id, user_id, origin, review_status)\n               SELECT $1, $2, $3, $4, $5, NULL, $6, $7, $8, $9\n               WHERE EXISTS (SELECT 1 FROM use_case uc WHERE uc.id = $6 AND uc.user_id = $7)\n               RETURNING id, title, description, steps AS \"steps: Json<Vec<RequirementStep>>\",\n                         \"order\", status, priority, space_id, user_id,\n                         created_at AS \"created_at: UtcTimestamp\",\n                         updated_at AS \"updated_at: UtcTimestamp\",\n                         origin, review_status, use_case_id, reviewed_by,\n                         reviewed_at AS \"reviewed_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "steps: Json<Vec<RequirementStep>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "priority",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
+        "name": "origin",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "review_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "use_case_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "reviewed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "reviewed_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "c1baa2778a393479aaafc6b61d8f744ade5a79d107b30c11071fab25e8444a72"
+}

@@ -1,0 +1,127 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE requirement SET\n             title = COALESCE($3, title),\n             description = CASE WHEN $4 THEN $5 ELSE description END,\n             steps = COALESCE($6, steps),\n             priority = CASE WHEN $7 THEN $8 ELSE priority END,\n             space_id = CASE WHEN $9 THEN $10 ELSE space_id END,\n             use_case_id = CASE WHEN $11 THEN $12 ELSE use_case_id END,\n             origin = COALESCE($13, origin),\n             review_status = COALESCE($14, review_status),\n             reviewed_by = COALESCE($15, reviewed_by),\n             reviewed_at = COALESCE($16, reviewed_at)\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, title, description, steps AS \"steps: Json<Vec<RequirementStep>>\",\n                     \"order\", status, priority, space_id, user_id,\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\",\n                     origin, review_status, use_case_id, reviewed_by,\n                     reviewed_at AS \"reviewed_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "steps: Json<Vec<RequirementStep>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "priority",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
+        "name": "origin",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "review_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "use_case_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "reviewed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "reviewed_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Jsonb",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "9fca74b9a6e69b2a77f0a3f5af618a383ffa412371a4617bf1ce7447c49c9d80"
+}

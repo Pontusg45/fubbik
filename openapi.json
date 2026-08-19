@@ -3213,6 +3213,734 @@
         }
       }
     },
+    "/api/requirements": {
+      "get": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "list_requirements",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "useCaseId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "origin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/Origin"
+                }
+              ]
+            }
+          },
+          {
+            "name": "reviewStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/ReviewStatus"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRequirementsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "create_requirement",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequirementBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequirementWithWarnings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/requirements/batch": {
+      "post": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "batch_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchCreateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/requirements/bulk": {
+      "patch": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "bulk_action",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkActionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requirements/export": {
+      "get": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "summary": "Bare text, not JSON — Node's `exportAll`/`exportRequirement` resolve to\na plain string and Elysia serialises a primitive response as\n`text/plain`, same shape convention as `staleness::routes::stale_count`.",
+        "operationId": "export_all",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Format"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requirements/reorder": {
+      "patch": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "reorder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReorderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/requirements/stats": {
+      "get": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "stats",
+        "parameters": [
+          {
+            "name": "space_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequirementStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}": {
+      "get": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "get_requirement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequirementDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "delete_requirement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "update_requirement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRequirementBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequirementWithWarnings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}/chunks": {
+      "put": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "set_chunks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetChunksBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RequirementChunkLink"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}/dependencies": {
+      "get": {
+        "tags": [
+          "crate::requirements::dependency_routes"
+        ],
+        "operationId": "get_dependencies",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DependencySides"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::requirements::dependency_routes"
+        ],
+        "operationId": "add_dependency",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDependencyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}/dependencies/graph": {
+      "get": {
+        "tags": [
+          "crate::requirements::dependency_routes"
+        ],
+        "operationId": "get_dependency_graph",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DependencyGraph"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}/dependencies/{dependsOnId}": {
+      "delete": {
+        "tags": [
+          "crate::requirements::dependency_routes"
+        ],
+        "operationId": "remove_dependency",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dependsOnId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}/export": {
+      "get": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "summary": "Bare text, not JSON — see [`export_all`]'s doc comment.",
+        "operationId": "export_one",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Format"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}/status": {
+      "patch": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "update_status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Requirement"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/saved-graphs": {
       "get": {
         "tags": [
@@ -5202,6 +5930,18 @@
           }
         }
       },
+      "AddDependencyBody": {
+        "type": "object",
+        "description": "Body of `POST /requirements/{id}/dependencies`\n(`packages/api/src/requirements/dependency-routes.ts:20-22`).",
+        "required": [
+          "dependsOnId"
+        ],
+        "properties": {
+          "dependsOnId": {
+            "type": "string"
+          }
+        }
+      },
       "AddRequirementBody": {
         "type": "object",
         "description": "Body of `POST /api/plans/{id}/requirements` (`requirements.ts:9-20`).",
@@ -5316,6 +6056,170 @@
           }
         }
       },
+      "BatchCreateBody": {
+        "type": "object",
+        "required": [
+          "requirements"
+        ],
+        "properties": {
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchRequirementInput"
+            }
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "BatchCreateResponse": {
+        "type": "object",
+        "description": "Shape of `POST /requirements/batch`, matching Node's `batchCreateRequirements`\nreturn object (`packages/api/src/requirements/batch-service.ts:97-101`).",
+        "required": [
+          "created",
+          "requirements",
+          "useCasesCreated"
+        ],
+        "properties": {
+          "created": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchCreatedRequirement"
+            }
+          },
+          "useCasesCreated": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchUseCaseCreated"
+            }
+          }
+        }
+      },
+      "BatchCreatedRequirement": {
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "useCaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "BatchRequirementInput": {
+        "type": "object",
+        "description": "One entry of `POST /requirements/batch`'s `requirements` array\n(`packages/api/src/requirements/routes.ts:172-182`).",
+        "required": [
+          "title",
+          "steps"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parentUseCaseName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "priority": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Priority"
+              }
+            ]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementStep"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "useCaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "useCaseName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "BatchStepError": {
+        "type": "object",
+        "description": "One element of `POST /requirements/batch`'s validation-failure `errors`\narray — matches Node's `{ index, step, error }`\n(`packages/api/src/requirements/batch-service.ts:26-33`): `index` is\nwhich entry in the `requirements` array failed, `step`/`error` are\n`validator::StepError`'s own fields spread in alongside it.",
+        "required": [
+          "index",
+          "step",
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "step": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "BatchUseCaseCreated": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "BulkAction": {
         "type": "string",
         "description": "`t.Union([t.Literal(\"approve\"), t.Literal(\"reject\")])`\n(`packages/api/src/proposals/routes.ts:78`) — the one closed set in this\ndomain's wire shapes, unlike `status` (see `ProposedChanges`'s doc\ncomment on why that one stays a plain unvalidated-at-the-DTO-layer\nstring). Lowercase to match the literal strings Node's schema accepts.",
@@ -5326,16 +6230,36 @@
       },
       "BulkActionBody": {
         "type": "object",
-        "description": "Body of `POST /proposals/bulk`. Processed sequentially and fails fast on\nthe first error — matching Node's `Effect.forEach(actions, ..., {\nconcurrency: 1 })` (`packages/api/src/proposals/service.ts:92-99`), which\nshort-circuits the whole request on the first `approveProposal`/\n`rejectProposal` failure. Writes already committed by earlier entries in\nthe array are **not** rolled back — there is no transaction around the\nloop in Node, and none is added here.",
+        "description": "Body of `PATCH /requirements/bulk` (`packages/api/src/requirements/\nroutes.ts:49-55`). `use_case_id` is tri-state\n(`t.Optional(t.Union([t.String(), t.Null()]))`) — only meaningful for\n`action: \"set_use_case\"`.",
         "required": [
-          "actions"
+          "ids",
+          "action"
         ],
         "properties": {
-          "actions": {
+          "action": {
+            "$ref": "#/components/schemas/BulkActionKind"
+          },
+          "ids": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/BulkActionItem"
+              "type": "string"
             }
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Status"
+              }
+            ]
+          },
+          "useCaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -5360,6 +6284,14 @@
             "type": "string"
           }
         }
+      },
+      "BulkActionKind": {
+        "type": "string",
+        "enum": [
+          "set_status",
+          "set_use_case",
+          "delete"
+        ]
       },
       "BulkCreateBody": {
         "type": "object",
@@ -6104,6 +7036,63 @@
           }
         }
       },
+      "CreateRequirementBody": {
+        "type": "object",
+        "description": "Body of `POST /requirements` (`packages/api/src/requirements/routes.ts:\n131-139`).",
+        "required": [
+          "title",
+          "steps"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Origin"
+              }
+            ]
+          },
+          "priority": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Priority"
+              }
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementStep"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "useCaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CreateSavedGraphBody": {
         "type": "object",
         "description": "Body of `POST /api/saved-graphs`\n(`packages/api/src/saved-graphs/routes.ts:29-37`). `chunkIds` and\n`positions` are structurally validated by Elysia's schema (`t.Array(t.String())`,\n`t.Record(t.String(), t.Object({ x: t.Number(), y: t.Number() }))`) —\nnot opaque JSON the way `collection.filter` / `saved_query.query` are —\nso this keeps the same concrete Rust types end to end rather than\nfalling back to `serde_json::Value`. `spaceId` accepts both omission and\nexplicit `null` (`t.Optional(t.Union([t.String(), t.Null()]))`); both\nproduce the same `NULL` insert in Node's `.values(params)` (an\n`undefined` key and an explicit `null` value behave identically for a\nnullable Drizzle column), so a plain `Option<String>` — not the\n`deserialize_some` tri-state — is correct here, unlike `description` on\nthe PATCH body below.",
@@ -6137,7 +7126,7 @@
           "positions": {
             "type": "object",
             "additionalProperties": {
-              "$ref": "#/components/schemas/Position"
+              "$ref": "#/components/schemas/GraphNodePosition"
             },
             "propertyNames": {
               "type": "string"
@@ -6430,6 +7419,149 @@
             ]
           },
           "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CrossRefWarning": {
+        "type": "object",
+        "description": "Matches Node's `CrossRefWarning` (`packages/api/src/requirements/\ncross-ref.ts:5-9`). Node's `type` union also names `\"chunk_not_found\"`,\nbut nothing in `crossReferenceSteps`'s body ever produces it (the only\n`warnings.push` call in the function hard-codes `\"file_not_found\"`) — an\nunreachable variant kept here only because it is part of the type Node\ndeclares, matching this port's usual \"reproduce the declared shape,\neven the unreachable branch\" convention for tagged unions.",
+        "required": [
+          "step",
+          "type",
+          "reference"
+        ],
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "step": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "$ref": "#/components/schemas/CrossRefWarningType"
+          }
+        }
+      },
+      "CrossRefWarningType": {
+        "type": "string",
+        "enum": [
+          "file_not_found",
+          "chunk_not_found"
+        ]
+      },
+      "DependencyGraph": {
+        "type": "object",
+        "description": "Shape of `GET /requirements/{id}/dependencies/graph`: `{nodes, edges}`,\nmatching Node's `getDependencyGraph` return object\n(`packages/api/src/requirements/dependency-service.ts:61-67`).",
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "properties": {
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DependencyGraphEdge"
+            }
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DependencyGraphNode"
+            }
+          }
+        }
+      },
+      "DependencyGraphEdge": {
+        "type": "object",
+        "required": [
+          "source",
+          "target"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        }
+      },
+      "DependencyGraphNode": {
+        "type": "object",
+        "description": "One node of `GET /requirements/{id}/dependencies/graph`'s `nodes` array,\nmatching Node's inline shape (`packages/api/src/requirements/\ndependency-service.ts:52-56`).",
+        "required": [
+          "id",
+          "title",
+          "status",
+          "isCurrent"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "DependencySides": {
+        "type": "object",
+        "description": "Shape of `GET /requirements/{id}/dependencies`: `{dependsOn,\ndependedOnBy}`, matching Node's `getDependencies` return object\n(`packages/db/src/repository/requirement-dependency.ts:39-65`).",
+        "required": [
+          "dependsOn",
+          "dependedOnBy"
+        ],
+        "properties": {
+          "dependedOnBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DependencySummary"
+            }
+          },
+          "dependsOn": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DependencySummary"
+            }
+          }
+        }
+      },
+      "DependencySummary": {
+        "type": "object",
+        "description": "One requirement's summary, as returned by [`get`] and [`transitive`].",
+        "required": [
+          "id",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
             "type": "string"
           }
         }
@@ -6834,6 +7966,15 @@
           }
         }
       },
+      "Format": {
+        "type": "string",
+        "description": "Matches Node's `FormatSchema` (`t.Union([t.Literal(\"gherkin\"),\nt.Literal(\"vitest\"), t.Literal(\"markdown\")])`).",
+        "enum": [
+          "gherkin",
+          "vitest",
+          "markdown"
+        ]
+      },
       "FrontmatterMatchMode": {
         "type": "string",
         "description": "`\"exact\" | \"oneOf\" | \"exists\"` — likewise a real `t.Union` of literals\n(`packages/api/src/templates/routes.ts:18`).",
@@ -6938,6 +8079,24 @@
           },
           "type": {
             "type": "string"
+          }
+        }
+      },
+      "GraphNodePosition": {
+        "type": "object",
+        "description": "A node position on the graph canvas. `f64` matches Elysia's `t.Number()`\n(a JS `number`).",
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "format": "double"
+          },
+          "y": {
+            "type": "number",
+            "format": "double"
           }
         }
       },
@@ -7069,6 +8228,26 @@
           "created",
           "synced"
         ]
+      },
+      "ListRequirementsResponse": {
+        "type": "object",
+        "description": "Shape of `GET /requirements`: `{requirements, total}`, matching Node's\n`listRequirementsRepo` return expression returned bare by the route\n(`packages/api/src/requirements/service.ts:75-87`, `routes.ts:95-103`)\n— not wrapped further, and no `limit`/`offset` echoed back (unlike\n`chunks::dto::ListChunksResponse`).",
+        "required": [
+          "requirements",
+          "total"
+        ],
+        "properties": {
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Requirement"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "MatchMode": {
         "type": "string",
@@ -7206,6 +8385,7 @@
       },
       "Origin": {
         "type": "string",
+        "description": "Matches Node's `t.Union([t.Literal(\"human\"), t.Literal(\"ai\")])`,\nconstrained everywhere it appears: create/update bodies AND the list\nquery filter (`packages/api/src/requirements/routes.ts:111,138,215`).",
         "enum": [
           "human",
           "ai"
@@ -7277,7 +8457,7 @@
             ]
           },
           "position": {
-            "$ref": "#/components/schemas/Position"
+            "$ref": "#/components/schemas/TextSpan"
           },
           "text": {
             "type": "string"
@@ -7854,22 +9034,15 @@
           }
         }
       },
-      "Position": {
-        "type": "object",
-        "required": [
-          "start",
-          "end"
-        ],
-        "properties": {
-          "end": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "start": {
-            "type": "integer",
-            "minimum": 0
-          }
-        }
+      "Priority": {
+        "type": "string",
+        "description": "Matches Node's `PrioritySchema` (`t.Union([t.Literal(\"must\"),\nt.Literal(\"should\"), t.Literal(\"could\"), t.Literal(\"wont\")])`),\nconstrained on create/update bodies. The list query's `priority` filter\nis unconstrained free text (`t.Optional(t.String())`) — see\n`ListRequirementsQuery::priority`.",
+        "enum": [
+          "must",
+          "should",
+          "could",
+          "wont"
+        ]
       },
       "ProposalWithChunk": {
         "type": "object",
@@ -8117,6 +9290,20 @@
           }
         }
       },
+      "ReorderBody": {
+        "type": "object",
+        "required": [
+          "requirementIds"
+        ],
+        "properties": {
+          "requirementIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "ReorderEntry": {
         "type": "object",
         "description": "One entry of `PUT /api/favorites/reorder`'s bare-array body\n(`packages/api/src/favorites/routes.ts:39-44`). The body is a plain\n`t.Array(...)`, not wrapped in an object — see `ReorderBody` below.",
@@ -8149,6 +9336,18 @@
           }
         }
       },
+      "ReorderResponse": {
+        "type": "object",
+        "required": [
+          "updated"
+        ],
+        "properties": {
+          "updated": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "ReorderTasksBody": {
         "type": "object",
         "description": "Body of `POST /api/plans/{id}/tasks/reorder` (`tasks.ts:178`).",
@@ -8160,6 +9359,317 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          }
+        }
+      },
+      "Requirement": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.\n\n`status` is plain `text NOT NULL DEFAULT 'untested'` at the DB layer —\nno CHECK constraint (`crates/fubbik-db/migrations/0001_init.sql:603`).\nNode's Elysia schema constrains it to `passing | failing | untested`\n**only** on the two routes that write it directly (`PATCH\n/requirements/{id}/status`'s `StatusSchema`, and `PATCH\n/requirements/bulk`'s `set_status` action) — the list filter\n(`GET /requirements?status=`) is `t.Optional(t.String())`, unconstrained.\n`priority` is the same shape: free `text`, nullable, constrained to\n`must | should | could | wont` only on create/update bodies, free-text\non the list filter. Both stay `String`/`Option<String>` here; the write\npaths' DTOs are what carry the enum constraint (see\n`fubbik_api::requirements::dto::Status`/`Priority`).",
+        "required": [
+          "id",
+          "title",
+          "steps",
+          "order",
+          "status",
+          "userId",
+          "createdAt",
+          "updatedAt",
+          "origin",
+          "reviewStatus"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementStep"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "useCaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "RequirementChunk": {
+        "type": "object",
+        "description": "One `chunk` row's summary fields — the projection `getChunksForRequirement`\nreturns (`packages/db/src/repository/requirement.ts:182-195`).",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "type"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "RequirementChunkLink": {
+        "type": "object",
+        "description": "One `requirement_chunk` join row, matching Node's `setRequirementChunks`\nreturn shape exactly: `.returning()` on the raw Drizzle insert, no\ncolumn projection, so both columns come back\n(`packages/db/src/repository/requirement.ts:158-180`). This is the\nactual response body of `PUT /requirements/{id}/chunks` — **not** the\nlinked chunks' own title/content/type (that shape is\n[`RequirementChunk`], returned only by `GET /requirements/{id}` and\nnothing else).",
+        "required": [
+          "requirementId",
+          "chunkId"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "requirementId": {
+            "type": "string"
+          }
+        }
+      },
+      "RequirementDetail": {
+        "type": "object",
+        "description": "Shape of `GET /requirements/{id}`, matching Node's `getRequirement`\nreturn expression: `{ ...req, chunks }`\n(`packages/api/src/requirements/service.ts:89-97`) — a genuine object\nspread, so the requirement's own fields sit at the *top level* alongside\n`chunks`. Modelled as an explicit flat struct, same convention\n`documents::dto::DocumentDetail` documents (no DTO in this crate uses\n`#[serde(flatten)]`, to keep the utoipa-generated schema unambiguous).",
+        "required": [
+          "id",
+          "title",
+          "steps",
+          "order",
+          "status",
+          "userId",
+          "createdAt",
+          "updatedAt",
+          "origin",
+          "reviewStatus",
+          "chunks"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementChunk"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementStep"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "useCaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "RequirementStats": {
+        "type": "object",
+        "description": "Matches Node's `getRequirementStats`\n(`packages/db/src/repository/requirement.ts:266-290`): counts grouped\nby `status`, folded into fixed `passing`/`failing`/`untested` buckets\n(any other status value, though nothing in this port's write paths can\nproduce one, would count toward `total` but no named bucket — same as\nNode).",
+        "required": [
+          "total",
+          "passing",
+          "failing",
+          "untested"
+        ],
+        "properties": {
+          "failing": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "passing": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "untested": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "RequirementStep": {
+        "type": "object",
+        "description": "One BDD step, matching Node's `RequirementStep`\n(`packages/db/src/schema/requirement.ts:9-13`). `params` is a free-form\n`{key: value}` map used by `export::interpolate` to fill `{key}`\nplaceholders in `text` — same shape Node's `t.Optional(t.Record(t.String(),\nt.String()))` accepts.",
+        "required": [
+          "keyword",
+          "text"
+        ],
+        "properties": {
+          "keyword": {
+            "$ref": "#/components/schemas/StepKeyword"
+          },
+          "params": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "RequirementWithWarnings": {
+        "type": "object",
+        "description": "Shape of `POST /requirements` and `PATCH /requirements/{id}`, matching\nNode's `{ requirement, warnings, vocabularyWarnings }`\n(`packages/api/src/requirements/service.ts:133,185`).",
+        "required": [
+          "requirement",
+          "warnings",
+          "vocabularyWarnings"
+        ],
+        "properties": {
+          "requirement": {
+            "$ref": "#/components/schemas/Requirement"
+          },
+          "vocabularyWarnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepVocabularyWarning"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrossRefWarning"
             }
           }
         }
@@ -8255,7 +9765,7 @@
           "positions": {
             "type": "object",
             "additionalProperties": {
-              "$ref": "#/components/schemas/Position"
+              "$ref": "#/components/schemas/GraphNodePosition"
             },
             "propertyNames": {
               "type": "string"
@@ -8529,6 +10039,20 @@
           }
         }
       },
+      "SetChunksBody": {
+        "type": "object",
+        "required": [
+          "chunkIds"
+        ],
+        "properties": {
+          "chunkIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "SetCodebaseSettingBody": {
         "type": "object",
         "description": "Body of `PATCH /api/settings/codebase`\n(`packages/api/src/settings/routes.ts:38-54`). `codebaseId` here is a\n`spaceId` — the field name is a legacy holdover predating the\ncodebase->space rename elsewhere in the codebase (see the top-level\nCLAUDE.md's \"Spaces & Workspaces\" section and `codebase_settings`'s\nown doc comment in `fubbik_db::repo::settings`).",
@@ -8726,6 +10250,72 @@
           "tags": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "Status": {
+        "type": "string",
+        "description": "Matches Node's `StatusSchema` (`t.Union([t.Literal(\"passing\"),\nt.Literal(\"failing\"), t.Literal(\"untested\")])`), constrained on `PATCH\n/requirements/{id}/status` and the `set_status` bulk action. The list\nquery's `status` filter is unconstrained free text — see\n`ListRequirementsQuery::status`.",
+        "enum": [
+          "passing",
+          "failing",
+          "untested"
+        ]
+      },
+      "StepError": {
+        "type": "object",
+        "description": "One validation failure. `step` is the zero-based index into the input\nsteps array, or `-1` for the two whole-sequence checks (\"must contain a\n`when`\"/\"must contain a `then`\") — matches Node's `StepError` exactly\n(`packages/api/src/requirements/validator.ts:3-6`).",
+        "required": [
+          "step",
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "step": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "StepKeyword": {
+        "type": "string",
+        "description": "The five BDD step keywords. Constrained to an enum because Node's route\nschema constrains it too — `StepSchema.keyword` is\n`t.Union([t.Literal(\"given\"), t.Literal(\"when\"), t.Literal(\"then\"),\nt.Literal(\"and\"), t.Literal(\"but\")])`\n(`packages/api/src/requirements/routes.ts:10`), on every route that\naccepts steps (create, update, batch). Contrast `status`/`priority`,\nwhich are genuinely free `text` at the DB layer and only sometimes\nconstrained at specific routes — see `Requirement::status`'s doc\ncomment.",
+        "enum": [
+          "given",
+          "when",
+          "then",
+          "and",
+          "but"
+        ]
+      },
+      "StepVocabularyWarning": {
+        "type": "object",
+        "description": "`StepVocabularyWarning extends VocabularyWarning { step: number }`\n(`packages/api/src/requirements/service.ts:28-30`) — a controlled-\nvocabulary warning plus which step it came from. Fields duplicated\n(rather than `#[serde(flatten)]`ing `vocabulary::parser::VocabularyWarning`)\nfor the same utoipa-schema-clarity reason as [`RequirementDetail`].",
+        "required": [
+          "position",
+          "type",
+          "word",
+          "message",
+          "step"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/TextSpan"
+          },
+          "step": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "$ref": "#/components/schemas/WarningType"
+          },
+          "word": {
+            "type": "string"
           }
         }
       },
@@ -9118,6 +10708,23 @@
           }
         }
       },
+      "TextSpan": {
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "properties": {
+          "end": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "UpdateAnalyzeItemBody": {
         "type": "object",
         "description": "Body of `PATCH /api/plans/{id}/analyze/{itemId}` (`analyze.ts:79-97`).\n`kind` is deliberately absent — Node's own body schema has no field for\nit, so an analyze item's kind can never change after creation.",
@@ -9268,6 +10875,75 @@
           }
         }
       },
+      "UpdateRequirementBody": {
+        "type": "object",
+        "description": "Body of `PATCH /requirements/{id}` (`packages/api/src/requirements/\nroutes.ts:208-217`). `description`/`priority`/`space_id`/`use_case_id`\nare tri-state (`None` = untouched, `Some(None)` = clear, `Some(Some(v))`\n= set), matching Node's `t.Optional(t.Union([T, t.Null()]))` for each.\n`title`/`steps`/`origin`/`review_status` have no null variant in Node's\nschema, so plain `Option<T>`.",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Origin"
+              }
+            ]
+          },
+          "priority": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Priority"
+              }
+            ]
+          },
+          "reviewStatus": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReviewStatus"
+              }
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "steps": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RequirementStep"
+            }
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "useCaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateSavedGraphBody": {
         "type": "object",
         "description": "Body of `PATCH /api/saved-graphs/{id}`\n(`packages/api/src/saved-graphs/routes.ts:53-59`). `description` is\ntri-state, matching Node's `t.Optional(t.Union([t.String(), t.Null()]))`:\nomitted (`None`) leaves it untouched, explicit `null` (`Some(None)`)\nclears it, a string (`Some(Some(..))`) sets it — same `deserialize_some`\ntrick as `workspaces::dto::UpdateWorkspaceBody::description`. Every\nother field here is plain two-state (`t.Optional(...)` with no\n`t.Null()` variant) — `spaceId` is deliberately absent, matching Node:\nthere is no way to change a saved graph's space through this endpoint.",
@@ -9305,7 +10981,7 @@
               "null"
             ],
             "additionalProperties": {
-              "$ref": "#/components/schemas/Position"
+              "$ref": "#/components/schemas/GraphNodePosition"
             },
             "propertyNames": {
               "type": "string"
@@ -9343,6 +11019,17 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "UpdateStatusBody": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/Status"
           }
         }
       },
@@ -9819,7 +11506,7 @@
             "type": "string"
           },
           "position": {
-            "$ref": "#/components/schemas/Position"
+            "$ref": "#/components/schemas/TextSpan"
           },
           "type": {
             "$ref": "#/components/schemas/WarningType"

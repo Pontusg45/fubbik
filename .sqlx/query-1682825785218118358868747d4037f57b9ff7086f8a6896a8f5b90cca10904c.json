@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM requirement_dependency WHERE requirement_id = $1 AND depends_on_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1682825785218118358868747d4037f57b9ff7086f8a6896a8f5b90cca10904c"
+}

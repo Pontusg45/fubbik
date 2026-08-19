@@ -27,6 +27,10 @@ use crate::timestamp::UtcTimestamp;
 /// A node position on the graph canvas. `f64` matches Elysia's `t.Number()`
 /// (a JS `number`).
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+// Distinct OpenAPI name: `vocabulary::parser::Position` is a different shape
+// ({start,end} vs {x,y}) and both would otherwise register as
+// `#/components/schemas/Position`, silently publishing the wrong one.
+#[schema(as = GraphNodePosition)]
 pub struct Position {
     pub x: f64,
     pub y: f64,

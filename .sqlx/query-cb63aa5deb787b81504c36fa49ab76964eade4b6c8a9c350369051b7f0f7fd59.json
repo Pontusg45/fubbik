@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_staleness (id, chunk_id, reason, detail)\n             SELECT $1, $2, 'requirement_failing', $3\n             WHERE EXISTS (SELECT 1 FROM chunk c WHERE c.id = $2 AND c.user_id = $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cb63aa5deb787b81504c36fa49ab76964eade4b6c8a9c350369051b7f0f7fd59"
+}

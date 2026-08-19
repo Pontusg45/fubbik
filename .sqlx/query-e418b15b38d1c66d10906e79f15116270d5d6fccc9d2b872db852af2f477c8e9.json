@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT status, COUNT(*) AS \"count!\"\n           FROM requirement\n           WHERE user_id = $1 AND ($2::text IS NULL OR space_id = $2)\n           GROUP BY status",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "e418b15b38d1c66d10906e79f15116270d5d6fccc9d2b872db852af2f477c8e9"
+}

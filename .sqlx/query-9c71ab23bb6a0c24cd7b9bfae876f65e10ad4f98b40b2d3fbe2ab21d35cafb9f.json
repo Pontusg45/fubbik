@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM requirement_chunk WHERE requirement_id = $1 AND EXISTS (SELECT 1 FROM requirement r WHERE r.id = $1 AND r.user_id = $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9c71ab23bb6a0c24cd7b9bfae876f65e10ad4f98b40b2d3fbe2ab21d35cafb9f"
+}

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO requirement (id, title, steps, user_id, \"order\", created_at) VALUES ($1, $2, '[]'::jsonb, $3, 0, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a71f63d0e97dad859af5a83675ea37fb8afb8610534f49c223089b7842dda428"
+}
