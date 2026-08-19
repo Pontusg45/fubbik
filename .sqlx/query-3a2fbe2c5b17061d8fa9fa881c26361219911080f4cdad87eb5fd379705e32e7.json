@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE feature SET status = 'merged', updated_at = now()\n         WHERE id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3a2fbe2c5b17061d8fa9fa881c26361219911080f4cdad87eb5fd379705e32e7"
+}

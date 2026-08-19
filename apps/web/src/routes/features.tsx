@@ -20,7 +20,7 @@ import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/
 import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
 import { getUser } from "@/functions/get-user";
 import { useApiQuery } from "@/hooks/use-api-query";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/features")({
@@ -78,12 +78,12 @@ function FeaturesPage() {
 
     const featuresQuery = useApiQuery<Feature[]>({
         queryKey: ["features"],
-        queryFn: () => legacyApi.api.features.get({ query: {} }),
+        queryFn: () => api.api.features.get({ query: {} }),
         fallback: []
     });
 
     const createMutation = useMutation({
-        mutationFn: async (body: { name: string; description?: string; color?: string }) => unwrapEden(await legacyApi.api.features.post(body)),
+        mutationFn: async (body: { name: string; description?: string; color?: string }) => unwrapEden(await api.api.features.post(body)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["features"] });
             setShowCreate(false);
@@ -100,7 +100,7 @@ function FeaturesPage() {
 
     const patchMutation = useMutation({
         mutationFn: async ({ id, body }: { id: string; body: { status?: "active" | "inactive" | "archived"; name?: string } }) =>
-            unwrapEden(await legacyApi.api.features({ id }).patch(body)),
+            unwrapEden(await api.api.features({ id }).patch(body)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["features"] });
             queryClient.invalidateQueries({ queryKey: ["features", "active"] });
@@ -112,7 +112,7 @@ function FeaturesPage() {
     });
 
     const mergeMutation = useMutation({
-        mutationFn: async (id: string) => unwrapEden(await legacyApi.api.features({ id }).merge.post({})),
+        mutationFn: async (id: string) => unwrapEden(await api.api.features({ id }).merge.post({})),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["features"] });
             queryClient.invalidateQueries({ queryKey: ["features", "active"] });
@@ -127,7 +127,7 @@ function FeaturesPage() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (id: string) => unwrapEden(await legacyApi.api.features({ id }).delete()),
+        mutationFn: async (id: string) => unwrapEden(await api.api.features({ id }).delete()),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["features"] });
             queryClient.invalidateQueries({ queryKey: ["features", "active"] });

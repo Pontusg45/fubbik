@@ -19,13 +19,12 @@ import { createClient } from "./api-proxy.future";
 // authentication regardless), so nothing user-facing degrades while the
 // port is incomplete.
 //
-// As of this writing, Rust's `openapi.json` has no entry at all for 13
+// As of this writing, Rust's `openapi.json` has no entry at all for 10
 // domains:
 //
-//   ai, chunk-types, comments, connection-relations, context, density,
-//   features, file-refs (top-level list/lookup — the chunks/{id}/file-refs
-//   sub-resource IS on Rust), graph, health, learning-paths, matrices,
-//   timeline
+//   ai, comments, context, density, file-refs (top-level list/lookup — the
+//   chunks/{id}/file-refs sub-resource IS on Rust), graph, health,
+//   learning-paths, matrices, timeline
 //
 // Every call site under those top-level segments (`api.api.<domain>...`)
 // is on `legacyApi` instead. This list SHRINKS as Rust ports each domain —
@@ -46,6 +45,10 @@ import { createClient } from "./api-proxy.future";
 // while looking healthy). A ported domain is not a migrated domain — check
 // this for any domain marked done.
 //
+// `features` (13 endpoints incl. the `chunks/{id}/deltas` sub-routes) and
+// the `chunk-types`/`connection-relations` catalogs were ported off this
+// list and every call site moved to `api`, casts removed.
+//
 // `documents` and `vocabulary` were ported off this list once their DTOs
 // were checked field-by-field against every call site's request body and
 // response shape — all matched, so every call site moved to `api`.
@@ -64,9 +67,8 @@ import { createClient } from "./api-proxy.future";
 // Rust hasn't finished:
 //   - chunks: `search/semantic`, `search/federated`, `grouped`,
 //     `check-similar`, `clusters`, `import-docs` (+ `import-docs/preview`),
-//     `bulk-update`, `{id}/neighbors`, `{id}/suggestions`, `{id}/enrich`,
-//     `{id}/deltas/{featureId}` (part of the `features` domain, not
-//     `chunks`, despite the URL prefix) have no Rust route yet (see
+//     `bulk-update`, `{id}/neighbors`, `{id}/suggestions`, `{id}/enrich`
+//     have no Rust route yet (see
 //     `openapi.json` — only list/create/detail/patch/delete/applies-to/
 //     dismiss-staleness/file-refs/history/scan-impact/stale/stale-count/
 //     stale-scan-age/suppress-duplicate exist).

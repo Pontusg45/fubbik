@@ -27,7 +27,7 @@ import { getUser } from "@/functions/get-user";
 // `applies-to`/`file-refs` routes actually expect. Against Rust this 400s
 // and was being silently swallowed by the `catch { // non-critical }` below,
 // so patterns/file refs were never actually saved. Both stay on `legacyApi`.
-import { legacyApi } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/$chunkId_/edit")({
@@ -137,7 +137,7 @@ function EditChunk() {
 
     const { data: featuresData } = useQuery({
         queryKey: ["features"],
-        queryFn: async () => unwrapEden(await legacyApi.api.features.get({ query: {} })),
+        queryFn: async () => unwrapEden(await api.api.features.get({ query: {} })),
         staleTime: 60_000
     });
 

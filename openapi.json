@@ -82,6 +82,153 @@
         }
       }
     },
+    "/api/chunk-types": {
+      "get": {
+        "tags": [
+          "crate::vocabularies::routes"
+        ],
+        "operationId": "list_chunk_types",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChunkType"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::vocabularies::routes"
+        ],
+        "operationId": "create_chunk_type",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChunkTypeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkType"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/chunk-types/{id}": {
+      "delete": {
+        "tags": [
+          "crate::vocabularies::routes"
+        ],
+        "operationId": "delete_chunk_type",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::vocabularies::routes"
+        ],
+        "operationId": "update_chunk_type",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateChunkTypeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkType"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks": {
       "get": {
         "tags": [
@@ -603,6 +750,133 @@
         }
       }
     },
+    "/api/chunks/{id}/deltas": {
+      "get": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "summary": "Node's handler drops the session entirely\n(`featureService.getDeltasForChunk(ctx.params.id)`), so any signed-in\ncaller can read any chunk's overlays there. This port passes the\ncaller's id down to the SQL, which returns an empty list for a chunk\nthe caller does not own — a deliberate, flagged divergence.",
+        "operationId": "chunk_deltas",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeltaWithFeature"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chunks/{id}/deltas/{featureId}": {
+      "put": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "operationId": "upsert_delta",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "featureId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertDeltaBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkFeatureDelta"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "operationId": "delete_delta",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "featureId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks/{id}/dismiss-staleness": {
       "post": {
         "tags": [
@@ -1027,6 +1301,153 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/connection-relations": {
+      "get": {
+        "tags": [
+          "crate::vocabularies::routes"
+        ],
+        "operationId": "list_connection_relations",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectionRelation"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::vocabularies::routes"
+        ],
+        "operationId": "create_connection_relation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectionRelationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionRelation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/connection-relations/{id}": {
+      "delete": {
+        "tags": [
+          "crate::vocabularies::routes"
+        ],
+        "operationId": "delete_connection_relation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::vocabularies::routes"
+        ],
+        "operationId": "update_connection_relation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateConnectionRelationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionRelation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
           },
           "404": {
             "description": ""
@@ -1516,6 +1937,373 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/features": {
+      "get": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "operationId": "list_features",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FeatureListItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "summary": "201, matching Node's explicit `ctx.set.status = 201`\n(`packages/api/src/features/routes.ts:36-40`) — the only endpoint in\nthis domain that is not 200.",
+        "operationId": "create_feature",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeatureBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feature"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/features/active": {
+      "get": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "summary": "A bare array of feature ids — not objects. Node maps\n`rows.map(r => r.featureId)` before responding\n(`packages/api/src/features/service.ts:145-147`).",
+        "operationId": "get_active_features",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "operationId": "set_active_features",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetActiveFeaturesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/features/{id}": {
+      "get": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "operationId": "get_feature",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "operationId": "delete_feature",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "operationId": "update_feature",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFeatureBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feature"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/features/{id}/deltas": {
+      "get": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "operationId": "feature_deltas",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeltaWithChunk"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/features/{id}/merge": {
+      "post": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "summary": "`{ message: \"Feature merged\" }` — the merged chunk ids are deliberately\nnot surfaced; Node's route discards the service's return value with\n`Effect.map(() => ({ message: \"Feature merged\" }))`.",
+        "operationId": "merge_feature",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/features/{id}/reorder": {
+      "post": {
+        "tags": [
+          "crate::features::routes"
+        ],
+        "summary": "Returns the reordered feature row itself, not a message.",
+        "operationId": "reorder_feature",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderFeatureBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feature"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
           }
         }
       }
@@ -6139,6 +6927,15 @@
           }
         }
       },
+      "ArrowStyle": {
+        "type": "string",
+        "description": "`arrowStyle` on the connection-relation bodies — a genuine Elysia\n`t.Union` of literals (`packages/api/src/vocabularies/routes.ts:30,40`),\nso an enum here matches the contract rather than inventing a constraint.\n\nModelled *only* on the input side: the stored `arrow_style` column is\nplain `text` with no CHECK constraint, and\n`fubbik_db::repo::connection_relation::ConnectionRelation::arrow_style`\nstays a `String` on the read path — the same split\n`vocabulary::dto::Category` makes.",
+        "enum": [
+          "solid",
+          "dashed",
+          "dotted"
+        ]
+      },
       "BatchCreateBody": {
         "type": "object",
         "required": [
@@ -6558,6 +7355,38 @@
           }
         }
       },
+      "ChunkFeatureDelta": {
+        "type": "object",
+        "description": "Bare `chunk_feature_delta` row — the return shape of\n`PUT /chunks/{id}/deltas/{featureId}` and\n`DELETE /chunks/{id}/deltas/{featureId}`'s repository call.\n\n`delta` is a **sparse** JSON object holding only the changed fields\n(`title`, `content`, `type`, `rationale`, `alternatives`,\n`consequences`, `summary`) — never a whole chunk. Typed as a raw\n`serde_json::Value` for exactly that reason: a struct with seven\n`Option` fields would serialise absent keys back as explicit `null`s and\ndestroy the sparseness on the next round-trip.",
+        "required": [
+          "id",
+          "chunkId",
+          "featureId",
+          "delta",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delta": {},
+          "featureId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ChunkListResponse": {
         "type": "object",
         "description": "Response envelope for `GET /api/chunks`, matching the Node/Elysia\nbackend's `{ chunks, total, limit, offset }` shape (the web app reads\n`.chunks` and `.total` directly). `total` is the count of rows matching\nthe same filters as `chunks` but WITHOUT `limit`/`offset` applied — see\n`fubbik_db::repo::chunk::count`, which shares its filter-building logic\nwith `list` so the two can never disagree.",
@@ -6643,6 +7472,76 @@
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "ChunkType": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.\nNode returns the whole Drizzle row from `db.select().from(chunkType)`\n(`packages/db/src/repository/vocabulary-catalog.ts:21-26`), so every\ncolumn is on the wire — including `builtIn`, `userId`, `spaceId` and\nboth timestamps.\n\n`examples` is `jsonb NOT NULL DEFAULT '[]'` holding a plain string\narray (`packages/db/src/schema/chunk-type.ts:22`).\n\n`color` looks constrained (a hex string, `maxLength: 9` in Elysia) but\nhas no CHECK constraint and no enum anywhere — plain `String`.",
+        "required": [
+          "id",
+          "label",
+          "color",
+          "examples",
+          "displayOrder",
+          "builtIn",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "builtIn": {
+            "type": "boolean"
+          },
+          "color": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -6865,6 +7764,77 @@
           }
         }
       },
+      "ConnectionRelation": {
+        "type": "object",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.\n\n`arrow_style` and `direction` are stored as plain `text` with column\ndefaults and **no** CHECK constraint (`migrations/0001_init.sql:357-358`),\nso they stay `String` on the read path — the same call this port made for\n`vocabulary_entry.category`. They *are* constrained on the *input* side\n(Node declares real `t.Union` literals in\n`packages/api/src/vocabularies/routes.ts:30-31`), which is modelled by\nthe enums in `fubbik_api::vocabularies::dto`, not here.",
+        "required": [
+          "id",
+          "label",
+          "arrowStyle",
+          "direction",
+          "color",
+          "displayOrder",
+          "builtIn",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "arrowStyle": {
+            "type": "string"
+          },
+          "builtIn": {
+            "type": "boolean"
+          },
+          "color": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "direction": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string"
+          },
+          "inverseOfId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CountResponse": {
         "type": "object",
         "description": "Shape of `GET /api/notifications/count`\n(`tests/fixtures/node-contract-2b/notifications-count.json`): a bare\n`{ \"count\": N }` object, not the chunks-style envelope.",
@@ -7048,6 +8018,56 @@
           }
         }
       },
+      "CreateChunkTypeBody": {
+        "type": "object",
+        "description": "Body of `POST /api/chunk-types`\n(`packages/api/src/vocabularies/routes.ts:7-15,58-72`).\n\n`id` is caller-supplied — it is the table's primary key and the slug\n`chunk.type` will hold. Unlike the Elysia `maxLength` caps elsewhere in\nthis port (which are deliberately not enforced), `id`'s length *is*\nenforced, because Node validates it in the **service** layer with\n`SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,40}$/`\n(`packages/api/src/vocabularies/service.ts:38,42-46`) — a real 400, not\njust an Elysia schema check. See `service::validate_slug`.\n\n`description`/`icon` are `t.Optional(t.Union([t.String, t.Null()]))` in\nNode, but on *create* there is no prior value to distinguish \"omitted\"\nfrom \"explicitly null\" — Node's `createChunkType` collapses both to a\nstored `NULL` (`packages/db/src/repository/vocabulary-catalog.ts:63-64`)\n— so plain `Option<T>` is correct here, unlike the update body.\n\n`label`/`description`/`icon`/`color`/`examples` length and item caps are\nElysia-only request validation; matching this port's established\nprecedent (`templates::dto::CreateTemplateBody`), they are not enforced.",
+        "required": [
+          "id",
+          "label"
+        ],
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "examples": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
       "CreateCollectionBody": {
         "type": "object",
         "description": "Body of `POST /api/collections`\n(`packages/api/src/collections/routes.ts:23-44`). `filter` is required\nas a whole object but every one of its nine keys is itself optional —\nsee `CollectionFilter`'s doc comment.",
@@ -7106,6 +8126,67 @@
           }
         }
       },
+      "CreateConnectionRelationBody": {
+        "type": "object",
+        "description": "Body of `POST /api/connection-relations` (`routes.ts:26-35,101-115`).\n\nSame create-time collapse of `null` and omitted as\n`CreateChunkTypeBody`; `inverseOfId` is a self-FK to\n`connection_relation(id)` (`ON DELETE SET NULL`), so an unknown value\nsurfaces as a database error — Node behaves identically, it does no\npre-check either.",
+        "required": [
+          "id",
+          "label"
+        ],
+        "properties": {
+          "arrowStyle": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ArrowStyle"
+              }
+            ]
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "direction": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RelationDirection"
+              }
+            ]
+          },
+          "displayOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "id": {
+            "type": "string"
+          },
+          "inverseOfId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
       "CreateEntryBody": {
         "type": "object",
         "description": "Body of `POST /api/vocabulary` (`routes.ts:105-110`).",
@@ -7144,6 +8225,46 @@
         "properties": {
           "chunkId": {
             "type": "string"
+          }
+        }
+      },
+      "CreateFeatureBody": {
+        "type": "object",
+        "description": "Body of `POST /features` (`packages/api/src/features/routes.ts:44-50`).\n\nNode declares `maxLength` on `name` (100), `description` (1000) and\n`color` (7); this port does not enforce those bounds — the same accepted\ndivergence as `favorites::dto::CreateFavoriteBody`. `color` has no\nformat validation in Node either (it is not checked to be a hex code).\n`priority` is `t.Number()` in Node, i.e. a JS float; it is `i32` here\nbecause the column is `integer` (a fractional priority is a 500 in Node,\na 400 here).",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "spaceIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -7647,6 +8768,93 @@
           "chunk_not_found"
         ]
       },
+      "DeltaWithChunk": {
+        "type": "object",
+        "description": "`GET /features/{id}/deltas` (and the `deltas` key of\n`GET /features/{id}`) row: a delta plus the owning chunk's title, per\nNode's `getDeltasForFeature`\n(`packages/db/src/repository/chunk-feature-delta.ts:45-61`).",
+        "required": [
+          "id",
+          "chunkId",
+          "featureId",
+          "delta",
+          "chunkTitle",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "chunkTitle": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delta": {},
+          "featureId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeltaWithFeature": {
+        "type": "object",
+        "description": "`GET /chunks/{id}/deltas` row: a delta plus the four denormalised\n`feature` columns Node's `getDeltasForChunk` joins in\n(`packages/db/src/repository/chunk-feature-delta.ts:23-43`).\n`featurePriority` is what the client sorts by to resolve conflicts.",
+        "required": [
+          "id",
+          "chunkId",
+          "featureId",
+          "delta",
+          "featureName",
+          "featurePriority",
+          "featureStatus",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delta": {},
+          "featureColor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "featureId": {
+            "type": "string"
+          },
+          "featureName": {
+            "type": "string"
+          },
+          "featurePriority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "featureStatus": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "DependencyGraph": {
         "type": "object",
         "description": "Shape of `GET /requirements/{id}/dependencies/graph`: `{nodes, edges}`,\nmatching Node's `getDependencyGraph` return object\n(`packages/api/src/requirements/dependency-service.ts:61-67`).",
@@ -8093,6 +9301,85 @@
           }
         }
       },
+      "Feature": {
+        "type": "object",
+        "description": "Full `feature` row — what `POST /features`, `GET /features/{id}`'s\n`feature` key, `PATCH /features/{id}` and `POST /features/{id}/reorder`\nall return. Includes `userId`, which the *list* projection deliberately\nomits; see [`FeatureListItem`].",
+        "required": [
+          "id",
+          "name",
+          "priority",
+          "status",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Also free text: `t.String({ maxLength: 7 })` in Node's route schema,\nwith no format validation anywhere. Not an enum, not validated."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "description": "Free text at the database level — the column is a plain `text` with\na `'inactive'` default and **no CHECK constraint** (migration\n`0001_init.sql:411`). Node's route schema constrains what a *client*\nmay PATCH (`active | inactive | archived`) but `merged` is written\nonly by the merge path, and `POST /features` cannot set it at all.\nModelled as `String`, not an enum, so the wire shape can never be\nnarrower than the column."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "FeatureDetail": {
+        "type": "object",
+        "description": "Response of `GET /features/{id}` — Node's `getFeatureDetail` resolves an\n`Effect.all({ feature, spaces, deltas })`, so the three land as sibling\nkeys rather than the feature being flattened\n(`packages/api/src/features/service.ts:72-83`).\n`GET /features/{id}/deltas` returns just the `deltas` member of this\nsame value.",
+        "required": [
+          "feature",
+          "spaces",
+          "deltas"
+        ],
+        "properties": {
+          "deltas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeltaWithChunk"
+            }
+          },
+          "feature": {
+            "$ref": "#/components/schemas/Feature"
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureSpace"
+            }
+          }
+        }
+      },
       "FeatureFlags": {
         "type": "object",
         "description": "`GET /api/settings/features` — a **computed 5-key projection** over\n`instance_settings`, not a stored table\n(`tests/fixtures/node-contract-2b/_questions.md` Q2). Every field\nindependently defaults to `true` when its key is absent from\n`instance_settings`, matching Node's `(map.x as boolean) ?? true`\nfallback (`packages/api/src/settings/service.ts:59-75`) for the\ndocumented case — a key that is simply absent. Confirmed live against\nthe empty-table fixture: `settings-features.json` returns all five\n`true` even though `instance_settings` has zero rows.\n\nNode's `?? true` only falls back on `null`/`undefined`, and its `as\nboolean` cast is a compile-time-only no-op — so a value present but not\nactually boolean (e.g. a stored string) would pass through unchanged at\nruntime, breaking `InstanceSettingsMap`'s own typing. Rust's `bool`\nfields can't reproduce that untyped leak; `service::get_feature_flags`\ntreats \"present but not a JSON boolean\" the same as \"absent\" (defaults\n`true`), which is a consequence of Rust's stricter typing, not an\nuntested behavioural choice — the only case the fixtures actually\nexercise is \"absent\", and that path matches Node exactly.",
@@ -8120,6 +9407,84 @@
             "type": "boolean"
           }
         }
+      },
+      "FeatureListItem": {
+        "type": "object",
+        "description": "`GET /features` row. Deliberately **not** [`Feature`]: Node's\n`listFeatures` hand-picks columns and adds an aggregate\n(`packages/db/src/repository/feature.ts:42-58`), so `userId` is absent\nand `deltaCount` is present. Reusing `Feature` here would publish a\nlist shape that leaks `userId` and drops `deltaCount`.",
+        "required": [
+          "id",
+          "name",
+          "priority",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "deltaCount"
+        ],
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deltaCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "`count(chunk_feature_delta.id)::int` — Node casts to `int`, so this\nis `i32`, not `i64`."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "FeatureSpace": {
+        "type": "object",
+        "description": "The `{ id, name }` space projection returned inside `GET /features/{id}`\n— Node's `getSpacesForFeature` selects exactly those two columns\n(`packages/db/src/repository/feature.ts:117-125`). Named `FeatureSpace`\nrather than `Space` because `repo::space::Space` already owns that\nschema name and this is a *different, narrower* shape.",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "FeatureStatus": {
+        "type": "string",
+        "description": "The three statuses a client may PATCH onto a feature\n(`packages/api/src/features/routes.ts:87`). This is one of the rare\ncases where a status field really *is* constrained in Node — the route\nschema is `t.Union([t.Literal(\"active\"), t.Literal(\"inactive\"),\nt.Literal(\"archived\")])`, so `\"merged\"` cannot be set through the API at\nall; only `POST /features/{id}/merge` writes it. The database column\nitself is unconstrained `text`, which is why\n`fubbik_db::repo::feature::Feature::status` stays a `String` on the way\nout — the *input* is narrower than the *output*, deliberately.",
+        "enum": [
+          "active",
+          "inactive",
+          "archived"
+        ]
       },
       "FieldMapping": {
         "type": "object",
@@ -9466,6 +10831,14 @@
           }
         }
       },
+      "RelationDirection": {
+        "type": "string",
+        "description": "`direction` on the connection-relation bodies — likewise a real\n`t.Union` of literals (`routes.ts:31,41`).\n\nNamed `RelationDirection`, not `Direction`, to keep the flat OpenAPI\nschema namespace unambiguous.",
+        "enum": [
+          "forward",
+          "bidirectional"
+        ]
+      },
       "RenderResult": {
         "type": "object",
         "description": "Shape of `GET /api/documents/{id}/render`, matching Node's\n`renderDocument` return object (`packages/api/src/documents/service.ts:241-278`):\n`{ document, markdown }`, nested — **not** flattened, unlike\n[`DocumentDetail`].",
@@ -9527,6 +10900,19 @@
             "type": "string"
           },
           "order": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ReorderFeatureBody": {
+        "type": "object",
+        "description": "Body of `POST /features/{id}/reorder` (`packages/api/src/features/\nroutes.ts:118-120`). Named `ReorderFeatureBody` rather than\n`ReorderBody` because `requirements::dto::ReorderBody` already occupies\nthat schema name in utoipa's single flat namespace.",
+        "required": [
+          "priority"
+        ],
+        "properties": {
+          "priority": {
             "type": "integer",
             "format": "int32"
           }
@@ -10247,6 +11633,21 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "SetActiveFeaturesBody": {
+        "type": "object",
+        "description": "Body of `PUT /features/active` (`packages/api/src/features/routes.ts:\n66-68`).",
+        "required": [
+          "featureIds"
+        ],
+        "properties": {
+          "featureIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -11048,6 +12449,52 @@
           }
         }
       },
+      "UpdateChunkTypeBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/chunk-types/{id}` (`routes.ts:17-24,73-82`).\n\n`description`/`icon` are tri-state: omitted (`None`) leaves the column\nuntouched, explicit `null` (`Some(None)`) clears it, a value sets it —\nmatching Node's `data.field !== undefined` conditional spread\n(`packages/db/src/repository/vocabulary-catalog.ts:88-94`), which\nforwards an explicit `null` through as a real update. `color`,\n`examples` and `displayOrder` have no `t.Null()` variant in Node's PATCH\nschema, so they stay plain `Option<T>` — there is no way to clear them.\n\n`id` is deliberately absent: Node's patch schema omits it, so a chunk\ntype's slug can never be renamed through this endpoint.",
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "examples": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateCollectionBody": {
         "type": "object",
         "description": "Body of `PATCH /api/collections/{id}`\n(`packages/api/src/collections/routes.ts:45-60`). All three fields are\nplain two-state `Option<T>` (omitted = untouched, present = set) — this\nschema has no `t.Null()` variant on any field, unlike\n`workspaces::dto::UpdateWorkspaceBody::description`, so there is no way\nto explicitly clear `description` through this endpoint. `filter`, when\nprovided, **replaces** the stored filter wholesale rather than merging\nit — see `fubbik_db::repo::collection::CollectionPatch`'s doc comment.\n`spaceId` is deliberately absent from this body: Node's schema doesn't\ndeclare it either, so a collection's space is immutable after creation.",
@@ -11069,6 +12516,63 @@
             ]
           },
           "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateConnectionRelationBody": {
+        "type": "object",
+        "description": "Body of `PATCH /api/connection-relations/{id}` (`routes.ts:37-45,116-125`).\n\n`description` and `inverseOfId` are the two tri-state fields (both have\na `t.Null()` variant in Node's schema); everything else is plain\n`Option<T>`.",
+        "properties": {
+          "arrowStyle": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ArrowStyle"
+              }
+            ]
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "direction": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RelationDirection"
+              }
+            ]
+          },
+          "displayOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "inverseOfId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
             "type": [
               "string",
               "null"
@@ -11103,6 +12607,56 @@
             "type": [
               "string",
               "null"
+            ]
+          }
+        }
+      },
+      "UpdateFeatureBody": {
+        "type": "object",
+        "description": "Body of `PATCH /features/{id}` (`packages/api/src/features/routes.ts:\n83-90`). `description` and `color` are tri-state (`None` = untouched,\n`Some(None)` = clear, `Some(Some(v))` = set) because Node types both as\n`t.Optional(t.Union([t.String(), t.Null()]))`. `spaceIds` is stripped\noff before the row update and applied separately, matching\n`packages/api/src/features/service.ts:112`.",
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "priority": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "spaceIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FeatureStatus"
+              }
             ]
           }
         }
@@ -11494,6 +13048,16 @@
               "null"
             ]
           }
+        }
+      },
+      "UpsertDeltaBody": {
+        "type": "object",
+        "description": "Body of `PUT /chunks/{id}/deltas/{featureId}`\n(`packages/api/src/features/routes.ts:137-139`).\n\n`delta` is `t.Record(t.String(), t.Unknown())` in Node — an *object*,\nwith arbitrary values — so it is a `serde_json::Map` here rather than a\nbare `Value`: a JSON array or string for `delta` is rejected, matching\nNode. Which keys are permitted is checked in the service, not here, so\nthe rejection message can name the offending fields the way Node's\n`validateDelta` does.",
+        "required": [
+          "delta"
+        ],
+        "properties": {
+          "delta": {}
         }
       },
       "UseCase": {

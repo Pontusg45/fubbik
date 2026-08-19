@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk SET\n                 title = CASE WHEN jsonb_exists($2::jsonb, 'title')\n                              THEN ($2::jsonb)->>'title' ELSE title END,\n                 content = CASE WHEN jsonb_exists($2::jsonb, 'content')\n                                THEN ($2::jsonb)->>'content' ELSE content END,\n                 type = CASE WHEN jsonb_exists($2::jsonb, 'type')\n                             THEN ($2::jsonb)->>'type' ELSE type END,\n                 rationale = CASE WHEN jsonb_exists($2::jsonb, 'rationale')\n                                  THEN ($2::jsonb)->>'rationale' ELSE rationale END,\n                 alternatives = CASE WHEN jsonb_exists($2::jsonb, 'alternatives')\n                                     THEN ($2::jsonb)->'alternatives' ELSE alternatives END,\n                 consequences = CASE WHEN jsonb_exists($2::jsonb, 'consequences')\n                                     THEN ($2::jsonb)->>'consequences' ELSE consequences END,\n                 summary = CASE WHEN jsonb_exists($2::jsonb, 'summary')\n                                THEN ($2::jsonb)->>'summary' ELSE summary END,\n                 updated_at = now()\n               WHERE id = $1 AND user_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d7442318234381575a0b932b343d16e0eb056d412ad8a4522029832469a4e69d"
+}

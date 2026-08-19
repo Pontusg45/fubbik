@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_type (id, label, built_in, user_id) VALUES ('adversarial', 'A', true, $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "85269393608e23c99e142df32052a0f05a7a8264a3fbaf616037f66cabb8e969"
+}

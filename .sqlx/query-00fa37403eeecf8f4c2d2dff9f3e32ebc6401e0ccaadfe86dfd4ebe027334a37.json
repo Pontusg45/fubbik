@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, label, description, icon, color,\n                  examples AS \"examples: Json<Vec<String>>\",\n                  display_order, built_in, user_id, space_id,\n                  created_at AS \"created_at: UtcTimestamp\",\n                  updated_at AS \"updated_at: UtcTimestamp\"\n           FROM chunk_type WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "label",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "examples: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "built_in",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "00fa37403eeecf8f4c2d2dff9f3e32ebc6401e0ccaadfe86dfd4ebe027334a37"
+}

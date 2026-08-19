@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO connection_relation (id, label, space_id) VALUES ('spaced', 'Spaced', $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "80cd9330b0d943a0e40e5b05d4a6619d319790d96bc7c080759067507e578540"
+}

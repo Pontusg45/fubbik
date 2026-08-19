@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO space (id, name, kind, user_id) VALUES ($1, 'S', 'code', $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "de3ea8eeaf6bbd471faa14866d5979b1854361463f28fdc1df291862d9efd995"
+}

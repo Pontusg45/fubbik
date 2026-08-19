@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO connection_relation (id, label, built_in, user_id)\n           VALUES ('adversarial', 'A', true, $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c8d32145a93aa899eb4207db43ae6ae238902a6917dac8d097fcac3a75df9ce4"
+}

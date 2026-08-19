@@ -1,0 +1,89 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, label, description, icon, color,\n                  examples AS \"examples: Json<Vec<String>>\",\n                  display_order, built_in, user_id, space_id,\n                  created_at AS \"created_at: UtcTimestamp\",\n                  updated_at AS \"updated_at: UtcTimestamp\"\n           FROM chunk_type\n           WHERE built_in = true\n              OR user_id = $1\n              OR ($2::text IS NOT NULL AND space_id = $2)\n           ORDER BY display_order ASC, id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "label",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "examples: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "built_in",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "69ee23446b830cc03a486b00b36c817e87e2a1a09d70f46fc197f3935eb0c932"
+}

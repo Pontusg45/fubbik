@@ -11,26 +11,17 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { useActiveFeatures } from "./use-active-features";
-
-interface FeatureItem {
-    id: string;
-    name: string;
-    color: string | null;
-    priority: number;
-    status: string;
-    deltaCount: number;
-}
 
 export function FeatureSwitcher() {
     const { activeFeatureIds, toggleFeature, isActive } = useActiveFeatures();
 
     const { data: features } = useQuery({
         queryKey: ["features"],
-        queryFn: async () => unwrapEden(await legacyApi.api.features.get({ query: {} })) as FeatureItem[],
+        queryFn: async () => unwrapEden(await api.api.features.get({ query: {} })),
         staleTime: 60_000
     });
 

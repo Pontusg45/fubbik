@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM chunk_feature_delta\n         WHERE feature_id = $1\n           AND EXISTS (SELECT 1 FROM feature f WHERE f.id = $1 AND f.user_id = $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c6a71f7df17da833ceee6aa9dc5197d49e96ae0042da81b079a9be5140733e8d"
+}

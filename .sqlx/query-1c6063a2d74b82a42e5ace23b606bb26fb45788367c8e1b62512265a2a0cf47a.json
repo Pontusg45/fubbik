@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE feature SET priority = priority + 1, updated_at = now()\n         WHERE user_id = $1 AND priority >= $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1c6063a2d74b82a42e5ace23b606bb26fb45788367c8e1b62512265a2a0cf47a"
+}

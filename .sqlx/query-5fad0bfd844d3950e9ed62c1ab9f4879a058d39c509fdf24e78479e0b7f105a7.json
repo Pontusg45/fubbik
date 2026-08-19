@@ -1,0 +1,73 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT f.id, f.name, f.description, f.priority, f.status, f.color,\n                  f.created_at AS \"created_at: UtcTimestamp\",\n                  f.updated_at AS \"updated_at: UtcTimestamp\",\n                  count(d.id)::int AS \"delta_count!\"\n           FROM feature f\n           LEFT JOIN chunk_feature_delta d ON d.feature_id = f.id\n           WHERE f.user_id = $1\n             AND ($2::text IS NULL OR f.status = $2)\n             AND ($3::text IS NULL OR f.name ILIKE '%' || $3 || '%')\n             AND ($4::text IS NULL\n                  OR EXISTS (SELECT 1 FROM feature_space fs\n                             WHERE fs.feature_id = f.id AND fs.space_id = $4)\n                  OR NOT EXISTS (SELECT 1 FROM feature_space fs\n                                 WHERE fs.feature_id = f.id))\n           GROUP BY f.id\n           ORDER BY f.priority ASC, f.id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "priority",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "delta_count!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "5fad0bfd844d3950e9ed62c1ab9f4879a058d39c509fdf24e78479e0b7f105a7"
+}

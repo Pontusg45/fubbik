@@ -27,6 +27,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunk-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_chunk_types"];
+        put?: never;
+        post: operations["create_chunk_type"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunk-types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_chunk_type"];
+        options?: never;
+        head?: never;
+        patch: operations["update_chunk_type"];
+        trace?: never;
+    };
     "/api/chunks": {
         parameters: {
             query?: never;
@@ -143,6 +175,45 @@ export interface paths {
         put: operations["put_applies_to"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/{id}/deltas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Node's handler drops the session entirely
+         *     (`featureService.getDeltasForChunk(ctx.params.id)`), so any signed-in
+         *     caller can read any chunk's overlays there. This port passes the
+         *     caller's id down to the SQL, which returns an empty list for a chunk
+         *     the caller does not own — a deliberate, flagged divergence.
+         */
+        get: operations["chunk_deltas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/{id}/deltas/{featureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["upsert_delta"];
+        post?: never;
+        delete: operations["delete_delta"];
         options?: never;
         head?: never;
         patch?: never;
@@ -284,6 +355,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/connection-relations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_connection_relations"];
+        put?: never;
+        post: operations["create_connection_relation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/connection-relations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_connection_relation"];
+        options?: never;
+        head?: never;
+        patch: operations["update_connection_relation"];
         trace?: never;
     };
     "/api/connections": {
@@ -501,6 +604,118 @@ export interface paths {
          *     'there was nothing to delete'"). Reproduced faithfully, not "fixed".
          */
         delete: operations["remove_favorite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_features"];
+        put?: never;
+        /**
+         * 201, matching Node's explicit `ctx.set.status = 201`
+         *     (`packages/api/src/features/routes.ts:36-40`) — the only endpoint in
+         *     this domain that is not 200.
+         */
+        post: operations["create_feature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/features/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A bare array of feature ids — not objects. Node maps
+         *     `rows.map(r => r.featureId)` before responding
+         *     (`packages/api/src/features/service.ts:145-147`).
+         */
+        get: operations["get_active_features"];
+        put: operations["set_active_features"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/features/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_feature"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_feature"];
+        options?: never;
+        head?: never;
+        patch: operations["update_feature"];
+        trace?: never;
+    };
+    "/api/features/{id}/deltas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["feature_deltas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/features/{id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `{ message: "Feature merged" }` — the merged chunk ids are deliberately
+         *     not surfaced; Node's route discards the service's return value with
+         *     `Effect.map(() => ({ message: "Feature merged" }))`.
+         */
+        post: operations["merge_feature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/features/{id}/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Returns the reordered feature row itself, not a message. */
+        post: operations["reorder_feature"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2100,6 +2315,19 @@ export interface components {
             id: string;
             pattern: string;
         };
+        /**
+         * @description `arrowStyle` on the connection-relation bodies — a genuine Elysia
+         *     `t.Union` of literals (`packages/api/src/vocabularies/routes.ts:30,40`),
+         *     so an enum here matches the contract rather than inventing a constraint.
+         *
+         *     Modelled *only* on the input side: the stored `arrow_style` column is
+         *     plain `text` with no CHECK constraint, and
+         *     `fubbik_db::repo::connection_relation::ConnectionRelation::arrow_style`
+         *     stays a `String` on the read path — the same split
+         *     `vocabulary::dto::Category` makes.
+         * @enum {string}
+         */
+        ArrowStyle: "solid" | "dashed" | "dotted";
         BatchCreateBody: {
             requirements: components["schemas"]["BatchRequirementInput"][];
             spaceId?: string | null;
@@ -2240,6 +2468,28 @@ export interface components {
             userId: string;
         };
         /**
+         * @description Bare `chunk_feature_delta` row — the return shape of
+         *     `PUT /chunks/{id}/deltas/{featureId}` and
+         *     `DELETE /chunks/{id}/deltas/{featureId}`'s repository call.
+         *
+         *     `delta` is a **sparse** JSON object holding only the changed fields
+         *     (`title`, `content`, `type`, `rationale`, `alternatives`,
+         *     `consequences`, `summary`) — never a whole chunk. Typed as a raw
+         *     `serde_json::Value` for exactly that reason: a struct with seven
+         *     `Option` fields would serialise absent keys back as explicit `null`s and
+         *     destroy the sparseness on the next round-trip.
+         */
+        ChunkFeatureDelta: {
+            chunkId: string;
+            /** Format: date-time */
+            createdAt: string;
+            delta: unknown;
+            featureId: string;
+            id: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
          * @description Response envelope for `GET /api/chunks`, matching the Node/Elysia
          *     backend's `{ chunks, total, limit, offset }` shape (the web app reads
          *     `.chunks` and `.total` directly). `total` is the count of rows matching
@@ -2270,6 +2520,36 @@ export interface components {
             reviewedAt?: string | null;
             reviewedBy?: string | null;
             status: string;
+        };
+        /**
+         * @description `camelCase` serialisation matches every other wire type in this crate.
+         *     Node returns the whole Drizzle row from `db.select().from(chunkType)`
+         *     (`packages/db/src/repository/vocabulary-catalog.ts:21-26`), so every
+         *     column is on the wire — including `builtIn`, `userId`, `spaceId` and
+         *     both timestamps.
+         *
+         *     `examples` is `jsonb NOT NULL DEFAULT '[]'` holding a plain string
+         *     array (`packages/db/src/schema/chunk-type.ts:22`).
+         *
+         *     `color` looks constrained (a hex string, `maxLength: 9` in Elysia) but
+         *     has no CHECK constraint and no enum anywhere — plain `String`.
+         */
+        ChunkType: {
+            builtIn: boolean;
+            color: string;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            /** Format: int32 */
+            displayOrder: number;
+            examples: string[];
+            icon?: string | null;
+            id: string;
+            label: string;
+            spaceId?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            userId?: string | null;
         };
         ChunkVersion: {
             chunkId: string;
@@ -2345,6 +2625,35 @@ export interface components {
             targetId: string;
             /** Format: int32 */
             weight: number;
+        };
+        /**
+         * @description `camelCase` serialisation matches every other wire type in this crate.
+         *
+         *     `arrow_style` and `direction` are stored as plain `text` with column
+         *     defaults and **no** CHECK constraint (`migrations/0001_init.sql:357-358`),
+         *     so they stay `String` on the read path — the same call this port made for
+         *     `vocabulary_entry.category`. They *are* constrained on the *input* side
+         *     (Node declares real `t.Union` literals in
+         *     `packages/api/src/vocabularies/routes.ts:30-31`), which is modelled by
+         *     the enums in `fubbik_api::vocabularies::dto`, not here.
+         */
+        ConnectionRelation: {
+            arrowStyle: string;
+            builtIn: boolean;
+            color: string;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            direction: string;
+            /** Format: int32 */
+            displayOrder: number;
+            id: string;
+            inverseOfId?: string | null;
+            label: string;
+            spaceId?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            userId?: string | null;
         };
         /**
          * @description Shape of `GET /api/notifications/count`
@@ -2451,6 +2760,38 @@ export interface components {
             type?: string | null;
         };
         /**
+         * @description Body of `POST /api/chunk-types`
+         *     (`packages/api/src/vocabularies/routes.ts:7-15,58-72`).
+         *
+         *     `id` is caller-supplied — it is the table's primary key and the slug
+         *     `chunk.type` will hold. Unlike the Elysia `maxLength` caps elsewhere in
+         *     this port (which are deliberately not enforced), `id`'s length *is*
+         *     enforced, because Node validates it in the **service** layer with
+         *     `SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,40}$/`
+         *     (`packages/api/src/vocabularies/service.ts:38,42-46`) — a real 400, not
+         *     just an Elysia schema check. See `service::validate_slug`.
+         *
+         *     `description`/`icon` are `t.Optional(t.Union([t.String, t.Null()]))` in
+         *     Node, but on *create* there is no prior value to distinguish "omitted"
+         *     from "explicitly null" — Node's `createChunkType` collapses both to a
+         *     stored `NULL` (`packages/db/src/repository/vocabulary-catalog.ts:63-64`)
+         *     — so plain `Option<T>` is correct here, unlike the update body.
+         *
+         *     `label`/`description`/`icon`/`color`/`examples` length and item caps are
+         *     Elysia-only request validation; matching this port's established
+         *     precedent (`templates::dto::CreateTemplateBody`), they are not enforced.
+         */
+        CreateChunkTypeBody: {
+            color?: string | null;
+            description?: string | null;
+            /** Format: int32 */
+            displayOrder?: number | null;
+            examples?: string[] | null;
+            icon?: string | null;
+            id: string;
+            label: string;
+        };
+        /**
          * @description Body of `POST /api/collections`
          *     (`packages/api/src/collections/routes.ts:23-44`). `filter` is required
          *     as a whole object but every one of its nine keys is itself optional —
@@ -2476,6 +2817,26 @@ export interface components {
             sourceId: string;
             targetId: string;
         };
+        /**
+         * @description Body of `POST /api/connection-relations` (`routes.ts:26-35,101-115`).
+         *
+         *     Same create-time collapse of `null` and omitted as
+         *     `CreateChunkTypeBody`; `inverseOfId` is a self-FK to
+         *     `connection_relation(id)` (`ON DELETE SET NULL`), so an unknown value
+         *     surfaces as a database error — Node behaves identically, it does no
+         *     pre-check either.
+         */
+        CreateConnectionRelationBody: {
+            arrowStyle?: null | components["schemas"]["ArrowStyle"];
+            color?: string | null;
+            description?: string | null;
+            direction?: null | components["schemas"]["RelationDirection"];
+            /** Format: int32 */
+            displayOrder?: number | null;
+            id: string;
+            inverseOfId?: string | null;
+            label: string;
+        };
         /** @description Body of `POST /api/vocabulary` (`routes.ts:105-110`). */
         CreateEntryBody: {
             category: components["schemas"]["Category"];
@@ -2493,6 +2854,25 @@ export interface components {
          */
         CreateFavoriteBody: {
             chunkId: string;
+        };
+        /**
+         * @description Body of `POST /features` (`packages/api/src/features/routes.ts:44-50`).
+         *
+         *     Node declares `maxLength` on `name` (100), `description` (1000) and
+         *     `color` (7); this port does not enforce those bounds — the same accepted
+         *     divergence as `favorites::dto::CreateFavoriteBody`. `color` has no
+         *     format validation in Node either (it is not checked to be a hex code).
+         *     `priority` is `t.Number()` in Node, i.e. a JS float; it is `i32` here
+         *     because the column is `integer` (a fractional priority is a 500 in Node,
+         *     a 400 here).
+         */
+        CreateFeatureBody: {
+            color?: string | null;
+            description?: string | null;
+            name: string;
+            /** Format: int32 */
+            priority?: number | null;
+            spaceIds?: string[] | null;
         };
         /**
          * @description Body of `POST /api/plans/{id}/links`
@@ -2691,6 +3071,44 @@ export interface components {
         /** @enum {string} */
         CrossRefWarningType: "file_not_found" | "chunk_not_found";
         /**
+         * @description `GET /features/{id}/deltas` (and the `deltas` key of
+         *     `GET /features/{id}`) row: a delta plus the owning chunk's title, per
+         *     Node's `getDeltasForFeature`
+         *     (`packages/db/src/repository/chunk-feature-delta.ts:45-61`).
+         */
+        DeltaWithChunk: {
+            chunkId: string;
+            chunkTitle: string;
+            /** Format: date-time */
+            createdAt: string;
+            delta: unknown;
+            featureId: string;
+            id: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description `GET /chunks/{id}/deltas` row: a delta plus the four denormalised
+         *     `feature` columns Node's `getDeltasForChunk` joins in
+         *     (`packages/db/src/repository/chunk-feature-delta.ts:23-43`).
+         *     `featurePriority` is what the client sorts by to resolve conflicts.
+         */
+        DeltaWithFeature: {
+            chunkId: string;
+            /** Format: date-time */
+            createdAt: string;
+            delta: unknown;
+            featureColor?: string | null;
+            featureId: string;
+            featureName: string;
+            /** Format: int32 */
+            featurePriority: number;
+            featureStatus: string;
+            id: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
          * @description Shape of `GET /requirements/{id}/dependencies/graph`: `{nodes, edges}`,
          *     matching Node's `getDependencyGraph` return object
          *     (`packages/api/src/requirements/dependency-service.ts:61-67`).
@@ -2880,6 +3298,52 @@ export interface components {
             userId: string;
         };
         /**
+         * @description Full `feature` row — what `POST /features`, `GET /features/{id}`'s
+         *     `feature` key, `PATCH /features/{id}` and `POST /features/{id}/reorder`
+         *     all return. Includes `userId`, which the *list* projection deliberately
+         *     omits; see [`FeatureListItem`].
+         */
+        Feature: {
+            /**
+             * @description Also free text: `t.String({ maxLength: 7 })` in Node's route schema,
+             *     with no format validation anywhere. Not an enum, not validated.
+             */
+            color?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            name: string;
+            /** Format: int32 */
+            priority: number;
+            /**
+             * @description Free text at the database level — the column is a plain `text` with
+             *     a `'inactive'` default and **no CHECK constraint** (migration
+             *     `0001_init.sql:411`). Node's route schema constrains what a *client*
+             *     may PATCH (`active | inactive | archived`) but `merged` is written
+             *     only by the merge path, and `POST /features` cannot set it at all.
+             *     Modelled as `String`, not an enum, so the wire shape can never be
+             *     narrower than the column.
+             */
+            status: string;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        /**
+         * @description Response of `GET /features/{id}` — Node's `getFeatureDetail` resolves an
+         *     `Effect.all({ feature, spaces, deltas })`, so the three land as sibling
+         *     keys rather than the feature being flattened
+         *     (`packages/api/src/features/service.ts:72-83`).
+         *     `GET /features/{id}/deltas` returns just the `deltas` member of this
+         *     same value.
+         */
+        FeatureDetail: {
+            deltas: components["schemas"]["DeltaWithChunk"][];
+            feature: components["schemas"]["Feature"];
+            spaces: components["schemas"]["FeatureSpace"][];
+        };
+        /**
          * @description `GET /api/settings/features` — a **computed 5-key projection** over
          *     `instance_settings`, not a stored table
          *     (`tests/fixtures/node-contract-2b/_questions.md` Q2). Every field
@@ -2907,6 +3371,56 @@ export interface components {
             semanticSearchEnabled: boolean;
             vocabularySuggestEnabled: boolean;
         };
+        /**
+         * @description `GET /features` row. Deliberately **not** [`Feature`]: Node's
+         *     `listFeatures` hand-picks columns and adds an aggregate
+         *     (`packages/db/src/repository/feature.ts:42-58`), so `userId` is absent
+         *     and `deltaCount` is present. Reusing `Feature` here would publish a
+         *     list shape that leaks `userId` and drops `deltaCount`.
+         */
+        FeatureListItem: {
+            color?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: int32
+             * @description `count(chunk_feature_delta.id)::int` — Node casts to `int`, so this
+             *     is `i32`, not `i64`.
+             */
+            deltaCount: number;
+            description?: string | null;
+            id: string;
+            name: string;
+            /** Format: int32 */
+            priority: number;
+            status: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description The `{ id, name }` space projection returned inside `GET /features/{id}`
+         *     — Node's `getSpacesForFeature` selects exactly those two columns
+         *     (`packages/db/src/repository/feature.ts:117-125`). Named `FeatureSpace`
+         *     rather than `Space` because `repo::space::Space` already owns that
+         *     schema name and this is a *different, narrower* shape.
+         */
+        FeatureSpace: {
+            id: string;
+            name: string;
+        };
+        /**
+         * @description The three statuses a client may PATCH onto a feature
+         *     (`packages/api/src/features/routes.ts:87`). This is one of the rare
+         *     cases where a status field really *is* constrained in Node — the route
+         *     schema is `t.Union([t.Literal("active"), t.Literal("inactive"),
+         *     t.Literal("archived")])`, so `"merged"` cannot be set through the API at
+         *     all; only `POST /features/{id}/merge` writes it. The database column
+         *     itself is unconstrained `text`, which is why
+         *     `fubbik_db::repo::feature::Feature::status` stays a `String` on the way
+         *     out — the *input* is narrower than the *output*, deliberately.
+         * @enum {string}
+         */
+        FeatureStatus: "active" | "inactive" | "archived";
         FieldMapping: {
             headings: string[];
             match: components["schemas"]["MatchMode"];
@@ -3504,6 +4018,15 @@ export interface components {
             rows: unknown[];
         };
         /**
+         * @description `direction` on the connection-relation bodies — likewise a real
+         *     `t.Union` of literals (`routes.ts:31,41`).
+         *
+         *     Named `RelationDirection`, not `Direction`, to keep the flat OpenAPI
+         *     schema namespace unambiguous.
+         * @enum {string}
+         */
+        RelationDirection: "forward" | "bidirectional";
+        /**
          * @description Shape of `GET /api/documents/{id}/render`, matching Node's
          *     `renderDocument` return object (`packages/api/src/documents/service.ts:241-278`):
          *     `{ document, markdown }`, nested — **not** flattened, unlike
@@ -3530,6 +4053,16 @@ export interface components {
             chunkId: string;
             /** Format: int32 */
             order: number;
+        };
+        /**
+         * @description Body of `POST /features/{id}/reorder` (`packages/api/src/features/
+         *     routes.ts:118-120`). Named `ReorderFeatureBody` rather than
+         *     `ReorderBody` because `requirements::dto::ReorderBody` already occupies
+         *     that schema name in utoipa's single flat namespace.
+         */
+        ReorderFeatureBody: {
+            /** Format: int32 */
+            priority: number;
         };
         /** @description Body of `POST /api/plans/{id}/requirements/reorder` (`requirements.ts:30-42`). */
         ReorderRequirementsBody: {
@@ -3840,6 +4373,13 @@ export interface components {
             type: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        /**
+         * @description Body of `PUT /features/active` (`packages/api/src/features/routes.ts:
+         *     66-68`).
+         */
+        SetActiveFeaturesBody: {
+            featureIds: string[];
         };
         SetChunksBody: {
             chunkIds: string[];
@@ -4210,6 +4750,29 @@ export interface components {
             type?: string | null;
         };
         /**
+         * @description Body of `PATCH /api/chunk-types/{id}` (`routes.ts:17-24,73-82`).
+         *
+         *     `description`/`icon` are tri-state: omitted (`None`) leaves the column
+         *     untouched, explicit `null` (`Some(None)`) clears it, a value sets it —
+         *     matching Node's `data.field !== undefined` conditional spread
+         *     (`packages/db/src/repository/vocabulary-catalog.ts:88-94`), which
+         *     forwards an explicit `null` through as a real update. `color`,
+         *     `examples` and `displayOrder` have no `t.Null()` variant in Node's PATCH
+         *     schema, so they stay plain `Option<T>` — there is no way to clear them.
+         *
+         *     `id` is deliberately absent: Node's patch schema omits it, so a chunk
+         *     type's slug can never be renamed through this endpoint.
+         */
+        UpdateChunkTypeBody: {
+            color?: string | null;
+            description?: string | null;
+            /** Format: int32 */
+            displayOrder?: number | null;
+            examples?: string[] | null;
+            icon?: string | null;
+            label?: string | null;
+        };
+        /**
          * @description Body of `PATCH /api/collections/{id}`
          *     (`packages/api/src/collections/routes.ts:45-60`). All three fields are
          *     plain two-state `Option<T>` (omitted = untouched, present = set) — this
@@ -4227,6 +4790,23 @@ export interface components {
             name?: string | null;
         };
         /**
+         * @description Body of `PATCH /api/connection-relations/{id}` (`routes.ts:37-45,116-125`).
+         *
+         *     `description` and `inverseOfId` are the two tri-state fields (both have
+         *     a `t.Null()` variant in Node's schema); everything else is plain
+         *     `Option<T>`.
+         */
+        UpdateConnectionRelationBody: {
+            arrowStyle?: null | components["schemas"]["ArrowStyle"];
+            color?: string | null;
+            description?: string | null;
+            direction?: null | components["schemas"]["RelationDirection"];
+            /** Format: int32 */
+            displayOrder?: number | null;
+            inverseOfId?: string | null;
+            label?: string | null;
+        };
+        /**
          * @description Body of `PATCH /api/vocabulary/{id}` (`routes.ts:124-128`). All three
          *     fields are two-state (`None` = leave untouched) — see
          *     `fubbik_db::repo::vocabulary::VocabularyPatch`'s doc comment for why
@@ -4236,6 +4816,23 @@ export interface components {
             category?: null | components["schemas"]["Category"];
             expects?: string[] | null;
             word?: string | null;
+        };
+        /**
+         * @description Body of `PATCH /features/{id}` (`packages/api/src/features/routes.ts:
+         *     83-90`). `description` and `color` are tri-state (`None` = untouched,
+         *     `Some(None)` = clear, `Some(Some(v))` = set) because Node types both as
+         *     `t.Optional(t.Union([t.String(), t.Null()]))`. `spaceIds` is stripped
+         *     off before the row update and applied separately, matching
+         *     `packages/api/src/features/service.ts:112`.
+         */
+        UpdateFeatureBody: {
+            color?: string | null;
+            description?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            priority?: number | null;
+            spaceIds?: string[] | null;
+            status?: null | components["schemas"]["FeatureStatus"];
         };
         /**
          * @description Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).
@@ -4438,6 +5035,20 @@ export interface components {
             name?: string | null;
         };
         /**
+         * @description Body of `PUT /chunks/{id}/deltas/{featureId}`
+         *     (`packages/api/src/features/routes.ts:137-139`).
+         *
+         *     `delta` is `t.Record(t.String(), t.Unknown())` in Node — an *object*,
+         *     with arbitrary values — so it is a `serde_json::Map` here rather than a
+         *     bare `Value`: a JSON array or string for `delta` is rejected, matching
+         *     Node. Which keys are permitted is checked in the service, not here, so
+         *     the rejection message can name the offending fields the way Node's
+         *     `validateDelta` does.
+         */
+        UpsertDeltaBody: {
+            delta: unknown;
+        };
+        /**
          * @description Bare `use_case` row — the shape `POST /use-cases` and `PATCH
          *     /use-cases/{id}` both return (`createUseCaseRepo`/`updateUseCaseRepo`
          *     `.returning()`). **Not** the shape `GET /use-cases` (list) returns — see
@@ -4630,6 +5241,126 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Activity"][];
                 };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_chunk_types: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkType"][];
+                };
+            };
+        };
+    };
+    create_chunk_type: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateChunkTypeBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkType"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_chunk_type: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_chunk_type: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateChunkTypeBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkType"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             404: {
                 headers: {
@@ -4940,6 +5671,93 @@ export interface operations {
             };
         };
     };
+    chunk_deltas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeltaWithFeature"][];
+                };
+            };
+        };
+    };
+    upsert_delta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                featureId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertDeltaBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkFeatureDelta"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_delta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                featureId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     dismiss_staleness: {
         parameters: {
             query?: never;
@@ -5243,6 +6061,126 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ChunkListResponse"];
                 };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_connection_relations: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionRelation"][];
+                };
+            };
+        };
+    };
+    create_connection_relation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateConnectionRelationBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionRelation"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_connection_relation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_connection_relation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateConnectionRelationBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionRelation"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             404: {
                 headers: {
@@ -5616,6 +6554,282 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MessageResponse"];
                 };
+            };
+        };
+    };
+    list_features: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+                status?: string | null;
+                search?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureListItem"][];
+                };
+            };
+        };
+    };
+    create_feature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFeatureBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feature"];
+                };
+            };
+        };
+    };
+    get_active_features: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    set_active_features: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetActiveFeaturesBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_feature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureDetail"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_feature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_feature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFeatureBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feature"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    feature_deltas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeltaWithChunk"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    merge_feature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reorder_feature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderFeatureBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feature"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

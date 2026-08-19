@@ -1,0 +1,97 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk_type SET\n             label = COALESCE($3, label),\n             description = CASE WHEN $4 THEN $5 ELSE description END,\n             icon = CASE WHEN $6 THEN $7 ELSE icon END,\n             color = COALESCE($8, color),\n             examples = COALESCE($9, examples),\n             display_order = COALESCE($10, display_order),\n             updated_at = now()\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, label, description, icon, color,\n                     examples AS \"examples: Json<Vec<String>>\",\n                     display_order, built_in, user_id, space_id,\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "label",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "examples: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "built_in",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "fce640551993f2440be2d302763758f7081bcae529993316d593372b227fb0e7"
+}

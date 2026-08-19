@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_type (id, label, user_id, space_id) VALUES ('bobs_spaced', 'Bob''s', $1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "da0db81d280a1bf891578138403295157832e55ae58bb6fab6cb54080bd68d39"
+}

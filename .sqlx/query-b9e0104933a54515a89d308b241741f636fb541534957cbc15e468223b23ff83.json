@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM feature WHERE id = $1 AND user_id = $2\n           RETURNING id, name, description, priority, status, color, user_id,\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "priority",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b9e0104933a54515a89d308b241741f636fb541534957cbc15e468223b23ff83"
+}

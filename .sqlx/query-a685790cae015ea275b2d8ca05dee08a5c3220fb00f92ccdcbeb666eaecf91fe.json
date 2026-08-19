@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_type\n             (id, label, description, icon, color, examples, display_order, built_in, user_id, space_id)\n           VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, NULL)\n           RETURNING id, label, description, icon, color,\n                     examples AS \"examples: Json<Vec<String>>\",\n                     display_order, built_in, user_id, space_id,\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "label",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "examples: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "built_in",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "a685790cae015ea275b2d8ca05dee08a5c3220fb00f92ccdcbeb666eaecf91fe"
+}
