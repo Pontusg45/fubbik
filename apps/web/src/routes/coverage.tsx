@@ -9,7 +9,7 @@ import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { TraceabilityContent } from "@/features/coverage/traceability-content";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/coverage")({
@@ -101,25 +101,11 @@ function ChunkCoverageTab({
             const query: { codebaseId?: string; detail?: string } = {};
             if (spaceId) query.codebaseId = spaceId;
             if (showMatrix) query.detail = "true";
-            // `requirements/coverage` has no Rust route yet — stays on legacyApi.
-            return unwrapEden(await legacyApi.api.requirements.coverage.get({ query }));
+            return unwrapEden(await api.api.requirements.coverage.get({ query }));
         }
     });
 
-    const data = coverageQuery.data as
-        | {
-              covered: { id: string; title: string; requirementCount: number }[];
-              uncovered: { id: string; title: string }[];
-              stats: { total: number; covered: number; uncovered: number; percentage: number };
-              matrix?: Array<{
-                  chunkId: string;
-                  chunkTitle: string;
-                  requirementId: string;
-                  requirementTitle: string;
-                  requirementStatus: string;
-              }>;
-          }
-        | undefined;
+    const data = coverageQuery.data;
 
     const uniqueRequirements = useMemo(() => {
         if (!data?.matrix) return [];

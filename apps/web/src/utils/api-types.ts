@@ -1151,6 +1151,33 @@ export interface paths {
         patch: operations["bulk_action"];
         trace?: never;
     };
+    "/api/requirements/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Both paths live under `/api/requirements/...` even though this is its own
+         *     domain module — that is Node's URL layout
+         *     (`packages/api/src/coverage/routes.ts:9,28`), mounted from a separate
+         *     `coverageRoutes` Elysia instance the same way. They are static segments,
+         *     so axum's router prefers them over `requirements::routes`' `/{id}`
+         *     (same arrangement `/api/requirements/stats` already relies on).
+         * @description **One handler, two response shapes.** `?detail=true` adds a `matrix`
+         *     field; anything else — including `?detail=1` — omits the key entirely.
+         *     See `dto::CoverageResponse` and `dto::CoverageQuery::detail`.
+         */
+        get: operations["get_coverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/requirements/export": {
         parameters: {
             query?: never;
@@ -1196,6 +1223,23 @@ export interface paths {
             cookie?: never;
         };
         get: operations["stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/traceability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns a **bare array**, not an envelope — see `dto::TraceabilityRow`. */
+        get: operations["get_traceability"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2310,6 +2354,81 @@ export interface components {
         CountResponse: {
             /** Format: int64 */
             count: number;
+        };
+        /**
+         * @description One (chunk, requirement) pair, published as-is inside the `matrix` field
+         *     of `GET /api/requirements/coverage?detail=true`.
+         *
+         *     `requirement_status` is plain `text NOT NULL DEFAULT 'untested'` at the DB
+         *     layer with no CHECK constraint
+         *     (`crates/fubbik-db/migrations/0001_init.sql:601`) — it stays a `String`
+         *     here rather than becoming an enum, matching
+         *     `fubbik_db::repo::requirement::Requirement::status`. This is a read-only
+         *     projection; nothing on this path writes the column, so there is nothing
+         *     to validate.
+         */
+        CoverageMatrixRow: {
+            chunkId: string;
+            chunkTitle: string;
+            requirementId: string;
+            requirementStatus: string;
+            requirementTitle: string;
+        };
+        /**
+         * @description Body of `GET /api/requirements/coverage`.
+         *
+         *     **This one struct is two response shapes.** Node's route dispatches on
+         *     `detail` to two different service functions
+         *     (`packages/api/src/coverage/routes.ts:14-17`): `getCoverage` returns
+         *     `{covered, uncovered, stats}`, and `getCoverageMatrix` returns that
+         *     object spread with an extra `matrix` key
+         *     (`packages/api/src/coverage/service.ts:9-12`). So `matrix` is *absent*
+         *     from the default response, not `null` and not `[]` — hence
+         *     `skip_serializing_if`, which drops the key entirely when `None`.
+         *
+         *     The distinction is load-bearing rather than cosmetic: computing `matrix`
+         *     is a second query over `requirement_chunk`, and the default path must not
+         *     run it. That is why this is an `Option` populated by one of two service
+         *     functions instead of a field that is always filled in.
+         */
+        CoverageResponse: {
+            covered: components["schemas"]["CoveredChunk"][];
+            /** @description Present only for `?detail=true`. */
+            matrix?: components["schemas"]["CoverageMatrixRow"][] | null;
+            stats: components["schemas"]["CoverageStats"];
+            uncovered: components["schemas"]["UncoveredChunk"][];
+        };
+        /**
+         * @description `packages/api/src/coverage/service.ts:43`. All four are plain numbers on
+         *     the wire.
+         *
+         *     `percentage` is `Math.round((covered / total) * 100)` guarded by
+         *     `total > 0 ? ... : 0` — the guard matters because in JS `0 / 0` is `NaN`
+         *     and `Math.round(NaN)` is `NaN`, which `JSON.stringify` emits as `null`.
+         *     Rust would produce `NaN` too and then fail to serialise it, so the same
+         *     zero-total guard is reproduced in `service::get_coverage`.
+         */
+        CoverageStats: {
+            /** Format: int64 */
+            covered: number;
+            /** Format: int64 */
+            percentage: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            uncovered: number;
+        };
+        /**
+         * @description A chunk with at least one requirement pointing at it
+         *     (`packages/api/src/coverage/service.ts:23,29`). Carries the count;
+         *     `UncoveredChunk` deliberately does not, because Node's uncovered entries
+         *     are `{id, title}` only — the count there is always `0` and Node omits it.
+         */
+        CoveredChunk: {
+            id: string;
+            /** Format: int64 */
+            requirementCount: number;
+            title: string;
         };
         /**
          * @description Body of `POST /api/plans/{id}/analyze` (`analyze.ts:49-78`). `kind` is
@@ -4037,6 +4156,40 @@ export interface components {
         TextSpan: {
             end: number;
             start: number;
+        };
+        /**
+         * @description One row of `GET /api/requirements/traceability`. The endpoint returns a
+         *     **bare array** of these, not an envelope
+         *     (`packages/api/src/coverage/service.ts:16-18` returns the repository
+         *     result directly).
+         *
+         *     `planSteps` and `sessions` are **always empty**. Node hard-codes them:
+         *     `requirements.map(req => ({...req, planSteps: [] as unknown[], sessions:
+         *     [] as unknown[]}))` (`packages/db/src/repository/coverage.ts:93-97`),
+         *     under a `TODO` saying traceability needs reworking now that the plans
+         *     rewrite deleted `implementationSession`, `sessionRequirementRef` and
+         *     `planStep`. The fields are kept, still empty, because
+         *     `apps/web/src/features/coverage/traceability-content.tsx:52-54` reads
+         *     `.length` on both and would crash on `undefined`. `serde_json::Value`
+         *     element type mirrors Node's `unknown[]`: nothing populates them, so
+         *     there is no element shape to name.
+         */
+        TraceabilityRow: {
+            id: string;
+            planSteps: unknown[];
+            priority?: string | null;
+            sessions: unknown[];
+            status: string;
+            title: string;
+        };
+        /**
+         * @description A chunk no requirement references
+         *     (`packages/api/src/coverage/service.ts:24,31`). Two fields, no
+         *     `requirementCount` — see `CoveredChunk`.
+         */
+        UncoveredChunk: {
+            id: string;
+            title: string;
         };
         /**
          * @description Body of `PATCH /api/plans/{id}/analyze/{itemId}` (`analyze.ts:79-97`).
@@ -6779,6 +6932,28 @@ export interface operations {
             };
         };
     };
+    get_coverage: {
+        parameters: {
+            query?: {
+                codebaseId?: string | null;
+                detail?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverageResponse"];
+                };
+            };
+        };
+    };
     export_all: {
         parameters: {
             query: {
@@ -6833,7 +7008,7 @@ export interface operations {
     stats: {
         parameters: {
             query?: {
-                space_id?: string | null;
+                spaceId?: string | null;
             };
             header?: never;
             path?: never;
@@ -6847,6 +7022,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RequirementStats"];
+                };
+            };
+        };
+    };
+    get_traceability: {
+        parameters: {
+            query?: {
+                codebaseId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceabilityRow"][];
                 };
             };
         };

@@ -32,25 +32,19 @@ import { createClient } from "./api-proxy.future";
 // when one lands, move its call sites back to `api` and drop it from the
 // list above (both here and in the call sites themselves).
 //
-// `requirements` was ported off this list once every call site's request
-// body and response shape was checked field-by-field against Rust's DTOs
-// (see `RequirementDetail`/`Requirement`/etc. doc comments in
-// `openapi.json`) — all matched except one query-param casing bug (see the
-// `requirements/stats` note below), so every call site moved to `api`
-// except two sub-routes Rust doesn't serve at all yet:
-//   - `GET /requirements/coverage` (`src/routes/coverage.tsx`)
-//   - `GET /requirements/traceability` (`src/features/coverage/
-//     traceability-content.tsx`)
-// Also found in that audit: `GET /api/requirements/stats`'s query param is
-// `space_id` (snake_case) while every sibling route in the domain uses
-// `spaceId` (camelCase) — Rust's `StatsQuery`
-// (`crates/fubbik-api/src/requirements/dto.rs:148-151`) is missing the
-// `#[serde(rename_all = "camelCase")]` its neighbor `ExportAllQuery` has.
-// The request client's query type is untyped (`Record<string, unknown>`),
-// so this compiles either way — passing `spaceId` would silently be
-// ignored by the server. The call site in `src/routes/requirements.tsx`
-// sends `space_id` to match Rust's actual (buggy) contract; the mismatch
-// itself is a Rust-side fix this migration didn't make.
+// `requirements` is fully on `api`, including `GET /requirements/coverage`
+// and `GET /requirements/traceability` (ported alongside the migration).
+//
+// Migrating those call sites is what VERIFIES a port: request bodies and
+// responses are typed from `openapi.json`, so a wrong shape is a compile
+// error. Leaving sites on `legacyApi` after a domain lands throws that away
+// — all 27 requirements sites sat here long after the port, and removing
+// their `as any` casts surfaced three real bugs (two always-empty reads in
+// the web app, and `requirements/stats` silently ignoring `spaceId` because
+// Rust's `StatsQuery` was missing `rename_all = "camelCase"`; serde drops
+// unknown fields rather than rejecting them, so it returned unscoped totals
+// while looking healthy). A ported domain is not a migrated domain — check
+// this for any domain marked done.
 //
 // `documents` and `vocabulary` were ported off this list once their DTOs
 // were checked field-by-field against every call site's request body and

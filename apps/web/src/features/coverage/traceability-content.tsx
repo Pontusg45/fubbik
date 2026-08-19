@@ -5,7 +5,7 @@ import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardPanel } from "@/components/ui/card";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -14,25 +14,25 @@ const STATUS_STYLES: Record<string, string> = {
     untested: "bg-muted text-muted-foreground"
 };
 
-interface TraceabilityRow {
-    id: string;
-    title: string;
-    status: string;
-    priority: string | null;
-    planSteps: Array<{
-        stepId: string;
-        stepDescription: string;
-        stepStatus: string;
-        planId: string;
-        planTitle: string;
-        planStatus: string;
-    }>;
-    sessions: Array<{
-        sessionId: string;
-        sessionTitle: string;
-        sessionStatus: string;
-    }>;
+// `planSteps` and `sessions` come back as genuinely untyped empty arrays:
+// Node's `getTraceabilityMatrix` hard-codes both to `[]` under its own TODO
+// from the plans rewrite, so no backend populates them and there is no
+// element shape to publish — Rust's DTO mirrors that as `unknown[]`
+// (`crates/fubbik-api/src/coverage/dto.rs:113-127`). These describe the shape
+// the render code below is written against for when that lands. The narrowing
+// casts at the two map sites are the only place this shape is asserted; the
+// row's scalar fields are checked against the generated API types as normal.
+// `sessions` needs no element type here — it is only ever counted, never read
+// into, so it stays `unknown[]` rather than asserting a shape nothing checks.
+interface PlanStepRef {
+    stepId: string;
+    stepDescription: string;
+    stepStatus: string;
+    planId: string;
+    planTitle: string;
+    planStatus: string;
 }
+
 
 export function TraceabilityContent() {
     const { spaceId } = useActiveSpace();
@@ -42,8 +42,7 @@ export function TraceabilityContent() {
         queryFn: async () => {
             const query: { codebaseId?: string } = {};
             if (spaceId) query.codebaseId = spaceId;
-            // `requirements/traceability` has no Rust route yet — stays on legacyApi.
-            return unwrapEden(await legacyApi.api.requirements.traceability.get({ query })) as TraceabilityRow[];
+            return unwrapEden(await api.api.requirements.traceability.get({ query }));
         }
     });
 
@@ -92,9 +91,9 @@ export function TraceabilityContent() {
                     // Group plan steps by plan
                     const planGroups = new Map<
                         string,
-                        { planId: string; planTitle: string; planStatus: string; steps: typeof req.planSteps }
+                        { planId: string; planTitle: string; planStatus: string; steps: PlanStepRef[] }
                     >();
-                    for (const step of req.planSteps) {
+                    for (const step of req.planSteps as PlanStepRef[]) {
                         if (!planGroups.has(step.planId)) {
                             planGroups.set(step.planId, {
                                 planId: step.planId,
