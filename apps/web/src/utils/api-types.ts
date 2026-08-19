@@ -1103,6 +1103,220 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_requirements"];
+        put?: never;
+        post: operations["create_requirement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["batch_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["bulk_action"];
+        trace?: never;
+    };
+    "/api/requirements/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bare text, not JSON — Node's `exportAll`/`exportRequirement` resolve to
+         *     a plain string and Elysia serialises a primitive response as
+         *     `text/plain`, same shape convention as `staleness::routes::stale_count`.
+         */
+        get: operations["export_all"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["reorder"];
+        trace?: never;
+    };
+    "/api/requirements/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_requirement"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_requirement"];
+        options?: never;
+        head?: never;
+        patch: operations["update_requirement"];
+        trace?: never;
+    };
+    "/api/requirements/{id}/chunks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["set_chunks"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/{id}/dependencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_dependencies"];
+        put?: never;
+        post: operations["add_dependency"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/{id}/dependencies/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_dependency_graph"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/{id}/dependencies/{dependsOnId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["remove_dependency"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bare text, not JSON — see [`export_all`]'s doc comment. */
+        get: operations["export_one"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirements/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["update_status"];
+        trace?: never;
+    };
     "/api/saved-graphs": {
         parameters: {
             query?: never;
@@ -1788,6 +2002,13 @@ export interface components {
             spaceId?: string | null;
             userId: string;
         };
+        /**
+         * @description Body of `POST /requirements/{id}/dependencies`
+         *     (`packages/api/src/requirements/dependency-routes.ts:20-22`).
+         */
+        AddDependencyBody: {
+            dependsOnId: string;
+        };
         /** @description Body of `POST /api/plans/{id}/requirements` (`requirements.ts:9-20`). */
         AddRequirementBody: {
             requirementId: string;
@@ -1835,6 +2056,56 @@ export interface components {
             id: string;
             pattern: string;
         };
+        BatchCreateBody: {
+            requirements: components["schemas"]["BatchRequirementInput"][];
+            spaceId?: string | null;
+        };
+        /**
+         * @description Shape of `POST /requirements/batch`, matching Node's `batchCreateRequirements`
+         *     return object (`packages/api/src/requirements/batch-service.ts:97-101`).
+         */
+        BatchCreateResponse: {
+            created: number;
+            requirements: components["schemas"]["BatchCreatedRequirement"][];
+            useCasesCreated: components["schemas"]["BatchUseCaseCreated"][];
+        };
+        BatchCreatedRequirement: {
+            id: string;
+            title: string;
+            useCaseId?: string | null;
+        };
+        /**
+         * @description One entry of `POST /requirements/batch`'s `requirements` array
+         *     (`packages/api/src/requirements/routes.ts:172-182`).
+         */
+        BatchRequirementInput: {
+            description?: string | null;
+            parentUseCaseName?: string | null;
+            priority?: null | components["schemas"]["Priority"];
+            steps: components["schemas"]["RequirementStep"][];
+            title: string;
+            useCaseId?: string | null;
+            useCaseName?: string | null;
+        };
+        /**
+         * @description One element of `POST /requirements/batch`'s validation-failure `errors`
+         *     array — matches Node's `{ index, step, error }`
+         *     (`packages/api/src/requirements/batch-service.ts:26-33`): `index` is
+         *     which entry in the `requirements` array failed, `step`/`error` are
+         *     `validator::StepError`'s own fields spread in alongside it.
+         */
+        BatchStepError: {
+            error: string;
+            /** Format: int32 */
+            index: number;
+            /** Format: int32 */
+            step: number;
+        };
+        BatchUseCaseCreated: {
+            id: string;
+            name: string;
+            parentId?: string | null;
+        };
         /**
          * @description `t.Union([t.Literal("approve"), t.Literal("reject")])`
          *     (`packages/api/src/proposals/routes.ts:78`) — the one closed set in this
@@ -1845,16 +2116,16 @@ export interface components {
          */
         BulkAction: "approve" | "reject";
         /**
-         * @description Body of `POST /proposals/bulk`. Processed sequentially and fails fast on
-         *     the first error — matching Node's `Effect.forEach(actions, ..., {
-         *     concurrency: 1 })` (`packages/api/src/proposals/service.ts:92-99`), which
-         *     short-circuits the whole request on the first `approveProposal`/
-         *     `rejectProposal` failure. Writes already committed by earlier entries in
-         *     the array are **not** rolled back — there is no transaction around the
-         *     loop in Node, and none is added here.
+         * @description Body of `PATCH /requirements/bulk` (`packages/api/src/requirements/
+         *     routes.ts:49-55`). `use_case_id` is tri-state
+         *     (`t.Optional(t.Union([t.String(), t.Null()]))`) — only meaningful for
+         *     `action: "set_use_case"`.
          */
         BulkActionBody: {
-            actions: components["schemas"]["BulkActionItem"][];
+            action: components["schemas"]["BulkActionKind"];
+            ids: string[];
+            status?: null | components["schemas"]["Status"];
+            useCaseId?: string | null;
         };
         /**
          * @description One entry of `POST /proposals/bulk`'s `actions` array
@@ -1865,6 +2136,8 @@ export interface components {
             note?: string | null;
             proposalId: string;
         };
+        /** @enum {string} */
+        BulkActionKind: "set_status" | "set_use_case" | "delete";
         /** @description Body of `POST /api/vocabulary/bulk` (`routes.ts:69-73`). */
         BulkCreateBody: {
             entries: components["schemas"]["EntryInput"][];
@@ -2138,6 +2411,19 @@ export interface components {
             reason?: string | null;
         };
         /**
+         * @description Body of `POST /requirements` (`packages/api/src/requirements/routes.ts:
+         *     131-139`).
+         */
+        CreateRequirementBody: {
+            description?: string | null;
+            origin?: null | components["schemas"]["Origin"];
+            priority?: null | components["schemas"]["Priority"];
+            spaceId?: string | null;
+            steps: components["schemas"]["RequirementStep"][];
+            title: string;
+            useCaseId?: string | null;
+        };
+        /**
          * @description Body of `POST /api/saved-graphs`
          *     (`packages/api/src/saved-graphs/routes.ts:29-37`). `chunkIds` and
          *     `positions` are structurally validated by Elysia's schema (`t.Array(t.String())`,
@@ -2158,7 +2444,7 @@ export interface components {
             layoutAlgorithm?: string | null;
             name: string;
             positions: {
-                [key: string]: components["schemas"]["Position"];
+                [key: string]: components["schemas"]["GraphNodePosition"];
             };
             spaceId?: string | null;
         };
@@ -2267,6 +2553,64 @@ export interface components {
         CreateWorkspaceBody: {
             description?: string | null;
             name: string;
+        };
+        /**
+         * @description Matches Node's `CrossRefWarning` (`packages/api/src/requirements/
+         *     cross-ref.ts:5-9`). Node's `type` union also names `"chunk_not_found"`,
+         *     but nothing in `crossReferenceSteps`'s body ever produces it (the only
+         *     `warnings.push` call in the function hard-codes `"file_not_found"`) — an
+         *     unreachable variant kept here only because it is part of the type Node
+         *     declares, matching this port's usual "reproduce the declared shape,
+         *     even the unreachable branch" convention for tagged unions.
+         */
+        CrossRefWarning: {
+            reference: string;
+            /** Format: int32 */
+            step: number;
+            type: components["schemas"]["CrossRefWarningType"];
+        };
+        /** @enum {string} */
+        CrossRefWarningType: "file_not_found" | "chunk_not_found";
+        /**
+         * @description Shape of `GET /requirements/{id}/dependencies/graph`: `{nodes, edges}`,
+         *     matching Node's `getDependencyGraph` return object
+         *     (`packages/api/src/requirements/dependency-service.ts:61-67`).
+         */
+        DependencyGraph: {
+            edges: components["schemas"]["DependencyGraphEdge"][];
+            nodes: components["schemas"]["DependencyGraphNode"][];
+        };
+        DependencyGraphEdge: {
+            source: string;
+            target: string;
+        };
+        /**
+         * @description One node of `GET /requirements/{id}/dependencies/graph`'s `nodes` array,
+         *     matching Node's inline shape (`packages/api/src/requirements/
+         *     dependency-service.ts:52-56`).
+         */
+        DependencyGraphNode: {
+            id: string;
+            isCurrent: boolean;
+            priority?: string | null;
+            status: string;
+            title: string;
+        };
+        /**
+         * @description Shape of `GET /requirements/{id}/dependencies`: `{dependsOn,
+         *     dependedOnBy}`, matching Node's `getDependencies` return object
+         *     (`packages/db/src/repository/requirement-dependency.ts:39-65`).
+         */
+        DependencySides: {
+            dependedOnBy: components["schemas"]["DependencySummary"][];
+            dependsOn: components["schemas"]["DependencySummary"][];
+        };
+        /** @description One requirement's summary, as returned by [`get`] and [`transitive`]. */
+        DependencySummary: {
+            id: string;
+            priority?: string | null;
+            status: string;
+            title: string;
         };
         /**
          * @description `camelCase` serialisation matches every other wire type in this crate.
@@ -2455,6 +2799,12 @@ export interface components {
             path: string;
         };
         /**
+         * @description Matches Node's `FormatSchema` (`t.Union([t.Literal("gherkin"),
+         *     t.Literal("vitest"), t.Literal("markdown")])`).
+         * @enum {string}
+         */
+        Format: "gherkin" | "vitest" | "markdown";
+        /**
          * @description `"exact" | "oneOf" | "exists"` — likewise a real `t.Union` of literals
          *     (`packages/api/src/templates/routes.ts:18`).
          * @enum {string}
@@ -2484,6 +2834,16 @@ export interface components {
             pathEdges?: components["schemas"]["PathEdgeInfo"][] | null;
             referenceChunk?: string | null;
             type: string;
+        };
+        /**
+         * @description A node position on the graph canvas. `f64` matches Elysia's `t.Number()`
+         *     (a JS `number`).
+         */
+        GraphNodePosition: {
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
         };
         HeadingRule: {
             /** Format: int32 */
@@ -2553,6 +2913,18 @@ export interface components {
          */
         ImportStatus: "unchanged" | "created" | "synced";
         /**
+         * @description Shape of `GET /requirements`: `{requirements, total}`, matching Node's
+         *     `listRequirementsRepo` return expression returned bare by the route
+         *     (`packages/api/src/requirements/service.ts:75-87`, `routes.ts:95-103`)
+         *     — not wrapped further, and no `limit`/`offset` echoed back (unlike
+         *     `chunks::dto::ListChunksResponse`).
+         */
+        ListRequirementsResponse: {
+            requirements: components["schemas"]["Requirement"][];
+            /** Format: int64 */
+            total: number;
+        };
+        /**
          * @description `"exact" | "prefix" | "contains"` — a real Elysia `t.Union` of literals
          *     in Node (`packages/api/src/templates/routes.ts:7`), not free text, so
          *     modelling it as an enum here matches the contract rather than adding a
@@ -2621,7 +2993,12 @@ export interface components {
         OkResponse: {
             ok: boolean;
         };
-        /** @enum {string} */
+        /**
+         * @description Matches Node's `t.Union([t.Literal("human"), t.Literal("ai")])`,
+         *     constrained everywhere it appears: create/update bodies AND the list
+         *     query filter (`packages/api/src/requirements/routes.ts:111,138,215`).
+         * @enum {string}
+         */
         Origin: "human" | "ai";
         /**
          * @description Body of `POST /api/vocabulary/parse` (`routes.ts:86-89`). `text` has no
@@ -2645,7 +3022,7 @@ export interface components {
         };
         ParsedToken: {
             category?: string | null;
-            position: components["schemas"]["Position"];
+            position: components["schemas"]["TextSpan"];
             text: string;
         };
         PathEdgeInfo: {
@@ -2876,10 +3253,15 @@ export interface components {
             taskId: string;
             url: string;
         };
-        Position: {
-            end: number;
-            start: number;
-        };
+        /**
+         * @description Matches Node's `PrioritySchema` (`t.Union([t.Literal("must"),
+         *     t.Literal("should"), t.Literal("could"), t.Literal("wont")])`),
+         *     constrained on create/update bodies. The list query's `priority` filter
+         *     is unconstrained free text (`t.Optional(t.String())`) — see
+         *     `ListRequirementsQuery::priority`.
+         * @enum {string}
+         */
+        Priority: "must" | "should" | "could" | "wont";
         /**
          * @description Row shape for `GET /api/proposals` — the global queue joins `chunk` for
          *     `chunkTitle`/`chunkType` (`packages/db/src/repository/chunk-proposal.ts:41-63`),
@@ -3005,6 +3387,9 @@ export interface components {
             itemIds: string[];
             kind: string;
         };
+        ReorderBody: {
+            requirementIds: string[];
+        };
         /**
          * @description One entry of `PUT /api/favorites/reorder`'s bare-array body
          *     (`packages/api/src/favorites/routes.ts:39-44`). The body is a plain
@@ -3019,9 +3404,148 @@ export interface components {
         ReorderRequirementsBody: {
             requirementIds: string[];
         };
+        ReorderResponse: {
+            updated: number;
+        };
         /** @description Body of `POST /api/plans/{id}/tasks/reorder` (`tasks.ts:178`). */
         ReorderTasksBody: {
             taskIds: string[];
+        };
+        /**
+         * @description `camelCase` serialisation matches every other wire type in this crate.
+         *
+         *     `status` is plain `text NOT NULL DEFAULT 'untested'` at the DB layer —
+         *     no CHECK constraint (`crates/fubbik-db/migrations/0001_init.sql:603`).
+         *     Node's Elysia schema constrains it to `passing | failing | untested`
+         *     **only** on the two routes that write it directly (`PATCH
+         *     /requirements/{id}/status`'s `StatusSchema`, and `PATCH
+         *     /requirements/bulk`'s `set_status` action) — the list filter
+         *     (`GET /requirements?status=`) is `t.Optional(t.String())`, unconstrained.
+         *     `priority` is the same shape: free `text`, nullable, constrained to
+         *     `must | should | could | wont` only on create/update bodies, free-text
+         *     on the list filter. Both stay `String`/`Option<String>` here; the write
+         *     paths' DTOs are what carry the enum constraint (see
+         *     `fubbik_api::requirements::dto::Status`/`Priority`).
+         */
+        Requirement: {
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            /** Format: int32 */
+            order: number;
+            origin: string;
+            priority?: string | null;
+            reviewStatus: string;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            reviewedBy?: string | null;
+            spaceId?: string | null;
+            status: string;
+            steps: components["schemas"]["RequirementStep"][];
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            useCaseId?: string | null;
+            userId: string;
+        };
+        /**
+         * @description One `chunk` row's summary fields — the projection `getChunksForRequirement`
+         *     returns (`packages/db/src/repository/requirement.ts:182-195`).
+         */
+        RequirementChunk: {
+            content: string;
+            id: string;
+            title: string;
+            type: string;
+        };
+        /**
+         * @description One `requirement_chunk` join row, matching Node's `setRequirementChunks`
+         *     return shape exactly: `.returning()` on the raw Drizzle insert, no
+         *     column projection, so both columns come back
+         *     (`packages/db/src/repository/requirement.ts:158-180`). This is the
+         *     actual response body of `PUT /requirements/{id}/chunks` — **not** the
+         *     linked chunks' own title/content/type (that shape is
+         *     [`RequirementChunk`], returned only by `GET /requirements/{id}` and
+         *     nothing else).
+         */
+        RequirementChunkLink: {
+            chunkId: string;
+            requirementId: string;
+        };
+        /**
+         * @description Shape of `GET /requirements/{id}`, matching Node's `getRequirement`
+         *     return expression: `{ ...req, chunks }`
+         *     (`packages/api/src/requirements/service.ts:89-97`) — a genuine object
+         *     spread, so the requirement's own fields sit at the *top level* alongside
+         *     `chunks`. Modelled as an explicit flat struct, same convention
+         *     `documents::dto::DocumentDetail` documents (no DTO in this crate uses
+         *     `#[serde(flatten)]`, to keep the utoipa-generated schema unambiguous).
+         */
+        RequirementDetail: {
+            chunks: components["schemas"]["RequirementChunk"][];
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            /** Format: int32 */
+            order: number;
+            origin: string;
+            priority?: string | null;
+            reviewStatus: string;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            reviewedBy?: string | null;
+            spaceId?: string | null;
+            status: string;
+            steps: components["schemas"]["RequirementStep"][];
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            useCaseId?: string | null;
+            userId: string;
+        };
+        /**
+         * @description Matches Node's `getRequirementStats`
+         *     (`packages/db/src/repository/requirement.ts:266-290`): counts grouped
+         *     by `status`, folded into fixed `passing`/`failing`/`untested` buckets
+         *     (any other status value, though nothing in this port's write paths can
+         *     produce one, would count toward `total` but no named bucket — same as
+         *     Node).
+         */
+        RequirementStats: {
+            /** Format: int64 */
+            failing: number;
+            /** Format: int64 */
+            passing: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            untested: number;
+        };
+        /**
+         * @description One BDD step, matching Node's `RequirementStep`
+         *     (`packages/db/src/schema/requirement.ts:9-13`). `params` is a free-form
+         *     `{key: value}` map used by `export::interpolate` to fill `{key}`
+         *     placeholders in `text` — same shape Node's `t.Optional(t.Record(t.String(),
+         *     t.String()))` accepts.
+         */
+        RequirementStep: {
+            keyword: components["schemas"]["StepKeyword"];
+            params?: {
+                [key: string]: string;
+            } | null;
+            text: string;
+        };
+        /**
+         * @description Shape of `POST /requirements` and `PATCH /requirements/{id}`, matching
+         *     Node's `{ requirement, warnings, vocabularyWarnings }`
+         *     (`packages/api/src/requirements/service.ts:133,185`).
+         */
+        RequirementWithWarnings: {
+            requirement: components["schemas"]["Requirement"];
+            vocabularyWarnings: components["schemas"]["StepVocabularyWarning"][];
+            warnings: components["schemas"]["CrossRefWarning"][];
         };
         /**
          * @description Return value of [`reset`], matching Node's `resetSpaceData` return shape
@@ -3071,7 +3595,7 @@ export interface components {
             layoutAlgorithm: string;
             name: string;
             positions: {
-                [key: string]: components["schemas"]["Position"];
+                [key: string]: components["schemas"]["GraphNodePosition"];
             };
             spaceId?: string | null;
             /** Format: date-time */
@@ -3186,6 +3710,9 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        SetChunksBody: {
+            chunkIds: string[];
+        };
         /**
          * @description Body of `PATCH /api/settings/codebase`
          *     (`packages/api/src/settings/routes.ts:38-54`). `codebaseId` here is a
@@ -3292,6 +3819,54 @@ export interface components {
             connections: number;
             /** Format: int64 */
             tags: number;
+        };
+        /**
+         * @description Matches Node's `StatusSchema` (`t.Union([t.Literal("passing"),
+         *     t.Literal("failing"), t.Literal("untested")])`), constrained on `PATCH
+         *     /requirements/{id}/status` and the `set_status` bulk action. The list
+         *     query's `status` filter is unconstrained free text — see
+         *     `ListRequirementsQuery::status`.
+         * @enum {string}
+         */
+        Status: "passing" | "failing" | "untested";
+        /**
+         * @description One validation failure. `step` is the zero-based index into the input
+         *     steps array, or `-1` for the two whole-sequence checks ("must contain a
+         *     `when`"/"must contain a `then`") — matches Node's `StepError` exactly
+         *     (`packages/api/src/requirements/validator.ts:3-6`).
+         */
+        StepError: {
+            error: string;
+            /** Format: int32 */
+            step: number;
+        };
+        /**
+         * @description The five BDD step keywords. Constrained to an enum because Node's route
+         *     schema constrains it too — `StepSchema.keyword` is
+         *     `t.Union([t.Literal("given"), t.Literal("when"), t.Literal("then"),
+         *     t.Literal("and"), t.Literal("but")])`
+         *     (`packages/api/src/requirements/routes.ts:10`), on every route that
+         *     accepts steps (create, update, batch). Contrast `status`/`priority`,
+         *     which are genuinely free `text` at the DB layer and only sometimes
+         *     constrained at specific routes — see `Requirement::status`'s doc
+         *     comment.
+         * @enum {string}
+         */
+        StepKeyword: "given" | "when" | "then" | "and" | "but";
+        /**
+         * @description `StepVocabularyWarning extends VocabularyWarning { step: number }`
+         *     (`packages/api/src/requirements/service.ts:28-30`) — a controlled-
+         *     vocabulary warning plus which step it came from. Fields duplicated
+         *     (rather than `#[serde(flatten)]`ing `vocabulary::parser::VocabularyWarning`)
+         *     for the same utoipa-schema-clarity reason as [`RequirementDetail`].
+         */
+        StepVocabularyWarning: {
+            message: string;
+            position: components["schemas"]["TextSpan"];
+            /** Format: int32 */
+            step: number;
+            type: components["schemas"]["WarningType"];
+            word: string;
         };
         /** @description Body of `POST /api/vocabulary/suggest` (`routes.ts:51-53`). */
         SuggestBody: {
@@ -3447,6 +4022,10 @@ export interface components {
             type: string;
             userId?: string | null;
         };
+        TextSpan: {
+            end: number;
+            start: number;
+        };
         /**
          * @description Body of `PATCH /api/plans/{id}/analyze/{itemId}` (`analyze.ts:79-97`).
          *     `kind` is deliberately absent — Node's own body schema has no field for
@@ -3512,6 +4091,24 @@ export interface components {
             title?: string | null;
         };
         /**
+         * @description Body of `PATCH /requirements/{id}` (`packages/api/src/requirements/
+         *     routes.ts:208-217`). `description`/`priority`/`space_id`/`use_case_id`
+         *     are tri-state (`None` = untouched, `Some(None)` = clear, `Some(Some(v))`
+         *     = set), matching Node's `t.Optional(t.Union([T, t.Null()]))` for each.
+         *     `title`/`steps`/`origin`/`review_status` have no null variant in Node's
+         *     schema, so plain `Option<T>`.
+         */
+        UpdateRequirementBody: {
+            description?: string | null;
+            origin?: null | components["schemas"]["Origin"];
+            priority?: null | components["schemas"]["Priority"];
+            reviewStatus?: null | components["schemas"]["ReviewStatus"];
+            spaceId?: string | null;
+            steps?: components["schemas"]["RequirementStep"][] | null;
+            title?: string | null;
+            useCaseId?: string | null;
+        };
+        /**
          * @description Body of `PATCH /api/saved-graphs/{id}`
          *     (`packages/api/src/saved-graphs/routes.ts:53-59`). `description` is
          *     tri-state, matching Node's `t.Optional(t.Union([t.String(), t.Null()]))`:
@@ -3528,7 +4125,7 @@ export interface components {
             layoutAlgorithm?: string | null;
             name?: string | null;
             positions?: {
-                [key: string]: components["schemas"]["Position"];
+                [key: string]: components["schemas"]["GraphNodePosition"];
             } | null;
         };
         /**
@@ -3548,6 +4145,9 @@ export interface components {
             localPaths?: string[] | null;
             name?: string | null;
             remoteUrl?: string | null;
+        };
+        UpdateStatusBody: {
+            status: components["schemas"]["Status"];
         };
         /**
          * @description `tag_type_id` is deliberately `Option<Option<String>>`, not
@@ -3770,7 +4370,7 @@ export interface components {
         };
         VocabularyWarning: {
             message: string;
-            position: components["schemas"]["Position"];
+            position: components["schemas"]["TextSpan"];
             type: components["schemas"]["WarningType"];
             word: string;
         };
@@ -6036,6 +6636,501 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_requirements: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+                useCaseId?: string | null;
+                search?: string | null;
+                status?: string | null;
+                priority?: string | null;
+                origin?: null | components["schemas"]["Origin"];
+                reviewStatus?: null | components["schemas"]["ReviewStatus"];
+                limit?: string | null;
+                offset?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListRequirementsResponse"];
+                };
+            };
+        };
+    };
+    create_requirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRequirementBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementWithWarnings"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    batch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchCreateBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchCreateResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    bulk_action: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkActionBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": number;
+                };
+            };
+        };
+    };
+    export_all: {
+        parameters: {
+            query: {
+                format: components["schemas"]["Format"];
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+        };
+    };
+    reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReorderResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    stats: {
+        parameters: {
+            query?: {
+                space_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementStats"];
+                };
+            };
+        };
+    };
+    get_requirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementDetail"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_requirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_requirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRequirementBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementWithWarnings"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    set_chunks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetChunksBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementChunkLink"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_dependencies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DependencySides"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_dependency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDependencyBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_dependency_graph: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DependencyGraph"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_dependency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                dependsOnId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    export_one: {
+        parameters: {
+            query: {
+                format: components["schemas"]["Format"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateStatusBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Requirement"];
+                };
             };
             404: {
                 headers: {
