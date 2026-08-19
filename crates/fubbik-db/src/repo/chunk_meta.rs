@@ -146,3 +146,29 @@ pub async fn replace_file_refs(
     tx.commit().await?;
     Ok(())
 }
+
+/// Reports whether any of `user_id`'s chunks carries a `chunk_file_ref`
+/// with exactly this `path`. Backs
+/// `fubbik_api::requirements::cross_ref`'s file-reference warnings (Node's
+/// `crossReferenceSteps`, `packages/api/src/requirements/cross-ref.ts:
+/// 27-52`, calls the full `lookupChunksByFilePath(path, userId)` —
+/// `packages/db/src/repository/file-ref.ts:45-69` — and only ever checks
+/// `results.length === 0`, so a plain existence check reproduces the
+/// observable behaviour without materialising rows nothing reads).
+/// `lookupChunksByFilePath`'s optional `spaceId` narrowing is not
+/// reproduced here: no caller in this port's `requirements` domain ever
+/// passes one (`crossReferenceSteps(body.steps, userId)` — no `spaceId`
+/// argument, `packages/api/src/requirements/service.ts:131`).
+pub async fn file_ref_path_exists(pool: &PgPool, user_id: &str, path: &str) -> AppResult<bool> {
+    let hit = sqlx::query_scalar!(
+        r#"SELECT 1 AS "exists!" FROM chunk_file_ref cfr
+           JOIN chunk c ON c.id = cfr.chunk_id
+           WHERE cfr.path = $1 AND c.user_id = $2
+           LIMIT 1"#,
+        path,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(hit.is_some())
+}

@@ -174,6 +174,26 @@ pub async fn find_by_id(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Opt
     Ok(row)
 }
 
+/// Looks up a use case by exact `name` within `user_id`'s own rows,
+/// backing `fubbik_api::requirements::batch_service`'s use-case
+/// auto-vivification (matches Node's `getUseCaseByName`,
+/// `packages/db/src/repository/use-case.ts:26-32`). `use_case_user_name_idx`
+/// is a `UNIQUE (user_id, name)` index, so at most one row can match.
+pub async fn find_by_name(pool: &PgPool, user_id: &str, name: &str) -> AppResult<Option<UseCase>> {
+    let row = sqlx::query_as!(
+        UseCase,
+        r#"SELECT id, name, description, space_id, user_id, "order",
+                  parent_id, created_at AS "created_at: UtcTimestamp",
+                  updated_at AS "updated_at: UtcTimestamp"
+           FROM use_case WHERE user_id = $1 AND name = $2"#,
+        user_id,
+        name
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
+}
+
 /// `ORDER BY "order" ASC, name ASC` matches Node's `listUseCases`
 /// (`packages/db/src/repository/use-case.ts:66`) exactly. Unlike every other
 /// list query in this port, this one does **not** need an appended `id ASC`

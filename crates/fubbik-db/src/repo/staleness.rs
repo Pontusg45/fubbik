@@ -317,11 +317,14 @@ pub async fn detect_age_stale_chunks(
 /// same default as [`detect_age_stale_chunks`]'s 90) that have no row in
 /// `requirement_chunk`, with reason `"requirement_uncovered"`.
 ///
-/// `requirement_chunk` exists in the migrations but has no write API yet
-/// in this workspace, so it is always empty — `NOT IN (SELECT ... FROM
-/// requirement_chunk)` is vacuously true for every row, meaning **every**
-/// eligible chunk gets flagged. That is Node's behaviour too (same empty
-/// table, same query shape); it is expected, not a defect in this port.
+/// As of the `requirements` domain port (`repo::requirement::set_chunks`),
+/// `requirement_chunk` has a real write API — this query now genuinely
+/// excludes chunks that carry at least one requirement link, matching
+/// Node's query shape exactly. Before that port landed, this table was
+/// always empty in this workspace and the `NOT IN` clause was vacuously
+/// true for every row (every eligible chunk got flagged); that history is
+/// noted here only because the previous version of this comment described
+/// that now-stale state as expected.
 pub async fn detect_uncovered_chunks(
     pool: &PgPool,
     user_id: &str,
@@ -474,4 +477,80 @@ pub async fn flag_impact_ripple(
     }
 
     Ok(Some(flagged))
+}
+
+/// Flags every chunk in `chunk_ids` linked to a failing requirement, with
+/// reason `"requirement_failing"`. Port of Node's `flagRequirementFailing`
+/// (`packages/db/src/repository/staleness.ts:231-266`), called from
+/// `fubbik_api::requirements::service` whenever a requirement's status is
+/// set to `"failing"` (both the dedicated status route and `updateRequirement`
+/// when it happens to carry `status: "failing"`, though no route actually
+/// exposes that second path — see `requirement::RequirementPatch`'s doc
+/// comment).
+///
+/// Node takes no `user_id` at all — it flags whatever chunk ids the caller
+/// hands it unconditionally. This port adds a `user_id` guard on the
+/// INSERT (a chunk id not owned by `user_id` is silently skipped, same
+/// "second distinct guard restricting WRITE targets" shape
+/// `flag_impact_ripple` documents above), consistent with this crate's
+/// "scope by `user_id` in SQL, never in the caller" convention. In
+/// practice this guard is never load-bearing through this port's own call
+/// site: `chunk_ids` always comes from `requirement::get_chunks`, which is
+/// itself scoped to `user_id` via `requirement_chunk`'s parent-ownership
+/// join — but the guard still holds if that assumption ever changes.
+///
+/// Idempotent per `(chunk_id, detail)`: a chunk already carrying an
+/// undismissed flag with this exact requirement's detail string is not
+/// flagged again, matching Node's `alreadyFlagged` pre-filter exactly.
+/// Returns the number of chunks actually flagged — Node's equivalent
+/// return value (`{flagged: toFlag.length}`) is discarded by every caller
+/// in this port (and in Node), so the two can differ under the added
+/// ownership guard without affecting observable behaviour.
+pub async fn flag_requirement_failing(
+    pool: &PgPool,
+    user_id: &str,
+    requirement_id: &str,
+    requirement_title: &str,
+    chunk_ids: &[String],
+) -> AppResult<i64> {
+    if chunk_ids.is_empty() {
+        return Ok(0);
+    }
+
+    let detail = format!("Requirement \"{requirement_title}\" ({requirement_id}) is failing");
+
+    let already_flagged: std::collections::HashSet<String> = sqlx::query_scalar!(
+        r#"SELECT chunk_id FROM chunk_staleness
+           WHERE reason = 'requirement_failing'
+             AND detail = $1
+             AND dismissed_at IS NULL
+             AND chunk_id = ANY($2)"#,
+        detail,
+        chunk_ids
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .collect();
+
+    let mut flagged = 0i64;
+    for chunk_id in chunk_ids {
+        if already_flagged.contains(chunk_id) {
+            continue;
+        }
+        let res = sqlx::query!(
+            "INSERT INTO chunk_staleness (id, chunk_id, reason, detail)
+             SELECT $1, $2, 'requirement_failing', $3
+             WHERE EXISTS (SELECT 1 FROM chunk c WHERE c.id = $2 AND c.user_id = $4)",
+            crate::new_id(),
+            chunk_id,
+            detail,
+            user_id
+        )
+        .execute(pool)
+        .await?;
+        flagged += res.rows_affected() as i64;
+    }
+
+    Ok(flagged)
 }
