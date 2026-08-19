@@ -156,10 +156,10 @@ async fn list_space_filter_keeps_unlinked_features_global(pool: sqlx::PgPool) {
     let in_s1 = a_feature(&pool, &alice, "in-s1", 1).await;
     let in_s2 = a_feature(&pool, &alice, "in-s2", 2).await;
     a_feature(&pool, &alice, "global", 3).await;
-    feature::set_spaces(&pool, &in_s1, &alice, &[s1.clone()])
+    feature::set_spaces(&pool, &in_s1, &alice, std::slice::from_ref(&s1))
         .await
         .unwrap();
-    feature::set_spaces(&pool, &in_s2, &alice, &[s2.clone()])
+    feature::set_spaces(&pool, &in_s2, &alice, std::slice::from_ref(&s2))
         .await
         .unwrap();
 
@@ -464,7 +464,7 @@ async fn set_spaces_replaces_wholesale_and_refuses_foreign_spaces(pool: sqlx::Pg
     );
 
     // Replacement, not append.
-    feature::set_spaces(&pool, &f, &alice, &[also_mine.clone()])
+    feature::set_spaces(&pool, &f, &alice, std::slice::from_ref(&also_mine))
         .await
         .unwrap();
     let linked = feature::spaces_for_feature(&pool, &f, &alice)
@@ -491,9 +491,14 @@ async fn set_spaces_cannot_wipe_another_users_associations(pool: sqlx::PgPool) {
     let bob = seed_user(&pool, "c@d.test").await;
     let bobs_feature = a_feature(&pool, &bob, "bobs", 1).await;
     let bobs_space = a_space(&pool, &bob, "bobs-space").await;
-    feature::set_spaces(&pool, &bobs_feature, &bob, &[bobs_space.clone()])
-        .await
-        .unwrap();
+    feature::set_spaces(
+        &pool,
+        &bobs_feature,
+        &bob,
+        std::slice::from_ref(&bobs_space),
+    )
+    .await
+    .unwrap();
 
     // Alice aims set_spaces at Bob's feature. Node's version (no userId at
     // all) would delete his rows.
@@ -553,7 +558,7 @@ async fn active_features_round_trip_and_replace(pool: sqlx::PgPool) {
     assert_eq!(got, want);
 
     // Replacement, not union.
-    feature::set_active_features(&pool, &alice, &[f2.clone()])
+    feature::set_active_features(&pool, &alice, std::slice::from_ref(&f2))
         .await
         .unwrap();
     assert_eq!(
