@@ -8,6 +8,7 @@ pub mod documents;
 pub mod error;
 pub mod extract;
 pub mod favorites;
+pub mod features;
 pub mod notifications;
 pub mod openapi;
 pub mod plans;
@@ -65,6 +66,7 @@ pub fn router(state: AppState) -> Router {
         .merge(coverage::routes::router())
         .merge(documents::routes::router())
         .merge(favorites::routes::router())
+        .merge(features::routes::router())
         .merge(notifications::routes::router())
         .merge(plans::routes::router())
         .merge(proposals::routes::router())

@@ -9,6 +9,7 @@ pub mod connection_relation;
 pub mod coverage;
 pub mod document;
 pub mod favorite;
+pub mod feature;
 pub mod notification;
 pub mod plan;
 pub mod proposal;
