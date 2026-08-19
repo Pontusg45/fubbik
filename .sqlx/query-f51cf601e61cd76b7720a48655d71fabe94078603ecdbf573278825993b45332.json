@@ -1,0 +1,81 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE document SET\n             title = COALESCE($3, title),\n             content_hash = COALESCE($4, content_hash),\n             description = COALESCE($5, description),\n             split_level = COALESCE($6, split_level),\n             updated_at = now()\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, title, source_path, content_hash, description, split_level, space_id, user_id,\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "source_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "content_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "split_level",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f51cf601e61cd76b7720a48655d71fabe94078603ecdbf573278825993b45332"
+}

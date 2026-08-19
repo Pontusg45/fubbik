@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk SET document_id = NULL, document_order = NULL WHERE document_id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3a95dc870e47e379789d9eeba8e85b55dd7f51d810aa385649d8119fa4a5bde7"
+}

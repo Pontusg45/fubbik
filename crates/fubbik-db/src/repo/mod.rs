@@ -4,6 +4,7 @@ pub mod chunk_meta;
 pub mod chunk_version;
 pub mod collection;
 pub mod connection;
+pub mod document;
 pub mod favorite;
 pub mod notification;
 pub mod plan;

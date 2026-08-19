@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk SET content = $3, document_order = $4, updated_at = now() WHERE id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4c8e5002ecf1569412f4493070bb657f9bae7fa407754e9e8b6316c5359fcb2e"
+}

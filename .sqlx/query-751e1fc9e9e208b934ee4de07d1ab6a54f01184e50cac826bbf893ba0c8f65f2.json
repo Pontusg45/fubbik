@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.id, d.title, d.source_path, d.content_hash, d.description, d.space_id,\n                  d.created_at AS \"created_at: UtcTimestamp\",\n                  d.updated_at AS \"updated_at: UtcTimestamp\",\n                  COUNT(c.id) AS \"chunk_count!\",\n                  MAX(c.updated_at) AS \"last_chunk_updated_at: UtcTimestamp\",\n                  MIN(c.updated_at) AS \"oldest_chunk_updated_at: UtcTimestamp\"\n           FROM document d\n           LEFT JOIN chunk c ON c.document_id = d.id\n           WHERE d.user_id = $1 AND ($2::text IS NULL OR d.space_id = $2)\n           GROUP BY d.id\n           ORDER BY d.title ASC, d.id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "source_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "content_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "chunk_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "last_chunk_updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 10,
+        "name": "oldest_chunk_updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "751e1fc9e9e208b934ee4de07d1ab6a54f01184e50cac826bbf893ba0c8f65f2"
+}

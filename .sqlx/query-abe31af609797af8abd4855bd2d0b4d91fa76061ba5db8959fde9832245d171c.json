@@ -1,0 +1,78 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, title, source_path, content_hash, description, split_level, space_id, user_id,\n                  created_at AS \"created_at: UtcTimestamp\",\n                  updated_at AS \"updated_at: UtcTimestamp\"\n           FROM document\n           WHERE source_path = $1 AND user_id = $2 AND space_id IS NOT DISTINCT FROM $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "source_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "content_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "split_level",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "abe31af609797af8abd4855bd2d0b4d91fa76061ba5db8959fde9832245d171c"
+}

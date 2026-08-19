@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) AS \"count!\" FROM chunk WHERE document_id IS NULL AND user_id = (SELECT id FROM \"user\" WHERE email = 'alice-delete@b.test')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d03263cd8b99a5780ee9bf7bd28f52b5885fde8e4d5a8cf00972ab58878af12f"
+}
