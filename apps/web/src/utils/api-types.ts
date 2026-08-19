@@ -3263,6 +3263,18 @@ export interface components {
          */
         Priority: "must" | "should" | "could" | "wont";
         /**
+         * @description Body of `POST /proposals/bulk`. Processed sequentially and fails fast on
+         *     the first error — matching Node's `Effect.forEach(actions, ..., {
+         *     concurrency: 1 })` (`packages/api/src/proposals/service.ts:92-99`), which
+         *     short-circuits the whole request on the first `approveProposal`/
+         *     `rejectProposal` failure. Writes already committed by earlier entries in
+         *     the array are **not** rolled back — there is no transaction around the
+         *     loop in Node, and none is added here.
+         */
+        ProposalBulkActionBody: {
+            actions: components["schemas"]["BulkActionItem"][];
+        };
+        /**
          * @description Row shape for `GET /api/proposals` — the global queue joins `chunk` for
          *     `chunkTitle`/`chunkType` (`packages/db/src/repository/chunk-proposal.ts:41-63`),
          *     which `find_by_id` and `list_for_chunk` do not carry. A separate struct
@@ -6499,7 +6511,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BulkActionBody"];
+                "application/json": components["schemas"]["ProposalBulkActionBody"];
             };
         };
         responses: {

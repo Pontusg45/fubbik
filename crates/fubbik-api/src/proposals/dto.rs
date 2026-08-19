@@ -81,6 +81,11 @@ pub struct BulkActionItem {
 /// loop in Node, and none is added here.
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
+// Distinct OpenAPI name: `requirements::dto::BulkActionBody` is a different
+// shape ({action, ids} vs {actions: [{proposalId, action}]}) and both would
+// otherwise register as `#/components/schemas/BulkActionBody`, publishing
+// whichever won and silently rejecting valid calls to the other endpoint.
+#[schema(as = ProposalBulkActionBody)]
 pub struct BulkActionBody {
     pub actions: Vec<BulkActionItem>,
 }

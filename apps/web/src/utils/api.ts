@@ -36,19 +36,15 @@ import { createClient } from "./api-proxy.future";
 // were checked field-by-field against every call site's request body and
 // response shape — all matched, so every call site moved to `api`.
 //
-// `saved-graphs` moved partially: `DELETE /api/saved-graphs/{id}` moved to
-// `api`, but `GET /api/saved-graphs/{id}` and `PATCH .../{id}` (both call
-// sites, in `features/graph/saved-graph-view.tsx`) stay on `legacyApi`.
-// Rust's `openapi.json` documents `SavedGraph.positions` as
-// `Record<string, {start, end}>` instead of `Record<string, {x, y}>` — a
-// utoipa schema-name collision: `fubbik_db::repo::saved_graph::Position`
-// ({x, y}) and `fubbik_api::vocabulary::parser::Position` ({start, end})
-// both register as `#/components/schemas/Position`, so one silently
-// overwrites the other in the generated schema. Actual Rust runtime
-// behaviour is presumably still {x, y} (the DTOs use the right struct),
-// but the generated TS types are wrong until the crate disambiguates the
-// two schemas — so any call site that reads or writes `positions` stays
-// on `legacyApi` for now.
+// `saved-graphs` is fully on `api`. It was partially pinned for a while by a
+// utoipa schema-name collision — `fubbik_db::repo::saved_graph::Position`
+// ({x, y}) and `fubbik_api::vocabulary::parser::Position` ({start, end}) both
+// registered as `#/components/schemas/Position`, so one silently overwrote the
+// other and `SavedGraph.positions` was published with the wrong shape. Fixed by
+// `#[schema(as = GraphNodePosition)]` / `#[schema(as = TextSpan)]`. That class
+// of bug is now caught at the source by `crates/fubbik-api/tests/schema_names.rs`
+// — a collision is invisible in the finished spec, so it is checked where the
+// two definitions are still distinguishable.
 //
 // A few call sites hit routes *inside* an otherwise-ported domain that
 // Rust hasn't finished:
