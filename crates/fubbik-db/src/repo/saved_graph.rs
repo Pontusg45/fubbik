@@ -240,7 +240,7 @@ pub async fn update(
 
 /// Deletes a saved graph, scoped by `user_id` in SQL — the only thing
 /// standing between this and deleting another user's row, proven in
-/// `tests/saved_graph.rs::delete_on_another_users_saved_graph_returns_false_and_leaves_it`.
+/// `tests/saved_graph.rs::delete_removes_row_and_is_user_scoped`.
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<bool> {
     let res = sqlx::query!(
         "DELETE FROM saved_graph WHERE id = $1 AND user_id = $2",
