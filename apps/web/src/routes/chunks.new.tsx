@@ -206,15 +206,14 @@ function NewChunk() {
             const chunkId = (chunk as Record<string, unknown>)?.id as string | undefined;
             if (!chunkId) return chunk;
 
-            // Set applies-to after chunk creation. Rust's `PatternsBody` is
-            // `{patterns: string[]}` (plain strings, no `note`) — this bare
-            // array of `{pattern, note}` objects 400s against it and was
-            // being silently swallowed below. Node's route expects exactly
-            // this shape, so this stays on `legacyApi`.
+            // Rust now takes the same bare `{pattern, note}` array Node does,
+            // so this is on `api`. It used to 400 against Rust's
+            // `{patterns: string[]}` and be swallowed by the `catch` below —
+            // patterns were never saved.
             const validAppliesTo = appliesTo.filter(a => a.pattern.trim());
             if (validAppliesTo.length > 0) {
                 try {
-                    await legacyApi.api.chunks({ id: chunkId })["applies-to"].put(
+                    await api.api.chunks({ id: chunkId })["applies-to"].put(
                         validAppliesTo.map(a => ({
                             pattern: a.pattern.trim(),
                             ...(a.note.trim() ? { note: a.note.trim() } : {})
@@ -225,13 +224,12 @@ function NewChunk() {
                 }
             }
 
-            // Set file refs after chunk creation. Same mismatch as
-            // applies-to above — Rust's `PathsBody` is `{paths: string[]}`,
-            // not this `{path, anchor, relation}` shape. Stays on `legacyApi`.
+            // Same as applies-to above: Rust now takes the `{path, anchor,
+            // relation}` array, so this is on `api` and actually saves.
             const validFileRefs = fileRefs.filter(f => f.path.trim());
             if (validFileRefs.length > 0) {
                 try {
-                    await legacyApi.api.chunks({ id: chunkId })["file-refs"].put(
+                    await api.api.chunks({ id: chunkId })["file-refs"].put(
                         validFileRefs.map(f => ({
                             path: f.path.trim(),
                             ...(f.anchor.trim() ? { anchor: f.anchor.trim() } : {}),

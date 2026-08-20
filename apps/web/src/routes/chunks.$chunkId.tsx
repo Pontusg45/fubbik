@@ -17,10 +17,12 @@ import { getUser } from "@/functions/get-user";
 import { useReaderSettings, getReaderClasses } from "@/hooks/use-reader-settings";
 import { useReadingTrail } from "@/hooks/use-reading-trail";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
-// Chunk detail page needs Node's enriched detail shape (chunk, connections,
-// appliesTo, fileReferences, tags, healthScore, deltas) — Rust's GET /api/chunks/{id}
-// returns only the bare chunk row. See the "chunks" note in `@/utils/api`.
-import { legacyApi } from "@/utils/api";
+// The enriched detail shape (chunk, connections, appliesTo, fileReferences,
+// tags, requirements, healthScore, deltas) is now on Rust, so the two reads
+// below use `api`. The PATCH calls stay on `legacyApi`: Rust's
+// `UpdateChunkBody` has no `tags`/`isEntryPoint`/`reviewStatus` field yet —
+// see the "chunks" note in `@/utils/api`.
+import { api, legacyApi } from "@/utils/api";
 import { archiveChunk } from "@/utils/api-helpers";
 
 export const Route = createFileRoute("/chunks/$chunkId")({
@@ -40,7 +42,7 @@ export const Route = createFileRoute("/chunks/$chunkId")({
             qc.prefetchQuery({
                 queryKey: ["chunk", params.chunkId],
                 queryFn: async () => {
-                    const { data, error } = await legacyApi.api.chunks({ id: params.chunkId }).get();
+                    const { data, error } = await api.api.chunks({ id: params.chunkId }).get();
                     if (error) throw new Error("Failed to load chunk");
                     return data;
                 },
@@ -97,7 +99,7 @@ function ChunkDetail() {
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
         queryFn: async () => {
-            const { data, error } = await legacyApi.api.chunks({ id: chunkId }).get();
+            const { data, error } = await api.api.chunks({ id: chunkId }).get();
             if (error) throw new Error("Failed to load chunk");
             return data;
         }

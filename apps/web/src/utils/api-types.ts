@@ -155,6 +155,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * Returns the **enriched** detail shape ([`ChunkDetail`]), not the bare
+         *     `chunk` row — matching Node. The active feature ids are loaded here
+         *     rather than in a global middleware: Node resolves them for every request
+         *     (`packages/api/src/index.ts:207-218`), but this is the only Rust route
+         *     that reads them implicitly, so a per-route load avoids paying for a
+         *     query on all ~200 other endpoints.
+         */
         get: operations["get_chunk"];
         put?: never;
         post?: never;
@@ -2310,9 +2318,40 @@ export interface components {
             question: components["schemas"]["PlanAnalyzeItem"][];
             risk: components["schemas"]["PlanAnalyzeItem"][];
         };
+        /**
+         * @description A `chunk_applies_to` row.
+         *
+         *     `note` was missing from this struct until the chunk-detail port. The
+         *     column has existed since `0001_init.sql:141` and Node returns it on
+         *     every read (`getAppliesToForChunk` selects `{id, pattern, note}`), but
+         *     the Rust projection selected only `id`/`chunk_id`/`pattern` — so
+         *     `GET /api/chunks/{id}/applies-to` silently dropped whatever note the
+         *     user had written. `chunk_id` is an addition in the other direction:
+         *     Node's projection omits it, this one keeps it (a superset, harmless to
+         *     readers, and it makes the row self-describing).
+         */
         AppliesTo: {
             chunkId: string;
             id: string;
+            note?: string | null;
+            pattern: string;
+        };
+        /**
+         * @description One entry of `PUT /api/chunks/{id}/applies-to`'s body.
+         *
+         *     The body is a **bare array** of these, not `{patterns: [...]}` — that is
+         *     what Node's route schema declares
+         *     (`packages/api/src/applies-to/routes.ts:19-27`) and what the web edit
+         *     page has always sent. Rust previously published `{patterns: string[]}`,
+         *     so every real request 400'd; the edit page swallowed it in a
+         *     `catch { /* non-critical *\/ }` and silently never saved patterns at all.
+         */
+        AppliesToEntry: {
+            /**
+             * @description Optional and explicitly nullable, matching Node's
+             *     `t.Optional(t.Union([t.String(), t.Null()]))`.
+             */
+            note?: string | null;
             pattern: string;
         };
         /**
@@ -2468,6 +2507,88 @@ export interface components {
             userId: string;
         };
         /**
+         * @description One row of `GET /api/chunks/{id}`'s `connections` array, matching Node's
+         *     `getChunkConnections` projection exactly
+         *     (`packages/db/src/repository/chunk.ts:259-282`): the edge's own
+         *     `id`/`sourceId`/`targetId`/`relation`, plus the **other** end's title and
+         *     one of that chunk's space names.
+         *
+         *     `codebase_name` keeps the pre-rename wire key `codebaseName` because
+         *     that is the alias Node's `.select({ codebaseName: space.name })` emits
+         *     and the web app reads. The `codebase → space` rename never reached this
+         *     projection.
+         *
+         *     Both `title` and `codebase_name` are `Option` because both joins are
+         *     LEFT joins in Node: a dangling edge (target chunk deleted) yields a null
+         *     title, and a chunk in no space yields a null space name.
+         */
+        ChunkConnectionDetail: {
+            codebaseName?: string | null;
+            id: string;
+            relation: string;
+            sourceId: string;
+            targetId: string;
+            title?: string | null;
+        };
+        /**
+         * @description Response body of `GET /api/chunks/{id}` — the *enriched* chunk detail,
+         *     matching Node's `getChunkDetail` return
+         *     (`packages/api/src/chunks/service.ts:128-186`) key for key.
+         *
+         *     Until this landed, Rust's `GET /api/chunks/{id}` returned the bare
+         *     [`Chunk`] row, which is why the chunk detail page, the edit page and the
+         *     graph side panel were all still pinned to `legacyApi`.
+         *
+         *     Two keys look redundant and are: `allDeltas` and `deltas` always hold
+         *     the same list. Node builds the response as `{ ...result, ..., deltas:
+         *     result.allDeltas }`, and `result` already carries `allDeltas`, so both
+         *     keys ship. Reproduced rather than trimmed — a client reading either one
+         *     must keep working.
+         */
+        ChunkDetail: {
+            /**
+             * @description Ids of the features whose deltas were actually applied to `chunk`,
+             *     in application order. Underscore-prefixed on the wire because Node
+             *     names it that way; `rename_all = "camelCase"` would produce
+             *     `appliedFeatures` without the prefix, so both keys are spelled out.
+             */
+            _appliedFeatures: string[];
+            /**
+             * @description Whether the chunk has *any* delta, active or not — the UI's "this
+             *     chunk is modified in some feature" indicator. Not derivable from
+             *     `_appliedFeatures`, which only counts active ones.
+             */
+            _hasDeltas: boolean;
+            allDeltas: components["schemas"]["DeltaWithFeature"][];
+            appliesTo: components["schemas"]["AppliesTo"][];
+            /**
+             * @description The chunk row **after** active feature overlays have been applied.
+             *
+             *     The Rust type is `serde_json::Value` because a delta is free-form
+             *     JSONB and could in principle introduce a key `Chunk` does not have.
+             *     It is *published* as `Chunk` anyway, deliberately: every field the
+             *     feature system actually writes is a `Chunk` content field (title,
+             *     content, type, rationale, alternatives, consequences, summary — see
+             *     the "Features (Knowledge Overlays)" section of `CLAUDE.md`), so
+             *     `Chunk` describes every response this endpoint can really produce.
+             *
+             *     Publishing it as an open object instead is worse than imprecise, it
+             *     is unusable: utoipa's `Object` becomes `Record<string, never>` in the
+             *     generated client, under which `chunk.title` is a type error. The
+             *     whole point of migrating call sites off `legacyApi` is that the
+             *     generated types catch wrong field access, and a type nothing can be
+             *     read from catches nothing.
+             */
+            chunk: components["schemas"]["Chunk"];
+            connections: components["schemas"]["ChunkConnectionDetail"][];
+            deltas: components["schemas"]["DeltaWithFeature"][];
+            fileReferences: components["schemas"]["FileRef"][];
+            healthScore: components["schemas"]["HealthScore"];
+            requirements: components["schemas"]["ChunkRequirement"][];
+            spaces: components["schemas"]["Space"][];
+            tags: components["schemas"]["Tag"][];
+        };
+        /**
          * @description Bare `chunk_feature_delta` row — the return shape of
          *     `PUT /chunks/{id}/deltas/{featureId}` and
          *     `DELETE /chunks/{id}/deltas/{featureId}`'s repository call.
@@ -2520,6 +2641,24 @@ export interface components {
             reviewedAt?: string | null;
             reviewedBy?: string | null;
             status: string;
+        };
+        /**
+         * @description One row of `GET /api/chunks/{id}`'s `requirements` array, matching
+         *     Node's `getRequirementsForChunks` projection
+         *     (`packages/db/src/repository/requirement.ts:249-264`): the join's
+         *     `chunkId` plus a five-field slice of the requirement.
+         *
+         *     `chunk_id` is carried even though the detail path queries a single chunk
+         *     — Node's function is plural and its caller re-filters on `chunkId`
+         *     afterwards, so the column is part of the published shape.
+         */
+        ChunkRequirement: {
+            chunkId: string;
+            id: string;
+            priority?: string | null;
+            status: string;
+            steps: components["schemas"]["RequirementStep"][];
+            title: string;
         };
         /**
          * @description `camelCase` serialisation matches every other wire type in this crate.
@@ -3426,10 +3565,40 @@ export interface components {
             match: components["schemas"]["MatchMode"];
             target: components["schemas"]["ExtractionTarget"];
         };
+        /**
+         * @description A `chunk_file_ref` row.
+         *
+         *     `anchor` and `relation` were missing here for the same reason `note` was
+         *     missing from [`AppliesTo`] — see that doc comment. `relation` is
+         *     `NOT NULL DEFAULT 'documents'` (`0001_init.sql:200`), so it is a plain
+         *     `String`, not an `Option`; its four-value constraint lives on Node's
+         *     *write* route schema only, and is reproduced in the service layer rather
+         *     than as a DTO enum or a DB CHECK.
+         */
         FileRef: {
+            anchor?: string | null;
             chunkId: string;
             id: string;
             path: string;
+            relation: string;
+        };
+        /**
+         * @description One entry of `PUT /api/chunks/{id}/file-refs`'s body — a bare array, for
+         *     the same reason as [`AppliesToEntry`]
+         *     (`packages/api/src/file-refs/routes.ts:17-26`).
+         */
+        FileRefEntry: {
+            anchor?: string | null;
+            path: string;
+            /**
+             * @description Node constrains this to `documents | configures | tests |
+             *     implements` on the route schema. Kept a `String` here and validated
+             *     in the service layer rather than modelled as a serde enum: the
+             *     column itself is free `text NOT NULL DEFAULT 'documents'` with no
+             *     CHECK, and a DTO enum would reject with serde's parse error instead
+             *     of a message naming the field.
+             */
+            relation: string;
         };
         /**
          * @description Matches Node's `FormatSchema` (`t.Union([t.Literal("gherkin"),
@@ -3484,6 +3653,34 @@ export interface components {
             match: components["schemas"]["MatchMode"];
             patterns: string[];
             required: boolean;
+        };
+        /**
+         * @description The `healthScore` key of `GET /api/chunks/{id}`. Field names already
+         *     match Node's `HealthScore` interface (`health-score.ts:16-25`) with no
+         *     case conversion needed — every one is a single lowercase word — so this
+         *     carries no `rename_all`, unlike the rest of this crate's wire types.
+         */
+        HealthScore: {
+            breakdown: components["schemas"]["HealthScoreBreakdown"];
+            issues: string[];
+            /** Format: int64 */
+            total: number;
+        };
+        /**
+         * @description Serialised as the `healthScore.breakdown` object of
+         *     `GET /api/chunks/{id}` — see [`HealthScore`].
+         */
+        HealthScoreBreakdown: {
+            /** Format: int64 */
+            completeness: number;
+            /** Format: int64 */
+            connectivity: number;
+            /** Format: int64 */
+            coverage: number;
+            /** Format: int64 */
+            freshness: number;
+            /** Format: int64 */
+            richness: number;
         };
         /**
          * @description Body of `POST /api/documents/import-dir`. `files`' `maxItems: 200` is
@@ -3662,12 +3859,6 @@ export interface components {
             relation: string;
             source: string;
             target: string;
-        };
-        PathsBody: {
-            paths: string[];
-        };
-        PatternsBody: {
-            patterns: string[];
         };
         /**
          * @description Shape of `GET /proposals/count`
@@ -5558,7 +5749,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Chunk"];
+                    "application/json": components["schemas"]["ChunkDetail"];
                 };
             };
             404: {
@@ -5657,7 +5848,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PatternsBody"];
+                "application/json": components["schemas"]["AppliesToEntry"][];
             };
         };
         responses: {
@@ -5817,7 +6008,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PathsBody"];
+                "application/json": components["schemas"]["FileRefEntry"][];
             };
         };
         responses: {

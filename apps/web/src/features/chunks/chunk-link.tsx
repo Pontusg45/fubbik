@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 
 import { ChunkPreviewCard } from "./chunk-preview";
 
@@ -23,7 +23,7 @@ export function ChunkLink({ chunkId, children }: { chunkId: string; children: Re
         // needs — see the "chunks" note in `@/utils/api`. Also matches the
         // shape the detail page/edit page/graph panel put under this same key.
         queryFn: async () => {
-            const { data, error } = await legacyApi.api.chunks({ id: chunkId }).get();
+            const { data, error } = await api.api.chunks({ id: chunkId }).get();
             if (error) throw new Error("Failed to load chunk");
             return data as unknown as ChunkPreviewData;
         },

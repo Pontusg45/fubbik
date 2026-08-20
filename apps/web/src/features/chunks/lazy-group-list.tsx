@@ -310,7 +310,7 @@ function GroupChunksList({
             // Rust's `GET /api/chunks/{id}` is flat and lacks the enriched
             // `{ chunk, connections, ... }` shape the detail page (which reads
             // this same cache key) needs — see the "chunks" note in `@/utils/api`.
-            queryFn: async () => unwrapEden(await legacyApi.api.chunks({ id: chunkId }).get()),
+            queryFn: async () => unwrapEden(await api.api.chunks({ id: chunkId }).get()),
             staleTime: 30_000
         });
     };

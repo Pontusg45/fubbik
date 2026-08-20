@@ -49,7 +49,7 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
             const results = await Promise.all(
                 chunkIds.map(async id => {
                     try {
-                        const data = unwrapEden(await legacyApi.api.chunks({ id }).get());
+                        const data = unwrapEden(await api.api.chunks({ id }).get());
                         return data;
                     } catch {
                         return null;

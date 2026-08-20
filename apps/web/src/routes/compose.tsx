@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/compose")({
@@ -118,14 +118,13 @@ function ComposePage() {
                 const searchChunks = (result as any)?.chunks ?? [];
 
                 // Fetch full content for each chunk (search only returns summary).
-                // Rust's bare `GET /api/chunks/{id}` row has no `tags` — every
-                // chunk here always showed zero tags. Node's enriched detail
-                // shape (`{ chunk, tags, ... }`) carries them, so this stays on
-                // legacyApi — see the "chunks" note in `@/utils/api`.
+                // Needs the enriched detail shape for `tags` — the bare chunk
+                // row has none, so every chunk here used to show zero tags.
+                // Rust serves that shape now.
                 const full = await Promise.all(
                     searchChunks.map(async (c: any) => {
                         try {
-                            const detail = unwrapEden(await legacyApi.api.chunks({ id: c.id }).get());
+                            const detail = unwrapEden(await api.api.chunks({ id: c.id }).get());
                             return {
                                 id: c.id,
                                 title: c.title,

@@ -63,26 +63,42 @@ import { createClient } from "./api-proxy.future";
 // — a collision is invisible in the finished spec, so it is checked where the
 // two definitions are still distinguishable.
 //
-// A few call sites hit routes *inside* an otherwise-ported domain that
-// Rust hasn't finished:
+// `GET /api/chunks/{id}` now returns Node's **enriched** detail shape
+// (`{ chunk, connections, spaces, appliesTo, fileReferences, tags,
+// requirements, healthScore, _appliedFeatures, _hasDeltas, allDeltas,
+// deltas }`), so every call site that needed it — the chunk detail page,
+// the edit page, the graph side panel, compose, the group list, the
+// bulk tag editor — moved to `api`.
+//
+// The two chunk sub-resources moved with it, and fixing them fixed a
+// silent data-loss bug in both directions: Rust's `PUT .../applies-to` and
+// `PUT .../file-refs` published `{patterns: string[]}` / `{paths:
+// string[]}`, while Node (and this app) send a bare array of
+// `{pattern, note}` / `{path, anchor, relation}`. Against Rust every such
+// request 400'd, and the edit/new pages swallowed it in
+// `catch { /* non-critical */ }` — patterns and file refs were never
+// saved. The GET side dropped the same three columns (`note`, `anchor`,
+// `relation`) from its projection, so even Node-written values were
+// invisible through Rust. Both halves are fixed and pinned by tests.
+//
+// A few call sites still hit routes *inside* an otherwise-ported domain
+// that Rust hasn't finished:
 //   - chunks: `search/semantic`, `search/federated`, `grouped`,
 //     `check-similar`, `clusters`, `import-docs` (+ `import-docs/preview`),
-//     `bulk-update`, `{id}/neighbors`, `{id}/suggestions`, `{id}/enrich`
-//     have no Rust route yet (see
-//     `openapi.json` — only list/create/detail/patch/delete/applies-to/
-//     dismiss-staleness/file-refs/history/scan-impact/stale/stale-count/
-//     stale-scan-age/suppress-duplicate exist).
-//   - chunks: `GET /api/chunks/{id}` exists in Rust, but returns the bare
-//     `Chunk` row only — Node's enriched detail shape (`{ chunk,
-//     connections, appliesTo, fileReferences, ... }`) isn't there yet.
-//     Call sites that need that enrichment (the chunk detail page, the
-//     edit page, the graph side panel) stay on `legacyApi` for this one
-//     route until Rust's chunk detail response catches up; call sites that
-//     only need the bare chunk fields (id/title/type/content/...) stay on
-//     `api`, since Rust already serves those correctly.
-// These are routed to `legacyApi` for the same reason as the 14 domains —
-// the route doesn't exist (or isn't complete) on Rust yet — even though
-// `chunks` as a whole is ported.
+//     `bulk-update`, `{id}/neighbors`, `{id}/suggestions`, `{id}/enrich`,
+//     `{id}/archive`, `{id}/restore`, `archived`, `merge`, `bulk` have no
+//     Rust route yet.
+//   - chunks: `PATCH /api/chunks/{id}` exists on Rust but its
+//     `UpdateChunkBody` accepts only title/content/type/rationale/
+//     consequences. Call sites that set `tags`, `alternatives`,
+//     `reviewStatus`, `isEntryPoint` or `scope` stay on `legacyApi` until
+//     it grows those fields — sending them to Rust is not an error, it is
+//     a SILENT no-op, because serde drops unknown fields rather than
+//     rejecting them. That is the same failure mode that made
+//     `requirements/stats` return unscoped totals while looking healthy.
+// These are routed to `legacyApi` for the same reason as the remaining
+// domains — the route (or the field) doesn't exist on Rust yet — even
+// though `chunks` as a whole is ported.
 //
 // `api` hits the Rust server directly via `VITE_API_URL` (port 3100 by
 // default). `legacyApi` stays on `VITE_SERVER_URL` (Node, port 3000), which

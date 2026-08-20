@@ -18,15 +18,13 @@ import { getUser } from "@/functions/get-user";
 // GET needs Node's enriched detail shape (chunk, appliesTo, fileReferences) —
 // Rust's GET /api/chunks/{id} returns only the bare chunk row. The PATCH body
 // here also needs `tags`/`alternatives`, which Rust's UpdateChunkBody doesn't
-// accept yet, and `deltas` (feature overlays) has no Rust route at all — see
-// the "chunks" note in `@/utils/api`. `applies-to`/`file-refs` PUT bodies do
-// NOT match Rust's schema either: Rust's `PatternsBody`/`PathsBody` are
-// `{patterns: string[]}`/`{paths: string[]}` (plain strings, no `note`/
-// `anchor`/`relation`), while this page sends a bare array of
-// `{pattern, note}`/`{path, anchor, relation}` objects — the shape Node's
-// `applies-to`/`file-refs` routes actually expect. Against Rust this 400s
-// and was being silently swallowed by the `catch { // non-critical }` below,
-// so patterns/file refs were never actually saved. Both stay on `legacyApi`.
+// accept yet — see the "chunks" note in `@/utils/api`, so the PATCH stays on
+// `legacyApi`. The GET and the `applies-to`/`file-refs` PUTs are on `api`:
+// Rust now serves the enriched detail shape and takes the same bare
+// `{pattern, note}` / `{path, anchor, relation}` arrays Node does. Those two
+// PUTs used to 400 against Rust's `{patterns: string[]}`/`{paths: string[]}`
+// and be swallowed by the `catch { // non-critical }` below, so patterns and
+// file refs were never actually saved.
 import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -144,7 +142,7 @@ function EditChunk() {
     const { data, isLoading, error } = useQuery({
         queryKey: ["chunk", chunkId],
         queryFn: async () => {
-            return unwrapEden(await legacyApi.api.chunks({ id: chunkId }).get());
+            return unwrapEden(await api.api.chunks({ id: chunkId }).get());
         }
     });
 
@@ -256,7 +254,7 @@ function EditChunk() {
             // Update applies-to
             const validAppliesTo = appliesTo.filter(a => a.pattern.trim());
             try {
-                await legacyApi.api.chunks({ id: chunkId })["applies-to"].put(
+                await api.api.chunks({ id: chunkId })["applies-to"].put(
                     validAppliesTo.map(a => ({
                         pattern: a.pattern.trim(),
                         ...(a.note.trim() ? { note: a.note.trim() } : {})
@@ -269,7 +267,7 @@ function EditChunk() {
             // Update file refs
             const validFileRefs = fileRefs.filter(f => f.path.trim());
             try {
-                await legacyApi.api.chunks({ id: chunkId })["file-refs"].put(
+                await api.api.chunks({ id: chunkId })["file-refs"].put(
                     validFileRefs.map(f => ({
                         path: f.path.trim(),
                         ...(f.anchor.trim() ? { anchor: f.anchor.trim() } : {}),
