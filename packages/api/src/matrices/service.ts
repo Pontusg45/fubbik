@@ -21,6 +21,8 @@ import {
     insertRuleVersion as insertRuleVersionRepo,
     getRuleVersions as getRuleVersionsRepo,
     getCellByRuleDimension,
+    getCellInMatrix,
+    ruleAndDimensionInMatrix,
     createCell as createCellRepo,
     deleteCell as deleteCellRepo,
     getCellRequirementCount,
@@ -243,7 +245,30 @@ export interface ToggleCellResult {
     cell: { id: string; ruleId: string; dimensionId: string; createdAt: Date };
 }
 
-export function toggleCell(ruleId: string, dimensionId: string): Effect.Effect<ToggleCellResult, DatabaseError | ValidationError> {
+/**
+ * SECURITY: `matrixId`/`userId` are not decorative. This used to take only
+ * `ruleId` and `dimensionId` — both attacker-supplied body fields — while the
+ * route's `:id` matrix param went unread and the session was discarded. Any
+ * authenticated user could toggle cells in anyone's matrix.
+ *
+ * Both ends are now checked: the matrix must belong to the caller, and the
+ * rule and dimension must both belong to that matrix.
+ */
+export function toggleCell(
+    matrixId: string,
+    userId: string,
+    ruleId: string,
+    dimensionId: string
+): Effect.Effect<ToggleCellResult, DatabaseError | ValidationError | NotFoundError> {
+    return getMatrixById(matrixId, userId).pipe(
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
+        Effect.flatMap(() => ruleAndDimensionInMatrix(ruleId, dimensionId, matrixId)),
+        Effect.flatMap(ok => (ok ? Effect.succeed(ok) : Effect.fail(new NotFoundError({ resource: "Rule or dimension" })))),
+        Effect.flatMap(() => toggleCellUnscoped(ruleId, dimensionId))
+    );
+}
+
+function toggleCellUnscoped(ruleId: string, dimensionId: string): Effect.Effect<ToggleCellResult, DatabaseError | ValidationError> {
     return getCellByRuleDimension(ruleId, dimensionId).pipe(
         Effect.flatMap((existing): Effect.Effect<ToggleCellResult, DatabaseError | ValidationError> => {
             if (!existing) {
@@ -267,46 +292,77 @@ export function toggleCell(ruleId: string, dimensionId: string): Effect.Effect<T
     );
 }
 
-export function linkRequirementToCell(cellId: string, requirementId: string) {
-    return linkCellRequirementRepo(cellId, requirementId);
+/**
+ * Proves the cell belongs to a matrix the caller owns, then runs `next`.
+ *
+ * SECURITY: every function below used to take a bare `cellId` with no
+ * ownership check anywhere in the chain — the route discarded the session and
+ * ignored its own `:id` param. That allowed cross-user reads AND writes:
+ * attaching your requirement to a stranger's behavior cell, deleting their
+ * code links, or reading what they had linked.
+ */
+function withOwnedCell<A, E>(
+    matrixId: string,
+    cellId: string,
+    userId: string,
+    next: (cell: { id: string; ruleId: string; dimensionId: string; createdAt: Date }) => Effect.Effect<A, E>
+): Effect.Effect<A, E | NotFoundError | DatabaseError> {
+    return getMatrixById(matrixId, userId).pipe(
+        Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
+        Effect.flatMap(() => getCellInMatrix(cellId, matrixId)),
+        Effect.flatMap(cell => (cell ? Effect.succeed(cell) : Effect.fail(new NotFoundError({ resource: "Cell" })))),
+        Effect.flatMap(next)
+    );
 }
 
-export function unlinkRequirementFromCell(cellId: string, requirementId: string) {
-    return unlinkCellRequirementRepo(cellId, requirementId).pipe(
-        Effect.flatMap(deleted =>
-            deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Cell-Requirement link" }))
+export function linkRequirementToCell(matrixId: string, cellId: string, userId: string, requirementId: string) {
+    return withOwnedCell(matrixId, cellId, userId, () => linkCellRequirementRepo(cellId, requirementId));
+}
+
+export function unlinkRequirementFromCell(matrixId: string, cellId: string, userId: string, requirementId: string) {
+    return withOwnedCell(matrixId, cellId, userId, () =>
+        unlinkCellRequirementRepo(cellId, requirementId).pipe(
+            Effect.flatMap(deleted =>
+                deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Cell-Requirement link" }))
+            )
         )
     );
 }
 
-export function getRequirementsForCell(cellId: string) {
-    return getRequirementsForCellRepo(cellId);
+export function getRequirementsForCell(matrixId: string, cellId: string, userId: string) {
+    return withOwnedCell(matrixId, cellId, userId, () => getRequirementsForCellRepo(cellId));
 }
 
 // --- Cell Code Links ---
 
 const CODE_LINK_KINDS = ["file", "symbol", "test"] as const;
 
-export function linkCodeToCell(cellId: string, body: { kind: string; ref: string }) {
-    return Effect.gen(function* () {
-        if (!CODE_LINK_KINDS.includes(body.kind as (typeof CODE_LINK_KINDS)[number])) {
-            return yield* Effect.fail(new ValidationError({ message: `Code link kind must be one of: ${CODE_LINK_KINDS.join(", ")}` }));
-        }
-        if (!body.ref.trim()) {
-            return yield* Effect.fail(new ValidationError({ message: "Code link ref is required" }));
-        }
-        return yield* linkCellCodeRepo({ id: crypto.randomUUID(), cellId, kind: body.kind, ref: body.ref.trim() });
-    });
-}
-
-export function unlinkCodeFromCell(cellId: string, codeId: string) {
-    return deleteCellCodeRepo(codeId, cellId).pipe(
-        Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Code link" }))))
+export function linkCodeToCell(matrixId: string, cellId: string, userId: string, body: { kind: string; ref: string }) {
+    return withOwnedCell(matrixId, cellId, userId, () =>
+        Effect.gen(function* () {
+            if (!CODE_LINK_KINDS.includes(body.kind as (typeof CODE_LINK_KINDS)[number])) {
+                return yield* Effect.fail(
+                    new ValidationError({ message: `Code link kind must be one of: ${CODE_LINK_KINDS.join(", ")}` })
+                );
+            }
+            if (!body.ref.trim()) {
+                return yield* Effect.fail(new ValidationError({ message: "Code link ref is required" }));
+            }
+            return yield* linkCellCodeRepo({ id: crypto.randomUUID(), cellId, kind: body.kind, ref: body.ref.trim() });
+        })
     );
 }
 
-export function getCodeForCell(cellId: string) {
-    return getCodeForCellRepo(cellId);
+export function unlinkCodeFromCell(matrixId: string, cellId: string, userId: string, codeId: string) {
+    return withOwnedCell(matrixId, cellId, userId, () =>
+        deleteCellCodeRepo(codeId, cellId).pipe(
+            Effect.flatMap(deleted => (deleted ? Effect.succeed(deleted) : Effect.fail(new NotFoundError({ resource: "Code link" }))))
+        )
+    );
+}
+
+export function getCodeForCell(matrixId: string, cellId: string, userId: string) {
+    return withOwnedCell(matrixId, cellId, userId, () => getCodeForCellRepo(cellId));
 }
 
 export function getBehaviorsForCodePath(userId: string, path: string) {
@@ -315,23 +371,30 @@ export function getBehaviorsForCodePath(userId: string, path: string) {
 
 // --- Cell Test Results ---
 
-export function recordTestResult(cellId: string, body: { testRef: string; status: string; detail?: string }) {
-    return Effect.gen(function* () {
-        if (body.status !== "pass" && body.status !== "fail") {
-            return yield* Effect.fail(new ValidationError({ message: "Test status must be 'pass' or 'fail'" }));
-        }
-        return yield* recordTestResultRepo({
-            id: crypto.randomUUID(),
-            cellId,
-            testRef: body.testRef,
-            status: body.status,
-            detail: body.detail
-        });
-    });
+export function recordTestResult(
+    matrixId: string,
+    cellId: string,
+    userId: string,
+    body: { testRef: string; status: string; detail?: string }
+) {
+    return withOwnedCell(matrixId, cellId, userId, () =>
+        Effect.gen(function* () {
+            if (body.status !== "pass" && body.status !== "fail") {
+                return yield* Effect.fail(new ValidationError({ message: "Test status must be 'pass' or 'fail'" }));
+            }
+            return yield* recordTestResultRepo({
+                id: crypto.randomUUID(),
+                cellId,
+                testRef: body.testRef,
+                status: body.status,
+                detail: body.detail
+            });
+        })
+    );
 }
 
-export function getTestResultsForCell(cellId: string) {
-    return getTestResultsForCellRepo(cellId);
+export function getTestResultsForCell(matrixId: string, cellId: string, userId: string) {
+    return withOwnedCell(matrixId, cellId, userId, () => getTestResultsForCellRepo(cellId));
 }
 
 // --- Matrix View ---

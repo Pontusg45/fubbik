@@ -230,6 +230,56 @@ export function reorderRules(ruleIds: string[]) {
     });
 }
 
+// --- Cell ownership ---
+//
+// `behavior_cell` has no user_id of its own; ownership derives from the
+// matrix, two hops up (cell -> rule -> matrix). Every cell-surface route
+// already receives the matrix id in its path, so these two helpers let the
+// service prove the cell actually belongs to the matrix the caller named —
+// without which `:id` is decorative and any cellId reaches any matrix.
+
+/**
+ * Returns the cell only if it belongs to `matrixId`, joining through the
+ * rule. Used by every `/matrices/:id/cells/:cellId/...` route to reject a
+ * cellId from someone else's matrix.
+ */
+export function getCellInMatrix(cellId: string, matrixId: string) {
+    return dbEffect(async () => {
+        const [found] = await db
+            .select({
+                id: behaviorCell.id,
+                ruleId: behaviorCell.ruleId,
+                dimensionId: behaviorCell.dimensionId,
+                createdAt: behaviorCell.createdAt
+            })
+            .from(behaviorCell)
+            .innerJoin(behaviorRule, eq(behaviorCell.ruleId, behaviorRule.id))
+            .where(and(eq(behaviorCell.id, cellId), eq(behaviorRule.matrixId, matrixId)));
+        return found ?? null;
+    });
+}
+
+/**
+ * True only if BOTH the rule and the dimension belong to `matrixId`.
+ * `PUT /matrices/:id/cells` takes ruleId and dimensionId from the body, so
+ * both ends need checking — a caller could otherwise pair their own rule
+ * with a stranger's dimension, or vice versa.
+ */
+export function ruleAndDimensionInMatrix(ruleId: string, dimensionId: string, matrixId: string) {
+    return dbEffect(async () => {
+        const [rule] = await db
+            .select({ id: behaviorRule.id })
+            .from(behaviorRule)
+            .where(and(eq(behaviorRule.id, ruleId), eq(behaviorRule.matrixId, matrixId)));
+        if (!rule) return false;
+        const [dimension] = await db
+            .select({ id: behaviorDimension.id })
+            .from(behaviorDimension)
+            .where(and(eq(behaviorDimension.id, dimensionId), eq(behaviorDimension.matrixId, matrixId)));
+        return Boolean(dimension);
+    });
+}
+
 // --- Cell CRUD ---
 
 export function getCellByRuleDimension(ruleId: string, dimensionId: string) {

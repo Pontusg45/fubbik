@@ -23,6 +23,8 @@ vi.mock("@fubbik/db/repository", () => ({
     insertRuleVersion: vi.fn(),
     getRuleVersions: vi.fn(),
     getCellByRuleDimension: vi.fn(),
+    getCellInMatrix: vi.fn(),
+    ruleAndDimensionInMatrix: vi.fn(),
     createCell: vi.fn(),
     deleteCell: vi.fn(),
     getCellRequirementCount: vi.fn(),
@@ -48,6 +50,8 @@ import {
     getMaxRuleOrder,
     createRule as createRuleRepo,
     getCellByRuleDimension,
+    getCellInMatrix,
+    ruleAndDimensionInMatrix,
     createCell as createCellRepo,
     deleteCell as deleteCellRepo,
     getCellRequirementCount,
@@ -57,6 +61,10 @@ import {
     updateRule as updateRuleRepo,
     linkCellCode as linkCellCodeRepo,
     recordTestResult as recordTestResultRepo,
+    linkCellRequirement as linkCellRequirementRepo,
+    getRequirementsForCell as getRequirementsForCellRepo,
+    getCodeForCell as getCodeForCellRepo,
+    getTestResultsForCell as getTestResultsForCellRepo,
     getMatrixView
 } from "@fubbik/db/repository";
 
@@ -158,48 +166,64 @@ describe("addRule", () => {
     });
 });
 
+// Every cell-surface function now proves ownership before doing anything, so
+// the default for these suites is "the caller owns the matrix and the cell".
+// The tests that care about the guard itself override these deliberately.
+function grantCellOwnership() {
+    vi.mocked(getMatrixById).mockReturnValue(Effect.succeed({ id: "mat-1", userId: "user-1" }) as any);
+    vi.mocked(getCellInMatrix).mockReturnValue(
+        Effect.succeed({ id: "cell-1", ruleId: "rule-1", dimensionId: "dim-1", createdAt: new Date() }) as any
+    );
+    vi.mocked(ruleAndDimensionInMatrix).mockReturnValue(Effect.succeed(true) as any);
+}
+
 describe("toggleCell", () => {
     it("creates cell when none exists", async () => {
+        grantCellOwnership();
         vi.mocked(getCellByRuleDimension).mockReturnValue(Effect.succeed(null) as any);
         vi.mocked(createCellRepo).mockReturnValue(Effect.succeed({ id: "cell-1", ruleId: "rule-1", dimensionId: "dim-1" }) as any);
 
-        const result = await Effect.runPromise(service.toggleCell("rule-1", "dim-1"));
+        const result = await Effect.runPromise(service.toggleCell("mat-1", "user-1", "rule-1", "dim-1"));
 
         expect(result).toMatchObject({ action: "created" });
         expect(createCellRepo).toHaveBeenCalledOnce();
     });
 
     it("deletes cell with no linked requirements", async () => {
+        grantCellOwnership();
         vi.mocked(getCellByRuleDimension).mockReturnValue(Effect.succeed({ id: "cell-1" }) as any);
         vi.mocked(getCellRequirementCount).mockReturnValue(Effect.succeed(0) as any);
         vi.mocked(deleteCellRepo).mockReturnValue(Effect.succeed({ id: "cell-1" }) as any);
 
-        const result = await Effect.runPromise(service.toggleCell("rule-1", "dim-1"));
+        const result = await Effect.runPromise(service.toggleCell("mat-1", "user-1", "rule-1", "dim-1"));
 
         expect(result).toMatchObject({ action: "deleted" });
     });
 
     it("fails when cell has linked requirements", async () => {
+        grantCellOwnership();
         vi.mocked(getCellByRuleDimension).mockReturnValue(Effect.succeed({ id: "cell-1" }) as any);
         vi.mocked(getCellRequirementCount).mockReturnValue(Effect.succeed(2) as any);
 
-        await expect(Effect.runPromise(service.toggleCell("rule-1", "dim-1"))).rejects.toThrow();
+        await expect(Effect.runPromise(service.toggleCell("mat-1", "user-1", "rule-1", "dim-1"))).rejects.toThrow();
     });
 });
 
 describe("unlinkRequirementFromCell", () => {
     it("returns deleted link", async () => {
+        grantCellOwnership();
         vi.mocked(unlinkCellRequirementRepo).mockReturnValue(Effect.succeed({ cellId: "cell-1", requirementId: "req-1" }) as any);
 
-        const result = await Effect.runPromise(service.unlinkRequirementFromCell("cell-1", "req-1"));
+        const result = await Effect.runPromise(service.unlinkRequirementFromCell("mat-1", "cell-1", "user-1", "req-1"));
 
         expect(result).toMatchObject({ cellId: "cell-1", requirementId: "req-1" });
     });
 
     it("fails with NotFoundError when link not found", async () => {
+        grantCellOwnership();
         vi.mocked(unlinkCellRequirementRepo).mockReturnValue(Effect.succeed(null) as any);
 
-        await expect(Effect.runPromise(service.unlinkRequirementFromCell("cell-1", "req-1"))).rejects.toThrow();
+        await expect(Effect.runPromise(service.unlinkRequirementFromCell("mat-1", "cell-1", "user-1", "req-1"))).rejects.toThrow();
     });
 });
 
@@ -268,12 +292,13 @@ describe("updateRule", () => {
 
 describe("linkCodeToCell", () => {
     it("links code with a valid kind and trimmed ref", async () => {
+        grantCellOwnership();
         vi.mocked(linkCellCodeRepo).mockReturnValue(
             Effect.succeed({ id: "code-1", cellId: "cell-1", kind: "file", ref: "src/foo.ts" }) as any
         );
 
         const result = await Effect.runPromise(
-            service.linkCodeToCell("cell-1", { kind: "file", ref: "  src/foo.ts  " })
+            service.linkCodeToCell("mat-1", "cell-1", "user-1", { kind: "file", ref: "  src/foo.ts  " })
         );
 
         expect(result).toMatchObject({ kind: "file", ref: "src/foo.ts" });
@@ -285,21 +310,23 @@ describe("linkCodeToCell", () => {
     it.each(["symbol", "test"])("accepts kind %s", async kind => {
         vi.mocked(linkCellCodeRepo).mockReturnValue(Effect.succeed({ id: "code-1", kind }) as any);
 
-        const result = await Effect.runPromise(service.linkCodeToCell("cell-1", { kind, ref: "x" }));
+        const result = await Effect.runPromise(service.linkCodeToCell("mat-1", "cell-1", "user-1", { kind, ref: "x" }));
 
         expect(result).toMatchObject({ kind });
     });
 
     it("rejects an invalid kind", async () => {
+        grantCellOwnership();
         await expect(
-            Effect.runPromise(service.linkCodeToCell("cell-1", { kind: "module", ref: "src/foo.ts" }))
+            Effect.runPromise(service.linkCodeToCell("mat-1", "cell-1", "user-1", { kind: "module", ref: "src/foo.ts" }))
         ).rejects.toThrow();
         expect(linkCellCodeRepo).not.toHaveBeenCalled();
     });
 
     it("rejects an empty ref", async () => {
+        grantCellOwnership();
         await expect(
-            Effect.runPromise(service.linkCodeToCell("cell-1", { kind: "file", ref: "   " }))
+            Effect.runPromise(service.linkCodeToCell("mat-1", "cell-1", "user-1", { kind: "file", ref: "   " }))
         ).rejects.toThrow();
         expect(linkCellCodeRepo).not.toHaveBeenCalled();
     });
@@ -312,7 +339,7 @@ describe("recordTestResult", () => {
         );
 
         const result = await Effect.runPromise(
-            service.recordTestResult("cell-1", { testRef: "t", status })
+            service.recordTestResult("mat-1", "cell-1", "user-1", { testRef: "t", status })
         );
 
         expect(result).toMatchObject({ status });
@@ -322,8 +349,9 @@ describe("recordTestResult", () => {
     });
 
     it("rejects an invalid status", async () => {
+        grantCellOwnership();
         await expect(
-            Effect.runPromise(service.recordTestResult("cell-1", { testRef: "t", status: "skipped" }))
+            Effect.runPromise(service.recordTestResult("mat-1", "cell-1", "user-1", { testRef: "t", status: "skipped" }))
         ).rejects.toThrow();
         expect(recordTestResultRepo).not.toHaveBeenCalled();
     });
@@ -423,5 +451,105 @@ describe("getMatrixView", () => {
         vi.mocked(getMatrixById).mockReturnValue(Effect.succeed(null) as any);
 
         await expect(Effect.runPromise(service.getMatrixViewService("nope", "user-1"))).rejects.toThrow();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// SECURITY REGRESSION: the cell surface had no authorization at all
+// ---------------------------------------------------------------------------
+//
+// Every function below took a bare `cellId` (or, for toggleCell, a ruleId and
+// dimensionId straight from the request body). The routes called them with
+// `Effect.flatMap(() => ...)`, which discards the session, and never read
+// their own `:id` matrix path param. So any authenticated user could act on
+// any cell in anyone's matrix — reads AND writes.
+//
+// Each test below drives the same call twice: once as the owner (which must
+// still work, or the test proves nothing) and once as a stranger (which must
+// be rejected before the repo is ever touched).
+
+describe("cell surface authorization", () => {
+    /** The matrix lookup is user-scoped, so a stranger simply sees no matrix. */
+    function denyMatrix() {
+        vi.mocked(getMatrixById).mockReturnValue(Effect.succeed(null) as any);
+    }
+
+    it("toggleCell rejects a matrix the caller does not own, without touching the cell", async () => {
+        grantCellOwnership();
+        vi.mocked(getCellByRuleDimension).mockReturnValue(Effect.succeed(null) as any);
+        vi.mocked(createCellRepo).mockReturnValue(Effect.succeed({ id: "cell-1" }) as any);
+        await Effect.runPromise(service.toggleCell("mat-1", "owner", "rule-1", "dim-1"));
+        expect(createCellRepo).toHaveBeenCalledOnce();
+
+        vi.mocked(createCellRepo).mockClear();
+        denyMatrix();
+        await expect(Effect.runPromise(service.toggleCell("mat-1", "stranger", "rule-1", "dim-1"))).rejects.toThrow();
+        expect(createCellRepo).not.toHaveBeenCalled();
+    });
+
+    it("toggleCell rejects a rule/dimension from a different matrix", async () => {
+        // Caller owns the matrix, but names a rule that lives elsewhere —
+        // the second half of the guard, which a matrix-only check would miss.
+        vi.mocked(getMatrixById).mockReturnValue(Effect.succeed({ id: "mat-1", userId: "owner" }) as any);
+        vi.mocked(ruleAndDimensionInMatrix).mockReturnValue(Effect.succeed(false) as any);
+        vi.mocked(createCellRepo).mockClear();
+
+        await expect(Effect.runPromise(service.toggleCell("mat-1", "owner", "foreign-rule", "dim-1"))).rejects.toThrow();
+        expect(createCellRepo).not.toHaveBeenCalled();
+    });
+
+    it("linkRequirementToCell rejects a stranger, so a foreign cell cannot be written to", async () => {
+        grantCellOwnership();
+        vi.mocked(linkCellRequirementRepo).mockReturnValue(Effect.succeed({ cellId: "cell-1" }) as any);
+        await Effect.runPromise(service.linkRequirementToCell("mat-1", "cell-1", "owner", "req-1"));
+        expect(linkCellRequirementRepo).toHaveBeenCalledOnce();
+
+        vi.mocked(linkCellRequirementRepo).mockClear();
+        denyMatrix();
+        await expect(Effect.runPromise(service.linkRequirementToCell("mat-1", "cell-1", "stranger", "req-1"))).rejects.toThrow();
+        expect(linkCellRequirementRepo).not.toHaveBeenCalled();
+    });
+
+    it("rejects a cellId that belongs to another matrix the caller DOES own", async () => {
+        // The subtle case: the caller owns `mat-1`, but passes a cellId from
+        // `mat-2`. A matrix-ownership check alone would let this through —
+        // `getCellInMatrix` is what closes it.
+        vi.mocked(getMatrixById).mockReturnValue(Effect.succeed({ id: "mat-1", userId: "owner" }) as any);
+        vi.mocked(getCellInMatrix).mockReturnValue(Effect.succeed(null) as any);
+        vi.mocked(getRequirementsForCellRepo).mockClear();
+
+        await expect(
+            Effect.runPromise(service.getRequirementsForCell("mat-1", "cell-from-mat-2", "owner"))
+        ).rejects.toThrow();
+        expect(getRequirementsForCellRepo).not.toHaveBeenCalled();
+    });
+
+    it("getCodeForCell and getTestResultsForCell do not read a stranger's cell", async () => {
+        denyMatrix();
+        vi.mocked(getCodeForCellRepo).mockClear();
+        vi.mocked(getTestResultsForCellRepo).mockClear();
+
+        await expect(Effect.runPromise(service.getCodeForCell("mat-1", "cell-1", "stranger"))).rejects.toThrow();
+        await expect(Effect.runPromise(service.getTestResultsForCell("mat-1", "cell-1", "stranger"))).rejects.toThrow();
+        expect(getCodeForCellRepo).not.toHaveBeenCalled();
+        expect(getTestResultsForCellRepo).not.toHaveBeenCalled();
+    });
+
+    it("recordTestResult validates only AFTER ownership, so a stranger gets 404 not 400", async () => {
+        // Ordering matters: validating the body first would tell an
+        // unauthorized caller whether their status value was well-formed.
+        denyMatrix();
+        vi.mocked(recordTestResultRepo).mockClear();
+        // `Effect.either` surfaces the tagged error itself; `rejects.toThrow`
+        // only ever sees Effect's wrapper text, which would make this
+        // assertion pass for the wrong error.
+        const result = await Effect.runPromise(
+            Effect.either(service.recordTestResult("mat-1", "cell-1", "stranger", { testRef: "t", status: "bogus" }))
+        );
+        expect(result._tag).toBe("Left");
+        if (result._tag === "Left") {
+            expect(result.left._tag).toBe("NotFoundError");
+        }
+        expect(recordTestResultRepo).not.toHaveBeenCalled();
     });
 });
