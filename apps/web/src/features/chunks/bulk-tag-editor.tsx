@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogPopup, DialogHeader, DialogTitle, DialogDescription, DialogPanel, DialogFooter } from "@/components/ui/dialog";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface BulkTagEditorProps {
@@ -39,10 +39,8 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
 
     const allTagNames = useMemo(() => (tagsQuery.data ?? []).map(t => t.name), [tagsQuery.data]);
 
-    // Fetch chunk details for all selected IDs. Rust's GET /api/chunks/{id}
-    // returns the bare chunk row, which has no `tags` — every chunk would
-    // render untagged. Node's enriched detail shape carries tags, so this
-    // stays on legacyApi.
+    // Fetch chunk details for all selected IDs — the enriched detail shape
+    // is what carries `tags`; the bare chunk row has none.
     const chunksQuery = useQuery({
         queryKey: ["bulk-tag-chunks", chunkIds],
         queryFn: async () => {
@@ -117,7 +115,7 @@ export function BulkTagEditor({ chunkIds, open, onOpenChange }: BulkTagEditorPro
             // Rust's UpdateChunkBody has no `tags` field — it would 200 and
             // silently drop the write while this dialog reports success.
             for (const cs of changed) {
-                await legacyApi.api.chunks({ id: cs.id }).patch({ tags: cs.tags });
+                await api.api.chunks({ id: cs.id }).patch({ tags: cs.tags });
             }
             return changed.length;
         },

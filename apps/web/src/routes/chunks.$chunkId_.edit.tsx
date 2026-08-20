@@ -25,7 +25,7 @@ import { getUser } from "@/functions/get-user";
 // PUTs used to 400 against Rust's `{patterns: string[]}`/`{paths: string[]}`
 // and be swallowed by the `catch { // non-critical }` below, so patterns and
 // file refs were never actually saved.
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/$chunkId_/edit")({
@@ -240,7 +240,7 @@ function EditChunk() {
                 .map(s => s.trim())
                 .filter(Boolean);
             await unwrapEden(
-                await legacyApi.api.chunks({ id: chunkId }).patch({
+                await api.api.chunks({ id: chunkId }).patch({
                     title,
                     content,
                     type,
@@ -306,7 +306,7 @@ function EditChunk() {
             if (Object.keys(delta).length === 0) {
                 throw new Error("No changes to save as feature overlay");
             }
-            await unwrapEden(await legacyApi.api.chunks({ id: chunkId }).deltas({ featureId }).put({ delta }));
+            await unwrapEden(await api.api.chunks({ id: chunkId }).deltas({ featureId }).put({ delta }));
         },
         onSuccess: () => {
             clearDraft();

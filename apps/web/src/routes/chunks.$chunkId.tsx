@@ -22,7 +22,7 @@ import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 // below use `api`. The PATCH calls stay on `legacyApi`: Rust's
 // `UpdateChunkBody` has no `tags`/`isEntryPoint`/`reviewStatus` field yet —
 // see the "chunks" note in `@/utils/api`.
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { archiveChunk } from "@/utils/api-helpers";
 
 export const Route = createFileRoute("/chunks/$chunkId")({
@@ -116,7 +116,7 @@ function ChunkDetail() {
 
     const reviewMutation = useMutation({
         mutationFn: async (reviewStatus: "reviewed" | "approved") => {
-            const { error } = await legacyApi.api.chunks({ id: chunkId }).patch({ reviewStatus });
+            const { error } = await api.api.chunks({ id: chunkId }).patch({ reviewStatus });
             if (error) throw new Error("Failed to update review status");
         },
         onSuccess: () => {
@@ -145,7 +145,7 @@ function ChunkDetail() {
 
     const deleteMutation = useMutation({
         mutationFn: async () => {
-            const { error } = await legacyApi.api.chunks({ id: chunkId }).delete();
+            const { error } = await api.api.chunks({ id: chunkId }).delete();
             if (error) throw new Error("Failed to delete chunk");
         },
         onSuccess: () => {
@@ -161,7 +161,7 @@ function ChunkDetail() {
 
     const tagMutation = useMutation({
         mutationFn: async (tags: string[]) => {
-            const { error } = await legacyApi.api.chunks({ id: chunkId }).patch({ tags });
+            const { error } = await api.api.chunks({ id: chunkId }).patch({ tags });
             if (error) throw new Error("Failed to update tags");
         },
         onSuccess: () => {
@@ -177,7 +177,7 @@ function ChunkDetail() {
     const toggleEntryPointMutation = useMutation({
         mutationFn: async () => {
             const isEntryPoint = !(data?.chunk as any)?.isEntryPoint;
-            const { error } = await legacyApi.api.chunks({ id: chunkId }).patch({ isEntryPoint } as any);
+            const { error } = await api.api.chunks({ id: chunkId }).patch({ isEntryPoint });
             if (error) throw new Error("Failed to update entry point");
         },
         onSuccess: () => {

@@ -25,13 +25,21 @@ api.api.chunks.nonexistent.get();
 // @ts-expect-error method not defined on this route
 api.api.spaces.put();
 
-// 6. body shape — `CreateChunkBody` (crates/fubbik-api/src/chunks/dto.rs) has
-// no `tags` field and no `deny_unknown_fields`, so Rust silently drops it and
-// returns 200. This is the exact shape of the tags/alternatives/consequences
-// data-loss bug from this phase; the negative control below is the check
-// that would have caught it at authoring time.
-// @ts-expect-error — `tags` is not a field of Rust's CreateChunkBody.
+// 6. body shape. This assertion used to run the other way: `CreateChunkBody`
+// had no `tags` field, and because Rust has no `deny_unknown_fields`, serde
+// dropped it and returned 200 — a silent data-loss bug that this file
+// documented with a `@ts-expect-error` rather than fixed.
+//
+// The body now carries Node's full field set, so `tags` type-checks. Keeping
+// this as a POSITIVE assertion is the useful half: if the field is ever
+// dropped from the DTO again, this line stops compiling.
 api.api.chunks.post({ title: "x", content: "y", type: "note", tags: ["a"] });
+
+// The negative control that makes the line above meaningful — a genuinely
+// unknown field must still be rejected, or the body type has collapsed to
+// something that accepts anything and proves nothing.
+// @ts-expect-error — `notAField` is not part of CreateChunkBody.
+api.api.chunks.post({ title: "x", notAField: true });
 
 void _a;
 void _b;

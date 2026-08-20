@@ -192,7 +192,7 @@ function NewChunk() {
             // CreateChunkBody doesn't accept yet — see the "chunks" note in
             // `@/utils/api`. Same split as the edit page's PATCH.
             const chunk = unwrapEden(
-                await legacyApi.api.chunks.post({
+                await api.api.chunks.post({
                     title,
                     content,
                     type,

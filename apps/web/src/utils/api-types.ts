@@ -68,6 +68,13 @@ export interface paths {
         };
         get: operations["list_chunks"];
         put?: never;
+        /**
+         * **201**, not 200 — Node sets `ctx.set.status = 201` in an `Effect.tap`
+         *     after `createChunk` (`packages/api/src/chunks/routes.ts`), and this port
+         *     had been answering 200. Aligned here rather than left as a quiet
+         *     divergence; `POST /api/features` and `POST /api/requirements` are
+         *     already 201 in this crate, so 200 was also inconsistent internally.
+         */
         post: operations["create_chunk"];
         delete?: never;
         options?: never;
@@ -2691,6 +2698,13 @@ export interface components {
             userId?: string | null;
         };
         ChunkVersion: {
+            /**
+             * @description Nullable, unlike `chunk.alternatives`'s sibling on the live row —
+             *     `chunk_version.alternatives` is `jsonb` with no `NOT NULL` and no
+             *     default (`0001_init.sql:312`), so a snapshot of a chunk that had
+             *     none records `null`, not `[]`.
+             */
+            alternatives?: string[] | null;
             chunkId: string;
             consequences?: string | null;
             content: string;
@@ -2698,8 +2712,17 @@ export interface components {
             createdAt: string;
             id: string;
             rationale?: string | null;
+            scope?: {
+                [key: string]: string;
+            } | null;
             title: string;
             type: string;
+            /**
+             * @description Free-text label the caller may attach to a write ("feature-x"), so a
+             *     run of related edits can be found together later. Set from the
+             *     `updateTag` field on chunk create/update.
+             */
+            updateTag?: string | null;
             /** Format: int32 */
             version: number;
         };
@@ -2892,11 +2915,43 @@ export interface components {
             metadata?: unknown;
             text?: string | null;
         };
+        /**
+         * @description Body of `POST /api/chunks`, matching Node's route schema
+         *     (`packages/api/src/chunks/routes.ts` — the 13-field `t.Object` on the
+         *     `/chunks` POST).
+         *
+         *     This used to carry four fields. Every other one the client sent was
+         *     **silently discarded**: serde drops unknown fields rather than
+         *     rejecting them, so a create with `tags`/`spaceIds`/`scope`/
+         *     `alternatives` returned 200 and a chunk missing all of them. That is
+         *     the same failure mode that made `requirements/stats` ignore `spaceId`
+         *     while looking healthy — it is the reason call sites must be migrated,
+         *     not just routes ported.
+         */
         CreateChunkBody: {
+            alternatives?: string[] | null;
+            consequences?: string | null;
             content?: string;
+            documentId?: string | null;
+            /** Format: int32 */
+            documentOrder?: number | null;
+            /**
+             * @description `human` (the default) or `ai` — Node's route schema allows no other
+             *     value. `ai` creates a `draft` chunk needing review; `human` creates
+             *     an `approved` one. See `service::review_status_for_origin`.
+             */
+            origin?: string | null;
             rationale?: string | null;
+            scope?: {
+                [key: string]: string;
+            } | null;
+            spaceIds?: string[] | null;
+            /** @description Tag **names**, not ids — resolved through `tag::find_or_create`. */
+            tags?: string[] | null;
             title: string;
             type?: string | null;
+            /** @description Free-text label recorded on the chunk's version history. */
+            updateTag?: string | null;
         };
         /**
          * @description Body of `POST /api/chunk-types`
@@ -4933,12 +4988,35 @@ export interface components {
             metadata?: unknown;
             text?: string | null;
         };
+        /**
+         * @description Body of `PATCH /api/chunks/{id}` — same story as [`CreateChunkBody`]:
+         *     this carried five fields, and `tags`, `reviewStatus` and `isEntryPoint`
+         *     (all three sent by the chunk detail page) were being silently dropped.
+         *
+         *     `summary` is tri-state. `Option<Option<String>>` plus
+         *     `#[serde(default, deserialize_with = "double_option")]` distinguishes
+         *     "key absent" (`None`) from `"summary": null` (`Some(None)`) — see
+         *     `fubbik_db::repo::chunk::ChunkPatch::summary`.
+         */
         UpdateChunkBody: {
+            aliases?: string[] | null;
+            alternatives?: string[] | null;
             consequences?: string | null;
             content?: string | null;
+            isEntryPoint?: boolean | null;
+            notAbout?: string[] | null;
+            origin?: string | null;
             rationale?: string | null;
+            reviewStatus?: string | null;
+            scope?: {
+                [key: string]: string;
+            } | null;
+            spaceIds?: string[] | null;
+            summary?: string | null;
+            tags?: string[] | null;
             title?: string | null;
             type?: string | null;
+            updateTag?: string | null;
         };
         /**
          * @description Body of `PATCH /api/chunk-types/{id}` (`routes.ts:17-24,73-82`).
@@ -5627,7 +5705,7 @@ export interface operations {
             };
         };
         responses: {
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -9,7 +9,7 @@ import { PageEmpty } from "@/components/ui/page";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { DocumentDetailView } from "./document-detail";
@@ -56,11 +56,8 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
     const addSectionMutation = useMutation({
         mutationFn: async ({ title, content, afterOrder }: { title: string; content: string; afterOrder: number }) => {
             if (!detail) throw new Error("No document");
-            // Rust's CreateChunkBody has no `documentId`/`documentOrder`
-            // fields — it would 200 and silently create an orphan chunk
-            // instead of a linked document section. Must stay on legacyApi.
             return unwrapEden(
-                await legacyApi.api.chunks.post({
+                await api.api.chunks.post({
                     title,
                     content,
                     type: "document",
