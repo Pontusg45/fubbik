@@ -64,7 +64,11 @@ async fn create_chunk(app: axum::Router, cookie: &str, title: &str) -> String {
         )
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::OK, "chunk creation must succeed");
+    assert_eq!(
+        res.status(),
+        StatusCode::CREATED,
+        "chunk creation must succeed"
+    );
     let body = res.into_body().collect().await.unwrap().to_bytes();
     serde_json::from_slice::<serde_json::Value>(&body).unwrap()["id"]
         .as_str()

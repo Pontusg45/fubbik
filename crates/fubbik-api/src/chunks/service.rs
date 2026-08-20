@@ -19,18 +19,126 @@ pub async fn list(
     })
 }
 
+/// Node derives `reviewStatus` from `origin` rather than accepting it on
+/// create: an `ai`-authored chunk starts as a `draft` needing review,
+/// anything else starts `approved` (`chunk-mutations.ts:75,86`). Kept as one
+/// function so the pairing cannot drift apart.
+fn review_status_for_origin(origin: &str) -> &'static str {
+    if origin == "ai" { "draft" } else { "approved" }
+}
+
+// ---------------------------------------------------------------------------
+// Route-schema limits
+// ---------------------------------------------------------------------------
+//
+// Node enforces these in its Elysia `t.Object` before the handler runs, so
+// there is no service-layer equivalent to port — they have to be
+// re-expressed here or they simply vanish. Growing the request bodies to
+// Node's full field set without also porting its constraints would trade
+// one silent-acceptance bug (fields dropped) for another (values Node would
+// have rejected being stored).
+//
+// The two literal unions stay `String` at the DTO and DB layers and are
+// checked here, not modelled as serde enums: both columns are free `text`
+// with no CHECK, older rows may hold anything, and a serde enum would
+// reject with a parse error instead of a message naming the field. This is
+// the same disposition `FileRefEntry::relation` carries.
+
+const ORIGINS: [&str; 2] = ["human", "ai"];
+const REVIEW_STATUSES: [&str; 3] = ["draft", "reviewed", "approved"];
+
+fn check_len(value: &str, max: usize, field: &str) -> AppResult<()> {
+    if value.chars().count() > max {
+        return Err(AppError::Validation(format!(
+            "{field} must be at most {max} characters"
+        )));
+    }
+    Ok(())
+}
+
+fn check_one_of(value: &str, allowed: &[&str], field: &str) -> AppResult<()> {
+    if !allowed.contains(&value) {
+        return Err(AppError::Validation(format!(
+            "{field} must be one of {}",
+            allowed.join(", ")
+        )));
+    }
+    Ok(())
+}
+
+/// `tags` (`maxItems: 20`, each `maxLength: 50`) and `spaceIds`
+/// (`maxItems: 20`) carry the same limits on both the create and update
+/// bodies, so they are checked in one place.
+fn check_tags_and_spaces(tags: Option<&[String]>, space_ids: Option<&[String]>) -> AppResult<()> {
+    if let Some(tags) = tags {
+        if tags.len() > 20 {
+            return Err(AppError::Validation("at most 20 tags are allowed".into()));
+        }
+        for tag in tags {
+            check_len(tag, 50, "tag")?;
+        }
+    }
+    if let Some(ids) = space_ids
+        && ids.len() > 20
+    {
+        return Err(AppError::Validation(
+            "at most 20 spaceIds are allowed".into(),
+        ));
+    }
+    Ok(())
+}
+
 pub async fn create(pool: &PgPool, user_id: &str, body: CreateChunkBody) -> AppResult<Chunk> {
     let title = body.title.trim();
     if title.is_empty() {
         return Err(AppError::Validation("title is required".into()));
     }
-    if title.chars().count() > 200 {
-        return Err(AppError::Validation(
-            "title must be at most 200 characters".into(),
-        ));
+    check_len(title, 200, "title")?;
+    check_len(&body.content, 50_000, "content")?;
+    if let Some(t) = body.chunk_type.as_deref() {
+        check_len(t, 20, "type")?;
     }
+    if let Some(r) = body.rationale.as_deref() {
+        check_len(r, 5_000, "rationale")?;
+    }
+    if let Some(c) = body.consequences.as_deref() {
+        check_len(c, 5_000, "consequences")?;
+    }
+    if let Some(o) = body.origin.as_deref() {
+        check_one_of(o, &ORIGINS, "origin")?;
+    }
+    if let Some(t) = body.update_tag.as_deref() {
+        check_len(t, 100, "updateTag")?;
+    }
+    check_tags_and_spaces(body.tags.as_deref(), body.space_ids.as_deref())?;
 
-    chunk::create(
+    // `documentId` is verified to exist AND to belong to the caller before
+    // the insert, matching Node's `resolveDocumentLinkageForNewChunk`
+    // (`chunk-mutations.ts:32-57`) — including its detail that a blank or
+    // whitespace-only value is treated as absent rather than as an error,
+    // and that an unknown/foreign id is a 400, not a silent null.
+    let document_id = match body.document_id.as_deref().map(str::trim) {
+        None | Some("") => None,
+        Some(id) => {
+            let owned = fubbik_db::repo::document::find_by_id(pool, id, user_id).await?;
+            if owned.is_none() {
+                return Err(AppError::Validation(
+                    "Invalid or unknown document for documentId".into(),
+                ));
+            }
+            Some(id.to_string())
+        }
+    };
+    // Node only carries `documentOrder` through when a document was
+    // actually resolved (`chunk-mutations.ts:52-55` returns `undefined` for
+    // both in the no-document branch), so an order without a document is
+    // dropped rather than stored dangling.
+    let document_order = document_id.as_ref().and(body.document_order);
+
+    let origin = body.origin.unwrap_or_else(|| "human".into());
+    let review_status = review_status_for_origin(&origin).to_string();
+
+    let created = chunk::create(
         pool,
         user_id,
         NewChunk {
@@ -38,9 +146,83 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateChunkBody) -> AppR
             content: body.content,
             chunk_type: body.chunk_type.unwrap_or_else(|| "note".into()),
             rationale: body.rationale,
+            alternatives: body.alternatives,
+            consequences: body.consequences,
+            origin,
+            review_status,
+            document_id,
+            document_order,
         },
     )
-    .await
+    .await?;
+
+    // `scope` is accepted by the route body and then DROPPED — on both
+    // stacks. Node's route schema declares it, but `createChunk`'s own
+    // parameter type omits it and `createChunkRepo` never passes it
+    // through (`chunk-mutations.ts:60-90`), so a scope supplied at create
+    // time never reaches the column.
+    //
+    // Reproduced rather than fixed, after measuring: no first-party client
+    // sends `scope` on create (the web's `chunks.new` page doesn't; the MCP
+    // server's `scope` field is on `propose_chunk_update`, a different
+    // route), so "fixing" it would buy nothing real while making the two
+    // stacks disagree — the same call the ledger already recorded for blank
+    // query params. Pinned by
+    // `chunk_write.rs::create_accepts_scope_and_drops_it_like_node` so the
+    // behaviour is a documented decision rather than an oversight. Setting
+    // a scope is `PATCH`'s job, where it does land.
+    let _ = &body.scope;
+
+    apply_tags_and_spaces(pool, user_id, &created.id, body.tags, body.space_ids).await?;
+
+    if let Some(tag) = body.update_tag.as_deref() {
+        // Node records the create under version 0 with empty title/content
+        // (`chunk-mutations.ts:120-131`) — a marker row, not a snapshot.
+        // Reproduced by snapshotting the freshly created chunk instead,
+        // which carries the same `update_tag` but real content; an empty
+        // marker in the history list is worse than useless to the UI, which
+        // renders title and content per version.
+        fubbik_db::repo::chunk_version::snapshot(pool, &created, Some(tag)).await?;
+    }
+
+    Ok(created)
+}
+
+/// Writes the two join tables a chunk create/update may touch.
+///
+/// Both are all-or-nothing replacements, and both are skipped entirely when
+/// the field is absent — `None` means "don't touch", `Some(vec![])` means
+/// "clear". Node makes the same distinction, but only on update: its
+/// `createChunk` guards with `body.tags && body.tags.length > 0`, so
+/// creating with `tags: []` is a no-op there and here alike (there is
+/// nothing to clear on a brand-new chunk).
+///
+/// Tags arrive as names and are resolved through `tag::find_or_create`,
+/// sequentially rather than Node's `{ concurrency: 5 }` — these are
+/// single-row upserts against one pool, and running them in order removes
+/// any chance of two concurrent inserts racing for the same new name.
+async fn apply_tags_and_spaces(
+    pool: &PgPool,
+    user_id: &str,
+    chunk_id: &str,
+    tags: Option<Vec<String>>,
+    space_ids: Option<Vec<String>>,
+) -> AppResult<()> {
+    if let Some(names) = tags {
+        let mut tag_ids = Vec::with_capacity(names.len());
+        for name in &names {
+            tag_ids.push(
+                fubbik_db::repo::tag::find_or_create(pool, user_id, name)
+                    .await?
+                    .id,
+            );
+        }
+        fubbik_db::repo::tag::set_chunk_tags(pool, user_id, chunk_id, &tag_ids).await?;
+    }
+    if let Some(ids) = space_ids {
+        fubbik_db::repo::space::set_chunk_spaces(pool, user_id, chunk_id, &ids).await?;
+    }
+    Ok(())
 }
 
 pub async fn get(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Chunk> {
@@ -61,24 +243,84 @@ pub async fn update(
     // is left untouched.
     let title = body
         .title
+        .as_deref()
         .map(|title| {
             let trimmed = title.trim();
             if trimmed.is_empty() {
                 return Err(AppError::Validation("title is required".into()));
             }
-            if trimmed.chars().count() > 200 {
-                return Err(AppError::Validation(
-                    "title must be at most 200 characters".into(),
-                ));
-            }
+            check_len(trimmed, 200, "title")?;
             Ok(trimmed.to_string())
         })
         .transpose()?;
 
-    let current = get(pool, user_id, id).await?;
-    fubbik_db::repo::chunk_version::snapshot(pool, &current).await?;
+    // Same route-schema limits as `create`, plus the four fields only PATCH
+    // accepts. All validated BEFORE the version snapshot is written — a
+    // rejected PATCH must not leave a history entry behind for an edit that
+    // never happened.
+    if let Some(c) = body.content.as_deref() {
+        check_len(c, 50_000, "content")?;
+    }
+    if let Some(t) = body.chunk_type.as_deref() {
+        check_len(t, 20, "type")?;
+    }
+    if let Some(r) = body.rationale.as_deref() {
+        check_len(r, 5_000, "rationale")?;
+    }
+    if let Some(c) = body.consequences.as_deref() {
+        check_len(c, 5_000, "consequences")?;
+    }
+    // `Some(None)` is an explicit null (clear the summary) and has nothing
+    // to length-check; only `Some(Some(_))` carries a value.
+    if let Some(Some(summary)) = body.summary.as_ref() {
+        check_len(summary, 500, "summary")?;
+    }
+    if let Some(aliases) = body.aliases.as_deref() {
+        if aliases.len() > 20 {
+            return Err(AppError::Validation(
+                "at most 20 aliases are allowed".into(),
+            ));
+        }
+        for alias in aliases {
+            check_len(alias, 100, "alias")?;
+        }
+    }
+    if let Some(entries) = body.not_about.as_deref() {
+        if entries.len() > 20 {
+            return Err(AppError::Validation(
+                "at most 20 notAbout entries are allowed".into(),
+            ));
+        }
+        for entry in entries {
+            check_len(entry, 100, "notAbout entry")?;
+        }
+    }
+    if let Some(o) = body.origin.as_deref() {
+        check_one_of(o, &ORIGINS, "origin")?;
+    }
+    if let Some(rs) = body.review_status.as_deref() {
+        check_one_of(rs, &REVIEW_STATUSES, "reviewStatus")?;
+    }
+    if let Some(t) = body.update_tag.as_deref() {
+        check_len(t, 100, "updateTag")?;
+    }
+    check_tags_and_spaces(body.tags.as_deref(), body.space_ids.as_deref())?;
 
-    chunk::update(
+    let current = get(pool, user_id, id).await?;
+    fubbik_db::repo::chunk_version::snapshot(pool, &current, body.update_tag.as_deref()).await?;
+
+    // Node stamps the reviewer whenever `reviewStatus` is present, even if
+    // the value is unchanged (`chunk-mutations.ts:175-178`) — the stamp
+    // records "who last asserted this status", not "who changed it".
+    let (reviewed_by, reviewed_at) = match body.review_status {
+        Some(_) => (
+            Some(user_id.to_string()),
+            Some(chrono::Utc::now().naive_utc()),
+        ),
+        None => (None, None),
+    };
+
+    let updated = chunk::update(
         pool,
         user_id,
         id,
@@ -88,18 +330,28 @@ pub async fn update(
             chunk_type: body.chunk_type,
             rationale: body.rationale,
             consequences: body.consequences,
-            // `UpdateChunkBody` (the regular `PATCH /chunks/{id}` body) has
-            // no `alternatives`/`scope` fields — only the proposals domain's
-            // atomic approve path sets these, via its own dedicated repo
-            // function. Leaving both `None` here keeps this call's observed
-            // behaviour byte-for-byte identical to before `ChunkPatch` grew
-            // the two fields.
-            alternatives: None,
-            scope: None,
+            alternatives: body.alternatives,
+            scope: body.scope,
+            summary: body.summary,
+            aliases: body.aliases,
+            not_about: body.not_about,
+            origin: body.origin,
+            review_status: body.review_status,
+            reviewed_by,
+            reviewed_at,
+            is_entry_point: body.is_entry_point,
+            // Not on the PATCH body — Node's route schema has no
+            // `documentOrder` either, though its repo params do. Reordering
+            // a chunk within a document is the documents domain's job.
+            document_order: None,
         },
     )
     .await?
-    .ok_or_else(|| AppError::NotFound("chunk".into()))
+    .ok_or_else(|| AppError::NotFound("chunk".into()))?;
+
+    apply_tags_and_spaces(pool, user_id, id, body.tags, body.space_ids).await?;
+
+    Ok(updated)
 }
 
 pub async fn history(

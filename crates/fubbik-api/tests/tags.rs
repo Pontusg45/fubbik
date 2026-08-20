@@ -282,6 +282,7 @@ async fn delete_cascades_chunk_tag(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await

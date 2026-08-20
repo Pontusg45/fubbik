@@ -14,12 +14,13 @@ async fn snapshot_records_pre_edit_state(pool: sqlx::PgPool) {
             content: "v1".into(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
     .unwrap();
 
-    chunk_version::snapshot(&pool, &c).await.unwrap();
+    chunk_version::snapshot(&pool, &c, None).await.unwrap();
 
     let history = chunk_version::list_for_chunk(&pool, &c.id, &uid)
         .await
@@ -44,13 +45,14 @@ async fn version_numbers_increment_per_chunk(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
     .unwrap();
 
-    chunk_version::snapshot(&pool, &c).await.unwrap();
-    chunk_version::snapshot(&pool, &c).await.unwrap();
+    chunk_version::snapshot(&pool, &c, None).await.unwrap();
+    chunk_version::snapshot(&pool, &c, None).await.unwrap();
 
     let history = chunk_version::list_for_chunk(&pool, &c.id, &uid)
         .await
@@ -83,12 +85,13 @@ async fn list_for_chunk_scoped_to_owner_at_repo_layer(pool: sqlx::PgPool) {
             content: "v1".into(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
     .unwrap();
 
-    chunk_version::snapshot(&pool, &c).await.unwrap();
+    chunk_version::snapshot(&pool, &c, None).await.unwrap();
 
     let as_alice = chunk_version::list_for_chunk(&pool, &c.id, &alice)
         .await
@@ -122,6 +125,7 @@ async fn duplicate_chunk_id_version_is_rejected(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await

@@ -92,7 +92,7 @@ async fn create_chunk(app: axum::Router, cookie: &str, title: &str) -> String {
         )
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
     json_body(res).await["id"].as_str().unwrap().to_string()
 }
 

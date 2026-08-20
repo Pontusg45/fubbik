@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO chunk (id, title, content, type, user_id, rationale)\n           VALUES ($1, $2, $3, $4, $5, $6)\n           RETURNING id, title, content, type AS chunk_type, user_id, summary,\n                     aliases AS \"aliases: Json<Vec<String>>\",\n                     not_about AS \"not_about: Json<Vec<String>>\",\n                     scope AS \"scope: Json<serde_json::Value>\",\n                     rationale,\n                     alternatives AS \"alternatives: Json<Vec<String>>\",\n                     consequences,\n                     embedding::text AS \"embedding: EmbeddingVec\",\n                     embedding_updated_at AS \"embedding_updated_at: UtcTimestamp\",\n                     origin, review_status, reviewed_by,\n                     reviewed_at AS \"reviewed_at: UtcTimestamp\",\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\",\n                     archived_at AS \"archived_at: UtcTimestamp\",\n                     document_id, document_order, is_entry_point",
+  "query": "UPDATE chunk SET\n             title = COALESCE($3, title),\n             content = COALESCE($4, content),\n             type = COALESCE($5, type),\n             rationale = COALESCE($6, rationale),\n             consequences = COALESCE($7, consequences),\n             alternatives = COALESCE($8, alternatives),\n             scope = COALESCE($9, scope),\n             -- `summary` is tri-state, so COALESCE alone cannot express it:\n             -- COALESCE($n, summary) can never write NULL. `$10` says\n             -- \"touch this column at all\", `$11` carries the value (which\n             -- may legitimately be NULL). See `ChunkPatch::summary`.\n             summary = CASE WHEN $10 THEN $11 ELSE summary END,\n             aliases = COALESCE($12, aliases),\n             not_about = COALESCE($13, not_about),\n             origin = COALESCE($14, origin),\n             review_status = COALESCE($15, review_status),\n             reviewed_by = COALESCE($16, reviewed_by),\n             reviewed_at = COALESCE($17, reviewed_at),\n             is_entry_point = COALESCE($18, is_entry_point),\n             document_order = COALESCE($19, document_order),\n             updated_at = now()\n           WHERE id = $1 AND user_id = $2\n           RETURNING id, title, content, type AS chunk_type, user_id, summary,\n                     aliases AS \"aliases: Json<Vec<String>>\",\n                     not_about AS \"not_about: Json<Vec<String>>\",\n                     scope AS \"scope: Json<serde_json::Value>\",\n                     rationale,\n                     alternatives AS \"alternatives: Json<Vec<String>>\",\n                     consequences,\n                     embedding::text AS \"embedding: EmbeddingVec\",\n                     embedding_updated_at AS \"embedding_updated_at: UtcTimestamp\",\n                     origin, review_status, reviewed_by,\n                     reviewed_at AS \"reviewed_at: UtcTimestamp\",\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\",\n                     archived_at AS \"archived_at: UtcTimestamp\",\n                     document_id, document_order, is_entry_point",
   "describe": {
     "columns": [
       {
@@ -131,7 +131,20 @@
         "Text",
         "Text",
         "Text",
-        "Text"
+        "Text",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Bool",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamp",
+        "Bool",
+        "Int4"
       ]
     },
     "nullable": [
@@ -161,5 +174,5 @@
       false
     ]
   },
-  "hash": "83d0ae9a3ccf201cb8903aa1133fb4e4b5cf1a37f8c23f400b9f1365be84665f"
+  "hash": "41500daadee23b631965551f7ce27a3e497456edf0b8f61a0b95c009fcba477e"
 }

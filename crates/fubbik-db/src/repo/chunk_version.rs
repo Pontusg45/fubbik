@@ -1,6 +1,8 @@
 use fubbik_core::error::AppResult;
 use sqlx::PgPool;
 
+use sqlx::types::Json;
+
 use super::chunk::Chunk;
 use crate::timestamp::UtcTimestamp;
 
@@ -15,7 +17,19 @@ pub struct ChunkVersion {
     #[serde(rename = "type")]
     pub chunk_type: String,
     pub rationale: Option<String>,
+    /// Nullable, unlike `chunk.alternatives`'s sibling on the live row —
+    /// `chunk_version.alternatives` is `jsonb` with no `NOT NULL` and no
+    /// default (`0001_init.sql:312`), so a snapshot of a chunk that had
+    /// none records `null`, not `[]`.
+    #[schema(value_type = Option<Vec<String>>)]
+    pub alternatives: Option<Json<Vec<String>>>,
     pub consequences: Option<String>,
+    #[schema(value_type = Option<std::collections::HashMap<String, String>>)]
+    pub scope: Option<Json<serde_json::Value>>,
+    /// Free-text label the caller may attach to a write ("feature-x"), so a
+    /// run of related edits can be found together later. Set from the
+    /// `updateTag` field on chunk create/update.
+    pub update_tag: Option<String>,
     #[schema(value_type = chrono::NaiveDateTime)]
     pub created_at: UtcTimestamp,
 }
@@ -35,17 +49,28 @@ pub struct ChunkVersion {
 /// conflict is deferred to a later phase. The aggregate over an empty set
 /// yields NULL, which COALESCE turns into the first version, 1.
 ///
-/// `tags` is written as an empty array because the tag domain does not
-/// exist in Phase 1. Phase 2 must revisit this when tags land, or version
-/// history will record every chunk as untagged.
-pub async fn snapshot(pool: &PgPool, current: &Chunk) -> AppResult<()> {
+/// `tags` is written as an empty array — **matching Node**, which passes
+/// `tags: []` at both of its call sites (`chunk-mutations.ts:159,171`)
+/// despite the tag domain existing there. The Phase 1 comment this replaces
+/// read as a known gap to close later; it is actually parity. Version
+/// history genuinely records every chunk as untagged, on both stacks.
+///
+/// `alternatives`, `scope` and `update_tag` were NOT written until the
+/// chunk write-surface port, though `chunk_version` has had all three
+/// columns since `0001_init.sql:312-315` and Node writes the first two on
+/// every update. `GET /api/chunks/{id}/history` therefore served `null` for
+/// them regardless of what the chunk held — the same
+/// column-missing-from-the-projection bug the applies-to/file-refs
+/// sub-resources had.
+pub async fn snapshot(pool: &PgPool, current: &Chunk, update_tag: Option<&str>) -> AppResult<()> {
     let id = crate::new_id();
     sqlx::query!(
         r#"INSERT INTO chunk_version
              (id, chunk_id, version, title, content, type, tags,
-              rationale, consequences, created_at)
+              rationale, alternatives, consequences, scope, update_tag,
+              created_at)
            SELECT $1, $2, COALESCE(MAX(v.version), 0) + 1, $3, $4, $5,
-                  '[]'::jsonb, $6, $7, now()
+                  '[]'::jsonb, $6, $7, $8, $9, $10, now()
            FROM chunk_version v WHERE v.chunk_id = $2"#,
         id,
         current.id,
@@ -53,7 +78,10 @@ pub async fn snapshot(pool: &PgPool, current: &Chunk) -> AppResult<()> {
         current.content,
         current.chunk_type,
         current.rationale,
-        current.consequences
+        current.alternatives.as_ref().map(|a| Json(&a.0)) as _,
+        current.consequences,
+        Some(Json(&current.scope.0)) as _,
+        update_tag
     )
     .execute(pool)
     .await?;
@@ -72,7 +100,12 @@ pub async fn list_for_chunk(
     let rows = sqlx::query_as!(
         ChunkVersion,
         r#"SELECT id, chunk_id, version, title, content, type AS chunk_type,
-                  rationale, consequences, created_at AS "created_at: UtcTimestamp"
+                  rationale,
+                  alternatives AS "alternatives: Json<Vec<String>>",
+                  consequences,
+                  scope AS "scope: Json<serde_json::Value>",
+                  update_tag,
+                  created_at AS "created_at: UtcTimestamp"
            FROM chunk_version
            WHERE chunk_id = $1
              AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2)

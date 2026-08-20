@@ -79,6 +79,75 @@ pub async fn create(
     Ok(t)
 }
 
+/// Returns the caller's tag with this exact name, creating it if absent —
+/// Node's `findOrCreateTag` (`packages/db/src/repository/tag-new.ts:
+/// 159-171`), which backs the `tags: ["a", "b"]` field on chunk create and
+/// update (tags arrive as *names* there, not ids).
+///
+/// Node does this as a `SELECT` then an unguarded `INSERT`, which races:
+/// two concurrent chunk writes naming the same new tag both see nothing and
+/// both insert. `tag` has `UNIQUE (user_id, name)`
+/// (`0001_init.sql`), so in Node the loser gets a raw 500. Here the insert
+/// carries `ON CONFLICT (user_id, name) DO NOTHING` and falls back to a
+/// re-select, so the loser of the race gets the winner's row — the outcome
+/// the caller wanted either way. A deliberate divergence: Node's behaviour
+/// here is a bug, not a contract, and reproducing a 500 would mean chunk
+/// creation intermittently failing on a field the UI populates freely.
+///
+/// Name matching is exact, including case — same as Node.
+pub async fn find_or_create(pool: &PgPool, user_id: &str, name: &str) -> AppResult<Tag> {
+    if let Some(existing) = sqlx::query_as!(
+        Tag,
+        r#"SELECT id, name, tag_type_id, user_id,
+                  created_at AS "created_at: UtcTimestamp",
+                  origin, review_status, reviewed_by,
+                  reviewed_at AS "reviewed_at: UtcTimestamp"
+           FROM tag WHERE name = $1 AND user_id = $2"#,
+        name,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?
+    {
+        return Ok(existing);
+    }
+
+    let id = crate::new_id();
+    let inserted = sqlx::query_as!(
+        Tag,
+        r#"INSERT INTO tag (id, name, user_id)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (user_id, name) DO NOTHING
+           RETURNING id, name, tag_type_id, user_id,
+                     created_at AS "created_at: UtcTimestamp",
+                     origin, review_status, reviewed_by,
+                     reviewed_at AS "reviewed_at: UtcTimestamp""#,
+        id,
+        name,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    match inserted {
+        Some(tag) => Ok(tag),
+        // Lost the race — the conflicting row is the one the caller wants.
+        // `fetch_one` is right here: the unique index guarantees it exists.
+        None => Ok(sqlx::query_as!(
+            Tag,
+            r#"SELECT id, name, tag_type_id, user_id,
+                      created_at AS "created_at: UtcTimestamp",
+                      origin, review_status, reviewed_by,
+                      reviewed_at AS "reviewed_at: UtcTimestamp"
+               FROM tag WHERE name = $1 AND user_id = $2"#,
+            name,
+            user_id
+        )
+        .fetch_one(pool)
+        .await?),
+    }
+}
+
 /// Lists a user's tags, joined with their tag type and a live count of
 /// attached chunks. `LEFT JOIN`s throughout: a tag with no type, or no
 /// chunks, must still appear.

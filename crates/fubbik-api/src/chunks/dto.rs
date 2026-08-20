@@ -1,23 +1,87 @@
 use fubbik_db::repo::chunk::{Chunk, Enrichment, Sort};
 
+/// Body of `POST /api/chunks`, matching Node's route schema
+/// (`packages/api/src/chunks/routes.ts` — the 13-field `t.Object` on the
+/// `/chunks` POST).
+///
+/// This used to carry four fields. Every other one the client sent was
+/// **silently discarded**: serde drops unknown fields rather than
+/// rejecting them, so a create with `tags`/`spaceIds`/`scope`/
+/// `alternatives` returned 200 and a chunk missing all of them. That is
+/// the same failure mode that made `requirements/stats` ignore `spaceId`
+/// while looking healthy — it is the reason call sites must be migrated,
+/// not just routes ported.
 #[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateChunkBody {
     pub title: String,
     #[serde(default)]
     pub content: String,
     #[serde(rename = "type")]
     pub chunk_type: Option<String>,
+    /// Tag **names**, not ids — resolved through `tag::find_or_create`.
+    pub tags: Option<Vec<String>>,
+    pub space_ids: Option<Vec<String>>,
+    #[schema(value_type = Option<std::collections::HashMap<String, String>>)]
+    pub scope: Option<serde_json::Value>,
     pub rationale: Option<String>,
+    pub alternatives: Option<Vec<String>>,
+    pub consequences: Option<String>,
+    /// `human` (the default) or `ai` — Node's route schema allows no other
+    /// value. `ai` creates a `draft` chunk needing review; `human` creates
+    /// an `approved` one. See `service::review_status_for_origin`.
+    pub origin: Option<String>,
+    pub document_id: Option<String>,
+    pub document_order: Option<i32>,
+    /// Free-text label recorded on the chunk's version history.
+    pub update_tag: Option<String>,
 }
 
+/// Body of `PATCH /api/chunks/{id}` — same story as [`CreateChunkBody`]:
+/// this carried five fields, and `tags`, `reviewStatus` and `isEntryPoint`
+/// (all three sent by the chunk detail page) were being silently dropped.
+///
+/// `summary` is tri-state. `Option<Option<String>>` plus
+/// `#[serde(default, deserialize_with = "double_option")]` distinguishes
+/// "key absent" (`None`) from `"summary": null` (`Some(None)`) — see
+/// `fubbik_db::repo::chunk::ChunkPatch::summary`.
 #[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateChunkBody {
     pub title: Option<String>,
     pub content: Option<String>,
     #[serde(rename = "type")]
     pub chunk_type: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub space_ids: Option<Vec<String>>,
+    #[serde(default, deserialize_with = "double_option")]
+    #[schema(value_type = Option<String>)]
+    pub summary: Option<Option<String>>,
+    pub aliases: Option<Vec<String>>,
+    pub not_about: Option<Vec<String>>,
+    #[schema(value_type = Option<std::collections::HashMap<String, String>>)]
+    pub scope: Option<serde_json::Value>,
     pub rationale: Option<String>,
+    pub alternatives: Option<Vec<String>>,
     pub consequences: Option<String>,
+    pub origin: Option<String>,
+    pub review_status: Option<String>,
+    pub is_entry_point: Option<bool>,
+    pub update_tag: Option<String>,
+}
+
+/// Deserializes an optional-and-nullable field into `Option<Option<T>>`.
+///
+/// serde's default handling of `Option<Option<T>>` collapses both "absent"
+/// and "null" to `None`, which is exactly the distinction a tri-state PATCH
+/// field needs to keep. Combined with `#[serde(default)]`, this yields
+/// `None` for an absent key and `Some(None)` for an explicit `null`.
+fn double_option<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: serde::Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    serde::Deserialize::deserialize(deserializer).map(Some)
 }
 
 /// Query params arrive as strings from the web client, matching the Elysia

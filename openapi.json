@@ -397,6 +397,7 @@
         "tags": [
           "crate::chunks::routes"
         ],
+        "summary": "**201**, not 200 — Node sets `ctx.set.status = 201` in an `Effect.tap`\nafter `createChunk` (`packages/api/src/chunks/routes.ts`), and this port\nhad been answering 200. Aligned here rather than left as a quiet\ndivergence; `POST /api/features` and `POST /api/requirements` are\nalready 201 in this crate, so 200 was also inconsistent internally.",
         "operationId": "create_chunk",
         "requestBody": {
           "content": {
@@ -409,7 +410,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -7749,6 +7750,16 @@
           "createdAt"
         ],
         "properties": {
+          "alternatives": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Nullable, unlike `chunk.alternatives`'s sibling on the live row —\n`chunk_version.alternatives` is `jsonb` with no `NOT NULL` and no\ndefault (`0001_init.sql:312`), so a snapshot of a chunk that had\nnone records `null`, not `[]`."
+          },
           "chunkId": {
             "type": "string"
           },
@@ -7774,11 +7785,30 @@
               "null"
             ]
           },
+          "scope": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
           "title": {
             "type": "string"
           },
           "type": {
             "type": "string"
+          },
+          "updateTag": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Free-text label the caller may attach to a write (\"feature-x\"), so a\nrun of related edits can be found together later. Set from the\n`updateTag` field on chunk create/update."
           },
           "version": {
             "type": "integer",
@@ -8186,18 +8216,85 @@
       },
       "CreateChunkBody": {
         "type": "object",
+        "description": "Body of `POST /api/chunks`, matching Node's route schema\n(`packages/api/src/chunks/routes.ts` — the 13-field `t.Object` on the\n`/chunks` POST).\n\nThis used to carry four fields. Every other one the client sent was\n**silently discarded**: serde drops unknown fields rather than\nrejecting them, so a create with `tags`/`spaceIds`/`scope`/\n`alternatives` returned 200 and a chunk missing all of them. That is\nthe same failure mode that made `requirements/stats` ignore `spaceId`\nwhile looking healthy — it is the reason call sites must be migrated,\nnot just routes ported.",
         "required": [
           "title"
         ],
         "properties": {
+          "alternatives": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "consequences": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "content": {
             "type": "string"
+          },
+          "documentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documentOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "origin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`human` (the default) or `ai` — Node's route schema allows no other\nvalue. `ai` creates a `draft` chunk needing review; `human` creates\nan `approved` one. See `service::review_status_for_origin`."
           },
           "rationale": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "scope": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "spaceIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Tag **names**, not ids — resolved through `tag::find_or_create`."
           },
           "title": {
             "type": "string"
@@ -8207,6 +8304,13 @@
               "string",
               "null"
             ]
+          },
+          "updateTag": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Free-text label recorded on the chunk's version history."
           }
         }
       },
@@ -12671,7 +12775,26 @@
       },
       "UpdateChunkBody": {
         "type": "object",
+        "description": "Body of `PATCH /api/chunks/{id}` — same story as [`CreateChunkBody`]:\nthis carried five fields, and `tags`, `reviewStatus` and `isEntryPoint`\n(all three sent by the chunk detail page) were being silently dropped.\n\n`summary` is tri-state. `Option<Option<String>>` plus\n`#[serde(default, deserialize_with = \"double_option\")]` distinguishes\n\"key absent\" (`None`) from `\"summary\": null` (`Some(None)`) — see\n`fubbik_db::repo::chunk::ChunkPatch::summary`.",
         "properties": {
+          "aliases": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "alternatives": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
           "consequences": {
             "type": [
               "string",
@@ -12684,11 +12807,74 @@
               "null"
             ]
           },
+          "isEntryPoint": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "notAbout": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "origin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "rationale": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "reviewStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "spaceIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tags": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
           },
           "title": {
             "type": [
@@ -12697,6 +12883,12 @@
             ]
           },
           "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updateTag": {
             "type": [
               "string",
               "null"

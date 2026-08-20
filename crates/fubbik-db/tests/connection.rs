@@ -22,6 +22,7 @@ async fn a_chunk(pool: &sqlx::PgPool, uid: &str, title: &str) -> String {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await

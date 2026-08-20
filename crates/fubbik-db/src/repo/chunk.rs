@@ -54,11 +54,51 @@ pub struct Chunk {
     pub is_entry_point: bool,
 }
 
+/// Everything `POST /api/chunks` can set at insert time, matching Node's
+/// `createChunkRepo` call in `chunk-mutations.ts:76-90`.
+///
+/// `tags` and `space_ids` are deliberately absent: both are join tables
+/// written by separate calls *after* the insert, exactly as Node does it.
+///
+/// `origin` and `review_status` are supplied by the caller rather than left
+/// to the column defaults, because Node derives them together — `origin =
+/// "ai"` implies `review_status = "draft"`, anything else implies
+/// `"approved"` (`chunk-mutations.ts:75,86`). Deferring to the DB default
+/// would break that pairing silently; the vocabularies port's
+/// `display_order` divergence is the precedent for spelling it out here.
 pub struct NewChunk {
     pub title: String,
     pub content: String,
     pub chunk_type: String,
     pub rationale: Option<String>,
+    pub alternatives: Option<Vec<String>>,
+    pub consequences: Option<String>,
+    pub origin: String,
+    pub review_status: String,
+    pub document_id: Option<String>,
+    pub document_order: Option<i32>,
+}
+
+/// `origin`/`review_status` default to the **human** pair, not to `""` — a
+/// blank origin is not a state any code path should be able to reach by
+/// forgetting a field. This is the same pairing `review_status_for_origin`
+/// computes for `origin = "human"`; the two must not drift, and a test that
+/// wants the `ai`/`draft` pair has to name both explicitly.
+impl Default for NewChunk {
+    fn default() -> Self {
+        Self {
+            title: String::new(),
+            content: String::new(),
+            chunk_type: "note".to_string(),
+            rationale: None,
+            alternatives: None,
+            consequences: None,
+            origin: "human".to_string(),
+            review_status: "approved".to_string(),
+            document_id: None,
+            document_order: None,
+        }
+    }
 }
 
 /// `alternatives`/`scope` are plain two-state (`None` = leave untouched,
@@ -73,6 +113,18 @@ pub struct NewChunk {
 /// default to `None` via `#[derive(Default)]`, so every pre-existing caller
 /// that builds a `ChunkPatch` without naming these two fields keeps its
 /// exact prior behaviour (`COALESCE` leaves the column untouched).
+///
+/// `summary` is the one genuinely **tri-state** field: Node's PATCH schema
+/// types it `t.Optional(t.Union([t.String(), t.Null()]))`, and its repo
+/// spreads on `!== undefined`, so an explicit `null` clears the column
+/// while omitting the key leaves it alone. `Option<Option<String>>` is the
+/// faithful shape — flattening it to `Option<String>` would make "clear the
+/// summary" unreachable. Every other field here has no null variant in
+/// Node's schema and so stays two-state.
+///
+/// `reviewed_by`/`reviewed_at` are not client-settable. The service stamps
+/// them whenever `review_status` is present, matching
+/// `chunk-mutations.ts:175-178`.
 #[derive(Default)]
 pub struct ChunkPatch {
     pub title: Option<String>,
@@ -82,14 +134,26 @@ pub struct ChunkPatch {
     pub consequences: Option<String>,
     pub alternatives: Option<Vec<String>>,
     pub scope: Option<serde_json::Value>,
+    /// Tri-state — see the doc comment above.
+    pub summary: Option<Option<String>>,
+    pub aliases: Option<Vec<String>>,
+    pub not_about: Option<Vec<String>>,
+    pub origin: Option<String>,
+    pub review_status: Option<String>,
+    pub reviewed_by: Option<String>,
+    pub reviewed_at: Option<chrono::NaiveDateTime>,
+    pub is_entry_point: Option<bool>,
+    pub document_order: Option<i32>,
 }
 
 pub async fn create(pool: &PgPool, user_id: &str, new: NewChunk) -> AppResult<Chunk> {
     let id = crate::new_id();
     let c = sqlx::query_as!(
         Chunk,
-        r#"INSERT INTO chunk (id, title, content, type, user_id, rationale)
-           VALUES ($1, $2, $3, $4, $5, $6)
+        r#"INSERT INTO chunk (id, title, content, type, user_id, rationale,
+                              alternatives, consequences, origin, review_status,
+                              document_id, document_order)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
            RETURNING id, title, content, type AS chunk_type, user_id, summary,
                      aliases AS "aliases: Json<Vec<String>>",
                      not_about AS "not_about: Json<Vec<String>>",
@@ -106,11 +170,19 @@ pub async fn create(pool: &PgPool, user_id: &str, new: NewChunk) -> AppResult<Ch
                      archived_at AS "archived_at: UtcTimestamp",
                      document_id, document_order, is_entry_point"#,
         id,
-        new.title,
+        // Node trims the title inside `createChunk`'s repo call
+        // (`packages/db/src/repository/chunk.ts:302`), not in the service.
+        new.title.trim(),
         new.content,
         new.chunk_type,
         user_id,
-        new.rationale
+        new.rationale,
+        new.alternatives.map(Json) as _,
+        new.consequences,
+        new.origin,
+        new.review_status,
+        new.document_id,
+        new.document_order
     )
     .fetch_one(pool)
     .await?;
@@ -162,6 +234,19 @@ pub async fn update(
              consequences = COALESCE($7, consequences),
              alternatives = COALESCE($8, alternatives),
              scope = COALESCE($9, scope),
+             -- `summary` is tri-state, so COALESCE alone cannot express it:
+             -- COALESCE($n, summary) can never write NULL. `$10` says
+             -- "touch this column at all", `$11` carries the value (which
+             -- may legitimately be NULL). See `ChunkPatch::summary`.
+             summary = CASE WHEN $10 THEN $11 ELSE summary END,
+             aliases = COALESCE($12, aliases),
+             not_about = COALESCE($13, not_about),
+             origin = COALESCE($14, origin),
+             review_status = COALESCE($15, review_status),
+             reviewed_by = COALESCE($16, reviewed_by),
+             reviewed_at = COALESCE($17, reviewed_at),
+             is_entry_point = COALESCE($18, is_entry_point),
+             document_order = COALESCE($19, document_order),
              updated_at = now()
            WHERE id = $1 AND user_id = $2
            RETURNING id, title, content, type AS chunk_type, user_id, summary,
@@ -187,7 +272,17 @@ pub async fn update(
         patch.rationale,
         patch.consequences,
         patch.alternatives.map(Json) as _,
-        patch.scope.map(Json) as _
+        patch.scope.map(Json) as _,
+        patch.summary.is_some(),
+        patch.summary.flatten(),
+        patch.aliases.map(Json) as _,
+        patch.not_about.map(Json) as _,
+        patch.origin,
+        patch.review_status,
+        patch.reviewed_by,
+        patch.reviewed_at,
+        patch.is_entry_point,
+        patch.document_order
     )
     .fetch_optional(pool)
     .await?;

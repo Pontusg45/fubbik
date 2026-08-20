@@ -36,7 +36,7 @@ async fn create_then_fetch_chunk(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
 
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let created: serde_json::Value = serde_json::from_slice(&body).unwrap();
@@ -117,7 +117,7 @@ async fn create_chunk(app: &axum::Router, title: &str) -> String {
         )
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
     let body = res.into_body().collect().await.unwrap().to_bytes();
     serde_json::from_slice::<serde_json::Value>(&body).unwrap()["id"]
         .as_str()
@@ -323,7 +323,7 @@ async fn created_chunk_exposes_all_fields_with_nodes_null_semantics(pool: sqlx::
         )
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
 
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let chunk: serde_json::Value = serde_json::from_slice(&body).unwrap();

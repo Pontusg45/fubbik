@@ -677,6 +677,7 @@ async fn reset_wipes_content_but_keeps_the_space_and_its_code_metadata(pool: sql
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await

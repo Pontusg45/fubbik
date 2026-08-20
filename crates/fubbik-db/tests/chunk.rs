@@ -16,6 +16,7 @@ async fn a_chunk(pool: &sqlx::PgPool, uid: &str, title: &str) -> chunk::Chunk {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -34,6 +35,7 @@ async fn create_read_update_delete(pool: sqlx::PgPool) {
             content: "Use kebab-case.".into(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -79,6 +81,7 @@ async fn other_users_chunks_are_invisible(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -142,6 +145,7 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
                 content: format!("{title} body"),
                 chunk_type: ty.into(),
                 rationale: None,
+                ..Default::default()
             },
         )
         .await
@@ -215,6 +219,7 @@ async fn search_is_case_insensitive_and_covers_content(pool: sqlx::PgPool) {
             content: "UNIQUEBODY".into(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -260,6 +265,7 @@ async fn list_breaks_ties_by_id_for_every_sort(pool: sqlx::PgPool) {
                 content: String::new(),
                 chunk_type: "note".into(),
                 rationale: None,
+                ..Default::default()
             },
         )
         .await

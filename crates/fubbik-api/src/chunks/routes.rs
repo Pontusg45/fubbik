@@ -32,14 +32,22 @@ pub async fn list_chunks(
     ))
 }
 
+/// **201**, not 200 — Node sets `ctx.set.status = 201` in an `Effect.tap`
+/// after `createChunk` (`packages/api/src/chunks/routes.ts`), and this port
+/// had been answering 200. Aligned here rather than left as a quiet
+/// divergence; `POST /api/features` and `POST /api/requirements` are
+/// already 201 in this crate, so 200 was also inconsistent internally.
 #[utoipa::path(post, path = "/api/chunks", request_body = CreateChunkBody,
-    responses((status = 200, body = Chunk)))]
+    responses((status = 201, body = Chunk)))]
 pub async fn create_chunk(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     ReqJson(body): ReqJson<CreateChunkBody>,
-) -> ApiResult<Json<Chunk>> {
-    Ok(Json(service::create(&state.pool, &user.id, body).await?))
+) -> ApiResult<(axum::http::StatusCode, Json<Chunk>)> {
+    Ok((
+        axum::http::StatusCode::CREATED,
+        Json(service::create(&state.pool, &user.id, body).await?),
+    ))
 }
 
 /// Returns the **enriched** detail shape ([`ChunkDetail`]), not the bare

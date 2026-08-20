@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_version\n             (id, chunk_id, version, title, content, type, tags,\n              rationale, alternatives, consequences, scope, update_tag,\n              created_at)\n           SELECT $1, $2, COALESCE(MAX(v.version), 0) + 1, $3, $4, $5,\n                  '[]'::jsonb, $6, $7, $8, $9, $10, now()\n           FROM chunk_version v WHERE v.chunk_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c5c4714e8b8203dd68b0dc98c381d912865462ead13c044254848cd536f13c8c"
+}

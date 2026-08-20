@@ -91,6 +91,7 @@ async fn seed_tagged_chunk(pool: &sqlx::PgPool, user_id: &str, title: &str, tag_
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -535,6 +536,7 @@ async fn get_chunks_filters_by_stored_type(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "convention".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -547,6 +549,7 @@ async fn get_chunks_filters_by_stored_type(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -593,6 +596,7 @@ async fn get_chunks_is_narrowed_to_the_collections_pinned_space(pool: sqlx::PgPo
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -605,6 +609,7 @@ async fn get_chunks_is_narrowed_to_the_collections_pinned_space(pool: sqlx::PgPo
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await

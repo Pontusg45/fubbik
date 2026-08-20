@@ -18,6 +18,7 @@ async fn a_chunk(pool: &sqlx::PgPool, uid: &str, title: &str) -> String {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -456,4 +457,66 @@ async fn tags_for_chunks_excludes_another_users_chunk(pool: sqlx::PgPool) {
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].chunk_id, alices_chunk);
     assert_eq!(rows[0].tag_name, "mine");
+}
+
+// ---------------------------------------------------------------------------
+// find_or_create — backs the `tags: ["name"]` field on chunk create/update
+// ---------------------------------------------------------------------------
+
+/// A second call with the same name returns the same row rather than
+/// inserting a duplicate.
+#[sqlx::test]
+async fn find_or_create_reuses_an_existing_tag(pool: sqlx::PgPool) {
+    let uid = user::create(&pool, "a@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
+
+    let first = tag::find_or_create(&pool, &uid, "runbook").await.unwrap();
+    let second = tag::find_or_create(&pool, &uid, "runbook").await.unwrap();
+    assert_eq!(first.id, second.id, "the same name must resolve to one row");
+    assert_eq!(tag::list(&pool, &uid).await.unwrap().len(), 1);
+}
+
+/// The lookup is scoped to the caller: two users may each own a tag named
+/// `runbook`, and neither may be handed the other's row.
+///
+/// The `user_id = $2` in the SELECT is load-bearing — remove it and Alice's
+/// row is returned to Bob, silently attaching her tag to his chunk. Proven
+/// at the fubbik-db layer, where the guard is observed directly.
+#[sqlx::test]
+async fn find_or_create_is_user_scoped(pool: sqlx::PgPool) {
+    let alice = user::create(&pool, "a@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
+    let bob = user::create(&pool, "b@b.test", "Bob", None)
+        .await
+        .unwrap()
+        .id;
+
+    let hers = tag::find_or_create(&pool, &alice, "runbook").await.unwrap();
+    let his = tag::find_or_create(&pool, &bob, "runbook").await.unwrap();
+
+    assert_ne!(
+        hers.id, his.id,
+        "each user must get their own tag row for the same name"
+    );
+    assert_eq!(hers.user_id, alice);
+    assert_eq!(his.user_id, bob);
+}
+
+/// Matching is exact, including case — `Runbook` and `runbook` are two
+/// tags, same as Node's `eq(tag.name, name)`.
+#[sqlx::test]
+async fn find_or_create_matches_case_sensitively(pool: sqlx::PgPool) {
+    let uid = user::create(&pool, "a@b.test", "Alice", None)
+        .await
+        .unwrap()
+        .id;
+
+    let lower = tag::find_or_create(&pool, &uid, "runbook").await.unwrap();
+    let upper = tag::find_or_create(&pool, &uid, "Runbook").await.unwrap();
+    assert_ne!(lower.id, upper.id);
+    assert_eq!(tag::list(&pool, &uid).await.unwrap().len(), 2);
 }

@@ -14,6 +14,7 @@ async fn replace_applies_to_shrinks_and_is_idempotent(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -75,6 +76,7 @@ async fn replace_applies_to_with_empty_set_clears_all_rows(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -123,6 +125,7 @@ async fn replace_file_refs_round_trips(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -150,6 +153,7 @@ async fn replace_file_refs_with_empty_set_clears_all_rows(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -205,6 +209,7 @@ async fn get_applies_to_scoped_to_owner_at_repo_layer(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -244,6 +249,7 @@ async fn replace_applies_to_with_wrong_user_is_noop_at_repo_layer(pool: sqlx::Pg
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -289,6 +295,7 @@ async fn get_file_refs_scoped_to_owner_at_repo_layer(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -324,6 +331,7 @@ async fn replace_file_refs_with_wrong_user_is_noop_at_repo_layer(pool: sqlx::PgP
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -370,6 +378,7 @@ async fn get_applies_to_breaks_pattern_ties_by_id(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -428,6 +437,7 @@ async fn get_file_refs_breaks_path_ties_by_id(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -481,6 +491,7 @@ async fn file_ref_path_exists_finds_a_matching_path(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -521,6 +532,7 @@ async fn file_ref_path_exists_is_user_scoped(pool: sqlx::PgPool) {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await

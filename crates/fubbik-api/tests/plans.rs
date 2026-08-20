@@ -1522,6 +1522,7 @@ async fn add_task_chunk_returns_bare_row(pool: sqlx::PgPool) {
             content: "content".into(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
@@ -1562,6 +1563,7 @@ async fn remove_task_chunk_returns_ok_true_and_404_on_missing(pool: sqlx::PgPool
             content: "content".into(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await

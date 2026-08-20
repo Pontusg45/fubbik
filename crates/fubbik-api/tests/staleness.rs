@@ -79,6 +79,7 @@ async fn seed_chunk(pool: &sqlx::PgPool, user_id: &str, title: &str) -> String {
             content: String::new(),
             chunk_type: "note".into(),
             rationale: None,
+            ..Default::default()
         },
     )
     .await
