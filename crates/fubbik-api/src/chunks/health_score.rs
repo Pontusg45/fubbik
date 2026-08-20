@@ -26,7 +26,9 @@ pub struct ChunkHealthInput<'a> {
     pub referenced_in_session: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Serialised as the `healthScore.breakdown` object of
+/// `GET /api/chunks/{id}` — see [`HealthScore`].
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
 pub struct HealthScoreBreakdown {
     pub freshness: i64,
     pub completeness: i64,
@@ -35,7 +37,11 @@ pub struct HealthScoreBreakdown {
     pub coverage: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// The `healthScore` key of `GET /api/chunks/{id}`. Field names already
+/// match Node's `HealthScore` interface (`health-score.ts:16-25`) with no
+/// case conversion needed — every one is a single lowercase word — so this
+/// carries no `rename_all`, unlike the rest of this crate's wire types.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
 pub struct HealthScore {
     pub total: i64,
     pub breakdown: HealthScoreBreakdown,

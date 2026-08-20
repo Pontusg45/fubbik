@@ -830,3 +830,120 @@ async fn stats_counts_by_status_and_is_user_scoped(pool: sqlx::PgPool) {
     assert_eq!(stats.passing, 1);
     assert_eq!(stats.untested, 1);
 }
+
+// ---------------------------------------------------------------------------
+// requirements_for_chunks — the `requirements` array of `GET /api/chunks/{id}`
+// ---------------------------------------------------------------------------
+
+/// Returns one row per `(chunk, requirement)` link, carrying the join's
+/// `chunkId` alongside the requirement's five-field slice.
+#[sqlx::test]
+async fn requirements_for_chunks_returns_one_row_per_link(pool: sqlx::PgPool) {
+    let alice = seed_user(&pool).await;
+    let chunk_a = seed_chunk(&pool, &alice, "Chunk A").await;
+    let chunk_b = seed_chunk(&pool, &alice, "Chunk B").await;
+
+    let login = requirement::create(&pool, &alice, new_req("Login"))
+        .await
+        .unwrap()
+        .unwrap();
+    let logout = requirement::create(&pool, &alice, new_req("Logout"))
+        .await
+        .unwrap()
+        .unwrap();
+
+    // `login` covers both chunks; `logout` covers only B.
+    requirement::set_chunks(
+        &pool,
+        &alice,
+        &login.id,
+        &[chunk_a.clone(), chunk_b.clone()],
+    )
+    .await
+    .unwrap();
+    requirement::set_chunks(&pool, &alice, &logout.id, std::slice::from_ref(&chunk_b))
+        .await
+        .unwrap();
+
+    let mut rows =
+        requirement::requirements_for_chunks(&pool, &[chunk_a.clone(), chunk_b.clone()], &alice)
+            .await
+            .unwrap();
+    // No ORDER BY (matching Node) — sort before asserting.
+    rows.sort_by(|x, y| (&x.chunk_id, &x.title).cmp(&(&y.chunk_id, &y.title)));
+
+    assert_eq!(rows.len(), 3, "one row per link, not per requirement");
+
+    let for_a: Vec<&str> = rows
+        .iter()
+        .filter(|r| r.chunk_id == chunk_a)
+        .map(|r| r.title.as_str())
+        .collect();
+    assert_eq!(for_a, ["Login"]);
+
+    let mut for_b: Vec<&str> = rows
+        .iter()
+        .filter(|r| r.chunk_id == chunk_b)
+        .map(|r| r.title.as_str())
+        .collect();
+    for_b.sort_unstable();
+    assert_eq!(for_b, ["Login", "Logout"]);
+
+    // The projection's other three fields come through, including the
+    // JSONB steps — a `Json<Vec<RequirementStep>>` decode failure would
+    // surface here rather than as a 500 at runtime.
+    let login_row = rows.iter().find(|r| r.title == "Login").unwrap();
+    assert_eq!(login_row.status, "untested");
+    assert_eq!(login_row.priority, None);
+    assert_eq!(login_row.steps.0.len(), gwt_steps().len());
+}
+
+/// The `EXISTS (... c.user_id = $2)` guard is load-bearing: remove it and
+/// this returns Alice's row to Bob. Proven at the fubbik-db layer, where
+/// the guard is observed directly.
+#[sqlx::test]
+async fn requirements_for_chunks_is_scoped_through_the_chunks_owner(pool: sqlx::PgPool) {
+    let alice = seed_user(&pool).await;
+    let bob = user::create(&pool, "bob-reqs-for-chunks@b.test", "Bob", None)
+        .await
+        .unwrap()
+        .id;
+
+    let alices_chunk = seed_chunk(&pool, &alice, "Alice's chunk").await;
+    let req = requirement::create(&pool, &alice, new_req("Login"))
+        .await
+        .unwrap()
+        .unwrap();
+    requirement::set_chunks(&pool, &alice, &req.id, std::slice::from_ref(&alices_chunk))
+        .await
+        .unwrap();
+
+    assert_eq!(
+        requirement::requirements_for_chunks(&pool, std::slice::from_ref(&alices_chunk), &alice)
+            .await
+            .unwrap()
+            .len(),
+        1,
+        "the owner must see the link — otherwise the assertion below could \
+         pass for the wrong reason"
+    );
+    assert!(
+        requirement::requirements_for_chunks(&pool, std::slice::from_ref(&alices_chunk), &bob)
+            .await
+            .unwrap()
+            .is_empty(),
+        "Bob must not read the requirements linked to Alice's chunk"
+    );
+}
+
+/// An empty id list short-circuits to an empty result without a round trip.
+#[sqlx::test]
+async fn requirements_for_chunks_with_no_ids_returns_empty(pool: sqlx::PgPool) {
+    let alice = seed_user(&pool).await;
+    assert!(
+        requirement::requirements_for_chunks(&pool, &[], &alice)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}

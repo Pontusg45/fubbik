@@ -146,3 +146,59 @@ pub struct ChunkListResponse {
     pub limit: i64,
     pub offset: i64,
 }
+
+/// Response body of `GET /api/chunks/{id}` — the *enriched* chunk detail,
+/// matching Node's `getChunkDetail` return
+/// (`packages/api/src/chunks/service.ts:128-186`) key for key.
+///
+/// Until this landed, Rust's `GET /api/chunks/{id}` returned the bare
+/// [`Chunk`] row, which is why the chunk detail page, the edit page and the
+/// graph side panel were all still pinned to `legacyApi`.
+///
+/// Two keys look redundant and are: `allDeltas` and `deltas` always hold
+/// the same list. Node builds the response as `{ ...result, ..., deltas:
+/// result.allDeltas }`, and `result` already carries `allDeltas`, so both
+/// keys ship. Reproduced rather than trimmed — a client reading either one
+/// must keep working.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ChunkDetail {
+    /// The chunk row **after** active feature overlays have been applied.
+    ///
+    /// The Rust type is `serde_json::Value` because a delta is free-form
+    /// JSONB and could in principle introduce a key `Chunk` does not have.
+    /// It is *published* as `Chunk` anyway, deliberately: every field the
+    /// feature system actually writes is a `Chunk` content field (title,
+    /// content, type, rationale, alternatives, consequences, summary — see
+    /// the "Features (Knowledge Overlays)" section of `CLAUDE.md`), so
+    /// `Chunk` describes every response this endpoint can really produce.
+    ///
+    /// Publishing it as an open object instead is worse than imprecise, it
+    /// is unusable: utoipa's `Object` becomes `Record<string, never>` in the
+    /// generated client, under which `chunk.title` is a type error. The
+    /// whole point of migrating call sites off `legacyApi` is that the
+    /// generated types catch wrong field access, and a type nothing can be
+    /// read from catches nothing.
+    #[schema(value_type = Chunk)]
+    pub chunk: serde_json::Value,
+    pub connections: Vec<fubbik_db::repo::connection::ChunkConnectionDetail>,
+    pub spaces: Vec<fubbik_db::repo::space::Space>,
+    pub applies_to: Vec<fubbik_db::repo::chunk_meta::AppliesTo>,
+    pub file_references: Vec<fubbik_db::repo::chunk_meta::FileRef>,
+    pub tags: Vec<fubbik_db::repo::tag::Tag>,
+    pub requirements: Vec<fubbik_db::repo::requirement::ChunkRequirement>,
+    pub all_deltas: Vec<fubbik_db::repo::feature::DeltaWithFeature>,
+    pub health_score: crate::chunks::health_score::HealthScore,
+    /// Ids of the features whose deltas were actually applied to `chunk`,
+    /// in application order. Underscore-prefixed on the wire because Node
+    /// names it that way; `rename_all = "camelCase"` would produce
+    /// `appliedFeatures` without the prefix, so both keys are spelled out.
+    #[serde(rename = "_appliedFeatures")]
+    pub applied_features: Vec<String>,
+    /// Whether the chunk has *any* delta, active or not — the UI's "this
+    /// chunk is modified in some feature" indicator. Not derivable from
+    /// `_appliedFeatures`, which only counts active ones.
+    #[serde(rename = "_hasDeltas")]
+    pub has_deltas: bool,
+    pub deltas: Vec<fubbik_db::repo::feature::DeltaWithFeature>,
+}

@@ -74,6 +74,13 @@ async fn create_chunk(app: axum::Router, cookie: &str, title: &str) -> String {
     json_body(res).await["id"].as_str().unwrap().to_string()
 }
 
+/// Returns just the chunk row from `GET /api/chunks/{id}`.
+///
+/// That route answers with the enriched detail envelope
+/// (`chunks::dto::ChunkDetail`), so the row lives under `chunk`. This file
+/// only ever asserts on the row's own fields, so the helper unwraps it
+/// rather than making every call site say `["chunk"]`. The envelope itself
+/// is covered by `tests/chunk_detail.rs`.
 async fn get_chunk(app: axum::Router, cookie: &str, id: &str) -> serde_json::Value {
     let res = app
         .oneshot(
@@ -85,7 +92,7 @@ async fn get_chunk(app: axum::Router, cookie: &str, id: &str) -> serde_json::Val
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    json_body(res).await
+    json_body(res).await["chunk"].clone()
 }
 
 async fn create_proposal(

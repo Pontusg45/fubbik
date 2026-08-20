@@ -391,9 +391,12 @@ async fn populated_embedding_round_trips_as_a_json_number_array(pool: sqlx::PgPo
         .await
         .unwrap();
     let body = res.into_body().collect().await.unwrap().to_bytes();
-    let chunk: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let detail: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    let embedding = chunk["embedding"]
+    // `GET /api/chunks/{id}` returns the enriched detail envelope, so the
+    // row itself lives under `chunk` — see `chunks::dto::ChunkDetail` and
+    // `tests/chunk_detail.rs`.
+    let embedding = detail["chunk"]["embedding"]
         .as_array()
         .expect("embedding must serialise as a JSON array, not a string or null");
     assert_eq!(embedding.len(), 768);

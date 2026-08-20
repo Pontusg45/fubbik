@@ -829,8 +829,17 @@ async fn merge_applies_deltas_and_is_not_repeatable(pool: sqlx::PgPool) {
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await["message"], "Feature merged");
 
+    // `GET /api/chunks/{id}` returns the enriched detail envelope, so the
+    // merged row is under `chunk` — see `chunks::dto::ChunkDetail`.
     let body = json_body(get(app.clone(), &alice, &format!("/api/chunks/{chunk}")).await).await;
-    assert_eq!(body["title"], "merged title", "delta folded into the base");
+    assert_eq!(
+        body["chunk"]["title"], "merged title",
+        "delta folded into the base"
+    );
+    assert_eq!(
+        body["_hasDeltas"], false,
+        "merging deletes the deltas, so the merged chunk carries none"
+    );
 
     let history =
         json_body(get(app.clone(), &alice, &format!("/api/chunks/{chunk}/history")).await).await;

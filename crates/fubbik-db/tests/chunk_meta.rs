@@ -375,7 +375,7 @@ async fn get_applies_to_breaks_pattern_ties_by_id(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
-    let patterns = vec!["src/**/*.ts".to_string(); 5];
+    let patterns = vec![chunk_meta::AppliesToInput::from("src/**/*.ts"); 5];
     chunk_meta::replace_applies_to(&pool, &c.id, &uid, &patterns)
         .await
         .unwrap();
@@ -433,7 +433,7 @@ async fn get_file_refs_breaks_path_ties_by_id(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
-    let paths = vec!["src/index.ts".to_string(); 5];
+    let paths = vec![chunk_meta::FileRefInput::from("src/index.ts"); 5];
     chunk_meta::replace_file_refs(&pool, &c.id, &uid, &paths)
         .await
         .unwrap();
@@ -485,7 +485,7 @@ async fn file_ref_path_exists_finds_a_matching_path(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
-    chunk_meta::replace_file_refs(&pool, &c.id, &uid, &["src/lib.rs".to_string()])
+    chunk_meta::replace_file_refs(&pool, &c.id, &uid, &["src/lib.rs".into()])
         .await
         .unwrap();
 
@@ -525,7 +525,7 @@ async fn file_ref_path_exists_is_user_scoped(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
-    chunk_meta::replace_file_refs(&pool, &c.id, &alice, &["src/lib.rs".to_string()])
+    chunk_meta::replace_file_refs(&pool, &c.id, &alice, &["src/lib.rs".into()])
         .await
         .unwrap();
 

@@ -316,3 +316,191 @@ async fn count_for_chunks_of_empty_input_returns_empty_without_querying(pool: sq
     let rows = connection::count_for_chunks(&pool, &[]).await.unwrap();
     assert!(rows.is_empty());
 }
+
+// ---------------------------------------------------------------------------
+// connections_for_chunk — the `connections` array of `GET /api/chunks/{id}`
+// ---------------------------------------------------------------------------
+
+/// Inserts a connection and returns its id, panicking on the `Ok(None)`
+/// ownership rejection so a mis-seeded test fails loudly here rather than
+/// as a confusing empty result later.
+async fn connect(pool: &sqlx::PgPool, uid: &str, source: &str, target: &str) -> String {
+    let id = fubbik_db::new_id();
+    connection::create(
+        pool,
+        &id,
+        uid,
+        source,
+        target,
+        "related_to",
+        "human",
+        "draft",
+    )
+    .await
+    .unwrap()
+    .expect("both chunks belong to uid, so the ownership guard must pass")
+    .id
+}
+
+/// Both directions are returned, and `title` is always the **other** end's
+/// title — not the subject's. A query that joined the subject instead would
+/// still return the right number of rows, so the titles are what makes this
+/// test able to fail.
+#[sqlx::test]
+async fn connections_for_chunk_returns_both_directions_with_the_other_ends_title(
+    pool: sqlx::PgPool,
+) {
+    let uid = seed(&pool, "a@b.test").await;
+    let subject = a_chunk(&pool, &uid, "Subject").await;
+    let outgoing = a_chunk(&pool, &uid, "Outgoing neighbour").await;
+    let incoming = a_chunk(&pool, &uid, "Incoming neighbour").await;
+
+    connect(&pool, &uid, &subject, &outgoing).await;
+    connect(&pool, &uid, &incoming, &subject).await;
+
+    let mut rows = connection::connections_for_chunk(&pool, &subject, &uid)
+        .await
+        .unwrap();
+    // The query has no ORDER BY (matching Node), so sort before asserting.
+    rows.sort_by(|a, b| a.title.cmp(&b.title));
+
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].title.as_deref(), Some("Incoming neighbour"));
+    assert_eq!(rows[0].source_id, incoming);
+    assert_eq!(rows[0].target_id, subject);
+    assert_eq!(rows[1].title.as_deref(), Some("Outgoing neighbour"));
+    assert_eq!(rows[1].source_id, subject);
+    assert_eq!(rows[1].target_id, outgoing);
+}
+
+/// **Pins a Node quirk, deliberately reproduced.** The `chunk_space` LEFT
+/// JOIN has no aggregation, so a neighbour in N spaces yields N rows for
+/// the same edge. `getChunkDetail` feeds `connections.length` into
+/// `computeHealthScore`, so this also inflates the connectivity score.
+///
+/// If someone later adds `DISTINCT` or aggregates the space names, this
+/// test fails and forces the change to be made on both stacks at once
+/// rather than silently diverging.
+#[sqlx::test]
+async fn connections_for_chunk_multiplies_rows_per_space(pool: sqlx::PgPool) {
+    use fubbik_db::repo::space;
+
+    let uid = seed(&pool, "a@b.test").await;
+    let subject = a_chunk(&pool, &uid, "Subject").await;
+    let neighbour = a_chunk(&pool, &uid, "Neighbour").await;
+    connect(&pool, &uid, &subject, &neighbour).await;
+
+    // One edge, one space on the neighbour: one row.
+    let s1 = space::create(
+        &pool,
+        &uid,
+        space::NewSpace {
+            name: "alpha".into(),
+            kind: "code".into(),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    space::set_chunk_spaces(&pool, &uid, &neighbour, std::slice::from_ref(&s1.id))
+        .await
+        .unwrap();
+    let rows = connection::connections_for_chunk(&pool, &subject, &uid)
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].codebase_name.as_deref(), Some("alpha"));
+
+    // Same single edge, neighbour now in two spaces: TWO rows.
+    let s2 = space::create(
+        &pool,
+        &uid,
+        space::NewSpace {
+            name: "beta".into(),
+            kind: "code".into(),
+            description: None,
+        },
+        None,
+    )
+    .await
+    .unwrap();
+    space::set_chunk_spaces(&pool, &uid, &neighbour, &[s1.id, s2.id])
+        .await
+        .unwrap();
+
+    let mut rows = connection::connections_for_chunk(&pool, &subject, &uid)
+        .await
+        .unwrap();
+    rows.sort_by(|a, b| a.codebase_name.cmp(&b.codebase_name));
+    assert_eq!(
+        rows.len(),
+        2,
+        "one edge must yield one row per space of the other end — Node's \
+         un-aggregated chunk_space join, reproduced"
+    );
+    assert_eq!(rows[0].codebase_name.as_deref(), Some("alpha"));
+    assert_eq!(rows[1].codebase_name.as_deref(), Some("beta"));
+    assert_eq!(
+        rows[0].id, rows[1].id,
+        "both rows must describe the SAME edge — this is duplication, not \
+         two connections"
+    );
+}
+
+/// The `EXISTS (... c.user_id = $2)` guard is load-bearing: removing it
+/// from the SQL flips this test from an empty result to two rows, because
+/// nothing else in this function checks ownership. Proven at the
+/// **fubbik-db** layer, which observes the guard directly rather than
+/// through an HTTP status code.
+#[sqlx::test]
+async fn connections_for_chunk_is_user_scoped(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "a@b.test").await;
+    let bob = seed(&pool, "c@d.test").await;
+
+    let subject = a_chunk(&pool, &alice, "Alice's subject").await;
+    let neighbour = a_chunk(&pool, &alice, "Alice's neighbour").await;
+    connect(&pool, &alice, &subject, &neighbour).await;
+
+    assert_eq!(
+        connection::connections_for_chunk(&pool, &subject, &alice)
+            .await
+            .unwrap()
+            .len(),
+        1,
+        "the owner must see the connection — otherwise the scoping \
+         assertion below could pass for the wrong reason"
+    );
+    assert!(
+        connection::connections_for_chunk(&pool, &subject, &bob)
+            .await
+            .unwrap()
+            .is_empty(),
+        "Bob must not be able to read Alice's chunk's connections"
+    );
+}
+
+/// A dangling edge — the other end deleted — yields a row with a null
+/// title rather than disappearing. That is what the LEFT JOIN buys, and the
+/// detail page's connection list has to cope with it.
+#[sqlx::test]
+async fn connections_for_chunk_keeps_a_dangling_edge_with_a_null_title(pool: sqlx::PgPool) {
+    let uid = seed(&pool, "a@b.test").await;
+    let subject = a_chunk(&pool, &uid, "Subject").await;
+    let neighbour = a_chunk(&pool, &uid, "Doomed").await;
+    connect(&pool, &uid, &subject, &neighbour).await;
+
+    chunk::delete(&pool, &uid, &neighbour).await.unwrap();
+
+    let rows = connection::connections_for_chunk(&pool, &subject, &uid)
+        .await
+        .unwrap();
+    // The edge itself cascades with the chunk, so the expected result is
+    // no rows at all — asserted here so the cascade is documented rather
+    // than assumed.
+    assert!(
+        rows.is_empty(),
+        "chunk_connection cascades off chunk, so deleting an end removes \
+         the edge outright"
+    );
+}

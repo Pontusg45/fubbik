@@ -73,7 +73,16 @@ async fn put_applies_to(
     id: &str,
     patterns: &[&str],
 ) -> axum::response::Response {
-    let body = serde_json::json!({ "patterns": patterns }).to_string();
+    // A **bare array** of `{pattern, note}` objects — Node's shape, and now
+    // Rust's. This helper omits `note` (the common case); the tests that
+    // care about it build their own body.
+    let body = serde_json::Value::Array(
+        patterns
+            .iter()
+            .map(|p| serde_json::json!({ "pattern": p }))
+            .collect(),
+    )
+    .to_string();
     app.oneshot(
         Request::put(format!("/api/chunks/{id}/applies-to"))
             .header("content-type", "application/json")
@@ -102,7 +111,15 @@ async fn put_file_refs(
     id: &str,
     paths: &[&str],
 ) -> axum::response::Response {
-    let body = serde_json::json!({ "paths": paths }).to_string();
+    // Bare array, as with `put_applies_to`. `relation` is required by Node's
+    // schema, so the helper supplies the default.
+    let body = serde_json::Value::Array(
+        paths
+            .iter()
+            .map(|p| serde_json::json!({ "path": p, "relation": "documents" }))
+            .collect(),
+    )
+    .to_string();
     app.oneshot(
         Request::put(format!("/api/chunks/{id}/file-refs"))
             .header("content-type", "application/json")
@@ -228,4 +245,161 @@ async fn cross_user_put_file_refs_is_404_and_leaves_refs_unchanged(pool: sqlx::P
         vec!["src/index.ts"],
         "Alice's file refs must survive Bob's rejected PUT"
     );
+}
+
+/// Sends a raw JSON body to one of the two sub-resource PUTs — used by the
+/// tests below that need a body this file's helpers don't build (a `note`,
+/// an `anchor`, a non-default `relation`, or a deliberately invalid one).
+async fn raw_put(
+    app: axum::Router,
+    cookie: &str,
+    path: &str,
+    body: serde_json::Value,
+) -> axum::response::Response {
+    app.oneshot(
+        Request::put(path.to_string())
+            .header("content-type", "application/json")
+            .header("cookie", cookie)
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
+/// `note` survives a write/read round trip.
+///
+/// This is the regression test for a silent data-loss bug: the
+/// `chunk_applies_to.note` column has existed since `0001_init.sql:141` and
+/// Node returns it, but Rust's projection selected only
+/// `id`/`chunk_id`/`pattern`, so a note the user typed was written by Node,
+/// invisible through Rust, and erased by the next Rust write. Fails on the
+/// pre-fix code at the `note` assertion, not at the status code — the
+/// endpoint looked healthy the whole time.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn applies_to_note_round_trips(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let cookie = signup(app.clone(), "a@b.test", "Alice").await;
+    let chunk_id = create_chunk(app.clone(), &cookie, "T").await;
+
+    let res = raw_put(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{chunk_id}/applies-to"),
+        serde_json::json!([
+            { "pattern": "src/**/*.ts", "note": "only the typed ones" },
+            { "pattern": "docs/**" }
+        ]),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // `get_applies_to` orders by `pattern, id`, so `docs/**` sorts first.
+    let rows = patterns_json(get_applies_to(app, &cookie, &chunk_id).await).await;
+    assert_eq!(rows[0]["pattern"], "docs/**");
+    assert_eq!(
+        rows[0]["note"],
+        serde_json::Value::Null,
+        "an omitted note must read back as null, not as an empty string"
+    );
+    assert_eq!(rows[1]["pattern"], "src/**/*.ts");
+    assert_eq!(
+        rows[1]["note"], "only the typed ones",
+        "the note must survive the round trip — it was dropped by the \
+         projection before the chunk-detail port"
+    );
+}
+
+/// `anchor` and `relation` survive a write/read round trip — the file-ref
+/// half of [`applies_to_note_round_trips`], and the same class of bug.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn file_refs_anchor_and_relation_round_trip(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let cookie = signup(app.clone(), "a@b.test", "Alice").await;
+    let chunk_id = create_chunk(app.clone(), &cookie, "T").await;
+
+    let res = raw_put(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{chunk_id}/file-refs"),
+        serde_json::json!([
+            { "path": "src/lib.rs", "anchor": "fn main", "relation": "implements" },
+            { "path": "README.md", "relation": "documents" }
+        ]),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let rows = patterns_json(get_file_refs(app, &cookie, &chunk_id).await).await;
+    // Ordered by `path, id`: README.md, then src/lib.rs.
+    assert_eq!(rows[0]["path"], "README.md");
+    assert_eq!(rows[0]["anchor"], serde_json::Value::Null);
+    assert_eq!(rows[0]["relation"], "documents");
+    assert_eq!(rows[1]["path"], "src/lib.rs");
+    assert_eq!(
+        rows[1]["anchor"], "fn main",
+        "the anchor must survive the round trip"
+    );
+    assert_eq!(
+        rows[1]["relation"], "implements",
+        "a non-default relation must survive the round trip — before the \
+         chunk-detail port every ref read back as the column default"
+    );
+}
+
+/// `relation` is constrained to Node's four literals, and the rejection is
+/// a 400 naming the field rather than a serde parse error.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn file_refs_put_rejects_an_unknown_relation(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let cookie = signup(app.clone(), "a@b.test", "Alice").await;
+    let chunk_id = create_chunk(app.clone(), &cookie, "T").await;
+
+    let res = raw_put(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{chunk_id}/file-refs"),
+        serde_json::json!([{ "path": "src/lib.rs", "relation": "vandalises" }]),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    // The rejection must be total: nothing from the batch was written.
+    let rows = patterns_json(get_file_refs(app, &cookie, &chunk_id).await).await;
+    assert_eq!(
+        rows.as_array().unwrap().len(),
+        0,
+        "a rejected batch must not write any of its entries"
+    );
+}
+
+/// Node caps both sub-resource bodies at 50 entries; so does this.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn applies_to_put_rejects_more_than_fifty_entries(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let cookie = signup(app.clone(), "a@b.test", "Alice").await;
+    let chunk_id = create_chunk(app.clone(), &cookie, "T").await;
+
+    let fifty: Vec<serde_json::Value> = (0..50)
+        .map(|i| serde_json::json!({ "pattern": format!("src/{i}/**") }))
+        .collect();
+    let mut fifty_one = fifty.clone();
+    fifty_one.push(serde_json::json!({ "pattern": "one/too/many/**" }));
+
+    let path = format!("/api/chunks/{chunk_id}/applies-to");
+
+    // 51 is rejected...
+    let res = raw_put(
+        app.clone(),
+        &cookie,
+        &path,
+        serde_json::Value::Array(fifty_one),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    // ...and 50 is not, so the boundary is where it claims to be rather
+    // than the test passing because everything is rejected.
+    let res = raw_put(app, &cookie, &path, serde_json::Value::Array(fifty)).await;
+    assert_eq!(res.status(), StatusCode::OK);
 }

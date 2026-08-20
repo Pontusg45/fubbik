@@ -216,3 +216,81 @@ pub async fn count_for_chunks(
     .await?;
     Ok(rows)
 }
+
+/// One row of `GET /api/chunks/{id}`'s `connections` array, matching Node's
+/// `getChunkConnections` projection exactly
+/// (`packages/db/src/repository/chunk.ts:259-282`): the edge's own
+/// `id`/`sourceId`/`targetId`/`relation`, plus the **other** end's title and
+/// one of that chunk's space names.
+///
+/// `codebase_name` keeps the pre-rename wire key `codebaseName` because
+/// that is the alias Node's `.select({ codebaseName: space.name })` emits
+/// and the web app reads. The `codebase → space` rename never reached this
+/// projection.
+///
+/// Both `title` and `codebase_name` are `Option` because both joins are
+/// LEFT joins in Node: a dangling edge (target chunk deleted) yields a null
+/// title, and a chunk in no space yields a null space name.
+#[derive(Debug, Clone, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ChunkConnectionDetail {
+    pub id: String,
+    pub target_id: String,
+    pub source_id: String,
+    pub relation: String,
+    pub title: Option<String>,
+    pub codebase_name: Option<String>,
+}
+
+/// Every connection touching `chunk_id`, in either direction, joined to the
+/// other end's title and space name.
+///
+/// **The `chunk_space` LEFT JOIN multiplies rows.** A connected chunk that
+/// belongs to N spaces produces N rows for the same edge, each with a
+/// different `codebaseName`; a chunk in zero spaces produces one row with a
+/// null one. That is Node's behaviour verbatim
+/// (`packages/db/src/repository/chunk.ts:271-280` joins `chunk_space` and
+/// `space` without any aggregation or `DISTINCT`), and it is load-bearing
+/// downstream: `getChunkDetail` feeds `connections.length` straight into
+/// `computeHealthScore`'s `connectionCount`, so a multi-space neighbour
+/// inflates the connectivity score as well as duplicating a row in the
+/// detail page's connection list. Reproduced rather than fixed — parity is
+/// the job — and pinned by
+/// `tests/connection.rs::connections_for_chunk_multiplies_rows_per_space`
+/// so any future move to `DISTINCT`/aggregation is a deliberate, visible
+/// change on both stacks rather than a silent divergence.
+///
+/// Scoped through the *subject* chunk's owner in SQL — Node's version takes
+/// only a `chunkId` and relies on `getChunkDetail` having already loaded
+/// the chunk under `userId` first. Same "through the parent" hardening
+/// applied to `feature::deltas_for_chunk` and `tag::tags_for_chunk`. The
+/// *other* end of an edge may still be a chunk this user does not own; that
+/// is inherent to connections being global (cross-space, cross-user
+/// linking is the feature), not something this guard is meant to prevent.
+///
+/// **No `ORDER BY`**, matching Node exactly — callers that need a stable
+/// order must sort.
+pub async fn connections_for_chunk(
+    pool: &PgPool,
+    chunk_id: &str,
+    user_id: &str,
+) -> AppResult<Vec<ChunkConnectionDetail>> {
+    let rows = sqlx::query_as!(
+        ChunkConnectionDetail,
+        r#"SELECT cc.id, cc.target_id, cc.source_id, cc.relation,
+                  ch.title AS "title?", s.name AS "codebase_name?"
+           FROM chunk_connection cc
+           LEFT JOIN chunk ch
+             ON (cc.target_id = ch.id AND cc.source_id = $1)
+             OR (cc.source_id = ch.id AND cc.target_id = $1)
+           LEFT JOIN chunk_space cs ON cs.chunk_id = ch.id
+           LEFT JOIN space s ON s.id = cs.space_id
+           WHERE (cc.source_id = $1 OR cc.target_id = $1)
+             AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2)"#,
+        chunk_id,
+        user_id
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}

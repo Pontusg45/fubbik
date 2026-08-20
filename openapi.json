@@ -583,6 +583,7 @@
         "tags": [
           "crate::chunks::routes"
         ],
+        "summary": "Returns the **enriched** detail shape ([`ChunkDetail`]), not the bare\n`chunk` row — matching Node. The active feature ids are loaded here\nrather than in a global middleware: Node resolves them for every request\n(`packages/api/src/index.ts:207-218`), but this is the only Rust route\nthat reads them implicitly, so a per-route load avoids paying for a\nquery on all ~200 other endpoints.",
         "operationId": "get_chunk",
         "parameters": [
           {
@@ -600,7 +601,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Chunk"
+                  "$ref": "#/components/schemas/ChunkDetail"
                 }
               }
             }
@@ -727,7 +728,10 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PatternsBody"
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AppliesToEntry"
+                }
               }
             }
           },
@@ -961,7 +965,10 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PathsBody"
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FileRefEntry"
+                }
               }
             }
           },
@@ -6910,6 +6917,7 @@
       },
       "AppliesTo": {
         "type": "object",
+        "description": "A `chunk_applies_to` row.\n\n`note` was missing from this struct until the chunk-detail port. The\ncolumn has existed since `0001_init.sql:141` and Node returns it on\nevery read (`getAppliesToForChunk` selects `{id, pattern, note}`), but\nthe Rust projection selected only `id`/`chunk_id`/`pattern` — so\n`GET /api/chunks/{id}/applies-to` silently dropped whatever note the\nuser had written. `chunk_id` is an addition in the other direction:\nNode's projection omits it, this one keeps it (a superset, harmless to\nreaders, and it makes the row self-describing).",
         "required": [
           "id",
           "chunkId",
@@ -6921,6 +6929,31 @@
           },
           "id": {
             "type": "string"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pattern": {
+            "type": "string"
+          }
+        }
+      },
+      "AppliesToEntry": {
+        "type": "object",
+        "description": "One entry of `PUT /api/chunks/{id}/applies-to`'s body.\n\nThe body is a **bare array** of these, not `{patterns: [...]}` — that is\nwhat Node's route schema declares\n(`packages/api/src/applies-to/routes.ts:19-27`) and what the web edit\npage has always sent. Rust previously published `{patterns: string[]}`,\nso every real request 400'd; the edit page swallowed it in a\n`catch { /* non-critical */ }` and silently never saved patterns at all.",
+        "required": [
+          "pattern"
+        ],
+        "properties": {
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional and explicitly nullable, matching Node's\n`t.Optional(t.Union([t.String(), t.Null()]))`."
           },
           "pattern": {
             "type": "string"
@@ -7355,6 +7388,128 @@
           }
         }
       },
+      "ChunkConnectionDetail": {
+        "type": "object",
+        "description": "One row of `GET /api/chunks/{id}`'s `connections` array, matching Node's\n`getChunkConnections` projection exactly\n(`packages/db/src/repository/chunk.ts:259-282`): the edge's own\n`id`/`sourceId`/`targetId`/`relation`, plus the **other** end's title and\none of that chunk's space names.\n\n`codebase_name` keeps the pre-rename wire key `codebaseName` because\nthat is the alias Node's `.select({ codebaseName: space.name })` emits\nand the web app reads. The `codebase → space` rename never reached this\nprojection.\n\nBoth `title` and `codebase_name` are `Option` because both joins are\nLEFT joins in Node: a dangling edge (target chunk deleted) yields a null\ntitle, and a chunk in no space yields a null space name.",
+        "required": [
+          "id",
+          "targetId",
+          "sourceId",
+          "relation"
+        ],
+        "properties": {
+          "codebaseName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ChunkDetail": {
+        "type": "object",
+        "description": "Response body of `GET /api/chunks/{id}` — the *enriched* chunk detail,\nmatching Node's `getChunkDetail` return\n(`packages/api/src/chunks/service.ts:128-186`) key for key.\n\nUntil this landed, Rust's `GET /api/chunks/{id}` returned the bare\n[`Chunk`] row, which is why the chunk detail page, the edit page and the\ngraph side panel were all still pinned to `legacyApi`.\n\nTwo keys look redundant and are: `allDeltas` and `deltas` always hold\nthe same list. Node builds the response as `{ ...result, ..., deltas:\nresult.allDeltas }`, and `result` already carries `allDeltas`, so both\nkeys ship. Reproduced rather than trimmed — a client reading either one\nmust keep working.",
+        "required": [
+          "chunk",
+          "connections",
+          "spaces",
+          "appliesTo",
+          "fileReferences",
+          "tags",
+          "requirements",
+          "allDeltas",
+          "healthScore",
+          "_appliedFeatures",
+          "_hasDeltas",
+          "deltas"
+        ],
+        "properties": {
+          "_appliedFeatures": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ids of the features whose deltas were actually applied to `chunk`,\nin application order. Underscore-prefixed on the wire because Node\nnames it that way; `rename_all = \"camelCase\"` would produce\n`appliedFeatures` without the prefix, so both keys are spelled out."
+          },
+          "_hasDeltas": {
+            "type": "boolean",
+            "description": "Whether the chunk has *any* delta, active or not — the UI's \"this\nchunk is modified in some feature\" indicator. Not derivable from\n`_appliedFeatures`, which only counts active ones."
+          },
+          "allDeltas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeltaWithFeature"
+            }
+          },
+          "appliesTo": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppliesTo"
+            }
+          },
+          "chunk": {
+            "$ref": "#/components/schemas/Chunk",
+            "description": "The chunk row **after** active feature overlays have been applied.\n\nThe Rust type is `serde_json::Value` because a delta is free-form\nJSONB and could in principle introduce a key `Chunk` does not have.\nIt is *published* as `Chunk` anyway, deliberately: every field the\nfeature system actually writes is a `Chunk` content field (title,\ncontent, type, rationale, alternatives, consequences, summary — see\nthe \"Features (Knowledge Overlays)\" section of `CLAUDE.md`), so\n`Chunk` describes every response this endpoint can really produce.\n\nPublishing it as an open object instead is worse than imprecise, it\nis unusable: utoipa's `Object` becomes `Record<string, never>` in the\ngenerated client, under which `chunk.title` is a type error. The\nwhole point of migrating call sites off `legacyApi` is that the\ngenerated types catch wrong field access, and a type nothing can be\nread from catches nothing."
+          },
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChunkConnectionDetail"
+            }
+          },
+          "deltas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeltaWithFeature"
+            }
+          },
+          "fileReferences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileRef"
+            }
+          },
+          "healthScore": {
+            "$ref": "#/components/schemas/HealthScore"
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChunkRequirement"
+            }
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Space"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          }
+        }
+      },
       "ChunkFeatureDelta": {
         "type": "object",
         "description": "Bare `chunk_feature_delta` row — the return shape of\n`PUT /chunks/{id}/deltas/{featureId}` and\n`DELETE /chunks/{id}/deltas/{featureId}`'s repository call.\n\n`delta` is a **sparse** JSON object holding only the changed fields\n(`title`, `content`, `type`, `rationale`, `alternatives`,\n`consequences`, `summary`) — never a whole chunk. Typed as a raw\n`serde_json::Value` for exactly that reason: a struct with seven\n`Option` fields would serialise absent keys back as explicit `null`s and\ndestroy the sparseness on the next round-trip.",
@@ -7471,6 +7626,43 @@
             ]
           },
           "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ChunkRequirement": {
+        "type": "object",
+        "description": "One row of `GET /api/chunks/{id}`'s `requirements` array, matching\nNode's `getRequirementsForChunks` projection\n(`packages/db/src/repository/requirement.ts:249-264`): the join's\n`chunkId` plus a five-field slice of the requirement.\n\n`chunk_id` is carried even though the detail path queries a single chunk\n— Node's function is plural and its caller re-filters on `chunkId`\nafterwards, so the column is part of the published shape.",
+        "required": [
+          "chunkId",
+          "id",
+          "title",
+          "status",
+          "steps"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementStep"
+            }
+          },
+          "title": {
             "type": "string"
           }
         }
@@ -9510,12 +9702,20 @@
       },
       "FileRef": {
         "type": "object",
+        "description": "A `chunk_file_ref` row.\n\n`anchor` and `relation` were missing here for the same reason `note` was\nmissing from [`AppliesTo`] — see that doc comment. `relation` is\n`NOT NULL DEFAULT 'documents'` (`0001_init.sql:200`), so it is a plain\n`String`, not an `Option`; its four-value constraint lives on Node's\n*write* route schema only, and is reproduced in the service layer rather\nthan as a DTO enum or a DB CHECK.",
         "required": [
           "id",
           "chunkId",
-          "path"
+          "path",
+          "relation"
         ],
         "properties": {
+          "anchor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "chunkId": {
             "type": "string"
           },
@@ -9524,6 +9724,32 @@
           },
           "path": {
             "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          }
+        }
+      },
+      "FileRefEntry": {
+        "type": "object",
+        "description": "One entry of `PUT /api/chunks/{id}/file-refs`'s body — a bare array, for\nthe same reason as [`AppliesToEntry`]\n(`packages/api/src/file-refs/routes.ts:17-26`).",
+        "required": [
+          "path",
+          "relation"
+        ],
+        "properties": {
+          "anchor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string",
+            "description": "Node constrains this to `documents | configures | tests |\nimplements` on the route schema. Kept a `String` here and validated\nin the service layer rather than modelled as a serde enum: the\ncolumn itself is free `text NOT NULL DEFAULT 'documents'` with no\nCHECK, and a DTO enum would reject with serde's parse error instead\nof a message naming the field."
           }
         }
       },
@@ -9687,6 +9913,63 @@
           },
           "required": {
             "type": "boolean"
+          }
+        }
+      },
+      "HealthScore": {
+        "type": "object",
+        "description": "The `healthScore` key of `GET /api/chunks/{id}`. Field names already\nmatch Node's `HealthScore` interface (`health-score.ts:16-25`) with no\ncase conversion needed — every one is a single lowercase word — so this\ncarries no `rename_all`, unlike the rest of this crate's wire types.",
+        "required": [
+          "total",
+          "breakdown",
+          "issues"
+        ],
+        "properties": {
+          "breakdown": {
+            "$ref": "#/components/schemas/HealthScoreBreakdown"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "HealthScoreBreakdown": {
+        "type": "object",
+        "description": "Serialised as the `healthScore.breakdown` object of\n`GET /api/chunks/{id}` — see [`HealthScore`].",
+        "required": [
+          "freshness",
+          "completeness",
+          "richness",
+          "connectivity",
+          "coverage"
+        ],
+        "properties": {
+          "completeness": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "connectivity": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "coverage": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "freshness": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "richness": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -10041,34 +10324,6 @@
           },
           "target": {
             "type": "string"
-          }
-        }
-      },
-      "PathsBody": {
-        "type": "object",
-        "required": [
-          "paths"
-        ],
-        "properties": {
-          "paths": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "PatternsBody": {
-        "type": "object",
-        "required": [
-          "patterns"
-        ],
-        "properties": {
-          "patterns": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         }
       },

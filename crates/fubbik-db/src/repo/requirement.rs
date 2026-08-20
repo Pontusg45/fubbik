@@ -801,3 +801,62 @@ pub async fn search_titles(
     .await?;
     Ok(rows)
 }
+
+/// One row of `GET /api/chunks/{id}`'s `requirements` array, matching
+/// Node's `getRequirementsForChunks` projection
+/// (`packages/db/src/repository/requirement.ts:249-264`): the join's
+/// `chunkId` plus a five-field slice of the requirement.
+///
+/// `chunk_id` is carried even though the detail path queries a single chunk
+/// — Node's function is plural and its caller re-filters on `chunkId`
+/// afterwards, so the column is part of the published shape.
+#[derive(Debug, Clone, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ChunkRequirement {
+    pub chunk_id: String,
+    pub id: String,
+    pub title: String,
+    pub status: String,
+    pub priority: Option<String>,
+    #[schema(value_type = Vec<RequirementStep>)]
+    pub steps: Json<Vec<RequirementStep>>,
+}
+
+/// Requirements linked to any of `chunk_ids`, one row per
+/// `(chunk, requirement)` link.
+///
+/// Scoped through the *chunk's* owner, not the requirement's — the link
+/// table has no `user_id`, and the caller's claim here is on the chunk it
+/// asked about. A requirement another user linked to your chunk is
+/// therefore still returned; that mirrors Node, which scopes neither side.
+///
+/// **No `ORDER BY`**, matching Node exactly. Returns `Ok(vec![])` for an
+/// empty input without touching the database — Node's `inArray(col, [])`
+/// would build `WHERE false` and return the same thing, but only after a
+/// round trip.
+pub async fn requirements_for_chunks(
+    pool: &PgPool,
+    chunk_ids: &[String],
+    user_id: &str,
+) -> AppResult<Vec<ChunkRequirement>> {
+    if chunk_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let rows = sqlx::query_as!(
+        ChunkRequirement,
+        r#"SELECT rc.chunk_id, r.id, r.title, r.status, r.priority,
+                  r.steps AS "steps: Json<Vec<RequirementStep>>"
+           FROM requirement_chunk rc
+           JOIN requirement r ON r.id = rc.requirement_id
+           WHERE rc.chunk_id = ANY($1)
+             AND EXISTS (
+               SELECT 1 FROM chunk c
+               WHERE c.id = rc.chunk_id AND c.user_id = $2
+             )"#,
+        chunk_ids,
+        user_id
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}
