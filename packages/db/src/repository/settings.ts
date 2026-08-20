@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
+import { space } from "../schema/space";
 import { codebaseSettings, instanceSettings, userSettings } from "../schema/settings";
 
 // --- User Settings ---
@@ -63,8 +64,37 @@ export function setCodebaseSetting(spaceId: string, key: string, value: unknown)
     });
 }
 
-export function getAllCodebaseSettings(spaceId: string) {
-    return dbEffect(() => db.select().from(codebaseSettings).where(eq(codebaseSettings.spaceId, spaceId)));
+/**
+ * SECURITY: scoped through the space's owner. `codebase_settings` has no
+ * user column, so authority comes from the space — without this join, any
+ * authenticated caller could read (and, via setCodebaseSetting, write) the
+ * settings of any space by id.
+ */
+export function getAllCodebaseSettings(spaceId: string, userId: string) {
+    return dbEffect(() =>
+        db
+            .select({
+                id: codebaseSettings.id,
+                spaceId: codebaseSettings.spaceId,
+                key: codebaseSettings.key,
+                value: codebaseSettings.value
+            })
+            .from(codebaseSettings)
+            .innerJoin(space, eq(space.id, codebaseSettings.spaceId))
+            .where(and(eq(codebaseSettings.spaceId, spaceId), eq(space.userId, userId)))
+    );
+}
+
+/** True only if `spaceId` names a space owned by `userId`. */
+export function spaceBelongsTo(spaceId: string, userId: string) {
+    return dbEffect(async () => {
+        const [row] = await db
+            .select({ id: space.id })
+            .from(space)
+            .where(and(eq(space.id, spaceId), eq(space.userId, userId)))
+            .limit(1);
+        return Boolean(row);
+    });
 }
 
 // --- Instance Settings ---

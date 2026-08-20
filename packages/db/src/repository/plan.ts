@@ -142,9 +142,20 @@ export function listPlansWithRollups(filter: ListPlansFilter): Effect.Effect<Pla
     });
 }
 
-export function getPlan(id: string): Effect.Effect<Plan | null, DatabaseError> {
+/**
+ * SECURITY: `userId` filters on `plan.user_id`, which this query never did.
+ * `getPlan` is the ownership gate for the whole plans surface — the detail
+ * route, the link routes and both task routes all reach the database through
+ * it — so an unscoped lookup meant any authenticated user could read any
+ * plan and add or delete links on it.
+ */
+export function getPlan(id: string, userId: string): Effect.Effect<Plan | null, DatabaseError> {
     return dbEffect(async () => {
-        const [row] = await db.select().from(plan).where(eq(plan.id, id)).limit(1);
+        const [row] = await db
+            .select()
+            .from(plan)
+            .where(and(eq(plan.id, id), eq(plan.userId, userId)))
+            .limit(1);
         return row ?? null;
     });
 }

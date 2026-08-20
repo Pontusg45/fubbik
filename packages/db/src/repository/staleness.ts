@@ -94,7 +94,14 @@ export function dismissStaleFlag(flagId: string, userId: string) {
     );
 }
 
-export function suppressDuplicatePair(chunkIdA: string, chunkIdB: string) {
+/**
+ * SECURITY: `userId` gates the write on owning BOTH chunks in the pair.
+ * This took only the two ids, so any authenticated user could permanently
+ * suppress duplicate-detection flags between two chunks belonging to someone
+ * else — a silent, hard-to-notice degradation of another user's knowledge
+ * health signals.
+ */
+export function suppressDuplicatePair(chunkIdA: string, chunkIdB: string, userId: string) {
     const pairKey = [chunkIdA, chunkIdB].sort().join(":");
     return dbEffect(() =>
         db
@@ -104,7 +111,12 @@ export function suppressDuplicatePair(chunkIdA: string, chunkIdB: string) {
                 and(
                     eq(chunkStaleness.reason, "diverged_duplicate"),
                     isNull(chunkStaleness.dismissedAt),
-                    sql`(${chunkStaleness.chunkId} IN (${chunkIdA}, ${chunkIdB}) OR ${chunkStaleness.relatedChunkId} IN (${chunkIdA}, ${chunkIdB}))`
+                    sql`(${chunkStaleness.chunkId} IN (${chunkIdA}, ${chunkIdB}) OR ${chunkStaleness.relatedChunkId} IN (${chunkIdA}, ${chunkIdB}))`,
+                    // Both ends must be the caller's. Checking one would let a
+                    // caller pair their own chunk with a stranger's to reach
+                    // the stranger's flags.
+                    sql`EXISTS (SELECT 1 FROM "chunk" c WHERE c.id = ${chunkIdA} AND c.user_id = ${userId})`,
+                    sql`EXISTS (SELECT 1 FROM "chunk" c WHERE c.id = ${chunkIdB} AND c.user_id = ${userId})`
                 )
             )
     );

@@ -288,7 +288,7 @@ export const chunkRoutes = new Elysia()
     )
     .get(
         "/chunks/:id/tag-suggestions",
-        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => suggestTagsFromGraph(ctx.params.id)))),
+        ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => suggestTagsFromGraph(ctx.params.id, session.user.id)))),
         { params: t.Object({ id: t.String() }) }
     )
     .get("/chunks/:id/history", ctx =>

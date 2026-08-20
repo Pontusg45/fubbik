@@ -34,7 +34,7 @@ const planBase = new Elysia({ prefix: "/plans" })
         }
     )
     .get("/:id", async ctx => {
-        return await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => planService.getPlanDetail(ctx.params.id))));
+        return await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => planService.getPlanDetail(ctx.params.id, session.user.id))));
     })
     .post(
         "/",
@@ -84,7 +84,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
                         Effect.gen(function* () {
-                            const updated = yield* planService.updatePlan(ctx.params.id, ctx.body);
+                            const updated = yield* planService.updatePlan(ctx.params.id, session.user.id, ctx.body);
                             const action = ctx.body.status !== undefined ? "status_changed" : "updated";
                             yield* createActivity({
                                 userId: session.user.id,
@@ -115,8 +115,8 @@ const planBase = new Elysia({ prefix: "/plans" })
             requireSession(ctx).pipe(
                 Effect.flatMap(session =>
                     Effect.gen(function* () {
-                        const existing = yield* planService.getPlan(ctx.params.id);
-                        yield* planService.deletePlan(ctx.params.id);
+                        const existing = yield* planService.getPlan(ctx.params.id, session.user.id);
+                        yield* planService.deletePlan(ctx.params.id, session.user.id);
                         yield* createActivity({
                             userId: session.user.id,
                             entityType: "plan",
@@ -157,7 +157,7 @@ const planBase = new Elysia({ prefix: "/plans" })
                 Effect.flatMap(session =>
                     Effect.gen(function* () {
                         // Ensure the plan exists + is visible to the user.
-                        yield* planService.getPlan(ctx.params.id);
+                        yield* planService.getPlan(ctx.params.id, session.user.id);
                         // Two parallel reads: plan-level events + task-level events
                         // whose entity ids belong to this plan's tasks.
                         const tasks = yield* planRepo.listTasks(ctx.params.id);
@@ -184,7 +184,7 @@ const planBase = new Elysia({ prefix: "/plans" })
     .get("/:id/links", async ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() => planService.getPlan(ctx.params.id)),
+                Effect.flatMap(session => planService.getPlan(ctx.params.id, session.user.id)),
                 Effect.flatMap(() => planRepo.listPlanLinks(ctx.params.id))
             )
         )
@@ -194,7 +194,7 @@ const planBase = new Elysia({ prefix: "/plans" })
         async ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => planService.getPlan(ctx.params.id)),
+                    Effect.flatMap(session => planService.getPlan(ctx.params.id, session.user.id)),
                     Effect.flatMap(() =>
                         planRepo.addPlanLink({
                             planId: ctx.params.id,
@@ -216,7 +216,7 @@ const planBase = new Elysia({ prefix: "/plans" })
     .delete("/:id/links/:linkId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() => planService.getPlan(ctx.params.id)),
+                Effect.flatMap(session => planService.getPlan(ctx.params.id, session.user.id)),
                 Effect.flatMap(() => planRepo.removePlanLink(ctx.params.linkId))
             )
         );

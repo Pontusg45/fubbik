@@ -57,7 +57,7 @@ export const stalenessRoutes = new Elysia()
         "/chunks/suppress-duplicate",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(() => stalenessService.suppressDuplicatePair(ctx.body.chunkIdA, ctx.body.chunkIdB)))
+                requireSession(ctx).pipe(Effect.flatMap(session => stalenessService.suppressDuplicatePair(ctx.body.chunkIdA, ctx.body.chunkIdB, session.user.id)))
             ),
         {
             body: t.Object({

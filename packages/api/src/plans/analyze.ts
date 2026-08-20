@@ -40,7 +40,7 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/plans/:id/analyze" })
     .get("/", async ctx => {
         return await Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() => getPlan(ctx.params.id)),
+                Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                 Effect.flatMap(() => planRepo.listAnalyzeItems(ctx.params.id)),
                 Effect.map(groupByKind)
             )
@@ -51,7 +51,7 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/plans/:id/analyze" })
         async ctx => {
             return await Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => getPlan(ctx.params.id)),
+                    Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                     Effect.flatMap(() => validateKind(ctx.body.kind)),
                     Effect.flatMap(kind =>
                         planRepo.createAnalyzeItem({
@@ -81,7 +81,7 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/plans/:id/analyze" })
         async ctx => {
             return await Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => getPlan(ctx.params.id)),
+                    Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                     Effect.flatMap(() => planRepo.updateAnalyzeItem(ctx.params.itemId, ctx.body))
                 )
             );
@@ -98,7 +98,7 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/plans/:id/analyze" })
     .delete("/:itemId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() => getPlan(ctx.params.id)),
+                Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                 Effect.flatMap(() => planRepo.deleteAnalyzeItem(ctx.params.itemId))
             )
         );
@@ -109,7 +109,7 @@ export const planAnalyzeRoutes = new Elysia({ prefix: "/plans/:id/analyze" })
         async ctx => {
             await Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => getPlan(ctx.params.id)),
+                    Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                     Effect.flatMap(() => validateKind(ctx.body.kind)),
                     Effect.flatMap(kind => planRepo.reorderAnalyzeItems(ctx.params.id, kind, ctx.body.itemIds))
                 )

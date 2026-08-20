@@ -4,9 +4,12 @@ import {
     getAllUserSettings as getAllUserSettingsRepo,
     setCodebaseSetting as setCodebaseSettingRepo,
     setInstanceSetting as setInstanceSettingRepo,
-    setUserSetting as setUserSettingRepo
+    setUserSetting as setUserSettingRepo,
+    spaceBelongsTo
 } from "@fubbik/db/repository";
 import { Effect } from "effect";
+
+import { NotFoundError } from "../errors";
 
 export function getAllUserSettings(userId: string) {
     return getAllUserSettingsRepo(userId).pipe(
@@ -24,8 +27,8 @@ export function setUserSetting(userId: string, key: string, value: unknown) {
     return setUserSettingRepo(userId, key, value);
 }
 
-export function getAllCodebaseSettings(spaceId: string) {
-    return getAllCodebaseSettingsRepo(spaceId).pipe(
+export function getAllCodebaseSettings(spaceId: string, userId: string) {
+    return getAllCodebaseSettingsRepo(spaceId, userId).pipe(
         Effect.map(rows => {
             const map: Record<string, unknown> = {};
             for (const row of rows) {
@@ -36,8 +39,17 @@ export function getAllCodebaseSettings(spaceId: string) {
     );
 }
 
-export function setCodebaseSetting(spaceId: string, key: string, value: unknown) {
-    return setCodebaseSettingRepo(spaceId, key, value);
+/**
+ * SECURITY: refuses to write settings for a space the caller does not own.
+ * The repo write itself has no join to gate on (it is an upsert keyed by
+ * spaceId), so the ownership check is an explicit pre-check here — the one
+ * place in this fix where the guard cannot live in the query.
+ */
+export function setCodebaseSetting(spaceId: string, userId: string, key: string, value: unknown) {
+    return spaceBelongsTo(spaceId, userId).pipe(
+        Effect.flatMap(owned => (owned ? Effect.succeed(owned) : Effect.fail(new NotFoundError({ resource: "Space" })))),
+        Effect.flatMap(() => setCodebaseSettingRepo(spaceId, key, value))
+    );
 }
 
 export function getAllInstanceSettings() {

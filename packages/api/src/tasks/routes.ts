@@ -45,14 +45,14 @@ export const taskQueueRoutes = new Elysia()
     .post("/tasks/:id/claim", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() =>
+                Effect.flatMap(session =>
                     Effect.gen(function* () {
-                        const detail = yield* planService.getPlanDetail(ctx.params.id);
+                        const detail = yield* planService.getPlanDetail(ctx.params.id, session.user.id);
                         const firstTask = detail.tasks[0];
                         if (firstTask) {
                             yield* planService.updateTask(firstTask.id, { status: "in_progress" });
                         }
-                        return yield* planService.getPlanDetail(ctx.params.id);
+                        return yield* planService.getPlanDetail(ctx.params.id, session.user.id);
                     })
                 )
             )
@@ -64,14 +64,14 @@ export const taskQueueRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() =>
+                    Effect.flatMap(session =>
                         Effect.gen(function* () {
-                            const detail = yield* planService.getPlanDetail(ctx.params.id);
+                            const detail = yield* planService.getPlanDetail(ctx.params.id, session.user.id);
                             const firstTask = detail.tasks[0];
                             if (firstTask) {
                                 yield* planService.updateTask(firstTask.id, { status: "done" });
                             }
-                            return yield* planService.updatePlan(ctx.params.id, { status: "completed" });
+                            return yield* planService.updatePlan(ctx.params.id, session.user.id, { status: "completed" });
                         })
                     )
                 )

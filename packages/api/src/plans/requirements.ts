@@ -11,7 +11,7 @@ export const planRequirementRoutes = new Elysia({ prefix: "/plans/:id/requiremen
         async ctx => {
             return await Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => getPlan(ctx.params.id)),
+                    Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                     Effect.flatMap(() => planRepo.addPlanRequirement(ctx.params.id, ctx.body.requirementId))
                 )
             );
@@ -21,7 +21,7 @@ export const planRequirementRoutes = new Elysia({ prefix: "/plans/:id/requiremen
     .delete("/:requirementId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() => getPlan(ctx.params.id)),
+                Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                 Effect.flatMap(() => planRepo.removePlanRequirement(ctx.params.id, ctx.params.requirementId))
             )
         );
@@ -32,7 +32,7 @@ export const planRequirementRoutes = new Elysia({ prefix: "/plans/:id/requiremen
         async ctx => {
             await Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => getPlan(ctx.params.id)),
+                    Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                     Effect.flatMap(() => planRepo.reorderPlanRequirements(ctx.params.id, ctx.body.requirementIds))
                 )
             );

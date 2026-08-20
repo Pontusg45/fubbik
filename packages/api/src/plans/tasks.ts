@@ -51,7 +51,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
                         Effect.gen(function* () {
-                            const plan = yield* getPlan(ctx.params.id);
+                            const plan = yield* getPlan(ctx.params.id, session.user.id);
                             const task = yield* planRepo.createTask({
                                 planId: ctx.params.id,
                                 title: ctx.body.title,
@@ -103,7 +103,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
                 requireSession(ctx).pipe(
                     Effect.flatMap(session =>
                         Effect.gen(function* () {
-                            const plan = yield* getPlan(ctx.params.id);
+                            const plan = yield* getPlan(ctx.params.id, session.user.id);
                             const patch: Record<string, unknown> = {};
                             if (ctx.body.title !== undefined) patch.title = ctx.body.title;
                             if (ctx.body.description !== undefined) patch.description = ctx.body.description;
@@ -149,7 +149,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
             requireSession(ctx).pipe(
                 Effect.flatMap(session =>
                     Effect.gen(function* () {
-                        const plan = yield* getPlan(ctx.params.id);
+                        const plan = yield* getPlan(ctx.params.id, session.user.id);
                         yield* planRepo.deleteTask(ctx.params.taskId);
                         yield* createActivity({
                             userId: session.user.id,
@@ -169,7 +169,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
         async ctx => {
             await Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => getPlan(ctx.params.id)),
+                    Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                     Effect.flatMap(() => planRepo.reorderTasks(ctx.params.id, ctx.body.taskIds))
                 )
             );
@@ -182,7 +182,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
         async ctx => {
             return await Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => getPlan(ctx.params.id)),
+                    Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                     Effect.flatMap(() => validateRelation(ctx.body.relation)),
                     Effect.flatMap(rel => planRepo.addTaskChunk(ctx.params.taskId, ctx.body.chunkId, rel))
                 )
@@ -193,7 +193,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
     .delete("/:taskId/chunks/:linkId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() => getPlan(ctx.params.id)),
+                Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                 Effect.flatMap(() => planRepo.removeTaskChunk(ctx.params.linkId))
             )
         );
@@ -206,7 +206,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
         async ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => getPlan(ctx.params.id)),
+                    Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                     Effect.flatMap(() => planRepo.addTaskDependency(ctx.params.taskId, ctx.body.dependsOnTaskId))
                 )
             ),
@@ -215,7 +215,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
     .delete("/:taskId/dependencies/:depId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() => getPlan(ctx.params.id)),
+                Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                 Effect.flatMap(() => planRepo.removeTaskDependency(ctx.params.depId))
             )
         );
@@ -225,7 +225,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
     .get("/:taskId/links", async ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() => getPlan(ctx.params.id)),
+                Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                 Effect.flatMap(() => planRepo.listTaskLinks(ctx.params.taskId))
             )
         )
@@ -235,7 +235,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
         async ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() => getPlan(ctx.params.id)),
+                    Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                     Effect.flatMap(() =>
                         planRepo.addTaskLink({
                             taskId: ctx.params.taskId,
@@ -257,7 +257,7 @@ export const planTaskRoutes = new Elysia({ prefix: "/plans/:id/tasks" })
     .delete("/:taskId/links/:linkId", async ctx => {
         await Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() => getPlan(ctx.params.id)),
+                Effect.flatMap(session => getPlan(ctx.params.id, session.user.id)),
                 Effect.flatMap(() => planRepo.removeTaskLink(ctx.params.linkId))
             )
         );

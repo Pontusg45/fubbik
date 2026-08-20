@@ -50,14 +50,14 @@ export function listPlans(input: ListPlansInput) {
 
 export function duplicatePlan(userId: string, sourceId: string) {
     return Effect.gen(function* () {
-        yield* getPlan(sourceId); // 404 if missing
+        yield* getPlan(sourceId, userId); // 404 if missing, or not the caller's
         return yield* planRepo.duplicatePlan(sourceId, userId);
     });
 }
 
-export function getPlan(id: string) {
+export function getPlan(id: string, userId: string) {
     return planRepo
-        .getPlan(id)
+        .getPlan(id, userId)
         .pipe(Effect.flatMap(plan => (plan ? Effect.succeed(plan) : Effect.fail(new NotFoundError({ resource: `Plan(${id})` })))));
 }
 
@@ -65,9 +65,9 @@ export function getPlan(id: string) {
  * Full plan detail including requirements, analyze items grouped by kind,
  * tasks, task-chunk links, and dependencies.
  */
-export function getPlanDetail(id: string) {
+export function getPlanDetail(id: string, userId: string) {
     return Effect.gen(function* () {
-        const plan = yield* getPlan(id);
+        const plan = yield* getPlan(id, userId);
         const requirements = yield* planRepo.listPlanRequirements(id);
         const analyzeItems = yield* planRepo.listAnalyzeItems(id);
         const tasks = yield* planRepo.listTasks(id);
@@ -164,12 +164,12 @@ export interface UpdatePlanInput {
     metadata?: Record<string, unknown>;
 }
 
-export function updatePlan(id: string, input: UpdatePlanInput) {
+export function updatePlan(id: string, userId: string, input: UpdatePlanInput) {
     return Effect.gen(function* () {
         if (input.status && !isPlanStatus(input.status)) {
             return yield* Effect.fail(new ValidationError({ message: `Invalid status: ${input.status}` }));
         }
-        const existing = yield* getPlan(id);
+        const existing = yield* getPlan(id, userId);
         const patch: Parameters<typeof planRepo.updatePlan>[1] = {};
         if (input.title !== undefined) patch.title = input.title;
         if (input.description !== undefined) patch.description = input.description;
@@ -187,9 +187,9 @@ export function updatePlan(id: string, input: UpdatePlanInput) {
     });
 }
 
-export function deletePlan(id: string) {
+export function deletePlan(id: string, userId: string) {
     return Effect.gen(function* () {
-        yield* getPlan(id);
+        yield* getPlan(id, userId);
         yield* planRepo.deletePlan(id);
     });
 }

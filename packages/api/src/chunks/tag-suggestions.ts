@@ -1,4 +1,4 @@
-import { getNeighborhood, getTagsForChunks, getTagsForChunk } from "@fubbik/db/repository";
+import { getChunkById, getNeighborhood, getTagsForChunks, getTagsForChunk } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 export interface TagSuggestion {
@@ -8,8 +8,16 @@ export interface TagSuggestion {
     neighborCount: number;
 }
 
-export function suggestTagsFromGraph(chunkId: string, maxHops = 1, minFrequency = 0.5) {
+/**
+ * SECURITY: `userId` gates the whole computation on owning the chunk. This
+ * walks the graph neighbourhood of `chunkId` and reports the tags found
+ * there, so an unscoped call disclosed both the existence of another user's
+ * chunk and how their neighbours are tagged.
+ */
+export function suggestTagsFromGraph(chunkId: string, userId: string, maxHops = 1, minFrequency = 0.5) {
     return Effect.gen(function* () {
+        const owned = yield* getChunkById(chunkId, userId);
+        if (!owned) return [] as TagSuggestion[];
         const neighborIds = yield* getNeighborhood(chunkId, maxHops).pipe(
             Effect.catchAll((): Effect.Effect<string[]> => Effect.succeed([]))
         );
