@@ -244,7 +244,7 @@ describe("Delta operations", () => {
             })
         );
 
-        const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId));
+        const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId, testUserId));
         expect(deltas).toHaveLength(1);
         expect(deltas[0]!.chunkId).toBe(testChunkId);
         expect(deltas[0]!.featureId).toBe(testFeatureId);
@@ -272,7 +272,7 @@ describe("Delta operations", () => {
             })
         );
 
-        const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId));
+        const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId, testUserId));
         // Still only one row (upsert merged into existing)
         expect(deltas).toHaveLength(1);
         expect(deltas[0]!.delta).toEqual({ title: "Updated Title", content: "New content" });
@@ -348,7 +348,7 @@ describe("Delta operations", () => {
         const deleted = await Effect.runPromise(chunkDeltaRepo.deleteDelta(testChunkId, testFeatureId));
         expect(deleted).not.toBeNull();
 
-        const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId));
+        const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId, testUserId));
         expect(deltas).toHaveLength(0);
     });
 

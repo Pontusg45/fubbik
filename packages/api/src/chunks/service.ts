@@ -138,7 +138,13 @@ export function getChunkDetail(chunkId: string, userId?: string, activeFeatureId
                 fileReferences: getFileRefsForChunk(chunkId),
                 tags: getTagsForChunk(chunkId),
                 requirements: getRequirementsForChunks([chunkId]),
-                allDeltas: getDeltasForChunkRepo(chunkId)
+                // `userId` is optional on this function's signature, but the
+                // `getChunkById` guard above has already failed the whole
+                // Effect if it did not match — so by here it is the verified
+                // owner, and `?? ""` can only be reached when the caller
+                // passed no userId at all, which now yields no deltas rather
+                // than everyone's.
+                allDeltas: getDeltasForChunkRepo(chunkId, userId ?? "")
             })
         ),
         Effect.map(result => {

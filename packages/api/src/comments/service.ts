@@ -9,8 +9,8 @@ import { Effect } from "effect";
 
 import { NotFoundError } from "../errors";
 
-export function listComments(chunkId: string) {
-    return listCommentsRepo(chunkId);
+export function listComments(chunkId: string, userId: string) {
+    return listCommentsRepo(chunkId, userId);
 }
 
 export function createComment(chunkId: string, userId: string, content: string) {

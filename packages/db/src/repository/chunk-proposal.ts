@@ -16,14 +16,41 @@ export function createProposal(input: NewChunkProposal): Effect.Effect<ChunkProp
     });
 }
 
-export function getProposalById(id: string): Effect.Effect<ChunkProposal | null, DatabaseError> {
+/**
+ * SECURITY: `userId` scopes through the proposal's chunk. A proposal has no
+ * owner column of its own — `proposedBy` is whoever suggested the change,
+ * which may be an AI agent or another user — so the authority is the chunk
+ * being proposed against. Without this, GET /proposals/:proposalId returned
+ * any proposal to any authenticated caller, including the proposed content.
+ */
+export function getProposalById(id: string, userId: string): Effect.Effect<ChunkProposal | null, DatabaseError> {
     return dbEffect(async () => {
-        const [row] = await db.select().from(chunkProposal).where(eq(chunkProposal.id, id)).limit(1);
+        const [row] = await db
+            .select({
+                id: chunkProposal.id,
+                chunkId: chunkProposal.chunkId,
+                changes: chunkProposal.changes,
+                reason: chunkProposal.reason,
+                status: chunkProposal.status,
+                proposedBy: chunkProposal.proposedBy,
+                reviewedBy: chunkProposal.reviewedBy,
+                reviewedAt: chunkProposal.reviewedAt,
+                reviewNote: chunkProposal.reviewNote,
+                createdAt: chunkProposal.createdAt
+            })
+            .from(chunkProposal)
+            .innerJoin(chunk, eq(chunk.id, chunkProposal.chunkId))
+            .where(and(eq(chunkProposal.id, id), eq(chunk.userId, userId)))
+            .limit(1);
         return row ?? null;
     });
 }
 
 export interface ListProposalsFilter {
+    /** SECURITY: required. Scopes the list to proposals against the caller's
+     *  own chunks — this used to be absent entirely, so GET /proposals
+     *  returned every user's pending proposals, proposed content included. */
+    userId: string;
     chunkId?: string;
     status?: string;
     limit?: number;
@@ -34,7 +61,7 @@ export function listProposals(
     filter: ListProposalsFilter
 ): Effect.Effect<Array<ChunkProposal & { chunkTitle: string; chunkType: string }>, DatabaseError> {
     return dbEffect(async () => {
-        const conditions = [];
+        const conditions = [eq(chunk.userId, filter.userId)];
         if (filter.chunkId) conditions.push(eq(chunkProposal.chunkId, filter.chunkId));
         if (filter.status) conditions.push(eq(chunkProposal.status, filter.status));
 
@@ -64,16 +91,30 @@ export function listProposals(
     });
 }
 
-export function listProposalsForChunk(chunkId: string, status?: string): Effect.Effect<ChunkProposal[], DatabaseError> {
+/** SECURITY: scoped through the chunk's owner — see `getProposalById`. */
+export function listProposalsForChunk(chunkId: string, userId: string, status?: string): Effect.Effect<ChunkProposal[], DatabaseError> {
     return dbEffect(async () => {
-        const conditions = [eq(chunkProposal.chunkId, chunkId)];
+        const conditions = [eq(chunkProposal.chunkId, chunkId), eq(chunk.userId, userId)];
         if (status) conditions.push(eq(chunkProposal.status, status));
 
-        return db
-            .select()
+        const rows = await db
+            .select({
+                id: chunkProposal.id,
+                chunkId: chunkProposal.chunkId,
+                changes: chunkProposal.changes,
+                reason: chunkProposal.reason,
+                status: chunkProposal.status,
+                proposedBy: chunkProposal.proposedBy,
+                reviewedBy: chunkProposal.reviewedBy,
+                reviewedAt: chunkProposal.reviewedAt,
+                reviewNote: chunkProposal.reviewNote,
+                createdAt: chunkProposal.createdAt
+            })
             .from(chunkProposal)
+            .innerJoin(chunk, eq(chunk.id, chunkProposal.chunkId))
             .where(and(...conditions))
             .orderBy(asc(chunkProposal.createdAt));
+        return rows;
     });
 }
 
@@ -99,9 +140,15 @@ export function updateProposalStatus(
     });
 }
 
-export function getPendingCount(): Effect.Effect<number, DatabaseError> {
+/** SECURITY: counts only the caller's own pending proposals — this used to
+ *  be a global count, leaking how much review traffic other users had. */
+export function getPendingCount(userId: string): Effect.Effect<number, DatabaseError> {
     return dbEffect(async () => {
-        const [row] = await db.select({ count: count() }).from(chunkProposal).where(eq(chunkProposal.status, "pending"));
+        const [row] = await db
+            .select({ count: count() })
+            .from(chunkProposal)
+            .innerJoin(chunk, eq(chunk.id, chunkProposal.chunkId))
+            .where(and(eq(chunkProposal.status, "pending"), eq(chunk.userId, userId)));
         return row?.count ?? 0;
     });
 }

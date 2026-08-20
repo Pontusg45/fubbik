@@ -6,7 +6,7 @@ import * as commentService from "./service";
 
 export const commentRoutes = new Elysia()
     .get("/chunks/:id/comments", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => commentService.listComments(ctx.params.id))))
+        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => commentService.listComments(ctx.params.id, session.user.id))))
     )
     .post(
         "/chunks/:id/comments",

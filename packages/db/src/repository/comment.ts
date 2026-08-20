@@ -1,10 +1,32 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
+import { chunk } from "../schema/chunk";
 import { chunkComment } from "../schema/comment";
 
-export function listComments(chunkId: string) {
-    return dbEffect(() => db.select().from(chunkComment).where(eq(chunkComment.chunkId, chunkId)).orderBy(asc(chunkComment.createdAt)));
+/**
+ * SECURITY: scoped through the commented chunk's owner. `chunk_comment` has
+ * a `user_id` (the comment's author) but that is not the authority here —
+ * a thread on your chunk may contain other people's comments, and the right
+ * to read the thread comes from owning the chunk. Without this join,
+ * GET /chunks/:id/comments returned any chunk's discussion to any caller.
+ */
+export function listComments(chunkId: string, userId: string) {
+    return dbEffect(() =>
+        db
+            .select({
+                id: chunkComment.id,
+                chunkId: chunkComment.chunkId,
+                userId: chunkComment.userId,
+                content: chunkComment.content,
+                createdAt: chunkComment.createdAt,
+                updatedAt: chunkComment.updatedAt
+            })
+            .from(chunkComment)
+            .innerJoin(chunk, eq(chunk.id, chunkComment.chunkId))
+            .where(and(eq(chunkComment.chunkId, chunkId), eq(chunk.userId, userId)))
+            .orderBy(asc(chunkComment.createdAt))
+    );
 }
 
 export function createComment(params: { id: string; chunkId: string; userId: string; content: string }) {

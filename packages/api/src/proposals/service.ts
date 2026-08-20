@@ -28,19 +28,20 @@ export function createProposal(chunkId: string, proposedBy: string, body: { chan
     });
 }
 
-export function getProposal(proposalId: string) {
-    return getProposalById(proposalId).pipe(
+export function getProposal(proposalId: string, userId: string) {
+    return getProposalById(proposalId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" }))))
     );
 }
 
-export function listProposals(filter: { chunkId?: string; status?: string; limit?: number; offset?: number }) {
+export function listProposals(filter: { userId: string; chunkId?: string; status?: string; limit?: number; offset?: number }) {
     return Effect.gen(function* () {
         const validStatuses = ["pending", "approved", "rejected"];
         if (filter.status && !validStatuses.includes(filter.status)) {
             return yield* Effect.fail(new ValidationError({ message: `status must be one of: ${validStatuses.join(", ")}` }));
         }
         return yield* listProposalsRepo({
+            userId: filter.userId,
             chunkId: filter.chunkId,
             status: filter.status ?? "pending",
             limit: filter.limit,
@@ -49,12 +50,27 @@ export function listProposals(filter: { chunkId?: string; status?: string; limit
     });
 }
 
-export function listProposalsForChunk(chunkId: string, status?: string) {
-    return listProposalsForChunkRepo(chunkId, status);
+export function listProposalsForChunk(chunkId: string, userId: string, status?: string) {
+    return listProposalsForChunkRepo(chunkId, userId, status);
 }
 
+/**
+ * SECURITY: the lookup is scoped by `reviewerId`, so only the owner of the
+ * chunk a proposal targets can approve it.
+ *
+ * This did NOT show up in the session-discarding sweep, because the route
+ * does read `session.user.id` — it just used it as a value to stamp
+ * (`reviewedBy`) rather than as a filter. The proposal itself was fetched
+ * unscoped, so any authenticated user could approve any proposal, and
+ * approving WRITES the proposed changes into someone else's chunk.
+ *
+ * `updateChunk(proposal.chunkId, reviewerId, ...)` below is itself scoped,
+ * so the write would have failed — but only after `getProposalById` had
+ * already disclosed the proposal, and `rejectProposal` (which does not call
+ * updateChunk) had no such backstop at all.
+ */
 export function approveProposal(proposalId: string, reviewerId: string, note?: string) {
-    return getProposalById(proposalId).pipe(
+    return getProposalById(proposalId, reviewerId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" })))),
         Effect.flatMap(proposal =>
             proposal.status !== "pending"
@@ -77,8 +93,12 @@ export function approveProposal(proposalId: string, reviewerId: string, note?: s
     );
 }
 
+/** SECURITY: scoped by `reviewerId` — see `approveProposal`. Rejecting had
+ *  no backstop at all: it never touches the chunk, so an unscoped lookup was
+ *  the only thing standing between a caller and rejecting a stranger's
+ *  pending proposal. */
 export function rejectProposal(proposalId: string, reviewerId: string, note?: string) {
-    return getProposalById(proposalId).pipe(
+    return getProposalById(proposalId, reviewerId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Proposal" })))),
         Effect.flatMap(proposal =>
             proposal.status !== "pending"
@@ -98,6 +118,6 @@ export function bulkAction(actions: Array<{ proposalId: string; action: "approve
     );
 }
 
-export function getPendingCount() {
-    return getPendingCountRepo();
+export function getPendingCount(userId: string) {
+    return getPendingCountRepo(userId);
 }

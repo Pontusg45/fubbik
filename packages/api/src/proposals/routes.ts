@@ -44,7 +44,7 @@ export const proposalRoutes = new Elysia()
         "/chunks/:id/proposals",
         async ctx => {
             return await Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(() => proposalService.listProposalsForChunk(ctx.params.id, ctx.query.status)))
+                requireSession(ctx).pipe(Effect.flatMap(session => proposalService.listProposalsForChunk(ctx.params.id, session.user.id, ctx.query.status)))
             );
         },
         {
@@ -57,7 +57,7 @@ export const proposalRoutes = new Elysia()
     .get("/proposals/count", async ctx => {
         return await Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(() => proposalService.getPendingCount()),
+                Effect.flatMap(session => proposalService.getPendingCount(session.user.id)),
                 Effect.map(pending => ({ pending }))
             )
         );
@@ -88,8 +88,9 @@ export const proposalRoutes = new Elysia()
         async ctx => {
             return await Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(() =>
+                    Effect.flatMap(session =>
                         proposalService.listProposals({
+                            userId: session.user.id,
                             chunkId: ctx.query.chunkId,
                             status: ctx.query.status,
                             limit: ctx.query.limit,
@@ -110,7 +111,7 @@ export const proposalRoutes = new Elysia()
     )
     // Single proposal detail
     .get("/proposals/:proposalId", async ctx => {
-        return await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => proposalService.getProposal(ctx.params.proposalId))));
+        return await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => proposalService.getProposal(ctx.params.proposalId, session.user.id))));
     })
     // Approve proposal
     .post(

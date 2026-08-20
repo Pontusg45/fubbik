@@ -20,7 +20,8 @@ export function upsertDelta(params: { id: string; chunkId: string; featureId: st
     });
 }
 
-export function getDeltasForChunk(chunkId: string) {
+/** SECURITY: scoped through the chunk's owner — see the service wrapper. */
+export function getDeltasForChunk(chunkId: string, userId: string) {
     return dbEffect(() =>
         db
             .select({
@@ -37,7 +38,8 @@ export function getDeltasForChunk(chunkId: string) {
             })
             .from(chunkFeatureDelta)
             .innerJoin(feature, eq(chunkFeatureDelta.featureId, feature.id))
-            .where(eq(chunkFeatureDelta.chunkId, chunkId))
+            .innerJoin(chunk, eq(chunk.id, chunkFeatureDelta.chunkId))
+            .where(and(eq(chunkFeatureDelta.chunkId, chunkId), eq(chunk.userId, userId)))
             .orderBy(feature.priority)
     );
 }

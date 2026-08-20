@@ -163,8 +163,14 @@ export function setActiveFeatures(userId: string, featureIds: string[]) {
     );
 }
 
-export function getDeltasForChunk(chunkId: string) {
-    return getDeltasForChunkRepo(chunkId);
+/**
+ * SECURITY: scoped through the chunk's owner. Feature deltas carry title,
+ * content and rationale — real chunk content, not just metadata — so an
+ * unscoped read here disclosed other users' writing. The sibling PUT and
+ * DELETE on the same path already passed the session; only this GET did not.
+ */
+export function getDeltasForChunk(chunkId: string, userId: string) {
+    return getDeltasForChunkRepo(chunkId, userId);
 }
 
 export function getDeltasForFeature(featureId: string) {
