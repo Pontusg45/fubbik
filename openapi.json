@@ -423,6 +423,147 @@
         }
       }
     },
+    "/api/chunks/archived": {
+      "get": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "list_archived",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Chunk"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chunks/bulk": {
+      "delete": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "bulk_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkIdsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDeleted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/chunks/bulk-update": {
+      "post": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "bulk_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkUpdateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkUpdated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/chunks/merge": {
+      "post": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "merge_chunks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChunkMergeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Chunk"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks/stale": {
       "get": {
         "tags": [
@@ -751,6 +892,39 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/chunks/{id}/archive": {
+      "post": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "archive_chunk",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
           }
         }
       }
@@ -1182,6 +1356,39 @@
             }
           },
           "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/chunks/{id}/restore": {
+      "post": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "restore_chunk",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkMessage"
+                }
+              }
+            }
+          },
+          "404": {
             "description": ""
           }
         }
@@ -8901,6 +9108,72 @@
           }
         }
       },
+      "BulkDeleted": {
+        "type": "object",
+        "required": [
+          "deleted"
+        ],
+        "properties": {
+          "deleted": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "BulkIdsBody": {
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "BulkUpdateBody": {
+        "type": "object",
+        "required": [
+          "ids",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "One of `add_tags | remove_tags | set_type | set_codebase |\nset_review_status | archive | delete`. Validated in the service."
+          },
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Meaning depends on `action`: a comma-separated tag list, a type, a\nspace id, or a review status. Explicitly nullable — a null `value`\nwith `set_codebase` clears the chunk's spaces."
+          }
+        }
+      },
+      "BulkUpdated": {
+        "type": "object",
+        "required": [
+          "updated"
+        ],
+        "properties": {
+          "updated": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
       "Category": {
         "type": "string",
         "description": "The six literals Elysia's `CategorySchema` accepts\n(`packages/api/src/vocabulary/routes.ts:7-14`, a genuine `t.Union` of\nliterals — unlike `notification.type`/`connection.relation`, this *is*\na real input constraint). Modelled as an enum only at this input-body\nlayer, the same shape as `connections::dto::Origin`: the stored\n`vocabulary_entry.category` column and\n`fubbik_db::repo::vocabulary::VocabularyEntry::category` stay a plain\n`String` end to end, since the DB has no matching check constraint and\nNode's `SELECT *` never re-validates on read.",
@@ -9325,6 +9598,33 @@
           "total": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "ChunkMergeBody": {
+        "type": "object",
+        "description": "`#[schema(as = ChunkMergeBody)]` because `tags::dto::MergeBody` already\nclaims the bare name. utoipa registers schemas in one flat namespace, so\nwithout a rename one silently overwrites the other — `tests/schema_names.rs`\ncaught this.\n\nThe two are in fact **structurally identical** (`sourceId`/`targetId` in\nboth), so allowlisting the duplicate would also have been safe. Renamed\nrather than allowlisted because the ids mean different things — these are\nchunk ids, those are tag ids — and a generated client that shows one\n`MergeBody` for two unrelated endpoints invites passing the wrong pair.\nThe allowlist is for names whose collision is *meaningless*, not merely\ncurrently harmless.",
+        "required": [
+          "sourceId",
+          "targetId"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          }
+        }
+      },
+      "ChunkMessage": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
           }
         }
       },

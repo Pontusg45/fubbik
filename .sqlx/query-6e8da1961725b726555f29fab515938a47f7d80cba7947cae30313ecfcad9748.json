@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE plan_analyze_item SET chunk_id = $2 WHERE chunk_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6e8da1961725b726555f29fab515938a47f7d80cba7947cae30313ecfcad9748"
+}

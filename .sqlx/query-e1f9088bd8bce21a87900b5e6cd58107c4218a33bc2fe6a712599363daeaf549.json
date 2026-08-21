@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk_file_ref SET chunk_id = $2 WHERE chunk_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e1f9088bd8bce21a87900b5e6cd58107c4218a33bc2fe6a712599363daeaf549"
+}

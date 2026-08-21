@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk SET\n             type = COALESCE($3, type),\n             review_status = COALESCE($4, review_status)\n           WHERE id = ANY($1) AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a03fc0de0949864e93ad617172ac4b5b0ba9ce067292d8dd7ec58bf45075c20c"
+}

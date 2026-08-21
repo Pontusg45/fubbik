@@ -1,5 +1,5 @@
 use axum::extract::{Path, State};
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use fubbik_db::repo::chunk::Chunk;
 use fubbik_db::repo::chunk_meta::{self, AppliesTo, FileRef};
@@ -195,9 +195,160 @@ pub async fn put_file_refs(
     ))
 }
 
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct ChunkMessage {
+    pub message: String,
+}
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct BulkUpdated {
+    pub updated: u64,
+}
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct BulkDeleted {
+    pub deleted: u64,
+}
+
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+pub struct BulkUpdateBody {
+    pub ids: Vec<String>,
+    /// One of `add_tags | remove_tags | set_type | set_codebase |
+    /// set_review_status | archive | delete`. Validated in the service.
+    pub action: String,
+    /// Meaning depends on `action`: a comma-separated tag list, a type, a
+    /// space id, or a review status. Explicitly nullable — a null `value`
+    /// with `set_codebase` clears the chunk's spaces.
+    #[serde(default)]
+    pub value: Option<String>,
+}
+
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+pub struct BulkIdsBody {
+    pub ids: Vec<String>,
+}
+
+/// `#[schema(as = ChunkMergeBody)]` because `tags::dto::MergeBody` already
+/// claims the bare name. utoipa registers schemas in one flat namespace, so
+/// without a rename one silently overwrites the other — `tests/schema_names.rs`
+/// caught this.
+///
+/// The two are in fact **structurally identical** (`sourceId`/`targetId` in
+/// both), so allowlisting the duplicate would also have been safe. Renamed
+/// rather than allowlisted because the ids mean different things — these are
+/// chunk ids, those are tag ids — and a generated client that shows one
+/// `MergeBody` for two unrelated endpoints invites passing the wrong pair.
+/// The allowlist is for names whose collision is *meaningless*, not merely
+/// currently harmless.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = ChunkMergeBody)]
+pub struct MergeBody {
+    pub source_id: String,
+    pub target_id: String,
+}
+
+#[derive(serde::Deserialize, utoipa::IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchivedQuery {
+    pub space_id: Option<String>,
+}
+
+#[utoipa::path(post, path = "/api/chunks/{id}/archive", params(("id" = String, Path,)),
+    responses((status = 200, body = ChunkMessage), (status = 404)))]
+pub async fn archive_chunk(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> ApiResult<Json<ChunkMessage>> {
+    service::archive(&state.pool, &user.id, &id).await?;
+    Ok(Json(ChunkMessage {
+        message: "Archived".into(),
+    }))
+}
+
+#[utoipa::path(post, path = "/api/chunks/{id}/restore", params(("id" = String, Path,)),
+    responses((status = 200, body = ChunkMessage), (status = 404)))]
+pub async fn restore_chunk(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> ApiResult<Json<ChunkMessage>> {
+    service::restore(&state.pool, &user.id, &id).await?;
+    Ok(Json(ChunkMessage {
+        message: "Restored".into(),
+    }))
+}
+
+#[utoipa::path(get, path = "/api/chunks/archived", params(ArchivedQuery),
+    responses((status = 200, body = Vec<Chunk>)))]
+pub async fn list_archived(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Query(query): Query<ArchivedQuery>,
+) -> ApiResult<Json<Vec<Chunk>>> {
+    Ok(Json(
+        service::list_archived(&state.pool, &user.id, query.space_id.as_deref()).await?,
+    ))
+}
+
+#[utoipa::path(post, path = "/api/chunks/bulk-update", request_body = BulkUpdateBody,
+    responses((status = 200, body = BulkUpdated), (status = 400), (status = 404)))]
+pub async fn bulk_update(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    ReqJson(body): ReqJson<BulkUpdateBody>,
+) -> ApiResult<Json<BulkUpdated>> {
+    let updated = service::bulk_update(
+        &state.pool,
+        &user.id,
+        body.ids,
+        &body.action,
+        body.value.as_deref(),
+    )
+    .await?;
+    Ok(Json(BulkUpdated { updated }))
+}
+
+#[utoipa::path(delete, path = "/api/chunks/bulk", request_body = BulkIdsBody,
+    responses((status = 200, body = BulkDeleted), (status = 400)))]
+pub async fn bulk_delete(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    ReqJson(body): ReqJson<BulkIdsBody>,
+) -> ApiResult<Json<BulkDeleted>> {
+    let deleted = service::bulk_delete(&state.pool, &user.id, body.ids).await?;
+    Ok(Json(BulkDeleted { deleted }))
+}
+
+#[utoipa::path(post, path = "/api/chunks/merge", request_body = MergeBody,
+    responses((status = 200, body = Chunk), (status = 400), (status = 404)))]
+pub async fn merge_chunks(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    ReqJson(body): ReqJson<MergeBody>,
+) -> ApiResult<Json<Chunk>> {
+    Ok(Json(
+        service::merge(&state.pool, &user.id, &body.source_id, &body.target_id).await?,
+    ))
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/chunks", get(list_chunks).post(create_chunk))
+        // Static segments first: axum resolves these ahead of `/{id}`
+        // regardless, but `archived`, `bulk` and `merge` are one segment
+        // deep and the ordering is kept explicit.
+        .route("/api/chunks/archived", get(list_archived))
+        .route("/api/chunks/bulk-update", post(bulk_update))
+        .route("/api/chunks/bulk", axum::routing::delete(bulk_delete))
+        .route("/api/chunks/merge", post(merge_chunks))
+        .route("/api/chunks/{id}/archive", post(archive_chunk))
+        .route("/api/chunks/{id}/restore", post(restore_chunk))
         .route(
             "/api/chunks/{id}",
             get(get_chunk).patch(update_chunk).delete(delete_chunk),

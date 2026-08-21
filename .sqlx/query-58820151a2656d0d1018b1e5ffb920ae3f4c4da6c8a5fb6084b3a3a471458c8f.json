@@ -1,0 +1,161 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, title, content, type AS chunk_type, user_id, summary,\n                  aliases AS \"aliases: Json<Vec<String>>\",\n                  not_about AS \"not_about: Json<Vec<String>>\",\n                  scope AS \"scope: Json<serde_json::Value>\",\n                  rationale,\n                  alternatives AS \"alternatives: Json<Vec<String>>\",\n                  consequences,\n                  embedding::text AS \"embedding: EmbeddingVec\",\n                  embedding_updated_at AS \"embedding_updated_at: UtcTimestamp\",\n                  origin, review_status, reviewed_by,\n                  reviewed_at AS \"reviewed_at: UtcTimestamp\",\n                  created_at AS \"created_at: UtcTimestamp\",\n                  updated_at AS \"updated_at: UtcTimestamp\",\n                  archived_at AS \"archived_at: UtcTimestamp\",\n                  document_id, document_order, is_entry_point\n           FROM chunk\n           WHERE user_id = $1 AND archived_at IS NOT NULL\n             AND ($2::text IS NULL\n                  OR id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2))\n           ORDER BY archived_at DESC, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "aliases: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "not_about: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "scope: Json<serde_json::Value>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 9,
+        "name": "rationale",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "alternatives: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 11,
+        "name": "consequences",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "embedding: EmbeddingVec",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "embedding_updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 14,
+        "name": "origin",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "review_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "reviewed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "reviewed_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 18,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 19,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 20,
+        "name": "archived_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 21,
+        "name": "document_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 22,
+        "name": "document_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 23,
+        "name": "is_entry_point",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      null,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "58820151a2656d0d1018b1e5ffb920ae3f4c4da6c8a5fb6084b3a3a471458c8f"
+}

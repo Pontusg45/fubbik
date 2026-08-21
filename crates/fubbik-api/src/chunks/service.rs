@@ -591,3 +591,190 @@ pub async fn get_detail(
         has_deltas,
     })
 }
+
+// ---------------------------------------------------------------------------
+// Lifecycle: archive, restore, bulk, merge
+// ---------------------------------------------------------------------------
+
+/// The seven actions `POST /api/chunks/bulk-update` accepts.
+///
+/// `set_codebase` keeps its pre-rename name on the wire — it sets the chunk's
+/// *space*, and the `codebase → space` rename never reached this literal.
+const BULK_ACTIONS: [&str; 7] = [
+    "add_tags",
+    "remove_tags",
+    "set_type",
+    "set_codebase",
+    "set_review_status",
+    "archive",
+    "delete",
+];
+
+const REVIEW_STATUSES_BULK: [&str; 3] = ["draft", "reviewed", "approved"];
+
+pub async fn archive(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
+    chunk::archive(pool, user_id, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("chunk".into()))?;
+    Ok(())
+}
+
+pub async fn restore(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
+    chunk::restore(pool, user_id, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("chunk".into()))?;
+    Ok(())
+}
+
+pub async fn list_archived(
+    pool: &PgPool,
+    user_id: &str,
+    space_id: Option<&str>,
+) -> AppResult<Vec<Chunk>> {
+    chunk::list_archived(pool, user_id, space_id).await
+}
+
+/// Applies one action across up to 100 chunks.
+///
+/// Ownership is validated for **every** id before anything is written, so a
+/// batch containing one foreign id changes nothing at all rather than
+/// partially applying. Node does the same (`bulk-service.ts:29-35`) and fails
+/// the whole call with an `AuthError`; this reports 404, matching the rest of
+/// this crate's posture that an unowned id is indistinguishable from a
+/// missing one.
+pub async fn bulk_update(
+    pool: &PgPool,
+    user_id: &str,
+    ids: Vec<String>,
+    action: &str,
+    value: Option<&str>,
+) -> AppResult<u64> {
+    check_one_of(action, &BULK_ACTIONS, "action")?;
+    if ids.len() > 100 {
+        return Err(AppError::Validation("at most 100 ids are allowed".into()));
+    }
+    if ids.is_empty() {
+        return Ok(0);
+    }
+
+    for id in &ids {
+        get(pool, user_id, id).await?;
+    }
+
+    // Node returns `{ updated: ids.length }` for the tag and space actions —
+    // the count of chunks it *attempted*, not of rows changed — and the real
+    // affected-row count for the three that go through a single UPDATE. That
+    // inconsistency is preserved: the UI shows this number as "N chunks
+    // updated", and for the tag actions every named chunk genuinely was
+    // rewritten (its tag set replaced), even when the resulting set is
+    // identical.
+    let attempted = ids.len() as u64;
+
+    match action {
+        "add_tags" | "remove_tags" => {
+            let names = parse_csv(value, action)?;
+            let mut tag_ids = Vec::with_capacity(names.len());
+            for name in &names {
+                tag_ids.push(
+                    fubbik_db::repo::tag::find_or_create(pool, user_id, name)
+                        .await?
+                        .id,
+                );
+            }
+            for id in &ids {
+                let existing: Vec<String> = fubbik_db::repo::tag::tags_for_chunk(pool, user_id, id)
+                    .await?
+                    .into_iter()
+                    .map(|t| t.id)
+                    .collect();
+                let next: Vec<String> = if action == "add_tags" {
+                    let mut merged = existing;
+                    for t in &tag_ids {
+                        if !merged.contains(t) {
+                            merged.push(t.clone());
+                        }
+                    }
+                    merged
+                } else {
+                    existing
+                        .into_iter()
+                        .filter(|t| !tag_ids.contains(t))
+                        .collect()
+                };
+                fubbik_db::repo::tag::set_chunk_tags(pool, user_id, id, &next).await?;
+            }
+            Ok(attempted)
+        }
+        "set_type" => {
+            let v = value
+                .ok_or_else(|| AppError::Validation("value is required for set_type".into()))?;
+            check_len(v, 20, "value")?;
+            chunk::update_many(pool, user_id, &ids, Some(v), None).await
+        }
+        "set_review_status" => {
+            let v = value.ok_or_else(|| {
+                AppError::Validation("value must be draft, reviewed, or approved".into())
+            })?;
+            check_one_of(v, &REVIEW_STATUSES_BULK, "value")?;
+            chunk::update_many(pool, user_id, &ids, None, Some(v)).await
+        }
+        "set_codebase" => {
+            // A null/absent value clears the chunk's spaces, which is how the
+            // UI's "no space" option is expressed.
+            let space_ids: Vec<String> = value.map(|v| vec![v.to_string()]).unwrap_or_default();
+            for id in &ids {
+                fubbik_db::repo::space::set_chunk_spaces(pool, user_id, id, &space_ids).await?;
+            }
+            Ok(attempted)
+        }
+        "archive" => chunk::archive_many(pool, user_id, &ids).await,
+        "delete" => chunk::delete_many(pool, user_id, &ids).await,
+        // Unreachable: `check_one_of` above rejects anything else.
+        other => Err(AppError::Validation(format!("Unknown action: {other}"))),
+    }
+}
+
+/// Splits a comma-separated value, trimming and dropping blanks. An input
+/// that reduces to nothing is an error rather than a silent no-op — Node
+/// rejects a missing `value` for these two actions, and `","` is the same
+/// thing arriving by a different route.
+fn parse_csv(value: Option<&str>, action: &str) -> AppResult<Vec<String>> {
+    let raw =
+        value.ok_or_else(|| AppError::Validation(format!("value is required for {action}")))?;
+    let names: Vec<String> = raw
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if names.is_empty() {
+        return Err(AppError::Validation(format!(
+            "value is required for {action}"
+        )));
+    }
+    Ok(names)
+}
+
+pub async fn bulk_delete(pool: &PgPool, user_id: &str, ids: Vec<String>) -> AppResult<u64> {
+    if ids.len() > 100 {
+        return Err(AppError::Validation("at most 100 ids are allowed".into()));
+    }
+    chunk::delete_many(pool, user_id, &ids).await
+}
+
+/// Refuses a self-merge up front so the UI gets a clean 400 rather than a
+/// cryptic database error — Node does the same.
+pub async fn merge(
+    pool: &PgPool,
+    user_id: &str,
+    source_id: &str,
+    target_id: &str,
+) -> AppResult<Chunk> {
+    if source_id == target_id {
+        return Err(AppError::Validation(
+            "Cannot merge a chunk into itself".into(),
+        ));
+    }
+    chunk::merge(pool, user_id, source_id, target_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("chunk".into()))
+}

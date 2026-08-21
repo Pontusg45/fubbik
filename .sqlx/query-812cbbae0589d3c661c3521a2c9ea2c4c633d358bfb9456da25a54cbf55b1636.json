@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_favorite (id, user_id, chunk_id, \"order\", created_at)\n           SELECT md5(random()::text || clock_timestamp()::text), user_id, $2,\n                  \"order\", created_at\n           FROM user_favorite WHERE chunk_id = $1\n           ON CONFLICT (user_id, chunk_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "812cbbae0589d3c661c3521a2c9ea2c4c633d358bfb9456da25a54cbf55b1636"
+}

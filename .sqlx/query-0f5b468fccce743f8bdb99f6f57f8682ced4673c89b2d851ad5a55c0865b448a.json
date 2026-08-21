@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM chunk_connection WHERE source_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0f5b468fccce743f8bdb99f6f57f8682ced4673c89b2d851ad5a55c0865b448a"
+}

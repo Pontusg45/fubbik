@@ -670,3 +670,413 @@ pub async fn search_titles(
     .await?;
     Ok(rows)
 }
+
+// ---------------------------------------------------------------------------
+// Lifecycle: archive, restore, bulk operations, merge
+// ---------------------------------------------------------------------------
+
+/// Soft-deletes by stamping `archived_at`. Returns `Ok(None)` for a chunk the
+/// caller does not own.
+pub async fn archive(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Option<Chunk>> {
+    let c = sqlx::query_as!(
+        Chunk,
+        r#"UPDATE chunk SET archived_at = now()
+           WHERE id = $1 AND user_id = $2
+           RETURNING id, title, content, type AS chunk_type, user_id, summary,
+                     aliases AS "aliases: Json<Vec<String>>",
+                     not_about AS "not_about: Json<Vec<String>>",
+                     scope AS "scope: Json<serde_json::Value>",
+                     rationale,
+                     alternatives AS "alternatives: Json<Vec<String>>",
+                     consequences,
+                     embedding::text AS "embedding: EmbeddingVec",
+                     embedding_updated_at AS "embedding_updated_at: UtcTimestamp",
+                     origin, review_status, reviewed_by,
+                     reviewed_at AS "reviewed_at: UtcTimestamp",
+                     created_at AS "created_at: UtcTimestamp",
+                     updated_at AS "updated_at: UtcTimestamp",
+                     archived_at AS "archived_at: UtcTimestamp",
+                     document_id, document_order, is_entry_point"#,
+        id,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(c)
+}
+
+/// Clears `archived_at`. Note neither this nor [`archive`] touches
+/// `updated_at` — archiving is not an edit, and bumping it would make every
+/// archived chunk look freshly modified in the health panel.
+pub async fn restore(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Option<Chunk>> {
+    let c = sqlx::query_as!(
+        Chunk,
+        r#"UPDATE chunk SET archived_at = NULL
+           WHERE id = $1 AND user_id = $2
+           RETURNING id, title, content, type AS chunk_type, user_id, summary,
+                     aliases AS "aliases: Json<Vec<String>>",
+                     not_about AS "not_about: Json<Vec<String>>",
+                     scope AS "scope: Json<serde_json::Value>",
+                     rationale,
+                     alternatives AS "alternatives: Json<Vec<String>>",
+                     consequences,
+                     embedding::text AS "embedding: EmbeddingVec",
+                     embedding_updated_at AS "embedding_updated_at: UtcTimestamp",
+                     origin, review_status, reviewed_by,
+                     reviewed_at AS "reviewed_at: UtcTimestamp",
+                     created_at AS "created_at: UtcTimestamp",
+                     updated_at AS "updated_at: UtcTimestamp",
+                     archived_at AS "archived_at: UtcTimestamp",
+                     document_id, document_order, is_entry_point"#,
+        id,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(c)
+}
+
+/// Archived chunks, most recently archived first.
+///
+/// `, id` is this port's tiebreaker: `archive_many` stamps every row in one
+/// statement, so a bulk archive gives dozens of rows an identical
+/// `archived_at` and Node's `ORDER BY archived_at DESC` alone leaves their
+/// order to the query plan.
+///
+/// The `space_id` filter here is a plain "in this space", NOT the
+/// "or in no space at all" form `chunk::list` and the health queries use —
+/// Node's `listArchivedChunks` omits the global-chunk half. Reproduced
+/// rather than harmonised; the inconsistency is Node's.
+pub async fn list_archived(
+    pool: &PgPool,
+    user_id: &str,
+    space_id: Option<&str>,
+) -> AppResult<Vec<Chunk>> {
+    let rows = sqlx::query_as!(
+        Chunk,
+        r#"SELECT id, title, content, type AS chunk_type, user_id, summary,
+                  aliases AS "aliases: Json<Vec<String>>",
+                  not_about AS "not_about: Json<Vec<String>>",
+                  scope AS "scope: Json<serde_json::Value>",
+                  rationale,
+                  alternatives AS "alternatives: Json<Vec<String>>",
+                  consequences,
+                  embedding::text AS "embedding: EmbeddingVec",
+                  embedding_updated_at AS "embedding_updated_at: UtcTimestamp",
+                  origin, review_status, reviewed_by,
+                  reviewed_at AS "reviewed_at: UtcTimestamp",
+                  created_at AS "created_at: UtcTimestamp",
+                  updated_at AS "updated_at: UtcTimestamp",
+                  archived_at AS "archived_at: UtcTimestamp",
+                  document_id, document_order, is_entry_point
+           FROM chunk
+           WHERE user_id = $1 AND archived_at IS NOT NULL
+             AND ($2::text IS NULL
+                  OR id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2))
+           ORDER BY archived_at DESC, id"#,
+        user_id,
+        space_id
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}
+
+/// Archives every id the caller owns, returning how many were affected.
+/// Ids belonging to someone else are silently skipped — the service checks
+/// ownership up front and rejects the whole batch, so reaching this with a
+/// foreign id means a caller bypassed that check.
+pub async fn archive_many(pool: &PgPool, user_id: &str, ids: &[String]) -> AppResult<u64> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let n = sqlx::query!(
+        "UPDATE chunk SET archived_at = now() WHERE id = ANY($1) AND user_id = $2",
+        ids,
+        user_id
+    )
+    .execute(pool)
+    .await?
+    .rows_affected();
+    Ok(n)
+}
+
+pub async fn delete_many(pool: &PgPool, user_id: &str, ids: &[String]) -> AppResult<u64> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let n = sqlx::query!(
+        "DELETE FROM chunk WHERE id = ANY($1) AND user_id = $2",
+        ids,
+        user_id
+    )
+    .execute(pool)
+    .await?
+    .rows_affected();
+    Ok(n)
+}
+
+/// Sets `type` and/or `review_status` across a batch. Node's
+/// `updateManyChunks` accepts exactly these two columns and no others.
+///
+/// Unlike the single-chunk `update`, this does NOT bump `updated_at` —
+/// faithful to Node, whose `.set(data)` passes only the named columns. Worth
+/// noting because it means a bulk retype leaves the chunk looking untouched
+/// to the staleness scanner.
+pub async fn update_many(
+    pool: &PgPool,
+    user_id: &str,
+    ids: &[String],
+    chunk_type: Option<&str>,
+    review_status: Option<&str>,
+) -> AppResult<u64> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let n = sqlx::query!(
+        r#"UPDATE chunk SET
+             type = COALESCE($3, type),
+             review_status = COALESCE($4, review_status)
+           WHERE id = ANY($1) AND user_id = $2"#,
+        ids,
+        user_id,
+        chunk_type,
+        review_status
+    )
+    .execute(pool)
+    .await?
+    .rows_affected();
+    Ok(n)
+}
+
+/// Folds `source` into `target` and deletes the source, in one transaction.
+///
+/// A direct port of Node's `mergeChunks`
+/// (`packages/db/src/repository/chunk.ts:415-513`). Both chunks must belong
+/// to `user_id`; `Ok(None)` if either does not.
+///
+/// The order of operations matters and is preserved:
+///
+/// 1. **Join tables with unique constraints** (`chunk_tag`, `chunk_space`,
+///    `favorite`) are copied with `ON CONFLICT DO NOTHING`, then the source's
+///    rows deleted — a plain re-parent would violate the constraint whenever
+///    both chunks share a tag/space/favouriter.
+/// 2. **Connections** are repointed source-side first, then target-side, each
+///    guarded by a `NOT EXISTS` against `(source, target, relation)` so a
+///    duplicate edge is dropped rather than colliding. `DELETE ... WHERE
+///    source_id = target_id` afterwards removes the self-loop that appears
+///    when source and target were already connected to each other.
+/// 3. **Plain re-parents** (`chunk_file_ref`, `chunk_applies_to`,
+///    `plan_task_chunk`, `plan_analyze_item`) have no unique constraint to
+///    trip, so they move wholesale.
+/// 4. **Content** is appended under a `## Merged from "<title>"` heading,
+///    but only if the source body is non-empty and not already contained in
+///    the target — merging twice does not duplicate the text.
+/// 5. **The source row is deleted last**, and its cascades take
+///    `chunk_version`, `chunk_staleness` and `chunk_proposal` with it.
+///
+/// Note step 5 means the source's **version history is destroyed**, not
+/// moved. That is Node's behaviour and is reproduced, but it makes a merge
+/// irreversible in a way the UI does not warn about.
+pub async fn merge(
+    pool: &PgPool,
+    user_id: &str,
+    source_id: &str,
+    target_id: &str,
+) -> AppResult<Option<Chunk>> {
+    if source_id == target_id {
+        return Ok(None);
+    }
+    let mut tx = pool.begin().await?;
+
+    let rows = sqlx::query!(
+        "SELECT id, title, content FROM chunk WHERE id = ANY($1) AND user_id = $2",
+        &[source_id.to_string(), target_id.to_string()][..],
+        user_id
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let source = rows.iter().find(|r| r.id == source_id);
+    let target = rows.iter().find(|r| r.id == target_id);
+    let (Some(source), Some(target)) = (source, target) else {
+        return Ok(None);
+    };
+    let source_title = source.title.clone();
+    let source_body = source.content.trim().to_string();
+    let target_body = target.content.clone();
+
+    sqlx::query!(
+        "INSERT INTO chunk_tag (chunk_id, tag_id)
+         SELECT $2, tag_id FROM chunk_tag WHERE chunk_id = $1
+         ON CONFLICT (chunk_id, tag_id) DO NOTHING",
+        source_id,
+        target_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!("DELETE FROM chunk_tag WHERE chunk_id = $1", source_id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query!(
+        "INSERT INTO chunk_space (chunk_id, space_id)
+         SELECT $2, space_id FROM chunk_space WHERE chunk_id = $1
+         ON CONFLICT (chunk_id, space_id) DO NOTHING",
+        source_id,
+        target_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!("DELETE FROM chunk_space WHERE chunk_id = $1", source_id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query!(
+        "UPDATE chunk_connection SET source_id = $2
+         WHERE source_id = $1
+           AND NOT EXISTS (SELECT 1 FROM chunk_connection c2
+                           WHERE c2.source_id = $2
+                             AND c2.target_id = chunk_connection.target_id
+                             AND c2.relation = chunk_connection.relation)",
+        source_id,
+        target_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "DELETE FROM chunk_connection WHERE source_id = $1",
+        source_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "UPDATE chunk_connection SET target_id = $2
+         WHERE target_id = $1
+           AND NOT EXISTS (SELECT 1 FROM chunk_connection c2
+                           WHERE c2.target_id = $2
+                             AND c2.source_id = chunk_connection.source_id
+                             AND c2.relation = chunk_connection.relation)",
+        source_id,
+        target_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "DELETE FROM chunk_connection WHERE target_id = $1",
+        source_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!("DELETE FROM chunk_connection WHERE source_id = target_id")
+        .execute(&mut *tx)
+        .await?;
+
+    // Four plain re-parents, spelled out one statement each: sqlx's
+    // compile-time macro needs a literal query string, so a loop over table
+    // names is not available here.
+    sqlx::query!(
+        "UPDATE chunk_file_ref SET chunk_id = $2 WHERE chunk_id = $1",
+        source_id,
+        target_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "UPDATE chunk_applies_to SET chunk_id = $2 WHERE chunk_id = $1",
+        source_id,
+        target_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "UPDATE plan_task_chunk SET chunk_id = $2 WHERE chunk_id = $1",
+        source_id,
+        target_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "UPDATE plan_analyze_item SET chunk_id = $2 WHERE chunk_id = $1",
+        source_id,
+        target_id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    // DIVERGENCE, and the reason Node's merge cannot work at all.
+    //
+    // Node's raw SQL here says `INSERT INTO favorite ... FROM favorite`
+    // (`packages/db/src/repository/chunk.ts:483-488`). There is no relation
+    // named `favorite` — the table is `user_favorite` — so the statement
+    // raises `relation "favorite" does not exist` inside the transaction and
+    // rolls the whole merge back. `POST /api/chunks/merge` has therefore
+    // never succeeded on Node.
+    //
+    // A second bug hides behind the first: even with the name corrected, the
+    // column list omits `id`, which is `text NOT NULL` with no default, so
+    // the INSERT fails with a not-null violation the moment the source chunk
+    // has any favourites. Both verified by executing the statements directly.
+    //
+    // Not reproduced. There is no observable Node behaviour to be faithful
+    // to here — the endpoint is unreachable — so this port implements what
+    // the code plainly intends: carry the source's favourites over, keeping
+    // each favouriter's original `created_at`, and generate the required id.
+    sqlx::query!(
+        r#"INSERT INTO user_favorite (id, user_id, chunk_id, "order", created_at)
+           SELECT md5(random()::text || clock_timestamp()::text), user_id, $2,
+                  "order", created_at
+           FROM user_favorite WHERE chunk_id = $1
+           ON CONFLICT (user_id, chunk_id) DO NOTHING"#,
+        source_id,
+        target_id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!("DELETE FROM user_favorite WHERE chunk_id = $1", source_id)
+        .execute(&mut *tx)
+        .await?;
+
+    let merged_content = if !source_body.is_empty() && !target_body.contains(&source_body) {
+        format!("{target_body}\n\n## Merged from \"{source_title}\"\n\n{source_body}")
+    } else {
+        target_body
+    };
+
+    let updated = sqlx::query_as!(
+        Chunk,
+        r#"UPDATE chunk SET content = $3, updated_at = now()
+           WHERE id = $1 AND user_id = $2
+           RETURNING id, title, content, type AS chunk_type, user_id, summary,
+                     aliases AS "aliases: Json<Vec<String>>",
+                     not_about AS "not_about: Json<Vec<String>>",
+                     scope AS "scope: Json<serde_json::Value>",
+                     rationale,
+                     alternatives AS "alternatives: Json<Vec<String>>",
+                     consequences,
+                     embedding::text AS "embedding: EmbeddingVec",
+                     embedding_updated_at AS "embedding_updated_at: UtcTimestamp",
+                     origin, review_status, reviewed_by,
+                     reviewed_at AS "reviewed_at: UtcTimestamp",
+                     created_at AS "created_at: UtcTimestamp",
+                     updated_at AS "updated_at: UtcTimestamp",
+                     archived_at AS "archived_at: UtcTimestamp",
+                     document_id, document_order, is_entry_point"#,
+        target_id,
+        user_id,
+        merged_content
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    sqlx::query!(
+        "DELETE FROM chunk WHERE id = $1 AND user_id = $2",
+        source_id,
+        user_id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(updated)
+}

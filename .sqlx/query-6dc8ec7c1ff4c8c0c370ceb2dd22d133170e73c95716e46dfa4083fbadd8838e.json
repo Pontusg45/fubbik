@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk_connection SET source_id = $2\n         WHERE source_id = $1\n           AND NOT EXISTS (SELECT 1 FROM chunk_connection c2\n                           WHERE c2.source_id = $2\n                             AND c2.target_id = chunk_connection.target_id\n                             AND c2.relation = chunk_connection.relation)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6dc8ec7c1ff4c8c0c370ceb2dd22d133170e73c95716e46dfa4083fbadd8838e"
+}

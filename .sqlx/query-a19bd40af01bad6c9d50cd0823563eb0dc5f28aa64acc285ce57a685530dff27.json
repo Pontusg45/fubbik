@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk SET archived_at = now() WHERE id = ANY($1) AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a19bd40af01bad6c9d50cd0823563eb0dc5f28aa64acc285ce57a685530dff27"
+}
