@@ -15,7 +15,7 @@ import { CellPanel } from "@/features/matrices/cell-panel";
 import { MatrixGrid, type Dimension, type Rule, type ViewCell } from "@/features/matrices/matrix-grid";
 import { getUser } from "@/functions/get-user";
 import { useApiQuery } from "@/hooks/use-api-query";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/matrices_/$matrixId")({
@@ -96,11 +96,11 @@ function MatrixDetailPage() {
 
     const viewQuery = useApiQuery<MatrixView>({
         queryKey: ["matrix-view", matrixId],
-        queryFn: () => legacyApi.api.matrices({ id: matrixId }).view.get()
+        queryFn: () => api.api.matrices({ id: matrixId }).view.get()
     });
 
     const addDimensionMutation = useMutation({
-        mutationFn: async (name: string) => unwrapEden(await legacyApi.api.matrices({ id: matrixId }).dimensions.post({ name })),
+        mutationFn: async (name: string) => unwrapEden(await api.api.matrices({ id: matrixId }).dimensions.post({ name })),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
             setNewDimName("");
@@ -119,7 +119,7 @@ function MatrixDetailPage() {
             alternatives?: string;
             consequences?: string;
             counterexample?: string;
-        }) => unwrapEden(await legacyApi.api.matrices({ id: matrixId }).rules.post(body)),
+        }) => unwrapEden(await api.api.matrices({ id: matrixId }).rules.post(body)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
             setNewRuleTitle("");
@@ -138,7 +138,7 @@ function MatrixDetailPage() {
 
     const toggleCellMutation = useMutation({
         mutationFn: async (body: { ruleId: string; dimensionId: string }) =>
-            unwrapEden(await legacyApi.api.matrices({ id: matrixId }).cells.put(body)),
+            unwrapEden(await api.api.matrices({ id: matrixId }).cells.put(body)),
         onSuccess: data => {
             queryClient.invalidateQueries({ queryKey: ["matrix-view", matrixId] });
             if (data && typeof data === "object" && "action" in data) {
@@ -437,7 +437,7 @@ const HISTORY_FIELDS: { key: keyof RuleHistoryEntry["snapshot"]; label: string }
 function RuleHistoryDialog({ matrixId, ruleId, ruleTitle }: { matrixId: string; ruleId: string; ruleTitle: string }) {
     const historyQuery = useApiQuery<RuleHistoryEntry[]>({
         queryKey: ["matrix-rule-history", ruleId],
-        queryFn: () => legacyApi.api.matrices({ id: matrixId }).rules({ ruleId }).history.get(),
+        queryFn: () => api.api.matrices({ id: matrixId }).rules({ ruleId }).history.get(),
         fallback: []
     });
 

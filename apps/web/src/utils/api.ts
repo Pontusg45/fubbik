@@ -24,7 +24,7 @@ import { createClient } from "./api-proxy.future";
 //
 //   ai, comments, context, density, file-refs (top-level list/lookup — the
 //   chunks/{id}/file-refs sub-resource IS on Rust), graph, health,
-//   learning-paths, matrices, timeline
+//   learning-paths, timeline
 //
 // Every call site under those top-level segments (`api.api.<domain>...`)
 // is on `legacyApi` instead. This list SHRINKS as Rust ports each domain —
@@ -62,6 +62,16 @@ import { createClient } from "./api-proxy.future";
 // of bug is now caught at the source by `crates/fubbik-api/tests/schema_names.rs`
 // — a collision is invisible in the finished spec, so it is checked where the
 // two definitions are still distinguishable.
+//
+// `matrices` (25 endpoints across 8 tables) is fully on `api`, including the
+// computed `/view` and the `behaviors-for-file` reverse lookup. All 15 call
+// sites moved with no `as any` anywhere — the generated types describe the
+// request bodies exactly, which is the check that the port is right.
+//
+// Porting it turned up that Node's entire cell surface — nine routes, six of
+// them writes — had no authorization at all, and that `0001_init.sql`
+// predated three of the eight `behavior_*` tables. Both are fixed; see
+// migration 0004 and the `fix(matrices)` commit.
 //
 // `GET /api/chunks/{id}` now returns Node's **enriched** detail shape
 // (`{ chunk, connections, spaces, appliesTo, fileReferences, tags,

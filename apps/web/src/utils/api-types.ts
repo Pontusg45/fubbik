@@ -736,6 +736,284 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/matrices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_matrices"];
+        put?: never;
+        post: operations["create_matrix"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/behaviors-for-file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Registered BEFORE `/api/matrices/{id}` would otherwise capture it — axum
+         *     matches static segments ahead of dynamic ones, so `behaviors-for-file`
+         *     resolves correctly either way, but the ordering is kept explicit because
+         *     the two paths are one segment apart.
+         */
+        get: operations["behaviors_for_file"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_matrix"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_matrix"];
+        options?: never;
+        head?: never;
+        patch: operations["update_matrix"];
+        trace?: never;
+    };
+    "/api/matrices/{id}/cells": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["toggle_cell"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/cells/{cellId}/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_cell_code"];
+        put?: never;
+        post: operations["link_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/cells/{cellId}/code/{codeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["unlink_code"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/cells/{cellId}/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_cell_requirements"];
+        put?: never;
+        post: operations["link_requirement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/cells/{cellId}/requirements/{reqId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["unlink_requirement"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/cells/{cellId}/test-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_cell_test_results"];
+        put?: never;
+        post: operations["record_test_result"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/dimensions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["add_dimension"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/dimensions/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reorder_dimensions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/dimensions/{dimId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_dimension"];
+        options?: never;
+        head?: never;
+        patch: operations["rename_dimension"];
+        trace?: never;
+    };
+    "/api/matrices/{id}/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["add_rule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/rules/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reorder_rules"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/rules/{ruleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_rule"];
+        options?: never;
+        head?: never;
+        patch: operations["update_rule"];
+        trace?: never;
+    };
+    "/api/matrices/{id}/rules/{ruleId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["rule_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matrices/{id}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_matrix_view"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications": {
         parameters: {
             query?: never;
@@ -2424,6 +2702,131 @@ export interface components {
             name: string;
             parentId?: string | null;
         };
+        BehaviorCell: {
+            /** Format: date-time */
+            createdAt: string;
+            dimensionId: string;
+            id: string;
+            ruleId: string;
+        };
+        /**
+         * @description `ref` is a Rust keyword, so the field is `code_ref` and renamed on the
+         *     wire and in SQL. The column itself is `ref`.
+         */
+        BehaviorCellCode: {
+            cellId: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            /**
+             * @description `file | symbol | test`, free `text` — constrained on the write route
+             *     only. See the module doc on `layer`.
+             */
+            kind: string;
+            ref: string;
+        };
+        BehaviorDimension: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            matrixId: string;
+            name: string;
+            /**
+             * Format: int32
+             * @description Quoted as `"order"` in every query — it is a reserved word in SQL.
+             */
+            order: number;
+        };
+        /** @description One row of the reverse lookup `GET /matrices/behaviors-for-file?path=`. */
+        BehaviorForFile: {
+            counterexample?: string | null;
+            description?: string | null;
+            dimensionName: string;
+            kind: string;
+            layer: string;
+            matrixId: string;
+            matrixName: string;
+            rationale?: string | null;
+            ref: string;
+            ruleId: string;
+            ruleTitle: string;
+        };
+        BehaviorMatrix: {
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            /**
+             * @description `invariant | contract`. Plain `text` with no CHECK — the constraint
+             *     lives on the create route's schema only, so an older row may hold
+             *     anything and the read path must not choke on it.
+             */
+            layer: string;
+            name: string;
+            spaceId?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        BehaviorRule: {
+            alternatives?: string | null;
+            category?: string | null;
+            consequences?: string | null;
+            /** @description Explicit negative space: what violating this behaviour looks like. */
+            counterexample?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            matrixId: string;
+            /** Format: int32 */
+            order: number;
+            /**
+             * @description Decision context, mirroring `chunk`'s three fields. Note
+             *     `alternatives` is **`text` here, not a jsonb array** — it shares a
+             *     name with `chunk.alternatives` and not a type.
+             */
+            rationale?: string | null;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description The seven fields Node snapshots into `behavior_rule_version.snapshot`
+         *     (`packages/db/src/schema/behavior-matrix.ts:76-84`) — the rule's editable
+         *     content, without its id/order/timestamps.
+         */
+        BehaviorRuleSnapshot: {
+            alternatives?: string | null;
+            category?: string | null;
+            consequences?: string | null;
+            counterexample?: string | null;
+            description?: string | null;
+            rationale?: string | null;
+            title: string;
+        };
+        BehaviorRuleVersion: {
+            /**
+             * @description `ON DELETE SET NULL`, not CASCADE — deleting a user must not erase the
+             *     history of rules they edited.
+             */
+            changedBy?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            ruleId: string;
+            snapshot: components["schemas"]["BehaviorRuleSnapshot"];
+        };
+        BehaviorTestResult: {
+            cellId: string;
+            detail?: string | null;
+            id: string;
+            /** Format: date-time */
+            runAt: string;
+            /** @description `pass | fail`, free `text`. */
+            status: string;
+            testRef: string;
+        };
         /**
          * @description `t.Union([t.Literal("approve"), t.Literal("reject")])`
          *     (`packages/api/src/proposals/routes.ts:78`) — the one closed set in this
@@ -2474,6 +2877,29 @@ export interface components {
          * @enum {string}
          */
         Category: "actor" | "action" | "target" | "outcome" | "state" | "modifier";
+        /**
+         * @description One row of `GET /matrices/{id}/cells/{cellId}/requirements` — the link
+         *     plus the requirement's title and status.
+         */
+        CellRequirement: {
+            requirementId: string;
+            status: string;
+            title: string;
+        };
+        /**
+         * @description The `behavior_cell_requirement` join row itself, returned by the link
+         *     endpoint (Node returns the inserted row).
+         */
+        CellRequirementLink: {
+            cellId: string;
+            requirementId: string;
+        };
+        /**
+         * @description Computed status of one cell. Derived on read rather than stored, so it
+         *     always reflects current requirement statuses and test results.
+         * @enum {string}
+         */
+        CellStatus: "specified" | "unspecified" | "violated" | "verified";
         /**
          * @description `camelCase` serialisation is mandatory, not cosmetic: the 106 web files
          *     that consume this API were written against Drizzle's camelCase output.
@@ -3081,6 +3507,19 @@ export interface components {
             system?: string | null;
             url: string;
         };
+        CreateMatrixBody: {
+            description?: string | null;
+            /**
+             * @description `invariant | contract`. Kept a `String` and checked in the service
+             *     rather than modelled as a serde enum: the column is free `text` with
+             *     no CHECK, older rows may hold anything, and a serde enum would reject
+             *     with a parse error instead of a message naming the field. Same
+             *     disposition as `chunks::routes::FileRefEntry::relation`.
+             */
+            layer: string;
+            name: string;
+            spaceId?: string | null;
+        };
         /** @description Body of `POST /api/plans` (`packages/api/src/plans/routes.ts:62-77`). */
         CreatePlanBody: {
             description?: string | null;
@@ -3115,6 +3554,15 @@ export interface components {
             steps: components["schemas"]["RequirementStep"][];
             title: string;
             useCaseId?: string | null;
+        };
+        CreateRuleBody: {
+            alternatives?: string | null;
+            category?: string | null;
+            consequences?: string | null;
+            counterexample?: string | null;
+            description?: string | null;
+            rationale?: string | null;
+            title: string;
         };
         /**
          * @description Body of `POST /api/saved-graphs`
@@ -3342,6 +3790,9 @@ export interface components {
             priority?: string | null;
             status: string;
             title: string;
+        };
+        DimensionBody: {
+            name: string;
         };
         /**
          * @description `camelCase` serialisation matches every other wire type in this crate.
@@ -3797,6 +4248,14 @@ export interface components {
          * @enum {string}
          */
         ImportStatus: "unchanged" | "created" | "synced";
+        LinkCodeBody: {
+            /** @description `file | symbol | test` — see [`CreateMatrixBody::layer`]. */
+            kind: string;
+            ref: string;
+        };
+        LinkRequirementBody: {
+            requirementId: string;
+        };
         /**
          * @description Shape of `GET /requirements`: `{requirements, total}`, matching Node's
          *     `listRequirementsRepo` return expression returned bare by the route
@@ -3822,6 +4281,33 @@ export interface components {
             headings: components["schemas"]["HeadingRule"][];
             /** Format: double */
             minScore: number;
+        };
+        /** @description `GET /api/matrices/{id}` — the matrix plus its axes, not a flattened row. */
+        MatrixDetail: {
+            dimensions: components["schemas"]["BehaviorDimension"][];
+            matrix: components["schemas"]["BehaviorMatrix"];
+            rules: components["schemas"]["BehaviorRule"][];
+        };
+        /** @description The `{ message }` shape Node's deletes and unlinks answer with. */
+        MatrixMessage: {
+            message: string;
+        };
+        /**
+         * @description `GET /api/matrices/{id}/view`.
+         *
+         *     `cells` is keyed `"{ruleId}:{dimensionId}"`, matching Node exactly — the
+         *     grid UI looks a cell up by its coordinates rather than scanning a list.
+         *     A missing key means no cell exists at that intersection, which is
+         *     distinct from a cell whose status is `unspecified`.
+         */
+        MatrixView: {
+            cells: {
+                [key: string]: components["schemas"]["ViewCell"];
+            };
+            dimensions: components["schemas"]["BehaviorDimension"][];
+            matrix: components["schemas"]["BehaviorMatrix"];
+            rules: components["schemas"]["BehaviorRule"][];
+            summary: components["schemas"]["ViewSummary"];
         };
         MergeBody: {
             sourceId: string;
@@ -4290,6 +4776,9 @@ export interface components {
         ReorderBody: {
             requirementIds: string[];
         };
+        ReorderDimensionsBody: {
+            dimensionIds: string[];
+        };
         /**
          * @description One entry of `PUT /api/favorites/reorder`'s bare-array body
          *     (`packages/api/src/favorites/routes.ts:39-44`). The body is a plain
@@ -4316,6 +4805,9 @@ export interface components {
         };
         ReorderResponse: {
             updated: number;
+        };
+        ReorderRulesBody: {
+            ruleIds: string[];
         };
         /** @description Body of `POST /api/plans/{id}/tasks/reorder` (`tasks.ts:178`). */
         ReorderTasksBody: {
@@ -4939,9 +5431,28 @@ export interface components {
             type: string;
             userId?: string | null;
         };
+        TestResultBody: {
+            detail?: string | null;
+            /** @description `pass | fail`. */
+            status: string;
+            testRef: string;
+        };
         TextSpan: {
             end: number;
             start: number;
+        };
+        ToggleCellBody: {
+            dimensionId: string;
+            ruleId: string;
+        };
+        /**
+         * @description `PUT /api/matrices/{id}/cells` — which way the toggle went, plus the row
+         *     that was created or removed.
+         */
+        ToggleCellResponse: {
+            /** @description `created | deleted`. */
+            action: string;
+            cell: components["schemas"]["BehaviorCell"];
         };
         /**
          * @description One row of `GET /api/requirements/traceability`. The endpoint returns a
@@ -5103,6 +5614,10 @@ export interface components {
             spaceIds?: string[] | null;
             status?: null | components["schemas"]["FeatureStatus"];
         };
+        UpdateMatrixBody: {
+            description?: string | null;
+            name?: string | null;
+        };
         /**
          * @description Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).
          *
@@ -5138,6 +5653,16 @@ export interface components {
             steps?: components["schemas"]["RequirementStep"][] | null;
             title?: string | null;
             useCaseId?: string | null;
+        };
+        /** @description Every field but `title` is tri-state — Node types all six as `T | null`. */
+        UpdateRuleBody: {
+            alternatives?: string | null;
+            category?: string | null;
+            consequences?: string | null;
+            counterexample?: string | null;
+            description?: string | null;
+            rationale?: string | null;
+            title?: string | null;
         };
         /**
          * @description Body of `PATCH /api/saved-graphs/{id}`
@@ -5398,6 +5923,30 @@ export interface components {
             updatedAt: string;
             useCaseId?: string | null;
             userId: string;
+        };
+        ViewCell: {
+            /** Format: int64 */
+            codeCount: number;
+            /** Format: int64 */
+            failingTestCount: number;
+            id: string;
+            /** Format: int64 */
+            passingTestCount: number;
+            /** Format: int64 */
+            requirementCount: number;
+            status: components["schemas"]["CellStatus"];
+        };
+        ViewSummary: {
+            /** Format: int64 */
+            specified: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            unspecified: number;
+            /** Format: int64 */
+            verified: number;
+            /** Format: int64 */
+            violated: number;
         };
         /** @description `camelCase` serialisation matches every other wire type in this crate. */
         VocabularyEntry: {
@@ -7092,6 +7641,761 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Feature"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_matrices: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+                layer?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorMatrix"][];
+                };
+            };
+        };
+    };
+    create_matrix: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMatrixBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorMatrix"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    behaviors_for_file: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorForFile"][];
+                };
+            };
+        };
+    };
+    get_matrix: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixDetail"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_matrix: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_matrix: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMatrixBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorMatrix"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    toggle_cell: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleCellBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToggleCellResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_cell_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                cellId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorCellCode"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    link_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                cellId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkCodeBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorCellCode"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    unlink_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                cellId: string;
+                codeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_cell_requirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                cellId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CellRequirement"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    link_requirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                cellId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkRequirementBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CellRequirementLink"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    unlink_requirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                cellId: string;
+                reqId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_cell_test_results: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                cellId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorTestResult"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    record_test_result: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                cellId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestResultBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorTestResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_dimension: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DimensionBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorDimension"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reorder_dimensions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderDimensionsBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_dimension: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                dimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rename_dimension: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                dimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DimensionBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorDimension"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRuleBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorRule"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reorder_rules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderRulesBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRuleBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorRule"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rule_history: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BehaviorRuleVersion"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_matrix_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrixView"];
                 };
             };
             404: {
