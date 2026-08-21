@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.title, c.type AS chunk_type,\n                  LENGTH(c.content)::int AS \"content_length!\"\n           FROM chunk c\n           WHERE c.user_id = $1\n             AND LENGTH(c.content) < 100\n             AND ($2::text IS NULL\n                  OR c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2)\n                  OR c.id NOT IN (SELECT chunk_id FROM chunk_space))\n           ORDER BY LENGTH(c.content), c.id\n           LIMIT 50",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "content_length!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "f4d8d7e6b1858b1371f8ace29109f06531b8b31931a7f8c82b1cae44c9fca6fd"
+}

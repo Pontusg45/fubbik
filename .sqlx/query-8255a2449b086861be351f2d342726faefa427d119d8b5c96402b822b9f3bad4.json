@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.title, c.type AS chunk_type,\n                  c.updated_at AS \"updated_at: UtcTimestamp\",\n                  c.embedding_updated_at AS \"embedding_updated_at: UtcTimestamp\"\n           FROM chunk c\n           WHERE c.user_id = $1\n             AND c.embedding IS NOT NULL\n             AND c.updated_at > c.embedding_updated_at\n             AND ($2::text IS NULL\n                  OR c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2)\n                  OR c.id NOT IN (SELECT chunk_id FROM chunk_space))\n           ORDER BY c.updated_at DESC, c.id\n           LIMIT 50",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 4,
+        "name": "embedding_updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "8255a2449b086861be351f2d342726faefa427d119d8b5c96402b822b9f3bad4"
+}

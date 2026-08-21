@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT fr.id AS ref_id, fr.chunk_id,\n                  c.title AS chunk_title, c.type AS chunk_type,\n                  fr.path, fr.relation\n           FROM chunk_file_ref fr\n           JOIN chunk c ON c.id = fr.chunk_id\n           WHERE c.user_id = $1\n             AND ($2::text IS NULL\n                  OR c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2)\n                  OR c.id NOT IN (SELECT chunk_id FROM chunk_space))\n           ORDER BY fr.path, fr.id\n           LIMIT 100",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ref_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "chunk_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "relation",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2ae76c23fbe627abd661901d7d18ca75bab362e79198ab04c97ff9ae7a82e7b4"
+}

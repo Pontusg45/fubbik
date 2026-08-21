@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cc.id, cc.chunk_id, cc.user_id, cc.content,\n                  cc.created_at AS \"created_at: UtcTimestamp\",\n                  cc.updated_at AS \"updated_at: UtcTimestamp\"\n           FROM chunk_comment cc\n           WHERE cc.chunk_id = $1\n             AND EXISTS (SELECT 1 FROM chunk c\n                         WHERE c.id = $1 AND c.user_id = $2)\n           ORDER BY cc.created_at, cc.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5b0d8fe9e2dedcc06281bd4252c5fbe7159d2af3c3dff4391fbb41c9a08ca4f7"
+}

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) AS \"count!\"\n           FROM chunk c\n           WHERE c.user_id = $1\n             AND NOT EXISTS (SELECT 1 FROM chunk_connection cc\n                             WHERE cc.source_id = c.id OR cc.target_id = c.id)\n             AND ($2::text IS NULL\n                  OR c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2)\n                  OR c.id NOT IN (SELECT chunk_id FROM chunk_space))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "229f7027e738f6b92ddfc37c5f0366f37eb068778be8f88d9d42cde2ae3b6b2f"
+}

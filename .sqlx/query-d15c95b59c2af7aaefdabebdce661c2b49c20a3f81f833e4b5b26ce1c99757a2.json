@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) AS \"count!\"\n           FROM chunk_file_ref fr\n           JOIN chunk c ON c.id = fr.chunk_id\n           WHERE c.user_id = $1\n             AND ($2::text IS NULL\n                  OR c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2)\n                  OR c.id NOT IN (SELECT chunk_id FROM chunk_space))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d15c95b59c2af7aaefdabebdce661c2b49c20a3f81f833e4b5b26ce1c99757a2"
+}

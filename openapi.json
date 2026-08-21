@@ -755,6 +755,83 @@
         }
       }
     },
+    "/api/chunks/{id}/comments": {
+      "get": {
+        "tags": [
+          "crate::comments::routes"
+        ],
+        "operationId": "list_comments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChunkComment"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::comments::routes"
+        ],
+        "operationId": "create_comment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkComment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks/{id}/deltas": {
       "get": {
         "tags": [
@@ -1309,6 +1386,83 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/comments/{id}": {
+      "delete": {
+        "tags": [
+          "crate::comments::routes"
+        ],
+        "operationId": "delete_comment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::comments::routes"
+        ],
+        "operationId": "update_comment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkComment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
           },
           "404": {
             "description": ""
@@ -2312,6 +2466,72 @@
           },
           "404": {
             "description": ""
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "crate::health::routes"
+        ],
+        "summary": "**Deliberately unauthenticated**, matching Node — this is what a load\nbalancer or the nav bar's connection indicator polls, and requiring a\nsession would make an expired cookie look like an outage.",
+        "description": "Answers **503** when the database is unreachable, so a probe that only\nlooks at the status code still works. `ageAvailable` is reported but never\ndegrades the status: the graph extension is optional, and the app runs\nwithout it.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/knowledge": {
+      "get": {
+        "tags": [
+          "crate::health::routes"
+        ],
+        "summary": "Node runs the five queries with `concurrency: \"unbounded\"`; these run in\nsequence. Each is a single indexed scan against the same pool, so the\ndifference is a few round trips rather than a change in what is read —\nand sequencing keeps them from competing for connections when several\nusers open the panel at once.",
+        "operationId": "knowledge_health",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeHealth"
+                }
+              }
+            }
           }
         }
       }
@@ -8890,6 +9110,40 @@
           }
         }
       },
+      "ChunkComment": {
+        "type": "object",
+        "required": [
+          "id",
+          "chunkId",
+          "userId",
+          "content",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string",
+            "description": "The author. See the module doc — this is not who may read the thread."
+          }
+        }
+      },
       "ChunkConnectionDetail": {
         "type": "object",
         "description": "One row of `GET /api/chunks/{id}`'s `connections` array, matching Node's\n`getChunkConnections` projection exactly\n(`packages/db/src/repository/chunk.ts:259-282`): the edge's own\n`id`/`sourceId`/`targetId`/`relation`, plus the **other** end's title and\none of that chunk's space names.\n\n`codebase_name` keeps the pre-rename wire key `codebaseName` because\nthat is the alias Node's `.select({ codebaseName: space.name })` emits\nand the web app reads. The `codebase → space` rename never reached this\nprojection.\n\nBoth `title` and `codebase_name` are `Option` because both joins are\nLEFT joins in Node: a dangling edge (target chunk deleted) yields a null\ntitle, and a chunk in no space yields a null space name.",
@@ -9429,6 +9683,28 @@
               "null"
             ],
             "default": null
+          }
+        }
+      },
+      "CommentBody": {
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "CommentMessage": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
           }
         }
       },
@@ -11421,6 +11697,26 @@
           }
         }
       },
+      "FileRefBucket": {
+        "type": "object",
+        "description": "The `refs`/`count` pair — named separately from [`HealthBucket`] because\nNode calls the array `refs` here and `chunks` everywhere else.",
+        "required": [
+          "refs",
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "refs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HealthFileRef"
+            }
+          }
+        }
+      },
       "FileRefEntry": {
         "type": "object",
         "description": "One entry of `PUT /api/chunks/{id}/file-refs`'s body — a bare array, for\nthe same reason as [`AppliesToEntry`]\n(`packages/api/src/file-refs/routes.ts:17-26`).",
@@ -11607,6 +11903,237 @@
           }
         }
       },
+      "HealthBucket_OrphanChunk": {
+        "type": "object",
+        "description": "A capped sample plus the true total.",
+        "required": [
+          "chunks",
+          "count"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "type",
+                "createdAt"
+              ],
+              "properties": {
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "HealthBucket_StaleChunk": {
+        "type": "object",
+        "description": "A capped sample plus the true total.",
+        "required": [
+          "chunks",
+          "count"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "type",
+                "updatedAt"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "newestNeighborUpdate": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time",
+                  "description": "When this chunk's most recently-touched neighbour was updated — the\nsignal that the chunk may have fallen behind its context."
+                },
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "HealthBucket_StaleEmbedding": {
+        "type": "object",
+        "description": "A capped sample plus the true total.",
+        "required": [
+          "chunks",
+          "count"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "type",
+                "updatedAt"
+              ],
+              "properties": {
+                "embeddingUpdatedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "HealthBucket_ThinChunk": {
+        "type": "object",
+        "description": "A capped sample plus the true total.",
+        "required": [
+          "chunks",
+          "count"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "type",
+                "contentLength"
+              ],
+              "properties": {
+                "contentLength": {
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "HealthFileRef": {
+        "type": "object",
+        "required": [
+          "refId",
+          "chunkId",
+          "chunkTitle",
+          "chunkType",
+          "path",
+          "relation"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "chunkTitle": {
+            "type": "string"
+          },
+          "chunkType": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "refId": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "db",
+          "ageAvailable"
+        ],
+        "properties": {
+          "ageAvailable": {
+            "type": "boolean"
+          },
+          "db": {
+            "type": "string",
+            "description": "`connected | disconnected`."
+          },
+          "status": {
+            "type": "string",
+            "description": "`ok | degraded`."
+          }
+        }
+      },
       "HealthScore": {
         "type": "object",
         "description": "The `healthScore` key of `GET /api/chunks/{id}`. Field names already\nmatch Node's `HealthScore` interface (`health-score.ts:16-25`) with no\ncase conversion needed — every one is a single lowercase word — so this\ncarries no `rename_all`, unlike the rest of this crate's wire types.",
@@ -11763,6 +12290,34 @@
           "created",
           "synced"
         ]
+      },
+      "KnowledgeHealth": {
+        "type": "object",
+        "description": "The five buckets, in the order the panel renders them.",
+        "required": [
+          "orphans",
+          "stale",
+          "thin",
+          "staleEmbeddings",
+          "fileRefs"
+        ],
+        "properties": {
+          "fileRefs": {
+            "$ref": "#/components/schemas/FileRefBucket"
+          },
+          "orphans": {
+            "$ref": "#/components/schemas/HealthBucket_OrphanChunk"
+          },
+          "stale": {
+            "$ref": "#/components/schemas/HealthBucket_StaleChunk"
+          },
+          "staleEmbeddings": {
+            "$ref": "#/components/schemas/HealthBucket_StaleEmbedding"
+          },
+          "thin": {
+            "$ref": "#/components/schemas/HealthBucket_ThinChunk"
+          }
+        }
       },
       "LinkCodeBody": {
         "type": "object",
@@ -12030,6 +12585,30 @@
           "human",
           "ai"
         ]
+      },
+      "OrphanChunk": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
       },
       "ParseBody": {
         "type": "object",
@@ -13876,6 +14455,69 @@
           }
         }
       },
+      "StaleChunk": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "newestNeighborUpdate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When this chunk's most recently-touched neighbour was updated — the\nsignal that the chunk may have fallen behind its context."
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StaleEmbedding": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "updatedAt"
+        ],
+        "properties": {
+          "embeddingUpdatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "StaleFlag": {
         "type": "object",
         "description": "One row of `GET /api/chunks/stale`\n(`packages/db/src/repository/staleness.ts::getStaleFlags`): the flag\njoined to its parent chunk's `title`/`type` for display. `camelCase`\nserialisation matches every other wire type in this crate.",
@@ -14435,6 +15077,30 @@
           "start": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "ThinChunk": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "contentLength"
+        ],
+        "properties": {
+          "contentLength": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
           }
         }
       },

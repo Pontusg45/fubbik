@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.title, c.type AS chunk_type,\n                  c.updated_at AS \"updated_at: UtcTimestamp\",\n                  (SELECT MAX(n.updated_at)\n                   FROM chunk_connection cc\n                   JOIN chunk n ON n.id = CASE WHEN cc.source_id = c.id\n                                               THEN cc.target_id ELSE cc.source_id END\n                   WHERE cc.source_id = c.id OR cc.target_id = c.id)\n                  AS \"newest_neighbor_update: UtcTimestamp\"\n           FROM chunk c\n           WHERE c.user_id = $1\n             AND c.updated_at < NOW() - INTERVAL '30 days'\n             AND EXISTS (SELECT 1\n                         FROM chunk_connection cc\n                         JOIN chunk n ON n.id = CASE WHEN cc.source_id = c.id\n                                                     THEN cc.target_id ELSE cc.source_id END\n                         WHERE (cc.source_id = c.id OR cc.target_id = c.id)\n                           AND n.updated_at > NOW() - INTERVAL '7 days')\n             AND ($2::text IS NULL\n                  OR c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2)\n                  OR c.id NOT IN (SELECT chunk_id FROM chunk_space))\n           ORDER BY 5 DESC, c.id\n           LIMIT 50",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 4,
+        "name": "newest_neighbor_update: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "7abbfe7f8c602fd8d4aed9c236fe88e84dfd83ceb15860cadf99735581d559b3"
+}

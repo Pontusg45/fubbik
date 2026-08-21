@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) AS \"count!\"\n           FROM chunk c\n           WHERE c.user_id = $1\n             AND c.updated_at < NOW() - INTERVAL '30 days'\n             AND EXISTS (SELECT 1\n                         FROM chunk_connection cc\n                         JOIN chunk n ON n.id = CASE WHEN cc.source_id = c.id\n                                                     THEN cc.target_id ELSE cc.source_id END\n                         WHERE (cc.source_id = c.id OR cc.target_id = c.id)\n                           AND n.updated_at > NOW() - INTERVAL '7 days')\n             AND ($2::text IS NULL\n                  OR c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2)\n                  OR c.id NOT IN (SELECT chunk_id FROM chunk_space))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ed270121728d14315d6f02e9733d187d104da5a85fa5be35e6bdccdf3c93000d"
+}

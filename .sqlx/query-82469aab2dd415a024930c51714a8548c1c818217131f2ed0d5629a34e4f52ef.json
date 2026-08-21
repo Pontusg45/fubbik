@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.title, c.type AS chunk_type,\n                  c.created_at AS \"created_at: UtcTimestamp\"\n           FROM chunk c\n           WHERE c.user_id = $1\n             AND NOT EXISTS (SELECT 1 FROM chunk_connection cc\n                             WHERE cc.source_id = c.id OR cc.target_id = c.id)\n             AND ($2::text IS NULL\n                  OR c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2)\n                  OR c.id NOT IN (SELECT chunk_id FROM chunk_space))\n           ORDER BY c.created_at DESC, c.id\n           LIMIT 50",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "82469aab2dd415a024930c51714a8548c1c818217131f2ed0d5629a34e4f52ef"
+}

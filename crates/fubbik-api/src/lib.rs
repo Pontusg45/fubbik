@@ -2,6 +2,7 @@ pub mod activity;
 pub mod auth;
 pub mod chunks;
 pub mod collections;
+pub mod comments;
 pub mod connections;
 pub mod coverage;
 pub mod documents;
@@ -9,6 +10,7 @@ pub mod error;
 pub mod extract;
 pub mod favorites;
 pub mod features;
+pub mod health;
 pub mod matrices;
 pub mod notifications;
 pub mod openapi;
@@ -29,12 +31,8 @@ pub mod vocabularies;
 pub mod vocabulary;
 pub mod workspaces;
 
-use axum::extract::State;
-use axum::routing::get;
-use axum::{Json, Router};
+use axum::Router;
 use sqlx::PgPool;
-
-use crate::error::ApiResult;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -46,17 +44,6 @@ pub struct AppState {
     pub better_auth_secret: String,
 }
 
-/// Deliberately unauthenticated and not utoipa-annotated — it's an
-/// operational probe, not part of the public API surface.
-async fn health(State(state): State<AppState>) -> ApiResult<Json<serde_json::Value>> {
-    let db_ok = sqlx::query("SELECT 1").execute(&state.pool).await.is_ok();
-    Ok(Json(serde_json::json!({
-        "status": if db_ok { "ok" } else { "degraded" },
-        "database": db_ok,
-        "version": env!("CARGO_PKG_VERSION"),
-    })))
-}
-
 pub fn router(state: AppState) -> Router {
     Router::new()
         .merge(activity::routes::router())
@@ -66,7 +53,9 @@ pub fn router(state: AppState) -> Router {
         .merge(connections::routes::router())
         .merge(coverage::routes::router())
         .merge(documents::routes::router())
+        .merge(comments::routes::router())
         .merge(favorites::routes::router())
+        .merge(health::routes::router())
         .merge(matrices::routes::router())
         .merge(features::routes::router())
         .merge(notifications::routes::router())
@@ -87,6 +76,5 @@ pub fn router(state: AppState) -> Router {
         .merge(vocabularies::routes::router())
         .merge(vocabulary::routes::router())
         .merge(workspaces::routes::router())
-        .route("/api/health", get(health))
         .with_state(state)
 }
