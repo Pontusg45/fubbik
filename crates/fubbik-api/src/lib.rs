@@ -5,11 +5,13 @@ pub mod collections;
 pub mod comments;
 pub mod connections;
 pub mod coverage;
+pub mod density;
 pub mod documents;
 pub mod error;
 pub mod extract;
 pub mod favorites;
 pub mod features;
+pub mod file_refs;
 pub mod health;
 pub mod matrices;
 pub mod notifications;
@@ -18,6 +20,7 @@ pub mod plans;
 pub mod proposals;
 pub mod requirements;
 pub mod saved_graphs;
+pub mod scope_keys;
 pub mod search;
 pub mod settings;
 pub mod spaces;
@@ -26,6 +29,7 @@ pub mod stats;
 pub mod tag_types;
 pub mod tags;
 pub mod templates;
+pub mod timeline;
 pub mod use_cases;
 pub mod vocabularies;
 pub mod vocabulary;
@@ -55,7 +59,11 @@ pub fn router(state: AppState) -> Router {
         .merge(documents::routes::router())
         .merge(comments::routes::router())
         .merge(favorites::routes::router())
+        .merge(density::routes::router())
+        .merge(file_refs::routes::router())
         .merge(health::routes::router())
+        .merge(scope_keys::routes::router())
+        .merge(timeline::routes::router())
         .merge(matrices::routes::router())
         .merge(features::routes::router())
         .merge(notifications::routes::router())

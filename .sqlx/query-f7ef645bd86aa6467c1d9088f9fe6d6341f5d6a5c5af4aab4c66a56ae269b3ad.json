@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id AS chunk_id, c.title AS chunk_title, c.type AS chunk_type,\n                  f.id AS ref_id, f.path, f.anchor, f.relation\n           FROM chunk_file_ref f\n           JOIN chunk c ON c.id = f.chunk_id\n           WHERE c.user_id = $1\n           ORDER BY f.path, f.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunk_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "ref_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "anchor",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "relation",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "f7ef645bd86aa6467c1d9088f9fe6d6341f5d6a5c5af4aab4c66a56ae269b3ad"
+}

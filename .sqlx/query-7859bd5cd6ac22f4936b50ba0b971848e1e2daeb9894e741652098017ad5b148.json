@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH visible AS (\n             SELECT c.id, c.title, c.type\n             FROM chunk c\n             WHERE c.user_id = $1\n               AND c.archived_at IS NULL\n               AND ($2::text IS NULL\n                    OR c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = $2))\n           )\n           SELECT prefix AS \"path!\", chunk_id AS \"chunk_id!\",\n                  chunk_title AS \"chunk_title!\", chunk_type AS \"chunk_type!\",\n                  source AS \"source!\"\n           FROM (\n             SELECT rtrim(split_part(a.pattern, '*', 1), '/') AS prefix,\n                    v.id AS chunk_id, v.title AS chunk_title, v.type AS chunk_type,\n                    'applies_to' AS source\n             FROM chunk_applies_to a\n             JOIN visible v ON v.id = a.chunk_id\n             UNION ALL\n             SELECT f.path AS prefix,\n                    v.id, v.title, v.type, 'file_ref'\n             FROM chunk_file_ref f\n             JOIN visible v ON v.id = f.chunk_id\n           ) rows\n           WHERE prefix <> ''\n           ORDER BY prefix, chunk_id, source",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "path!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunk_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "chunk_title!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "chunk_type!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "source!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "7859bd5cd6ac22f4936b50ba0b971848e1e2daeb9894e741652098017ad5b148"
+}

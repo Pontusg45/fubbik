@@ -1896,6 +1896,40 @@
         }
       }
     },
+    "/api/density": {
+      "get": {
+        "tags": [
+          "crate::density::routes"
+        ],
+        "operationId": "get_density",
+        "parameters": [
+          {
+            "name": "codebaseId",
+            "in": "query",
+            "description": "Named `codebaseId` on the wire — the `codebase → space` rename never\nreached this query param, and the web still sends the old name.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DensityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents": {
       "get": {
         "tags": [
@@ -2673,6 +2707,73 @@
           },
           "404": {
             "description": ""
+          }
+        }
+      }
+    },
+    "/api/file-refs": {
+      "get": {
+        "tags": [
+          "crate::file_refs::routes"
+        ],
+        "operationId": "list_file_refs",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FileRefLookup"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/file-refs/lookup": {
+      "get": {
+        "tags": [
+          "crate::file_refs::routes"
+        ],
+        "operationId": "lookup_file_refs",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FileRefLookup"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -6503,6 +6604,96 @@
         }
       }
     },
+    "/api/scope-keys": {
+      "get": {
+        "tags": [
+          "crate::scope_keys::routes"
+        ],
+        "operationId": "list_scope_keys",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScopeKey"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::scope_keys::routes"
+        ],
+        "operationId": "create_scope_key",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScopeKeyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScopeKey"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/scope-keys/{id}": {
+      "delete": {
+        "tags": [
+          "crate::scope_keys::routes"
+        ],
+        "operationId": "delete_scope_key",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScopeKeyMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/search/autocomplete": {
       "get": {
         "tags": [
@@ -7548,6 +7739,62 @@
           },
           "404": {
             "description": ""
+          }
+        }
+      }
+    },
+    "/api/timeline": {
+      "get": {
+        "tags": [
+          "crate::timeline::routes"
+        ],
+        "operationId": "get_timeline",
+        "parameters": [
+          {
+            "name": "range",
+            "in": "query",
+            "description": "`30d`, `2w`, `6m`, `1y`. Anything unparsable falls back to 30 days\nrather than erroring — see [`parse_range`].",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -10928,6 +11175,39 @@
           }
         }
       },
+      "CreateScopeKeyBody": {
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "allowedValues": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "valueType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`string | number | boolean | enum`. Defaults to `string`, matching the\ncolumn default."
+          }
+        }
+      },
       "CreateSpaceBody": {
         "type": "object",
         "required": [
@@ -11300,6 +11580,104 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "DensityChunk": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "source"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "description": "`applies_to | file_ref`."
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "DensityNode": {
+        "type": "object",
+        "required": [
+          "name",
+          "path",
+          "chunkCount",
+          "directChunkCount",
+          "children",
+          "chunks"
+        ],
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DensityNode"
+            },
+            "description": "`#[schema(no_recursion)]` is mandatory, not cosmetic: `DensityNode`\ncontains itself, and utoipa inlines nested schemas by default, so\nwithout this the generator recurses until it overflows the stack.\nThat is exactly what happened — `cargo run -- openapi` aborted with\n`has overflowed its stack` and produced a zero-byte spec. The\nattribute makes this field a `$ref` back to `DensityNode` instead."
+          },
+          "chunkCount": {
+            "type": "integer",
+            "description": "Distinct chunks at this node **or anywhere below it**.",
+            "minimum": 0
+          },
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DensityChunk"
+            }
+          },
+          "directChunkCount": {
+            "type": "integer",
+            "description": "Chunks attached to this exact path only.",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "DensityResponse": {
+        "type": "object",
+        "required": [
+          "tree",
+          "totals"
+        ],
+        "properties": {
+          "totals": {
+            "$ref": "#/components/schemas/DensityTotals"
+          },
+          "tree": {
+            "$ref": "#/components/schemas/DensityNode"
+          }
+        }
+      },
+      "DensityTotals": {
+        "type": "object",
+        "required": [
+          "chunksCovered",
+          "pathsTracked"
+        ],
+        "properties": {
+          "chunksCovered": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pathsTracked": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
@@ -12037,6 +12415,43 @@
           "relation": {
             "type": "string",
             "description": "Node constrains this to `documents | configures | tests |\nimplements` on the route schema. Kept a `String` here and validated\nin the service layer rather than modelled as a serde enum: the\ncolumn itself is free `text NOT NULL DEFAULT 'documents'` with no\nCHECK, and a DTO enum would reject with serde's parse error instead\nof a message naming the field."
+          }
+        }
+      },
+      "FileRefLookup": {
+        "type": "object",
+        "required": [
+          "chunkId",
+          "chunkTitle",
+          "chunkType",
+          "refId",
+          "path",
+          "relation"
+        ],
+        "properties": {
+          "anchor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "chunkId": {
+            "type": "string"
+          },
+          "chunkTitle": {
+            "type": "string"
+          },
+          "chunkType": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "refId": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
           }
         }
       },
@@ -14451,6 +14866,62 @@
           }
         }
       },
+      "ScopeKey": {
+        "type": "object",
+        "required": [
+          "id",
+          "userId",
+          "key",
+          "valueType",
+          "createdAt"
+        ],
+        "properties": {
+          "allowedValues": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Only meaningful for `value_type = 'enum'`; nullable, so a key with no\nconstraint reads back as `null` rather than `[]`."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "valueType": {
+            "type": "string",
+            "description": "`string | number | boolean | enum`, `NOT NULL DEFAULT 'string'`."
+          }
+        }
+      },
+      "ScopeKeyMessage": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
       "SearchQueryBody": {
         "type": "object",
         "description": "Body of `POST /api/search/query`\n(`packages/api/src/search/routes.ts:34-43`). `join` is accepted and\n**completely ignored** — see `search::service`'s module doc for why:\nNode's schema declares it (`t.Optional(t.Union([t.Literal(\"and\"), t.Literal(\"or\")]))`)\nbut `service.ts`'s `executeSearch` never reads `searchQuery.join`\nanywhere; every clause is AND-combined by `listChunks`'s SQL\nregardless. Kept as a loose `Option<String>` rather than a `Literal`\nenum precisely because nothing ever inspects its value.",
@@ -15401,6 +15872,102 @@
           },
           "type": {
             "type": "string"
+          }
+        }
+      },
+      "TimelineEvent": {
+        "type": "object",
+        "required": [
+          "chunkId",
+          "chunkTitle",
+          "chunkType",
+          "kind",
+          "at"
+        ],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "chunkId": {
+            "type": "string"
+          },
+          "chunkTitle": {
+            "type": "string"
+          },
+          "chunkType": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "`created | updated`."
+          },
+          "version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Present only on `updated` events — the `chunk_version` number."
+          }
+        }
+      },
+      "TimelineRange": {
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "days"
+        ],
+        "properties": {
+          "days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        }
+      },
+      "TimelineResponse": {
+        "type": "object",
+        "required": [
+          "events",
+          "totals",
+          "range"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineEvent"
+            }
+          },
+          "range": {
+            "$ref": "#/components/schemas/TimelineRange"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/TimelineTotals"
+          }
+        }
+      },
+      "TimelineTotals": {
+        "type": "object",
+        "required": [
+          "created",
+          "updated"
+        ],
+        "properties": {
+          "created": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "updated": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
