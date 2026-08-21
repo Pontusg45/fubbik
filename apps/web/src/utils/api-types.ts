@@ -195,6 +195,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_comments"];
+        put?: never;
+        post: operations["create_comment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/{id}/deltas": {
         parameters: {
             query?: never;
@@ -370,6 +386,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/comments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_comment"];
+        options?: never;
+        head?: never;
+        patch: operations["update_comment"];
         trace?: never;
     };
     "/api/connection-relations": {
@@ -730,6 +762,54 @@ export interface paths {
         put?: never;
         /** Returns the reordered feature row itself, not a message. */
         post: operations["reorder_feature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * **Deliberately unauthenticated**, matching Node — this is what a load
+         *     balancer or the nav bar's connection indicator polls, and requiring a
+         *     session would make an expired cookie look like an outage.
+         * @description Answers **503** when the database is unreachable, so a probe that only
+         *     looks at the status code still works. `ageAvailable` is reported but never
+         *     degrades the status: the graph extension is optional, and the app runs
+         *     without it.
+         */
+        get: operations["health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/health/knowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Node runs the five queries with `concurrency: "unbounded"`; these run in
+         *     sequence. Each is a single indexed scan against the same pool, so the
+         *     difference is a few round trips rather than a change in what is read —
+         *     and sequencing keeps them from competing for connections when several
+         *     users open the panel at once.
+         */
+        get: operations["knowledge_health"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2939,6 +3019,17 @@ export interface components {
             updatedAt: string;
             userId: string;
         };
+        ChunkComment: {
+            chunkId: string;
+            content: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description The author. See the module doc — this is not who may read the thread. */
+            userId: string;
+        };
         /**
          * @description One row of `GET /api/chunks/{id}`'s `connections` array, matching Node's
          *     `getChunkConnections` projection exactly
@@ -3192,6 +3283,12 @@ export interface components {
             tags: string | null;
             /** @default null */
             type: string | null;
+        };
+        CommentBody: {
+            content: string;
+        };
+        CommentMessage: {
+            message: string;
         };
         /**
          * @description `chunk_connection` row shape, matching Node's bare-row response for both
@@ -4089,6 +4186,15 @@ export interface components {
             relation: string;
         };
         /**
+         * @description The `refs`/`count` pair — named separately from [`HealthBucket`] because
+         *     Node calls the array `refs` here and `chunks` everywhere else.
+         */
+        FileRefBucket: {
+            /** Format: int64 */
+            count: number;
+            refs: components["schemas"]["HealthFileRef"][];
+        };
+        /**
          * @description One entry of `PUT /api/chunks/{id}/file-refs`'s body — a bare array, for
          *     the same reason as [`AppliesToEntry`]
          *     (`packages/api/src/file-refs/routes.ts:17-26`).
@@ -4159,6 +4265,77 @@ export interface components {
             match: components["schemas"]["MatchMode"];
             patterns: string[];
             required: boolean;
+        };
+        /** @description A capped sample plus the true total. */
+        HealthBucket_OrphanChunk: {
+            chunks: {
+                /** Format: date-time */
+                createdAt: string;
+                id: string;
+                title: string;
+                type: string;
+            }[];
+            /** Format: int64 */
+            count: number;
+        };
+        /** @description A capped sample plus the true total. */
+        HealthBucket_StaleChunk: {
+            chunks: {
+                id: string;
+                /**
+                 * Format: date-time
+                 * @description When this chunk's most recently-touched neighbour was updated — the
+                 *     signal that the chunk may have fallen behind its context.
+                 */
+                newestNeighborUpdate?: string | null;
+                title: string;
+                type: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** Format: int64 */
+            count: number;
+        };
+        /** @description A capped sample plus the true total. */
+        HealthBucket_StaleEmbedding: {
+            chunks: {
+                /** Format: date-time */
+                embeddingUpdatedAt?: string | null;
+                id: string;
+                title: string;
+                type: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** Format: int64 */
+            count: number;
+        };
+        /** @description A capped sample plus the true total. */
+        HealthBucket_ThinChunk: {
+            chunks: {
+                /** Format: int32 */
+                contentLength: number;
+                id: string;
+                title: string;
+                type: string;
+            }[];
+            /** Format: int64 */
+            count: number;
+        };
+        HealthFileRef: {
+            chunkId: string;
+            chunkTitle: string;
+            chunkType: string;
+            path: string;
+            refId: string;
+            relation: string;
+        };
+        HealthResponse: {
+            ageAvailable: boolean;
+            /** @description `connected | disconnected`. */
+            db: string;
+            /** @description `ok | degraded`. */
+            status: string;
         };
         /**
          * @description The `healthScore` key of `GET /api/chunks/{id}`. Field names already
@@ -4248,6 +4425,14 @@ export interface components {
          * @enum {string}
          */
         ImportStatus: "unchanged" | "created" | "synced";
+        /** @description The five buckets, in the order the panel renders them. */
+        KnowledgeHealth: {
+            fileRefs: components["schemas"]["FileRefBucket"];
+            orphans: components["schemas"]["HealthBucket_OrphanChunk"];
+            stale: components["schemas"]["HealthBucket_StaleChunk"];
+            staleEmbeddings: components["schemas"]["HealthBucket_StaleEmbedding"];
+            thin: components["schemas"]["HealthBucket_ThinChunk"];
+        };
         LinkCodeBody: {
             /** @description `file | symbol | test` — see [`CreateMatrixBody::layer`]. */
             kind: string;
@@ -4371,6 +4556,13 @@ export interface components {
          * @enum {string}
          */
         Origin: "human" | "ai";
+        OrphanChunk: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            title: string;
+            type: string;
+        };
         /**
          * @description Body of `POST /api/vocabulary/parse` (`routes.ts:86-89`). `text` has no
          *     length cap enforced, same accepted divergence as `EntryInput::word`
@@ -5196,6 +5388,28 @@ export interface components {
             code?: null | components["schemas"]["SpaceCodeMetadata"];
             space: components["schemas"]["Space"];
         };
+        StaleChunk: {
+            id: string;
+            /**
+             * Format: date-time
+             * @description When this chunk's most recently-touched neighbour was updated — the
+             *     signal that the chunk may have fallen behind its context.
+             */
+            newestNeighborUpdate?: string | null;
+            title: string;
+            type: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        StaleEmbedding: {
+            /** Format: date-time */
+            embeddingUpdatedAt?: string | null;
+            id: string;
+            title: string;
+            type: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         /**
          * @description One row of `GET /api/chunks/stale`
          *     (`packages/db/src/repository/staleness.ts::getStaleFlags`): the flag
@@ -5440,6 +5654,13 @@ export interface components {
         TextSpan: {
             end: number;
             start: number;
+        };
+        ThinChunk: {
+            /** Format: int32 */
+            contentLength: number;
+            id: string;
+            title: string;
+            type: string;
         };
         ToggleCellBody: {
             dimensionId: string;
@@ -6489,6 +6710,64 @@ export interface operations {
             };
         };
     };
+    list_comments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkComment"][];
+                };
+            };
+        };
+    };
+    create_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkComment"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     chunk_deltas: {
         parameters: {
             query?: never;
@@ -6879,6 +7158,70 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ChunkListResponse"];
                 };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkComment"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             404: {
                 headers: {
@@ -7648,6 +7991,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    health: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    knowledge_health: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeHealth"];
+                };
             };
         };
     };

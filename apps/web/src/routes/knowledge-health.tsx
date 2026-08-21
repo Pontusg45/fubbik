@@ -10,7 +10,7 @@ import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
 import { BrokenLinkChecker } from "@/features/health/broken-link-checker";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { legacyApi } from "@/utils/api";
+import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/knowledge-health")({
@@ -43,7 +43,7 @@ function KnowledgeHealthPage() {
             if (spaceId) {
                 query.spaceId = spaceId;
             }
-            return unwrapEden(await legacyApi.api.health.knowledge.get({ query }));
+            return unwrapEden(await api.api.health.knowledge.get({ query }));
         }
     });
 
@@ -263,7 +263,18 @@ function StaleEmbeddingsCard({
     staleEmbeddings
 }: {
     staleEmbeddings: {
-        chunks: Array<{ id: string; title: string; type: string; updatedAt: string | Date; embeddingUpdatedAt: string | Date | null }>;
+        // `embeddingUpdatedAt` is optional here, not just nullable: the field is
+        // `Option<UtcTimestamp>` in Rust, and utoipa publishes a nullable field
+        // as not-required. serde always emits it (as `null` when unset), so in
+        // practice it is present — but the generated type is what this must
+        // match, and widening is safer than asserting the stricter shape.
+        chunks: Array<{
+            id: string;
+            title: string;
+            type: string;
+            updatedAt: string | Date;
+            embeddingUpdatedAt?: string | Date | null;
+        }>;
         count: number;
     };
 }) {
