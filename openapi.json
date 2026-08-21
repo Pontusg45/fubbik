@@ -2316,6 +2316,1087 @@
         }
       }
     },
+    "/api/matrices": {
+      "get": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "list_matrices",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "layer",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BehaviorMatrix"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "create_matrix",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMatrixBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviorMatrix"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/behaviors-for-file": {
+      "get": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "summary": "Registered BEFORE `/api/matrices/{id}` would otherwise capture it — axum\nmatches static segments ahead of dynamic ones, so `behaviors-for-file`\nresolves correctly either way, but the ordering is kept explicit because\nthe two paths are one segment apart.",
+        "operationId": "behaviors_for_file",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BehaviorForFile"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}": {
+      "get": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "get_matrix",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "delete_matrix",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "update_matrix",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMatrixBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviorMatrix"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/cells": {
+      "put": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "toggle_cell",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleCellBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToggleCellResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/cells/{cellId}/code": {
+      "get": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "get_cell_code",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cellId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BehaviorCellCode"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "link_code",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cellId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkCodeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviorCellCode"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/cells/{cellId}/code/{codeId}": {
+      "delete": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "unlink_code",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cellId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "codeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/cells/{cellId}/requirements": {
+      "get": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "get_cell_requirements",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cellId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CellRequirement"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "link_requirement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cellId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkRequirementBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CellRequirementLink"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/cells/{cellId}/requirements/{reqId}": {
+      "delete": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "unlink_requirement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cellId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reqId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/cells/{cellId}/test-results": {
+      "get": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "get_cell_test_results",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cellId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BehaviorTestResult"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "record_test_result",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cellId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviorTestResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/dimensions": {
+      "post": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "add_dimension",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DimensionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviorDimension"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/dimensions/reorder": {
+      "post": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "reorder_dimensions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderDimensionsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/dimensions/{dimId}": {
+      "delete": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "delete_dimension",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "rename_dimension",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dimId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DimensionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviorDimension"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/rules": {
+      "post": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "add_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRuleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviorRule"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/rules/reorder": {
+      "post": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "reorder_rules",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderRulesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/rules/{ruleId}": {
+      "delete": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "delete_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ruleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "update_rule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ruleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRuleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviorRule"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/rules/{ruleId}/history": {
+      "get": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "rule_history",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ruleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BehaviorRuleVersion"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/matrices/{id}/view": {
+      "get": {
+        "tags": [
+          "crate::matrices::routes"
+        ],
+        "operationId": "get_matrix_view",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrixView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/notifications": {
       "get": {
         "tags": [
@@ -7134,6 +8215,380 @@
           }
         }
       },
+      "BehaviorCell": {
+        "type": "object",
+        "required": [
+          "id",
+          "ruleId",
+          "dimensionId",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dimensionId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ruleId": {
+            "type": "string"
+          }
+        }
+      },
+      "BehaviorCellCode": {
+        "type": "object",
+        "description": "`ref` is a Rust keyword, so the field is `code_ref` and renamed on the\nwire and in SQL. The column itself is `ref`.",
+        "required": [
+          "id",
+          "cellId",
+          "kind",
+          "ref",
+          "createdAt"
+        ],
+        "properties": {
+          "cellId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "`file | symbol | test`, free `text` — constrained on the write route\nonly. See the module doc on `layer`."
+          },
+          "ref": {
+            "type": "string"
+          }
+        }
+      },
+      "BehaviorDimension": {
+        "type": "object",
+        "required": [
+          "id",
+          "matrixId",
+          "name",
+          "order",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "matrixId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quoted as `\"order\"` in every query — it is a reserved word in SQL."
+          }
+        }
+      },
+      "BehaviorForFile": {
+        "type": "object",
+        "description": "One row of the reverse lookup `GET /matrices/behaviors-for-file?path=`.",
+        "required": [
+          "ruleId",
+          "ruleTitle",
+          "matrixId",
+          "matrixName",
+          "layer",
+          "dimensionName",
+          "kind",
+          "ref"
+        ],
+        "properties": {
+          "counterexample": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dimensionName": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string"
+          },
+          "matrixId": {
+            "type": "string"
+          },
+          "matrixName": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ref": {
+            "type": "string"
+          },
+          "ruleId": {
+            "type": "string"
+          },
+          "ruleTitle": {
+            "type": "string"
+          }
+        }
+      },
+      "BehaviorMatrix": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "layer",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "`invariant | contract`. Plain `text` with no CHECK — the constraint\nlives on the create route's schema only, so an older row may hold\nanything and the read path must not choke on it."
+          },
+          "name": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "BehaviorRule": {
+        "type": "object",
+        "required": [
+          "id",
+          "matrixId",
+          "title",
+          "order",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "alternatives": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consequences": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counterexample": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Explicit negative space: what violating this behaviour looks like."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "matrixId": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Decision context, mirroring `chunk`'s three fields. Note\n`alternatives` is **`text` here, not a jsonb array** — it shares a\nname with `chunk.alternatives` and not a type."
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BehaviorRuleSnapshot": {
+        "type": "object",
+        "description": "The seven fields Node snapshots into `behavior_rule_version.snapshot`\n(`packages/db/src/schema/behavior-matrix.ts:76-84`) — the rule's editable\ncontent, without its id/order/timestamps.",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "alternatives": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consequences": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counterexample": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "BehaviorRuleVersion": {
+        "type": "object",
+        "required": [
+          "id",
+          "ruleId",
+          "snapshot",
+          "createdAt"
+        ],
+        "properties": {
+          "changedBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`ON DELETE SET NULL`, not CASCADE — deleting a user must not erase the\nhistory of rules they edited."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ruleId": {
+            "type": "string"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/BehaviorRuleSnapshot"
+          }
+        }
+      },
+      "BehaviorTestResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "cellId",
+          "testRef",
+          "status",
+          "runAt"
+        ],
+        "properties": {
+          "cellId": {
+            "type": "string"
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "runAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "description": "`pass | fail`, free `text`."
+          },
+          "testRef": {
+            "type": "string"
+          }
+        }
+      },
       "BulkAction": {
         "type": "string",
         "description": "`t.Union([t.Literal(\"approve\"), t.Literal(\"reject\")])`\n(`packages/api/src/proposals/routes.ts:78`) — the one closed set in this\ndomain's wire shapes, unlike `status` (see `ProposedChanges`'s doc\ncomment on why that one stays a plain unvalidated-at-the-DTO-layer\nstring). Lowercase to match the literal strings Node's schema accepts.",
@@ -7236,6 +8691,52 @@
           "outcome",
           "state",
           "modifier"
+        ]
+      },
+      "CellRequirement": {
+        "type": "object",
+        "description": "One row of `GET /matrices/{id}/cells/{cellId}/requirements` — the link\nplus the requirement's title and status.",
+        "required": [
+          "requirementId",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "requirementId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "CellRequirementLink": {
+        "type": "object",
+        "description": "The `behavior_cell_requirement` join row itself, returned by the link\nendpoint (Node returns the inserted row).",
+        "required": [
+          "cellId",
+          "requirementId"
+        ],
+        "properties": {
+          "cellId": {
+            "type": "string"
+          },
+          "requirementId": {
+            "type": "string"
+          }
+        }
+      },
+      "CellStatus": {
+        "type": "string",
+        "description": "Computed status of one cell. Derived on read rather than stored, so it\nalways reflects current requirement statuses and test results.",
+        "enum": [
+          "specified",
+          "unspecified",
+          "violated",
+          "verified"
         ]
       },
       "Chunk": {
@@ -8588,6 +10089,34 @@
           }
         }
       },
+      "CreateMatrixBody": {
+        "type": "object",
+        "required": [
+          "name",
+          "layer"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "layer": {
+            "type": "string",
+            "description": "`invariant | contract`. Kept a `String` and checked in the service\nrather than modelled as a serde enum: the column is free `text` with\nno CHECK, older rows may hold anything, and a serde enum would reject\nwith a parse error instead of a message naming the field. Same\ndisposition as `chunks::routes::FileRefEntry::relation`."
+          },
+          "name": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CreatePlanBody": {
         "type": "object",
         "description": "Body of `POST /api/plans` (`packages/api/src/plans/routes.ts:62-77`).",
@@ -8703,6 +10232,53 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "CreateRuleBody": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "alternatives": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consequences": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counterexample": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
           }
         }
       },
@@ -9262,6 +10838,17 @@
             "type": "string"
           },
           "title": {
+            "type": "string"
+          }
+        }
+      },
+      "DimensionBody": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
             "type": "string"
           }
         }
@@ -10177,6 +11764,33 @@
           "synced"
         ]
       },
+      "LinkCodeBody": {
+        "type": "object",
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "`file | symbol | test` — see [`CreateMatrixBody::layer`]."
+          },
+          "ref": {
+            "type": "string"
+          }
+        }
+      },
+      "LinkRequirementBody": {
+        "type": "object",
+        "required": [
+          "requirementId"
+        ],
+        "properties": {
+          "requirementId": {
+            "type": "string"
+          }
+        }
+      },
       "ListRequirementsResponse": {
         "type": "object",
         "description": "Shape of `GET /requirements`: `{requirements, total}`, matching Node's\n`listRequirementsRepo` return expression returned bare by the route\n(`packages/api/src/requirements/service.ts:75-87`, `routes.ts:95-103`)\n— not wrapped further, and no `limit`/`offset` echoed back (unlike\n`chunks::dto::ListChunksResponse`).",
@@ -10229,6 +11843,84 @@
           "minScore": {
             "type": "number",
             "format": "double"
+          }
+        }
+      },
+      "MatrixDetail": {
+        "type": "object",
+        "description": "`GET /api/matrices/{id}` — the matrix plus its axes, not a flattened row.",
+        "required": [
+          "matrix",
+          "dimensions",
+          "rules"
+        ],
+        "properties": {
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BehaviorDimension"
+            }
+          },
+          "matrix": {
+            "$ref": "#/components/schemas/BehaviorMatrix"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BehaviorRule"
+            }
+          }
+        }
+      },
+      "MatrixMessage": {
+        "type": "object",
+        "description": "The `{ message }` shape Node's deletes and unlinks answer with.",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "MatrixView": {
+        "type": "object",
+        "description": "`GET /api/matrices/{id}/view`.\n\n`cells` is keyed `\"{ruleId}:{dimensionId}\"`, matching Node exactly — the\ngrid UI looks a cell up by its coordinates rather than scanning a list.\nA missing key means no cell exists at that intersection, which is\ndistinct from a cell whose status is `unspecified`.",
+        "required": [
+          "matrix",
+          "dimensions",
+          "rules",
+          "cells",
+          "summary"
+        ],
+        "properties": {
+          "cells": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ViewCell"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BehaviorDimension"
+            }
+          },
+          "matrix": {
+            "$ref": "#/components/schemas/BehaviorMatrix"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BehaviorRule"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ViewSummary"
           }
         }
       },
@@ -11247,6 +12939,20 @@
           }
         }
       },
+      "ReorderDimensionsBody": {
+        "type": "object",
+        "required": [
+          "dimensionIds"
+        ],
+        "properties": {
+          "dimensionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "ReorderEntry": {
         "type": "object",
         "description": "One entry of `PUT /api/favorites/reorder`'s bare-array body\n(`packages/api/src/favorites/routes.ts:39-44`). The body is a plain\n`t.Array(...)`, not wrapped in an object — see `ReorderBody` below.",
@@ -11301,6 +13007,20 @@
           "updated": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "ReorderRulesBody": {
+        "type": "object",
+        "required": [
+          "ruleIds"
+        ],
+        "properties": {
+          "ruleIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -12679,6 +14399,28 @@
           }
         }
       },
+      "TestResultBody": {
+        "type": "object",
+        "required": [
+          "testRef",
+          "status"
+        ],
+        "properties": {
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "`pass | fail`."
+          },
+          "testRef": {
+            "type": "string"
+          }
+        }
+      },
       "TextSpan": {
         "type": "object",
         "required": [
@@ -12693,6 +14435,38 @@
           "start": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "ToggleCellBody": {
+        "type": "object",
+        "required": [
+          "ruleId",
+          "dimensionId"
+        ],
+        "properties": {
+          "dimensionId": {
+            "type": "string"
+          },
+          "ruleId": {
+            "type": "string"
+          }
+        }
+      },
+      "ToggleCellResponse": {
+        "type": "object",
+        "description": "`PUT /api/matrices/{id}/cells` — which way the toggle went, plus the row\nthat was created or removed.",
+        "required": [
+          "action",
+          "cell"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "`created | deleted`."
+          },
+          "cell": {
+            "$ref": "#/components/schemas/BehaviorCell"
           }
         }
       },
@@ -13108,6 +14882,23 @@
           }
         }
       },
+      "UpdateMatrixBody": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdatePlanBody": {
         "type": "object",
         "description": "Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).\n\n`description` and `space_id` are tri-state, matching Node's\n`t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted\n(`None`) leaves the field untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same\n`deserialize_some` trick as `workspaces::dto::UpdateWorkspaceBody::description`.\n`status` and `metadata` are plain two-state (Node declares neither with\na `t.Null()` union).",
@@ -13201,6 +14992,54 @@
             ]
           },
           "useCaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UpdateRuleBody": {
+        "type": "object",
+        "description": "Every field but `title` is tri-state — Node types all six as `T | null`.",
+        "properties": {
+          "alternatives": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consequences": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counterexample": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
             "type": [
               "string",
               "null"
@@ -13709,6 +15548,73 @@
           },
           "userId": {
             "type": "string"
+          }
+        }
+      },
+      "ViewCell": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "requirementCount",
+          "codeCount",
+          "passingTestCount",
+          "failingTestCount"
+        ],
+        "properties": {
+          "codeCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failingTestCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string"
+          },
+          "passingTestCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requirementCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CellStatus"
+          }
+        }
+      },
+      "ViewSummary": {
+        "type": "object",
+        "required": [
+          "specified",
+          "unspecified",
+          "violated",
+          "verified",
+          "total"
+        ],
+        "properties": {
+          "specified": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unspecified": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "verified": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "violated": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
