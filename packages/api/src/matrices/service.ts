@@ -136,7 +136,7 @@ export function removeDimension(matrixId: string, dimId: string, userId: string)
 export function reorderDimensions(matrixId: string, userId: string, dimensionIds: string[]) {
     return getMatrixById(matrixId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
-        Effect.flatMap(() => reorderDimensionsRepo(dimensionIds)),
+        Effect.flatMap(() => reorderDimensionsRepo(dimensionIds, matrixId)),
         Effect.map(() => ({ message: "Reordered" }))
     );
 }
@@ -233,7 +233,7 @@ export function removeRule(matrixId: string, ruleId: string, userId: string) {
 export function reorderRules(matrixId: string, userId: string, ruleIds: string[]) {
     return getMatrixById(matrixId, userId).pipe(
         Effect.flatMap(found => (found ? Effect.succeed(found) : Effect.fail(new NotFoundError({ resource: "Matrix" })))),
-        Effect.flatMap(() => reorderRulesRepo(ruleIds)),
+        Effect.flatMap(() => reorderRulesRepo(ruleIds, matrixId)),
         Effect.map(() => ({ message: "Reordered" }))
     );
 }

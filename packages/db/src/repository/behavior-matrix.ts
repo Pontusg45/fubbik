@@ -116,12 +116,22 @@ export function getMaxDimensionOrder(matrixId: string) {
     });
 }
 
-export function reorderDimensions(dimensionIds: string[]) {
+/**
+ * SECURITY: `matrixId` constrains the UPDATE. Without it this renumbered
+ * whatever ids it was handed — the service checks that the *matrix* belongs
+ * to the caller, but never that the *ids* belong to that matrix, so anyone
+ * owning any matrix could reorder another's columns. Foreign ids are now
+ * silently skipped rather than renumbered.
+ */
+export function reorderDimensions(dimensionIds: string[], matrixId: string) {
     return dbEffect(async () => {
         for (let i = 0; i < dimensionIds.length; i++) {
             const dimId = dimensionIds[i];
             if (!dimId) continue;
-            await db.update(behaviorDimension).set({ order: i }).where(eq(behaviorDimension.id, dimId));
+            await db
+                .update(behaviorDimension)
+                .set({ order: i })
+                .where(and(eq(behaviorDimension.id, dimId), eq(behaviorDimension.matrixId, matrixId)));
         }
     });
 }
@@ -220,12 +230,16 @@ export function getMaxRuleOrder(matrixId: string) {
     });
 }
 
-export function reorderRules(ruleIds: string[]) {
+/** SECURITY: `matrixId` constrains the UPDATE — see `reorderDimensions`. */
+export function reorderRules(ruleIds: string[], matrixId: string) {
     return dbEffect(async () => {
         for (let i = 0; i < ruleIds.length; i++) {
             const ruleId = ruleIds[i];
             if (!ruleId) continue;
-            await db.update(behaviorRule).set({ order: i }).where(eq(behaviorRule.id, ruleId));
+            await db
+                .update(behaviorRule)
+                .set({ order: i })
+                .where(and(eq(behaviorRule.id, ruleId), eq(behaviorRule.matrixId, matrixId)));
         }
     });
 }
