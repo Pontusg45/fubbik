@@ -82,6 +82,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/archived": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_archived"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["bulk_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/bulk-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["bulk_update"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["merge_chunks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/stale": {
         parameters: {
             query?: never;
@@ -189,6 +253,22 @@ export interface paths {
         get: operations["get_applies_to"];
         put: operations["put_applies_to"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["archive_chunk"];
         delete?: never;
         options?: never;
         head?: never;
@@ -308,6 +388,22 @@ export interface paths {
         get: operations["list_chunk_proposals"];
         put?: never;
         post: operations["create_proposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["restore_chunk"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2944,6 +3040,31 @@ export interface components {
             entries: components["schemas"]["EntryInput"][];
             spaceId: string;
         };
+        BulkDeleted: {
+            /** Format: int64 */
+            deleted: number;
+        };
+        BulkIdsBody: {
+            ids: string[];
+        };
+        BulkUpdateBody: {
+            /**
+             * @description One of `add_tags | remove_tags | set_type | set_codebase |
+             *     set_review_status | archive | delete`. Validated in the service.
+             */
+            action: string;
+            ids: string[];
+            /**
+             * @description Meaning depends on `action`: a comma-separated tag list, a type, a
+             *     space id, or a review status. Explicitly nullable — a null `value`
+             *     with `set_codebase` clears the chunk's spaces.
+             */
+            value?: string | null;
+        };
+        BulkUpdated: {
+            /** Format: int64 */
+            updated: number;
+        };
         /**
          * @description The six literals Elysia's `CategorySchema` accepts
          *     (`packages/api/src/vocabulary/routes.ts:7-14`, a genuine `t.Union` of
@@ -3150,6 +3271,27 @@ export interface components {
             offset: number;
             /** Format: int64 */
             total: number;
+        };
+        /**
+         * @description `#[schema(as = ChunkMergeBody)]` because `tags::dto::MergeBody` already
+         *     claims the bare name. utoipa registers schemas in one flat namespace, so
+         *     without a rename one silently overwrites the other — `tests/schema_names.rs`
+         *     caught this.
+         *
+         *     The two are in fact **structurally identical** (`sourceId`/`targetId` in
+         *     both), so allowlisting the duplicate would also have been safe. Renamed
+         *     rather than allowlisted because the ids mean different things — these are
+         *     chunk ids, those are tag ids — and a generated client that shows one
+         *     `MergeBody` for two unrelated endpoints invites passing the wrong pair.
+         *     The allowlist is for names whose collision is *meaningless*, not merely
+         *     currently harmless.
+         */
+        ChunkMergeBody: {
+            sourceId: string;
+            targetId: string;
+        };
+        ChunkMessage: {
+            message: string;
         };
         /** @description `camelCase` serialisation matches every other wire type in this crate. */
         ChunkProposal: {
@@ -6485,6 +6627,126 @@ export interface operations {
             };
         };
     };
+    list_archived: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Chunk"][];
+                };
+            };
+        };
+    };
+    bulk_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkIdsBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkDeleted"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    bulk_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkUpdateBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkUpdated"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    merge_chunks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChunkMergeBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Chunk"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_stale: {
         parameters: {
             query?: {
@@ -6707,6 +6969,33 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AppliesTo"][];
                 };
+            };
+        };
+    };
+    archive_chunk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -6996,6 +7285,33 @@ export interface operations {
                 };
             };
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    restore_chunk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkMessage"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

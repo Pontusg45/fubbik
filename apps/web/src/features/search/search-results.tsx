@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { PathView } from "@/features/search/path-view";
 import { SearchGraph } from "@/features/search/search-graph";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface GraphContext {
@@ -96,7 +96,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
     const addTagMutation = useMutation({
         mutationFn: async (tags: string) => {
             // `chunks/bulk-update` has no Rust route yet — see the "chunks" note in `@/utils/api`.
-            const { data, error } = await legacyApi.api.chunks["bulk-update"].post({
+            const { data, error } = await api.api.chunks["bulk-update"].post({
                 ids: [...selectedIds],
                 action: "add_tags",
                 value: tags

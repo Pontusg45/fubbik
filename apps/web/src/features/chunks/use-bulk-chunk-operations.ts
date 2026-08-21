@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 
 type BulkAction = "add_tags" | "remove_tags" | "set_type" | "set_codebase" | "set_review_status" | "archive" | "delete";
 
@@ -13,8 +13,7 @@ export function useBulkChunkOperations() {
 
     const bulkUpdateMutation = useMutation({
         mutationFn: async (body: { ids: string[]; action: BulkAction; value?: string | null }) => {
-            // /chunks/bulk-update is Node-only (no Rust route yet) — must stay on legacyApi.
-            const { error } = await legacyApi.api.chunks["bulk-update"].post(body);
+            const { error } = await api.api.chunks["bulk-update"].post(body);
             if (error) throw new Error("Bulk update failed");
         },
         onSuccess: () => {
