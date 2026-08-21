@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO behavior_test_result (id, cell_id, test_ref, status, detail)\n           SELECT $1, $2, $3, $4, $5\n           WHERE EXISTS (SELECT 1 FROM behavior_cell c\n                         JOIN behavior_rule r ON r.id = c.rule_id\n                         JOIN behavior_matrix m ON m.id = r.matrix_id\n                         WHERE c.id = $2 AND r.matrix_id = $6 AND m.user_id = $7)\n           RETURNING id, cell_id, test_ref, status, detail,\n                     run_at AS \"run_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "cell_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "test_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "detail",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "run_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "6f4cf29d7ac55e4ecbfda01e5963705572c9db59c685af6546f569a02cf2c827"
+}

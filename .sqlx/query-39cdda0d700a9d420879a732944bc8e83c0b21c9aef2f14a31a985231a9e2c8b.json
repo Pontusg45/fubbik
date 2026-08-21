@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id AS rule_id, r.title AS rule_title, r.description,\n                  r.rationale, r.counterexample,\n                  m.id AS matrix_id, m.name AS matrix_name, m.layer,\n                  d.name AS dimension_name,\n                  cc.kind, cc.ref AS code_ref\n           FROM behavior_cell_code cc\n           JOIN behavior_cell c ON c.id = cc.cell_id\n           JOIN behavior_rule r ON r.id = c.rule_id\n           JOIN behavior_dimension d ON d.id = c.dimension_id\n           JOIN behavior_matrix m ON m.id = r.matrix_id\n           WHERE m.user_id = $1\n             AND (cc.ref = $2 OR $2 LIKE '%' || cc.ref OR cc.ref LIKE $2 || '::%')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "rule_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "rule_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "rationale",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "counterexample",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "matrix_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "matrix_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "layer",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "dimension_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "code_ref",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "39cdda0d700a9d420879a732944bc8e83c0b21c9aef2f14a31a985231a9e2c8b"
+}

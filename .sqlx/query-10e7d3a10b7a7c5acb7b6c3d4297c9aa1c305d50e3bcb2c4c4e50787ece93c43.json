@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cr.requirement_id, q.title, q.status\n           FROM behavior_cell_requirement cr\n           JOIN requirement q ON q.id = cr.requirement_id\n           JOIN behavior_cell c ON c.id = cr.cell_id\n           JOIN behavior_rule r ON r.id = c.rule_id\n           JOIN behavior_matrix m ON m.id = r.matrix_id\n           WHERE cr.cell_id = $1 AND r.matrix_id = $2 AND m.user_id = $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "requirement_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "10e7d3a10b7a7c5acb7b6c3d4297c9aa1c305d50e3bcb2c4c4e50787ece93c43"
+}

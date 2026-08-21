@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO behavior_rule_version (id, rule_id, snapshot, changed_by)\n           SELECT $1, $2, $3, $4\n           WHERE EXISTS (SELECT 1 FROM behavior_rule r\n                         JOIN behavior_matrix m ON m.id = r.matrix_id\n                         WHERE r.id = $2 AND r.matrix_id = $5 AND m.user_id = $4)\n           RETURNING id, rule_id,\n                     snapshot AS \"snapshot: Json<BehaviorRuleSnapshot>\",\n                     changed_by,\n                     created_at AS \"created_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "rule_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "snapshot: Json<BehaviorRuleSnapshot>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "changed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "d402047d43ff732b126b729910daa74f04286bfe87f68d3a6c20c01e810cfb28"
+}

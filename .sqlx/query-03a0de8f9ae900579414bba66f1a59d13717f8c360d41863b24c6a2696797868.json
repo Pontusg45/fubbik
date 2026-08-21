@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM behavior_cell c\n           USING behavior_rule r, behavior_matrix m\n           WHERE c.id = $1\n             AND r.id = c.rule_id AND r.matrix_id = $2\n             AND m.id = r.matrix_id AND m.user_id = $3\n           RETURNING c.id, c.rule_id, c.dimension_id,\n                     c.created_at AS \"created_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "rule_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "dimension_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "03a0de8f9ae900579414bba66f1a59d13717f8c360d41863b24c6a2696797868"
+}

@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT tr.id, tr.cell_id, tr.test_ref, tr.status, tr.detail,\n                  tr.run_at AS \"run_at: UtcTimestamp\"\n           FROM behavior_test_result tr\n           JOIN behavior_cell c ON c.id = tr.cell_id\n           JOIN behavior_rule r ON r.id = c.rule_id\n           JOIN behavior_matrix m ON m.id = r.matrix_id\n           WHERE tr.cell_id = $1 AND r.matrix_id = $2 AND m.user_id = $3\n           ORDER BY tr.run_at DESC, tr.id DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "cell_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "test_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "detail",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "run_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "0db2e1fb60da32212063839309d4d202ce7d70777b4fe935cfb89567708a980b"
+}

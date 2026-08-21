@@ -1,0 +1,97 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO behavior_rule\n             (id, matrix_id, title, description, category,\n              rationale, alternatives, consequences, counterexample, \"order\")\n           SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9,\n                  COALESCE((SELECT MAX(r.\"order\") FROM behavior_rule r\n                            WHERE r.matrix_id = $2), -1) + 1\n           WHERE EXISTS (SELECT 1 FROM behavior_matrix m\n                         WHERE m.id = $2 AND m.user_id = $10)\n           RETURNING id, matrix_id, title, description, category,\n                     rationale, alternatives, consequences, counterexample,\n                     \"order\",\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "matrix_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "rationale",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "alternatives",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "consequences",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "counterexample",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7138d8e43254a4eb3ac8e5cdaf3cbe9de2f6a187fceb9ceb4bddf0c14effebb0"
+}

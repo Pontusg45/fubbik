@@ -1,0 +1,51 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO behavior_cell_code (id, cell_id, kind, ref)\n           SELECT $1, $2, $3, $4\n           WHERE EXISTS (SELECT 1 FROM behavior_cell c\n                         JOIN behavior_rule r ON r.id = c.rule_id\n                         JOIN behavior_matrix m ON m.id = r.matrix_id\n                         WHERE c.id = $2 AND r.matrix_id = $5 AND m.user_id = $6)\n           ON CONFLICT (cell_id, kind, ref) DO NOTHING\n           RETURNING id, cell_id, kind, ref AS code_ref,\n                     created_at AS \"created_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "cell_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "code_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "94a42e669d56915e70a9c76c5c756e7ea3326d9e7be303359fa12714c5efdfb7"
+}

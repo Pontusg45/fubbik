@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id AS \"id!\", c.rule_id AS \"rule_id!\", c.dimension_id AS \"dimension_id!\",\n                  (SELECT COUNT(*) FROM behavior_cell_requirement cr\n                   WHERE cr.cell_id = c.id) AS \"requirement_count!\",\n                  (SELECT COUNT(*) FROM behavior_cell_requirement cr\n                   JOIN requirement q ON q.id = cr.requirement_id\n                   WHERE cr.cell_id = c.id AND q.status = 'failing') AS \"failing_count!\",\n                  (SELECT COUNT(*) FROM behavior_cell_code cc\n                   WHERE cc.cell_id = c.id) AS \"code_count!\",\n                  (SELECT COUNT(*) FROM behavior_test_result tr\n                   WHERE tr.cell_id = c.id AND tr.status = 'pass') AS \"passing_test_count!\",\n                  (SELECT COUNT(*) FROM behavior_test_result tr\n                   WHERE tr.cell_id = c.id AND tr.status = 'fail') AS \"failing_test_count!\"\n           FROM behavior_cell c\n           JOIN behavior_rule r ON r.id = c.rule_id\n           JOIN behavior_matrix m ON m.id = r.matrix_id\n           WHERE r.matrix_id = $1 AND m.user_id = $2\n           ORDER BY c.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "rule_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "dimension_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "requirement_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "failing_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "code_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "passing_test_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "failing_test_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "0e9cbf22f47ed62c0d19bfdec8ab4814d278b819dcd10e82cb021fd2ac55f416"
+}

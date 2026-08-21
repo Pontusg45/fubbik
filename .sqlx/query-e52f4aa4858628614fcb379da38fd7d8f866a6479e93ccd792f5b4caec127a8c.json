@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cc.id, cc.cell_id, cc.kind, cc.ref AS code_ref,\n                  cc.created_at AS \"created_at: UtcTimestamp\"\n           FROM behavior_cell_code cc\n           JOIN behavior_cell c ON c.id = cc.cell_id\n           JOIN behavior_rule r ON r.id = c.rule_id\n           JOIN behavior_matrix m ON m.id = r.matrix_id\n           WHERE cc.cell_id = $1 AND r.matrix_id = $2 AND m.user_id = $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "cell_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "code_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e52f4aa4858628614fcb379da38fd7d8f866a6479e93ccd792f5b4caec127a8c"
+}

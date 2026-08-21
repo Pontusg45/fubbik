@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE behavior_rule r\n           SET \"order\" = v.idx\n           FROM (SELECT id, (ordinality - 1)::int AS idx\n                 FROM unnest($3::text[]) WITH ORDINALITY AS t(id, ordinality)) AS v\n           WHERE r.id = v.id\n             AND r.matrix_id = $1\n             AND EXISTS (SELECT 1 FROM behavior_matrix m\n                         WHERE m.id = $1 AND m.user_id = $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e7d80ffe23cd6848d330967d14da74fb5ff0bedea1fe7e1423903c4cd9eeb1e9"
+}

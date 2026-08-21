@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT v.id, v.rule_id,\n                  v.snapshot AS \"snapshot: Json<BehaviorRuleSnapshot>\",\n                  v.changed_by,\n                  v.created_at AS \"created_at: UtcTimestamp\"\n           FROM behavior_rule_version v\n           JOIN behavior_rule r ON r.id = v.rule_id\n           JOIN behavior_matrix m ON m.id = r.matrix_id\n           WHERE v.rule_id = $1 AND r.matrix_id = $2 AND m.user_id = $3\n           ORDER BY v.created_at DESC, v.id DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "rule_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "snapshot: Json<BehaviorRuleSnapshot>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "changed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "a5db2e8fff88026350b996f250571dfc6ced85c78113d92e166b2d130eee171a"
+}

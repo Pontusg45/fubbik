@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) AS \"count!\"\n           FROM behavior_cell_requirement cr\n           JOIN behavior_cell c ON c.id = cr.cell_id\n           JOIN behavior_rule r ON r.id = c.rule_id\n           JOIN behavior_matrix m ON m.id = r.matrix_id\n           WHERE cr.cell_id = $1 AND r.matrix_id = $2 AND m.user_id = $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9a24ab1c5d3de2dc226a7878dbb3d83dade6579169add3059dd34173f0c64c6b"
+}

@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM behavior_cell_requirement cr\n           USING behavior_cell c, behavior_rule r, behavior_matrix m\n           WHERE cr.cell_id = $1 AND cr.requirement_id = $2\n             AND c.id = cr.cell_id\n             AND r.id = c.rule_id AND r.matrix_id = $3\n             AND m.id = r.matrix_id AND m.user_id = $4\n           RETURNING cr.cell_id, cr.requirement_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cell_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "requirement_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "9dcb6747f36b1dc2f4c173f69713cb8c79b2cc868c680b734048f93a96333e99"
+}

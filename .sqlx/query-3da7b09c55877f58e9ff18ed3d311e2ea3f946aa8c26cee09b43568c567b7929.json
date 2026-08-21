@@ -1,0 +1,43 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.rule_id, c.dimension_id,\n                  c.created_at AS \"created_at: UtcTimestamp\"\n           FROM behavior_cell c\n           JOIN behavior_rule r ON r.id = c.rule_id\n           JOIN behavior_dimension d ON d.id = c.dimension_id\n           JOIN behavior_matrix m ON m.id = r.matrix_id\n           WHERE c.rule_id = $1 AND c.dimension_id = $2\n             AND r.matrix_id = $3 AND d.matrix_id = $3 AND m.user_id = $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "rule_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "dimension_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3da7b09c55877f58e9ff18ed3d311e2ea3f946aa8c26cee09b43568c567b7929"
+}
