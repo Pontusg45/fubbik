@@ -13,6 +13,7 @@ pub mod favorites;
 pub mod features;
 pub mod file_refs;
 pub mod health;
+pub mod learning_paths;
 pub mod matrices;
 pub mod notifications;
 pub mod openapi;
@@ -64,6 +65,7 @@ pub fn router(state: AppState) -> Router {
         .merge(health::routes::router())
         .merge(scope_keys::routes::router())
         .merge(timeline::routes::router())
+        .merge(learning_paths::routes::router())
         .merge(matrices::routes::router())
         .merge(features::routes::router())
         .merge(notifications::routes::router())

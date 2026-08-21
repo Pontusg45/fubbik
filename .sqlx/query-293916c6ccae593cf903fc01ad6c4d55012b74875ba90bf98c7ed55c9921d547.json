@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE learning_path SET\n             title = COALESCE($3, title),\n             description = COALESCE($4, description),\n             chunk_ids = CASE WHEN $5 THEN $6 ELSE chunk_ids END,\n             updated_at = now()\n           WHERE id = $1 AND user_id = $2\n             AND (NOT $5 OR NOT EXISTS (\n               SELECT 1 FROM unnest($7::text[]) AS wanted(id)\n               WHERE NOT EXISTS (\n                 SELECT 1 FROM chunk c WHERE c.id = wanted.id AND c.user_id = $2\n               )\n             ))\n           RETURNING id, title, description,\n                     chunk_ids AS \"chunk_ids: Json<Vec<String>>\",\n                     user_id,\n                     created_at AS \"created_at: UtcTimestamp\",\n                     updated_at AS \"updated_at: UtcTimestamp\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "chunk_ids: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Jsonb",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "293916c6ccae593cf903fc01ad6c4d55012b74875ba90bf98c7ed55c9921d547"
+}

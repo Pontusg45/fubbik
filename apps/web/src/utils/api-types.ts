@@ -960,6 +960,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/learning-paths": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_learning_paths"];
+        put?: never;
+        /**
+         * A `chunkIds` list containing an id the caller does not own is rejected
+         *     whole — reported as a validation error rather than a 404, because what
+         *     was not found is a chunk named in the body, not the path being created.
+         */
+        post: operations["create_learning_path"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/learning-paths/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_learning_path"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_learning_path"];
+        options?: never;
+        head?: never;
+        patch: operations["update_learning_path"];
+        trace?: never;
+    };
     "/api/matrices": {
         parameters: {
             query?: never;
@@ -3829,6 +3866,11 @@ export interface components {
             priority?: number | null;
             spaceIds?: string[] | null;
         };
+        CreateLearningPathBody: {
+            chunkIds: string[];
+            description?: string | null;
+            title: string;
+        };
         /**
          * @description Body of `POST /api/plans/{id}/links`
          *     (`packages/api/src/plans/routes.ts:208-214`): `system` defaults to
@@ -4722,6 +4764,24 @@ export interface components {
             stale: components["schemas"]["HealthBucket_StaleChunk"];
             staleEmbeddings: components["schemas"]["HealthBucket_StaleEmbedding"];
             thin: components["schemas"]["HealthBucket_ThinChunk"];
+        };
+        LearningPath: {
+            /**
+             * @description Ordered chunk ids. `NOT NULL DEFAULT '[]'`, so an empty path reads
+             *     back as `[]` rather than `null`.
+             */
+            chunkIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            userId: string;
+        };
+        LearningPathMessage: {
+            message: string;
         };
         LinkCodeBody: {
             /** @description `file | symbol | test` — see [`CreateMatrixBody::layer`]. */
@@ -6171,6 +6231,16 @@ export interface components {
             priority?: number | null;
             spaceIds?: string[] | null;
             status?: null | components["schemas"]["FeatureStatus"];
+        };
+        UpdateLearningPathBody: {
+            /** @description `[]` empties the path; omitting the key leaves it alone. */
+            chunkIds?: string[] | null;
+            /**
+             * @description Two-state, not tri-state — Node's body has no null variant, so a
+             *     description cannot be cleared once set. Reproduced.
+             */
+            description?: string | null;
+            title?: string | null;
         };
         UpdateMatrixBody: {
             description?: string | null;
@@ -8616,6 +8686,145 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["KnowledgeHealth"];
                 };
+            };
+        };
+    };
+    list_learning_paths: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPath"][];
+                };
+            };
+        };
+    };
+    create_learning_path: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLearningPathBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPath"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_learning_path: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPath"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_learning_path: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPathMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_learning_path: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLearningPathBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPath"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

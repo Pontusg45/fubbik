@@ -14,6 +14,7 @@ pub mod favorite;
 pub mod feature;
 pub mod insights;
 pub mod knowledge_health;
+pub mod learning_path;
 pub mod notification;
 pub mod plan;
 pub mod proposal;

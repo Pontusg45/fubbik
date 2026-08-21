@@ -2844,6 +2844,169 @@
         }
       }
     },
+    "/api/learning-paths": {
+      "get": {
+        "tags": [
+          "crate::learning_paths::routes"
+        ],
+        "operationId": "list_learning_paths",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LearningPath"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::learning_paths::routes"
+        ],
+        "summary": "A `chunkIds` list containing an id the caller does not own is rejected\nwhole — reported as a validation error rather than a 404, because what\nwas not found is a chunk named in the body, not the path being created.",
+        "operationId": "create_learning_path",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLearningPathBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningPath"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/learning-paths/{id}": {
+      "get": {
+        "tags": [
+          "crate::learning_paths::routes"
+        ],
+        "operationId": "get_learning_path",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningPath"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::learning_paths::routes"
+        ],
+        "operationId": "delete_learning_path",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningPathMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "crate::learning_paths::routes"
+        ],
+        "operationId": "update_learning_path",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLearningPathBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningPath"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/matrices": {
       "get": {
         "tags": [
@@ -10888,6 +11051,30 @@
           }
         }
       },
+      "CreateLearningPathBody": {
+        "type": "object",
+        "required": [
+          "title",
+          "chunkIds"
+        ],
+        "properties": {
+          "chunkIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "CreateLinkBody": {
         "type": "object",
         "description": "Body of `POST /api/plans/{id}/links`\n(`packages/api/src/plans/routes.ts:208-214`): `system` defaults to\n`\"url\"`, `label` to `null` when omitted — applied in `service::add_link`,\nnot here, since the defaulting happens after the field is already known\nto be absent (Elysia's `?? \"url\"` / `?? null`, not a serde default that\nwould collapse \"omitted\" and \"empty string\").",
@@ -13031,6 +13218,60 @@
           },
           "thin": {
             "$ref": "#/components/schemas/HealthBucket_ThinChunk"
+          }
+        }
+      },
+      "LearningPath": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "chunkIds",
+          "userId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "chunkIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ordered chunk ids. `NOT NULL DEFAULT '[]'`, so an empty path reads\nback as `[]` rather than `null`."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "LearningPathMessage": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
           }
         }
       },
@@ -16411,6 +16652,34 @@
               {
                 "$ref": "#/components/schemas/FeatureStatus"
               }
+            ]
+          }
+        }
+      },
+      "UpdateLearningPathBody": {
+        "type": "object",
+        "properties": {
+          "chunkIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "`[]` empties the path; omitting the key leaves it alone."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Two-state, not tri-state — Node's body has no null variant, so a\ndescription cannot be cleared once set. Reproduced."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
             ]
           }
         }
