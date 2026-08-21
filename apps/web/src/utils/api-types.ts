@@ -564,6 +564,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/density": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_density"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents": {
         parameters: {
             query?: never;
@@ -858,6 +874,38 @@ export interface paths {
         put?: never;
         /** Returns the reordered feature row itself, not a message. */
         post: operations["reorder_feature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/file-refs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_file_refs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/file-refs/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["lookup_file_refs"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2077,6 +2125,38 @@ export interface paths {
         patch: operations["update_saved_graph"];
         trace?: never;
     };
+    "/api/scope-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_scope_keys"];
+        put?: never;
+        post: operations["create_scope_key"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scope-keys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_scope_key"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/search/autocomplete": {
         parameters: {
             query?: never;
@@ -2474,6 +2554,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["update_template"];
+        trace?: never;
+    };
+    "/api/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_timeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/use-cases": {
@@ -3837,6 +3933,16 @@ export interface components {
             query: components["schemas"]["SavedQueryPayload"];
             spaceId?: string | null;
         };
+        CreateScopeKeyBody: {
+            allowedValues?: string[] | null;
+            description?: string | null;
+            key: string;
+            /**
+             * @description `string | number | boolean | enum`. Defaults to `string`, matching the
+             *     column default.
+             */
+            valueType?: string | null;
+        };
         CreateSpaceBody: {
             description?: string | null;
             kind?: string | null;
@@ -3988,6 +4094,39 @@ export interface components {
             id: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        DensityChunk: {
+            id: string;
+            /** @description `applies_to | file_ref`. */
+            source: string;
+            title: string;
+            type: string;
+        };
+        DensityNode: {
+            /**
+             * @description `#[schema(no_recursion)]` is mandatory, not cosmetic: `DensityNode`
+             *     contains itself, and utoipa inlines nested schemas by default, so
+             *     without this the generator recurses until it overflows the stack.
+             *     That is exactly what happened — `cargo run -- openapi` aborted with
+             *     `has overflowed its stack` and produced a zero-byte spec. The
+             *     attribute makes this field a `$ref` back to `DensityNode` instead.
+             */
+            children: components["schemas"]["DensityNode"][];
+            /** @description Distinct chunks at this node **or anywhere below it**. */
+            chunkCount: number;
+            chunks: components["schemas"]["DensityChunk"][];
+            /** @description Chunks attached to this exact path only. */
+            directChunkCount: number;
+            name: string;
+            path: string;
+        };
+        DensityResponse: {
+            totals: components["schemas"]["DensityTotals"];
+            tree: components["schemas"]["DensityNode"];
+        };
+        DensityTotals: {
+            chunksCovered: number;
+            pathsTracked: number;
         };
         /**
          * @description Shape of `GET /requirements/{id}/dependencies/graph`: `{nodes, edges}`,
@@ -4352,6 +4491,15 @@ export interface components {
              *     CHECK, and a DTO enum would reject with serde's parse error instead
              *     of a message naming the field.
              */
+            relation: string;
+        };
+        FileRefLookup: {
+            anchor?: string | null;
+            chunkId: string;
+            chunkTitle: string;
+            chunkType: string;
+            path: string;
+            refId: string;
             relation: string;
         };
         /**
@@ -5401,6 +5549,24 @@ export interface components {
             /** Format: int64 */
             flagged: number;
         };
+        ScopeKey: {
+            /**
+             * @description Only meaningful for `value_type = 'enum'`; nullable, so a key with no
+             *     constraint reads back as `null` rather than `[]`.
+             */
+            allowedValues?: string[] | null;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string | null;
+            id: string;
+            key: string;
+            userId: string;
+            /** @description `string | number | boolean | enum`, `NOT NULL DEFAULT 'string'`. */
+            valueType: string;
+        };
+        ScopeKeyMessage: {
+            message: string;
+        };
         /**
          * @description Body of `POST /api/search/query`
          *     (`packages/api/src/search/routes.ts:34-43`). `join` is accepted and
@@ -5803,6 +5969,35 @@ export interface components {
             id: string;
             title: string;
             type: string;
+        };
+        TimelineEvent: {
+            /** Format: date-time */
+            at: string;
+            chunkId: string;
+            chunkTitle: string;
+            chunkType: string;
+            /** @description `created | updated`. */
+            kind: string;
+            /**
+             * Format: int32
+             * @description Present only on `updated` events — the `chunk_version` number.
+             */
+            version?: number | null;
+        };
+        TimelineRange: {
+            /** Format: int64 */
+            days: number;
+            from: string;
+            to: string;
+        };
+        TimelineResponse: {
+            events: components["schemas"]["TimelineEvent"][];
+            range: components["schemas"]["TimelineRange"];
+            totals: components["schemas"]["TimelineTotals"];
+        };
+        TimelineTotals: {
+            created: number;
+            updated: number;
         };
         ToggleCellBody: {
             dimensionId: string;
@@ -7735,6 +7930,31 @@ export interface operations {
             };
         };
     };
+    get_density: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Named `codebaseId` on the wire — the `codebase → space` rename never
+                 *     reached this query param, and the web still sends the old name.
+                 */
+                codebaseId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DensityResponse"];
+                };
+            };
+        };
+    };
     list_documents: {
         parameters: {
             query?: {
@@ -8307,6 +8527,47 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    list_file_refs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileRefLookup"][];
+                };
+            };
+        };
+    };
+    lookup_file_refs: {
+        parameters: {
+            query: {
+                path: string;
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileRefLookup"][];
+                };
             };
         };
     };
@@ -10983,6 +11244,87 @@ export interface operations {
             };
         };
     };
+    list_scope_keys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeKey"][];
+                };
+            };
+        };
+    };
+    create_scope_key: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScopeKeyBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeKey"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_scope_key: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeKeyMessage"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     autocomplete: {
         parameters: {
             query: {
@@ -11823,6 +12165,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_timeline: {
+        parameters: {
+            query?: {
+                /**
+                 * @description `30d`, `2w`, `6m`, `1y`. Anything unparsable falls back to 30 days
+                 *     rather than erroring — see [`parse_range`].
+                 */
+                range?: string | null;
+                spaceId?: string | null;
+                tag?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineResponse"];
+                };
             };
         };
     };
