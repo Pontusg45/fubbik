@@ -19,12 +19,10 @@ import { createClient } from "./api-proxy.future";
 // authentication regardless), so nothing user-facing degrades while the
 // port is incomplete.
 //
-// As of this writing, Rust's `openapi.json` has no entry at all for 10
+// As of this writing, Rust's `openapi.json` has no entry at all for 2
 // domains:
 //
-//   ai, comments, context, density, file-refs (top-level list/lookup — the
-//   chunks/{id}/file-refs sub-resource IS on Rust), graph, health,
-//   learning-paths, timeline
+//   ai, context
 //
 // Every call site under those top-level segments (`api.api.<domain>...`)
 // is on `legacyApi` instead. This list SHRINKS as Rust ports each domain —
@@ -98,14 +96,15 @@ import { createClient } from "./api-proxy.future";
 //     `bulk-update`, `{id}/neighbors`, `{id}/suggestions`, `{id}/enrich`,
 //     `{id}/archive`, `{id}/restore`, `archived`, `merge`, `bulk` have no
 //     Rust route yet.
-//   - chunks: `PATCH /api/chunks/{id}` exists on Rust but its
-//     `UpdateChunkBody` accepts only title/content/type/rationale/
-//     consequences. Call sites that set `tags`, `alternatives`,
-//     `reviewStatus`, `isEntryPoint` or `scope` stay on `legacyApi` until
-//     it grows those fields — sending them to Rust is not an error, it is
-//     a SILENT no-op, because serde drops unknown fields rather than
-//     rejecting them. That is the same failure mode that made
-//     `requirements/stats` return unscoped totals while looking healthy.
+//   - chunks: `PATCH /api/chunks/{id}` exists on Rust and its
+//     `UpdateChunkBody` now accepts the full field set — title, content,
+//     type, tags, spaceIds, summary, aliases, notAbout, scope, rationale,
+//     alternatives, consequences, origin, reviewStatus, isEntryPoint and
+//     updateTag (grown from 5 fields in `e2b2129`). The caveat that used
+//     to live here — call sites setting the missing fields silently
+//     no-opping because serde drops unknown fields rather than rejecting
+//     them, the same failure mode that made `requirements/stats` return
+//     unscoped totals while looking healthy — no longer applies.
 // These are routed to `legacyApi` for the same reason as the remaining
 // domains — the route (or the field) doesn't exist on Rust yet — even
 // though `chunks` as a whole is ported.

@@ -16,11 +16,20 @@
 -- four columns — every other shared table is column-complete, which is the
 -- part worth knowing.
 --
--- `graph_event`, `usage_event`, `account` and `verification` are also absent
--- from these migrations and are deliberately left that way: the first two
--- have no reader in `packages/api/src` at all, and the last two belong to
--- better-auth, which Rust does not use (it has its own `user`/`session`
--- tables and its own argon2 password path).
+-- `graph_event`, `usage_event`, `account` and `verification` are absent from
+-- these migrations and are deliberately left that way. `account` and
+-- `verification` belong to better-auth, which Rust does not use (it has its
+-- own `user`/`session` tables and its own argon2 password path).
+--
+-- The other two need a correction to what this comment said before Phase 4a.
+-- `usage_event` was described as having "no reader"; it has a reader
+-- (`packages/api/src/usage/service.ts:28`) but no *writer* — the only insert
+-- path is `events/handlers.ts:17`, on a `CHUNK_VIEWED` event that nothing in
+-- `packages/api/src` ever emits. It is dead from the other end. `graph_event`
+-- does have a live reader (`packages/api/src/graph/timeline-service.ts`, for
+-- `/graph/at` and `/graph/events`); those two routes have no caller in any
+-- client and are out of scope for the Rust port, which is why the table stays
+-- absent. See `docs/superpowers/specs/2026-08-26-rust-phase-4a-design.md`.
 --
 -- IF NOT EXISTS is load-bearing, not defensive habit. Node's Drizzle has
 -- already created all of this in every database the Node stack has touched,
