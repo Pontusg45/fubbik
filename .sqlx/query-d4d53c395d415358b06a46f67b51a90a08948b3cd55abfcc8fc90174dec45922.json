@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id, r.title, m.layer, r.matrix_id, r.category\n           FROM behavior_rule r\n           JOIN behavior_matrix m ON m.id = r.matrix_id\n           ORDER BY r.id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "layer",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "matrix_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "category",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "d4d53c395d415358b06a46f67b51a90a08948b3cd55abfcc8fc90174dec45922"
+}

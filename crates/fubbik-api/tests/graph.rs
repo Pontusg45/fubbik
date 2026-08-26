@@ -189,3 +189,52 @@ async fn graph_space_scoping_actually_filters(pool: sqlx::PgPool) {
         "spaceId must actually scope the graph"
     );
 }
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn behavior_sync_projects_rules_for_every_user_and_is_idempotent(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable in this database — skipping");
+        return;
+    }
+
+    let app = fubbik_api::router(state(pool.clone()));
+
+    // Two DIFFERENT users, each with a matrix. Node syncs only the implicit
+    // dev user (packages/api/src/startup.ts:52); this port syncs both, and
+    // that divergence is the point of this assertion.
+    for (email, name, title) in [
+        ("a@b.test", "A", "Sessions expire"),
+        ("c@d.test", "C", "Inputs are validated"),
+    ] {
+        let cookie = signup(app.clone(), email, name).await;
+        let matrix = send(
+            app.clone(),
+            &cookie,
+            "POST",
+            "/api/matrices",
+            serde_json::json!({ "name": "M", "layer": "invariant" }),
+        )
+        .await;
+        let matrix_id = json_body(matrix).await["id"].as_str().unwrap().to_string();
+        send(
+            app.clone(),
+            &cookie,
+            "POST",
+            &format!("/api/matrices/{matrix_id}/rules"),
+            serde_json::json!({ "title": title, "category": "auth" }),
+        )
+        .await;
+    }
+
+    let first = fubbik_api::graph::sync::sync_once(&pool).await.unwrap();
+    assert_eq!(first, 2, "both users' rules must be projected");
+
+    let second = fubbik_api::graph::sync::sync_once(&pool).await.unwrap();
+    assert_eq!(second, 2);
+
+    let vertices = fubbik_db::age::list_behavior_rule_vertices(&pool).await.unwrap();
+    assert_eq!(vertices.len(), 2, "a second sweep must not duplicate vertices");
+    let titles: Vec<&str> = vertices.iter().map(|v| v.title.as_str()).collect();
+    assert!(titles.contains(&"Sessions expire"));
+    assert!(titles.contains(&"Inputs are validated"));
+}
