@@ -253,7 +253,10 @@ async fn behavior_sync_projects_rules_for_every_user_and_is_idempotent(pool: sql
                 serde_json::json!({ "name": "Auth" }),
             )
             .await;
-            let dimension_id = json_body(dimension).await["id"].as_str().unwrap().to_string();
+            let dimension_id = json_body(dimension).await["id"]
+                .as_str()
+                .unwrap()
+                .to_string();
 
             let cell = send(
                 app.clone(),
@@ -263,7 +266,10 @@ async fn behavior_sync_projects_rules_for_every_user_and_is_idempotent(pool: sql
                 serde_json::json!({ "ruleId": rule_id, "dimensionId": dimension_id }),
             )
             .await;
-            let cell_id = json_body(cell).await["cell"]["id"].as_str().unwrap().to_string();
+            let cell_id = json_body(cell).await["cell"]["id"]
+                .as_str()
+                .unwrap()
+                .to_string();
 
             let code = send(
                 app.clone(),
@@ -288,8 +294,14 @@ async fn behavior_sync_projects_rules_for_every_user_and_is_idempotent(pool: sql
     let second = fubbik_api::graph::sync::sync_once(&pool).await.unwrap();
     assert_eq!(second, 2);
 
-    let vertices = fubbik_db::age::list_behavior_rule_vertices(&pool).await.unwrap();
-    assert_eq!(vertices.len(), 2, "a second sweep must not duplicate vertices");
+    let vertices = fubbik_db::age::list_behavior_rule_vertices(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        vertices.len(),
+        2,
+        "a second sweep must not duplicate vertices"
+    );
     let titles: Vec<&str> = vertices.iter().map(|v| v.title.as_str()).collect();
     assert!(titles.contains(&"Sessions expire"));
     assert!(titles.contains(&"Inputs are validated"));
@@ -325,7 +337,10 @@ async fn behavior_sync_projects_rules_for_every_user_and_is_idempotent(pool: sql
     .await;
 
     let third = fubbik_api::graph::sync::sync_once(&pool).await.unwrap();
-    assert_eq!(third, 2, "rule vertices are unaffected by removing a code link");
+    assert_eq!(
+        third, 2,
+        "rule vertices are unaffected by removing a code link"
+    );
 
     let edges_after_removal = fubbik_db::age::list_governs_edges(&pool).await.unwrap();
     assert!(

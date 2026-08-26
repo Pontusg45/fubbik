@@ -147,7 +147,10 @@ mod tests {
     #[test]
     fn defaults_to_24_hours_when_unset_or_garbage() {
         assert_eq!(resolve_sync_interval(None).unwrap().as_secs(), 86_400);
-        assert_eq!(resolve_sync_interval(Some("banana")).unwrap().as_secs(), 86_400);
+        assert_eq!(
+            resolve_sync_interval(Some("banana")).unwrap().as_secs(),
+            86_400
+        );
     }
 
     #[test]

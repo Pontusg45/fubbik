@@ -825,10 +825,7 @@ pub struct GovernsEdge {
 pub async fn upsert_behavior_rule(pool: &PgPool, rule: &BehaviorRuleVertex) -> AppResult<()> {
     cypher(
         pool,
-        &format!(
-            "MERGE (:behavior_rule {{id: '{}'}})",
-            esc_cypher(&rule.id)
-        ),
+        &format!("MERGE (:behavior_rule {{id: '{}'}})", esc_cypher(&rule.id)),
     )
     .await?;
     cypher(
@@ -912,10 +909,26 @@ pub async fn list_behavior_rule_vertices(pool: &PgPool) -> AppResult<Vec<Behavio
         .filter_map(|row| {
             Some(BehaviorRuleVertex {
                 id: row.get("id")?.as_str()?.to_string(),
-                title: row.get("title").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
-                layer: row.get("layer").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
-                matrix_id: row.get("matrix_id").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
-                category: row.get("category").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                title: row
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+                layer: row
+                    .get("layer")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+                matrix_id: row
+                    .get("matrix_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+                category: row
+                    .get("category")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
             })
         })
         .collect())
@@ -937,7 +950,11 @@ pub async fn list_governs_edges(pool: &PgPool) -> AppResult<Vec<GovernsEdge>> {
             Some(GovernsEdge {
                 source_id: row.get("source_id")?.as_str()?.to_string(),
                 target_id: row.get("target_id")?.as_str()?.to_string(),
-                kind: row.get("kind").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                kind: row
+                    .get("kind")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
             })
         })
         .collect())

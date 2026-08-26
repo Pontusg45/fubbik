@@ -50,7 +50,9 @@ async fn chunk_meta_unscoped_returns_only_this_users_chunks(pool: sqlx::PgPool) 
     a_chunk(&pool, &mine, "Mine").await;
     a_chunk(&pool, &theirs, "Theirs").await;
 
-    let rows = graph::list_chunk_meta(&pool, &mine, None, None).await.unwrap();
+    let rows = graph::list_chunk_meta(&pool, &mine, None, None)
+        .await
+        .unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].title, "Mine");
 }
@@ -67,21 +69,24 @@ async fn chunk_meta_space_scope_includes_global_chunks(pool: sqlx::PgPool) {
     link_space(&pool, &in_target, &target).await;
     link_space(&pool, &in_other, &other).await;
 
-    let rows = graph::list_chunk_meta(&pool, &uid, Some(&target), None).await.unwrap();
+    let rows = graph::list_chunk_meta(&pool, &uid, Some(&target), None)
+        .await
+        .unwrap();
     let titles: Vec<&str> = rows.iter().map(|r| r.title.as_str()).collect();
 
     // The rule that is easiest to lose in translation from Drizzle's
     // `OR id NOT IN (SELECT chunk_id FROM chunk_space)`: a chunk belonging to
     // NO space is global and appears under every scope.
     assert!(titles.contains(&"In target"));
-    assert!(titles.contains(&"Global"), "global chunks must survive space scoping");
+    assert!(
+        titles.contains(&"Global"),
+        "global chunks must survive space scoping"
+    );
     assert!(!titles.contains(&"In other"));
 }
 
 #[sqlx::test]
-async fn chunk_meta_workspace_scope_spans_member_spaces_and_wins_over_space_id(
-    pool: sqlx::PgPool,
-) {
+async fn chunk_meta_workspace_scope_spans_member_spaces_and_wins_over_space_id(pool: sqlx::PgPool) {
     let uid = user::create(&pool, "a@b.test", "A", None).await.unwrap().id;
     let a = a_space(&pool, &uid, "A").await;
     let b = a_space(&pool, &uid, "B").await;
@@ -118,7 +123,10 @@ async fn chunk_meta_workspace_scope_spans_member_spaces_and_wins_over_space_id(
 
     assert!(titles.contains(&"In A"));
     assert!(titles.contains(&"In B"));
-    assert!(!titles.contains(&"In outside"), "workspace must win over space_id");
+    assert!(
+        !titles.contains(&"In outside"),
+        "workspace must win over space_id"
+    );
 }
 
 #[sqlx::test]
@@ -154,7 +162,10 @@ async fn chunk_tags_keep_untyped_tags(pool: sqlx::PgPool) {
         .await
         .unwrap()
         .id;
-    let typed = tag::create(&pool, &uid, "backend", Some(&tt)).await.unwrap().id;
+    let typed = tag::create(&pool, &uid, "backend", Some(&tt))
+        .await
+        .unwrap()
+        .id;
     let untyped = tag::create(&pool, &uid, "loose", None).await.unwrap().id;
 
     for tag_id in [&typed, &untyped] {
@@ -168,7 +179,9 @@ async fn chunk_tags_keep_untyped_tags(pool: sqlx::PgPool) {
         .unwrap();
     }
 
-    let rows = graph::list_chunk_tags_with_types(&pool, &uid).await.unwrap();
+    let rows = graph::list_chunk_tags_with_types(&pool, &uid)
+        .await
+        .unwrap();
     // A LEFT join, not an inner one: an untyped tag must still appear.
     assert_eq!(rows.len(), 2);
     let loose = rows.iter().find(|r| r.tag_name == "loose").unwrap();
@@ -188,7 +201,9 @@ async fn chunk_space_mappings_are_scoped_by_space_owner(pool: sqlx::PgPool) {
     link_space(&pool, &mc, &my_space).await;
     link_space(&pool, &tc, &their_space).await;
 
-    let rows = graph::list_chunk_space_mappings(&pool, &mine).await.unwrap();
+    let rows = graph::list_chunk_space_mappings(&pool, &mine)
+        .await
+        .unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].space_name, "Mine");
 }
