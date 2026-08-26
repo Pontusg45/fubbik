@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cs.chunk_id, cs.space_id, s.name AS space_name\n           FROM chunk_space cs\n           JOIN space s ON s.id = cs.space_id\n           WHERE s.user_id = $1\n           ORDER BY cs.chunk_id ASC, cs.space_id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "space_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "space_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f3b311d9d856c49a46033d9141d403a49b80011172f7a49a62b35487e19c6f62"
+}

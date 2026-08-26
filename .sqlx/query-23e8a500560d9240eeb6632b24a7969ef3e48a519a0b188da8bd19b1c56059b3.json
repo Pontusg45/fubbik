@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_connection (id, source_id, target_id, relation)\n         VALUES ('c1', $1, $2, 'related_to')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "23e8a500560d9240eeb6632b24a7969ef3e48a519a0b188da8bd19b1c56059b3"
+}

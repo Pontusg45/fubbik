@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.title, c.type AS chunk_type, c.summary,\n                  c.created_at AS \"created_at: UtcTimestamp\"\n           FROM chunk c\n           WHERE c.user_id = $1\n             AND (\n               ($2::text IS NULL AND $3::text IS NULL)\n               OR c.id NOT IN (SELECT chunk_id FROM chunk_space)\n               OR ($3::text IS NOT NULL AND c.id IN (\n                     SELECT cs.chunk_id FROM chunk_space cs\n                     JOIN workspace_space ws ON ws.space_id = cs.space_id\n                     WHERE ws.workspace_id = $3))\n               OR ($3::text IS NULL AND $2::text IS NOT NULL AND c.id IN (\n                     SELECT chunk_id FROM chunk_space WHERE space_id = $2))\n             )\n           ORDER BY c.created_at DESC, c.id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "e4ecac0186c18b3e1411cf1330c6b74efb19cb404b45b49b9ca3b50781513d86"
+}

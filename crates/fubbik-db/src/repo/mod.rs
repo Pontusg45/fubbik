@@ -12,6 +12,7 @@ pub mod coverage;
 pub mod document;
 pub mod favorite;
 pub mod feature;
+pub mod graph;
 pub mod insights;
 pub mod knowledge_health;
 pub mod learning_path;
