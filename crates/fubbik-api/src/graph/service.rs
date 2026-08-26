@@ -30,12 +30,29 @@ pub async fn build(
         Vec::new()
     };
 
+    // AGE vertices carry no user id — `behavior_sync::sync_once` sweeps
+    // every user's matrices (deliberately; see its module docs), so the raw
+    // read below returns every user's behavior rules. Intersect against the
+    // ids this user actually owns before handing anything back, or user A's
+    // `GET /api/graph` leaks user B's rule titles and matrix ids.
+    let owned_rule_ids: std::collections::HashSet<String> =
+        repo::list_owned_behavior_rule_ids(pool, user_id)
+            .await?
+            .into_iter()
+            .collect();
+
     let behavior_rules = fubbik_db::age::list_behavior_rule_vertices(pool)
         .await
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|r| owned_rule_ids.contains(&r.id))
+        .collect();
     let governs_edges = fubbik_db::age::list_governs_edges(pool)
         .await
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|e| owned_rule_ids.contains(&e.source_id))
+        .collect();
 
     Ok(GraphResponse {
         chunks,

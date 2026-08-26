@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id\n           FROM behavior_rule r\n           JOIN behavior_matrix m ON m.id = r.matrix_id\n           WHERE m.user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "778ee8c6eedadab4d78c342518c09c41ae2adca2dbae617efedd17bd429d7864"
+}

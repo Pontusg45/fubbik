@@ -163,3 +163,27 @@ pub async fn list_chunk_space_mappings(
     .await?;
     Ok(rows)
 }
+
+/// The ids of every `behavior_rule` this user owns, via its matrix.
+///
+/// The AGE graph is swept for ALL users (`graph::sync::sync_once` — a
+/// deliberate divergence from Node, which only ever wrote the implicit dev
+/// user's rules and so never faced this seam), but `GET /api/graph` is
+/// per-user. Without this filter, `age::list_behavior_rule_vertices` and
+/// `age::list_governs_edges` — which have no user id to filter on, because
+/// AGE vertices don't carry one — hand every user's behavior-rule titles
+/// and matrix ids to whoever is logged in. This is the relational side of
+/// that intersection: SQL ownership, not graph properties, decides what a
+/// user is allowed to see.
+pub async fn list_owned_behavior_rule_ids(pool: &PgPool, user_id: &str) -> AppResult<Vec<String>> {
+    let rows = sqlx::query_scalar!(
+        r#"SELECT r.id
+           FROM behavior_rule r
+           JOIN behavior_matrix m ON m.id = r.matrix_id
+           WHERE m.user_id = $1"#,
+        user_id
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}

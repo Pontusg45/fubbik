@@ -63,14 +63,17 @@ pub async fn cypher_columns(
 /// `$$`, so a value containing that substring terminates the dollar-quoted
 /// block early.
 ///
-/// **Impact, measured rather than assumed: the query degrades to empty
-/// results. It is not exploitable as SQL injection.** Every caller embeds
-/// user input inside a Cypher string literal (`{id: '<escaped>'}`), and
-/// `esc_cypher` escapes every `'`, so the fragment preceding an injected
-/// `$$` always ends inside an unterminated literal. Postgres rejects the
-/// statement at parse time — reproduced as
-/// `ERROR: unterminated quoted string at or near "'x"` — before anything
-/// executes, and [`cypher_in_graph`] then degrades the error to `Ok(vec![])`.
+/// **Impact, measured rather than assumed: the query fails to parse. It is
+/// not exploitable as SQL injection.** Every caller embeds user input inside
+/// a Cypher string literal (`{id: '<escaped>'}`), and `esc_cypher` escapes
+/// every `'`, so the fragment preceding an injected `$$` always ends inside
+/// an unterminated literal. Postgres rejects the statement at parse time —
+/// reproduced as `ERROR: unterminated quoted string at or near "'x"` —
+/// before anything executes. That failure surfaces as a real `sqlx::Error`
+/// out of [`run_primed`]'s `?` and propagates out of [`cypher_in_graph`] —
+/// it is NOT swallowed into `Ok(vec![])` here. Callers that need the sweep
+/// to survive one bad value tolerate it themselves (e.g.
+/// `fubbik-api/src/graph/sync.rs`'s per-rule `match` around `sync_rule`).
 /// Statement chaining is independently impossible: [`run_primed`] uses
 /// `sqlx::query(..).fetch_all(..)`, i.e. the extended protocol.
 ///

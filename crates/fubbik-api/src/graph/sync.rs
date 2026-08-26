@@ -78,31 +78,53 @@ pub async fn sync_once(pool: &PgPool) -> AppResult<u64> {
 
     let mut synced = 0u64;
     for rule in &rules {
-        age::upsert_behavior_rule(
-            pool,
-            &BehaviorRuleVertex {
-                id: rule.id.clone(),
-                title: rule.title.clone(),
-                layer: rule.layer.clone(),
-                matrix_id: rule.matrix_id.clone(),
-                // Node writes '' for a missing category (`graph-sync.ts:48`).
-                category: rule.category.clone().unwrap_or_default(),
-            },
-        )
-        .await?;
-
-        // Delete before relinking: MERGE alone would leave edges behind for
-        // cell-code links that have since been deleted.
-        age::delete_governs_edges(pool, &rule.id).await?;
-        for link in links.iter().filter(|l| l.rule_id == rule.id) {
-            age::link_governs(pool, &rule.id, &link.kind, &link.code_ref).await?;
+        match sync_rule(pool, rule, &links).await {
+            Ok(()) => synced += 1,
+            Err(e) => {
+                // Tolerant by design, matching Node's `.pipe(Effect.catchAll(...))`
+                // on every one of these calls (`graph-sync.ts:48,51,62,68`): a
+                // failure projecting one rule (e.g. a title containing `$$`,
+                // which breaks the dollar-quoted Cypher block — see
+                // `age::cypher_in_graph`'s safety note) must not abort the
+                // sweep for every rule ordered after it.
+                tracing::warn!(
+                    rule_id = %rule.id,
+                    error = %e,
+                    "Behavior graph sync: failed to project rule, skipping"
+                );
+            }
         }
-
-        synced += 1;
     }
 
     tracing::info!(rules = synced, "Behavior rules synced to graph");
     Ok(synced)
+}
+
+/// Projects a single rule's vertex and its `governs` edges. Split out of
+/// [`sync_once`] so the whole per-rule unit of work can be treated as one
+/// fallible step that the sweep can skip and continue past.
+async fn sync_rule(pool: &PgPool, rule: &RuleRow, links: &[CodeLinkRow]) -> AppResult<()> {
+    age::upsert_behavior_rule(
+        pool,
+        &BehaviorRuleVertex {
+            id: rule.id.clone(),
+            title: rule.title.clone(),
+            layer: rule.layer.clone(),
+            matrix_id: rule.matrix_id.clone(),
+            // Node writes '' for a missing category (`graph-sync.ts:48`).
+            category: rule.category.clone().unwrap_or_default(),
+        },
+    )
+    .await?;
+
+    // Delete before relinking: MERGE alone would leave edges behind for
+    // cell-code links that have since been deleted.
+    age::delete_governs_edges(pool, &rule.id).await?;
+    for link in links.iter().filter(|l| l.rule_id == rule.id) {
+        age::link_governs(pool, &rule.id, &link.kind, &link.code_ref).await?;
+    }
+
+    Ok(())
 }
 
 /// Spawns the recurring sweep. Called once, from `Commands::Serve`.
