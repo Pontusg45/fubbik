@@ -2778,6 +2778,52 @@
         }
       }
     },
+    "/api/graph": {
+      "get": {
+        "tags": [
+          "crate::graph::routes"
+        ],
+        "operationId": "get_graph",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "description": "`spaceId`, NOT `codebaseId`. Node still declares the pre-rename name\n(`packages/api/src/graph/routes.ts:18`) while the web sends `spaceId`,\nso Elysia strips it and the filter silently does nothing. Task 8 fixes\nNode to match this.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "workspaceId",
+            "in": "query",
+            "description": "Takes precedence over `space_id` when both are present.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -9391,6 +9437,34 @@
           }
         }
       },
+      "BehaviorRuleVertex": {
+        "type": "object",
+        "description": "A `behavior_rule` vertex as the graph stores it.",
+        "required": [
+          "id",
+          "title",
+          "layer",
+          "matrixId",
+          "category"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string"
+          },
+          "matrixId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "BehaviorTestResult": {
         "type": "object",
         "required": [
@@ -10038,6 +10112,37 @@
           }
         }
       },
+      "ChunkMeta": {
+        "type": "object",
+        "description": "The five columns the graph needs off `chunk` — deliberately not the whole\nrow. The payload carries one of these per node and the full chunk is\nfetched separately when a node is opened.",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
       "ChunkProposal": {
         "type": "object",
         "description": "`camelCase` serialisation matches every other wire type in this crate.",
@@ -10130,6 +10235,63 @@
           },
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "ChunkSpaceMapping": {
+        "type": "object",
+        "required": [
+          "chunkId",
+          "spaceId",
+          "spaceName"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": "string"
+          },
+          "spaceName": {
+            "type": "string"
+          }
+        }
+      },
+      "ChunkTagWithType": {
+        "type": "object",
+        "required": [
+          "chunkId",
+          "tagId",
+          "tagName"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
+          },
+          "tagId": {
+            "type": "string"
+          },
+          "tagName": {
+            "type": "string"
+          },
+          "tagTypeColor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tagTypeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`None` for an untyped tag — the `tag_type` join is a LEFT join."
+          },
+          "tagTypeName": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -12690,6 +12852,50 @@
           }
         }
       },
+      "GovernsEdge": {
+        "type": "object",
+        "description": "A `governs` edge from a rule to the code it controls.",
+        "required": [
+          "sourceId",
+          "targetId",
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "`file | symbol` — which vertex label the target is."
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          }
+        }
+      },
+      "GraphConnection": {
+        "type": "object",
+        "required": [
+          "id",
+          "sourceId",
+          "targetId",
+          "relation"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          }
+        }
+      },
       "GraphContext": {
         "type": "object",
         "properties": {
@@ -12773,6 +12979,63 @@
           "y": {
             "type": "number",
             "format": "double"
+          }
+        }
+      },
+      "GraphResponse": {
+        "type": "object",
+        "required": [
+          "chunks",
+          "connections",
+          "chunkTags",
+          "tagTypes",
+          "chunkCodebases",
+          "behaviorRules",
+          "governsEdges"
+        ],
+        "properties": {
+          "behaviorRules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BehaviorRuleVertex"
+            }
+          },
+          "chunkCodebases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChunkSpaceMapping"
+            },
+            "description": "Named `chunkCodebases` on the wire: the `codebase → space` rename never\nreached this field, and `apps/web/src/features/graph/group-strategies.ts:69`\ndestructures the old name. Renaming it is a web change, not a port."
+          },
+          "chunkTags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChunkTagWithType"
+            }
+          },
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChunkMeta"
+            }
+          },
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphConnection"
+            }
+          },
+          "governsEdges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GovernsEdge"
+            }
+          },
+          "tagTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TagType"
+            }
           }
         }
       },

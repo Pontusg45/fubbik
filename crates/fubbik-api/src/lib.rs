@@ -12,6 +12,7 @@ pub mod extract;
 pub mod favorites;
 pub mod features;
 pub mod file_refs;
+pub mod graph;
 pub mod health;
 pub mod learning_paths;
 pub mod matrices;
@@ -60,6 +61,7 @@ pub fn router(state: AppState) -> Router {
         .merge(documents::routes::router())
         .merge(comments::routes::router())
         .merge(favorites::routes::router())
+        .merge(graph::routes::router())
         .merge(density::routes::router())
         .merge(file_refs::routes::router())
         .merge(health::routes::router())
