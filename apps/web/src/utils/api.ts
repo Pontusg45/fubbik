@@ -93,9 +93,13 @@ import { createClient } from "./api-proxy.future";
 // that Rust hasn't finished:
 //   - chunks: `search/semantic`, `search/federated`, `grouped`,
 //     `check-similar`, `clusters`, `import-docs` (+ `import-docs/preview`),
-//     `bulk-update`, `{id}/neighbors`, `{id}/suggestions`, `{id}/enrich`,
-//     `{id}/archive`, `{id}/restore`, `archived`, `merge`, `bulk` have no
-//     Rust route yet.
+//     `{id}/neighbors`, `{id}/suggestions`, `{id}/enrich` have no Rust route
+//     at all — confirmed against `openapi.json` — and stay on `legacyApi`.
+//   - `bulk-update`, `{id}/archive`, `{id}/restore` and `archived` DO have a
+//     Rust route now; every call site already moved to `api` (see
+//     `utils/api-helpers.ts`), so they no longer belong on this list.
+//     `bulk` (bulk delete) and `merge` also have a Rust route but currently
+//     have no web call site at all, on either client — nothing to migrate.
 //   - chunks: `PATCH /api/chunks/{id}` exists on Rust and its
 //     `UpdateChunkBody` now accepts the full field set — title, content,
 //     type, tags, spaceIds, summary, aliases, notAbout, scope, rationale,
@@ -105,9 +109,9 @@ import { createClient } from "./api-proxy.future";
 //     no-opping because serde drops unknown fields rather than rejecting
 //     them, the same failure mode that made `requirements/stats` return
 //     unscoped totals while looking healthy — no longer applies.
-// These are routed to `legacyApi` for the same reason as the remaining
-// domains — the route (or the field) doesn't exist on Rust yet — even
-// though `chunks` as a whole is ported.
+// The unported subset above is routed to `legacyApi` for the same reason as
+// the remaining domains — the route doesn't exist on Rust yet — even though
+// `chunks` as a whole is ported.
 //
 // `api` hits the Rust server directly via `VITE_API_URL` (port 3100 by
 // default). `legacyApi` stays on `VITE_SERVER_URL` (Node, port 3000), which
