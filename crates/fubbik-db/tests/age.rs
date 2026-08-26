@@ -163,3 +163,34 @@ async fn cypher_does_not_leak_search_path_onto_the_pooled_connection(pool: sqlx:
         "search_path after cypher() must match the pre-call baseline exactly"
     );
 }
+
+#[sqlx::test]
+async fn cypher_columns_returns_named_columns(pool: sqlx::PgPool) {
+    if !age::is_available(&pool).await {
+        eprintln!("AGE unavailable in this database — skipping");
+        return;
+    }
+
+    age::cypher(
+        &pool,
+        r#"CREATE (n:behavior_rule {id: 'r1', title: 'He said "hi"', layer: 'invariant'})"#,
+    )
+    .await
+    .unwrap();
+
+    let rows = age::cypher_columns(
+        &pool,
+        "MATCH (r:behavior_rule) RETURN r.id AS id, r.title AS title, r.layer AS layer",
+        &["id", "title", "layer"],
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0]["id"], "r1");
+    assert_eq!(rows[0]["layer"], "invariant");
+    // The whole point of parse_agtype over Node's `.replace(/"/g, "")`
+    // (packages/api/src/graph/service.ts:86-127): an embedded double quote
+    // survives instead of being stripped out of the middle of the value.
+    assert_eq!(rows[0]["title"], r#"He said "hi""#);
+}

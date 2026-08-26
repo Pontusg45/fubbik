@@ -33,6 +33,22 @@ pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>
     cypher_in_graph(pool, "knowledge", query).await
 }
 
+/// Multi-column sibling of [`cypher`], fixed to the `"knowledge"` graph.
+/// Returns one `column name -> parsed value` map per row.
+///
+/// Prefer this over hand-parsing a single `v` column when a query `RETURN`s
+/// several values: it inherits [`parse_agtype`], so quoted characters inside
+/// property values survive. The TypeScript original stripped them with a raw
+/// `String(v).replace(/"/g, "")` (`packages/api/src/graph/service.ts:86-127`),
+/// silently corrupting any title containing a double quote.
+pub async fn cypher_columns(
+    pool: &PgPool,
+    query: &str,
+    columns: &[&str],
+) -> Result<Vec<HashMap<String, serde_json::Value>>, sqlx::Error> {
+    cypher_multi(pool, "knowledge", query, columns).await
+}
+
 /// The `graph`-parameterized core of [`cypher`]. Returns a single scalar
 /// column (aliased `v`) per row, parsed via [`parse_agtype`].
 ///
