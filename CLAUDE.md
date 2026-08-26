@@ -506,6 +506,7 @@ Required for chunk enrichment (summary, aliases, not_about generation), semantic
 - `BETTER_AUTH_URL` — Auth server URL
 - `OLLAMA_URL` — Ollama server URL (default: `http://localhost:11434`)
 - `STALENESS_SCAN_INTERVAL_HOURS` — Hours between automatic staleness scans (default: `24`, set to `0` to disable)
+- `BEHAVIOR_GRAPH_SYNC_INTERVAL_HOURS` — Hours between behavior-rule projections into the AGE graph (default: `24`, set to `0` to disable). Rust backend only.
 
 ## Common Commands
 
