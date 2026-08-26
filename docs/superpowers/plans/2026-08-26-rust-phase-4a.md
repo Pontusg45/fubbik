@@ -92,18 +92,38 @@ If it prints nothing, continue to Step 2.
 
 - [ ] **Step 2: Create it**
 
-The image must provide **all three** of `pgvector`, `pg_trgm` and `age`, and must initialise with the ICU locale provider (see the comment block in `.github/workflows/rust.yml` — libc ordering silently breaks `crates/fubbik-db/tests/collation.rs`).
+The image must provide **all three** of `pgvector`, `pg_trgm` and `age`, and must initialise with
+the ICU locale provider (see the comment block in `.github/workflows/rust.yml` — libc ordering
+silently breaks `crates/fubbik-db/tests/collation.rs`).
+
+**No image on Docker Hub carries both pgvector and AGE.** This repo builds its own:
+`docker/postgres/Dockerfile` compiles Apache AGE (`PG18/v1.7.0-rc0`) against
+`pgvector/pgvector:0.8.2-pg18` and copies the extension artifacts into a clean pgvector layer.
+`docker-compose.yml:68` names the result `fubbik-postgres:pg18-vector-age`. Use it — do not go
+looking for a Hub image, and do not settle for `apache/age`, which has no `vector`.
 
 ```bash
+docker --context orbstack build -t fubbik-postgres:pg18-vector-age docker/postgres
+```
+
+The AGE compile takes several minutes on a cold cache. Run it in the FOREGROUND.
+
+Then remove whatever `fubbik-rs-db` currently exists and recreate it on the right image:
+
+```bash
+docker --context orbstack rm -f fubbik-rs-db 2>/dev/null
 docker --context orbstack run -d --name fubbik-rs-db \
   -p 5434:5432 \
   -e POSTGRES_PASSWORD=password \
   -e POSTGRES_DB=fubbik_rs \
   -e POSTGRES_INITDB_ARGS="--locale-provider=icu --icu-locale=en-US" \
-  apache/age:PG16_latest
+  fubbik-postgres:pg18-vector-age
 ```
 
-**`apache/age` ships AGE but not pgvector.** If `CREATE EXTENSION vector` fails in Step 3, stop and ask the human partner which image they were using before — do not silently proceed on a database missing an extension, and do not edit `0001_init.sql` to work around it. Getting this wrong produces a run where half the suite skips and the output still says "ok".
+If the build fails, report BLOCKED with the build log tail. Do not fall back to an image missing
+an extension, and do not edit `0001_init.sql` to work around it — a database missing `age` makes
+every AGE test in this slice pass vacuously, which is the exact failure this task exists to
+prevent.
 
 - [ ] **Step 3: Verify all three extensions**
 
