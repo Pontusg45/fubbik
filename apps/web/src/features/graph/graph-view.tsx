@@ -109,7 +109,7 @@ function GraphViewInner() {
     const chunkSummaries = useMemo(() => {
         const m = new Map<string, string | null>();
         for (const c of data?.chunks ?? []) {
-            m.set(c.id, c.summary);
+            m.set(c.id, c.summary ?? null);
         }
         return m;
     }, [data?.chunks]);

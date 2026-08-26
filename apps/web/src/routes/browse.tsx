@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { AlphabeticalIndex } from "@/features/browse/alphabetical-index";
 import { TagCloud } from "@/features/browse/tag-cloud";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/browse")({
@@ -21,14 +21,14 @@ function BrowsePage() {
 
     const graphQuery = useQuery({
         queryKey: ["browse-graph-tags"],
-        queryFn: async () => unwrapEden(await legacyApi.api.graph.get({ query: {} })),
+        queryFn: async () => unwrapEden(await api.api.graph.get({ query: {} })),
         enabled: view === "tags"
     });
 
     const chunks = ((chunksQuery.data as any)?.chunks ?? []) as Array<{ id: string; title: string; type: string }>;
 
     const tagsForCloud = useMemo(() => {
-        const chunkTags = ((graphQuery.data as any)?.chunkTags ?? []) as Array<{ tagName: string }>;
+        const chunkTags = (graphQuery.data?.chunkTags ?? []) as Array<{ tagName: string }>;
         if (chunkTags.length === 0) return [];
         const counts = new Map<string, number>();
         for (const ct of chunkTags) {

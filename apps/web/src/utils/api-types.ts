@@ -912,6 +912,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_graph"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -3126,6 +3142,14 @@ export interface components {
             ruleId: string;
             snapshot: components["schemas"]["BehaviorRuleSnapshot"];
         };
+        /** @description A `behavior_rule` vertex as the graph stores it. */
+        BehaviorRuleVertex: {
+            category: string;
+            id: string;
+            layer: string;
+            matrixId: string;
+            title: string;
+        };
         BehaviorTestResult: {
             cellId: string;
             detail?: string | null;
@@ -3426,6 +3450,19 @@ export interface components {
         ChunkMessage: {
             message: string;
         };
+        /**
+         * @description The five columns the graph needs off `chunk` — deliberately not the whole
+         *     row. The payload carries one of these per node and the full chunk is
+         *     fetched separately when a node is opened.
+         */
+        ChunkMeta: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            summary?: string | null;
+            title: string;
+            type: string;
+        };
         /** @description `camelCase` serialisation matches every other wire type in this crate. */
         ChunkProposal: {
             changes: components["schemas"]["ProposedChanges"];
@@ -3458,6 +3495,20 @@ export interface components {
             status: string;
             steps: components["schemas"]["RequirementStep"][];
             title: string;
+        };
+        ChunkSpaceMapping: {
+            chunkId: string;
+            spaceId: string;
+            spaceName: string;
+        };
+        ChunkTagWithType: {
+            chunkId: string;
+            tagId: string;
+            tagName: string;
+            tagTypeColor?: string | null;
+            /** @description `None` for an untyped tag — the `tag_type` join is a LEFT join. */
+            tagTypeId?: string | null;
+            tagTypeName?: string | null;
         };
         /**
          * @description `camelCase` serialisation matches every other wire type in this crate.
@@ -4562,6 +4613,19 @@ export interface components {
             value?: string | null;
             values?: string[] | null;
         };
+        /** @description A `governs` edge from a rule to the code it controls. */
+        GovernsEdge: {
+            /** @description `file | symbol` — which vertex label the target is. */
+            kind: string;
+            sourceId: string;
+            targetId: string;
+        };
+        GraphConnection: {
+            id: string;
+            relation: string;
+            sourceId: string;
+            targetId: string;
+        };
         GraphContext: {
             /** Format: int64 */
             hopDistance?: number | null;
@@ -4590,6 +4654,20 @@ export interface components {
             x: number;
             /** Format: double */
             y: number;
+        };
+        GraphResponse: {
+            behaviorRules: components["schemas"]["BehaviorRuleVertex"][];
+            /**
+             * @description Named `chunkCodebases` on the wire: the `codebase → space` rename never
+             *     reached this field, and `apps/web/src/features/graph/group-strategies.ts:69`
+             *     destructures the old name. Renaming it is a web change, not a port.
+             */
+            chunkCodebases: components["schemas"]["ChunkSpaceMapping"][];
+            chunkTags: components["schemas"]["ChunkTagWithType"][];
+            chunks: components["schemas"]["ChunkMeta"][];
+            connections: components["schemas"]["GraphConnection"][];
+            governsEdges: components["schemas"]["GovernsEdge"][];
+            tagTypes: components["schemas"]["TagType"][];
         };
         HeadingRule: {
             /** Format: int32 */
@@ -8637,6 +8715,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FileRefLookup"][];
+                };
+            };
+        };
+    };
+    get_graph: {
+        parameters: {
+            query?: {
+                /**
+                 * @description `spaceId`, NOT `codebaseId`. Node still declares the pre-rename name
+                 *     (`packages/api/src/graph/routes.ts:18`) while the web sends `spaceId`,
+                 *     so Elysia strips it and the filter silently does nothing. Task 8 fixes
+                 *     Node to match this.
+                 */
+                spaceId?: string | null;
+                /** @description Takes precedence over `space_id` when both are present. */
+                workspaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphResponse"];
                 };
             };
         };

@@ -24,7 +24,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { relationColor } from "@/features/chunks/relation-colors";
 import { GraphDetailPanel } from "@/features/graph/graph-detail-panel";
 import { TypedEdge } from "@/features/graph/typed-edge";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 const EDGE_TYPES = { floating: TypedEdge };
@@ -147,8 +147,7 @@ function SavedGraphViewInner() {
     // Fetch full graph data (we filter to only saved chunk IDs)
     const { data: graphData, isLoading: isLoadingGraph } = useQuery({
         queryKey: ["graph"],
-        // `/api/graph` has no Rust route yet — see the "graph" note in `@/utils/api`.
-        queryFn: async () => unwrapEden(await legacyApi.api.graph.get({ query: {} }))
+        queryFn: async () => unwrapEden(await api.api.graph.get({ query: {} }))
     });
 
     const deleteMutation = useMutation({
@@ -255,14 +254,10 @@ function SavedGraphViewInner() {
         const positions = activePositions;
 
         // Filter chunks to only those in the saved graph
-        const chunks = (graphData as { chunks: Array<{ id: string; title: string; type: string }> }).chunks.filter(c =>
-            savedChunkIds.has(c.id)
-        );
+        const chunks = graphData.chunks.filter(c => savedChunkIds.has(c.id));
 
         // Filter connections to only those between saved chunks
-        const connections = (
-            graphData as { connections: Array<{ id: string; sourceId: string; targetId: string; relation: string }> }
-        ).connections.filter(c => savedChunkIds.has(c.sourceId) && savedChunkIds.has(c.targetId));
+        const connections = graphData.connections.filter(c => savedChunkIds.has(c.sourceId) && savedChunkIds.has(c.targetId));
 
         const graphNodes: Node[] = chunks.map(c => {
             const typeColor = TYPE_COLORS[c.type] ?? TYPE_COLORS.note;

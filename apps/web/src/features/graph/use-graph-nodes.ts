@@ -127,7 +127,7 @@ export function useGraphNodes({
 
         const chunkMap = new Map<string, { id: string; title: string; type: string; summary: string | null }>();
         for (const c of data?.chunks ?? []) {
-            chunkMap.set(c.id, { id: c.id, title: c.title, type: c.type, summary: c.summary });
+            chunkMap.set(c.id, { id: c.id, title: c.title, type: c.type, summary: c.summary ?? null });
         }
 
         const nodes: Node[] = [];

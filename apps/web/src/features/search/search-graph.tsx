@@ -7,7 +7,7 @@ import { useTheme } from "next-themes";
 import { useMemo } from "react";
 
 import { relationColor } from "@/features/chunks/relation-colors";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 interface SearchGraphProps {
@@ -72,7 +72,7 @@ function SearchGraphInner({ chunkIds, chunks }: SearchGraphProps) {
     const { data: graphData, isLoading } = useQuery({
         queryKey: ["graph", "search-minimap"],
         queryFn: async () => {
-            return unwrapEden(await legacyApi.api.graph.get({ query: {} }));
+            return unwrapEden(await api.api.graph.get({ query: {} }));
         },
         staleTime: 30_000
     });
