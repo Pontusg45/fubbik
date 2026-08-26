@@ -109,7 +109,10 @@ async fn graph_returns_the_seven_documented_fields(pool: sqlx::PgPool) {
         "concepts",
         "coRefEdges",
     ] {
-        assert!(body.get(dropped).is_none(), "{dropped} should not be served");
+        assert!(
+            body.get(dropped).is_none(),
+            "{dropped} should not be served"
+        );
     }
 }
 
@@ -147,7 +150,10 @@ async fn graph_space_scoping_actually_filters(pool: sqlx::PgPool) {
         serde_json::json!({ "name": "Other", "kind": "code" }),
     )
     .await;
-    let other_id = json_body(other_space).await["id"].as_str().unwrap().to_string();
+    let other_id = json_body(other_space).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     send(
         app.clone(),
         &cookie,
@@ -178,5 +184,8 @@ async fn graph_space_scoping_actually_filters(pool: sqlx::PgPool) {
     // (packages/api/src/graph/routes.ts:18), Elysia strips the unknown
     // `spaceId`, and BOTH titles come back.
     assert!(titles.contains(&"In target"));
-    assert!(!titles.contains(&"In other"), "spaceId must actually scope the graph");
+    assert!(
+        !titles.contains(&"In other"),
+        "spaceId must actually scope the graph"
+    );
 }
