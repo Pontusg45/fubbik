@@ -1738,7 +1738,7 @@ cargo fmt --check
 SQLX_OFFLINE=true cargo check --workspace --all-targets
 ```
 
-Expected: pass count = Task 0's baseline + 13 new tests (1 + 4 + 6 in db, 3 + 1 in api, 3 unit — recount rather than trusting this arithmetic). Zero clippy warnings.
+Expected: pass count = Task 0's baseline + 18 new tests (1 + 4 + 6 in db, 3 + 1 in api, 3 unit — recount rather than trusting this arithmetic). Zero clippy warnings.
 
 - [ ] **Step 2: Confirm the AGE tests actually ran**
 
