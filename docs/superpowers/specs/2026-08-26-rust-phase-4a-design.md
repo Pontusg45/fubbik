@@ -1,7 +1,7 @@
 # Rust Rewrite Phase 4a — Graph & AGE
 
 **Date:** 2026-08-26
-**Status:** Approved design, pending implementation plan
+**Status:** Approved design; plan at `docs/superpowers/plans/2026-08-26-rust-phase-4a.md`
 **Follows:** `2026-08-12-rust-phase-2d-design.md` (migrating the web app)
 **Part of:** Phase 4 (knowledge intelligence), decomposed into 4a / 4b / 4c
 
@@ -116,7 +116,7 @@ Five plain-SQL functions ported from `packages/db/src/repository/graph.ts` (107 
 | `list_chunk_meta(pool, user_id, space_id, workspace_id)` | Selects `id, title, type, summary, created_at`. Scoping is `chunk IN (chunks of the workspace's spaces) OR chunk NOT IN (any space)` — **global chunks are always included**, in both the workspace and the single-space case. |
 | `list_connections(pool, user_id)` | Connections where source **or** target is one of the user's chunks. Deliberately not space-scoped: Node is not either, and `search-graph.tsx:87` filters client-side against the chunk-id set. |
 | `list_chunk_tags_with_types(pool, user_id)` | `chunk_tag ⋈ tag ⟕ tag_type`, filtered on `tag.user_id`. The `tag_type` join is a LEFT join — untyped tags exist and must survive. |
-| `list_tag_types(pool, user_id)` | Node does `db.select().from(tagType)` — every column. Rust enumerates them explicitly in the DTO rather than inheriting a `SELECT *`. |
+| ~~`list_tag_types(pool, user_id)`~~ | **Not written.** `fubbik_db::repo::tag_type::list` (`tag_type.rs:74`) already returns exactly the columns Node's `db.select().from(tagType)` does; a second copy would drift. The repo module therefore has four functions, not five. |
 | `list_chunk_space_mappings(pool, user_id)` | `chunk_space ⋈ space`, filtered on `space.user_id`. Called only when `workspaceId` is set; Node returns `[]` otherwise and the service preserves that conditional. |
 
 ### `crates/fubbik-db/src/age.rs` (extended)
@@ -131,13 +131,23 @@ MATCH (r:behavior_rule)-[g:governs]->(c) RETURN r.id, c.id, g.kind
 
 Add:
 
-- `cypher_columns(pool, graph, query, columns) -> Result<Vec<HashMap<String, Value>>, sqlx::Error>` —
-  builds the `AS (col agtype, …)` record definition AGE requires, casts each column `::varchar`
-  (sqlx has no `agtype` decoder, so Postgres must stringify before the wire), and reuses
-  `parse_agtype` per cell. `cypher` becomes a thin wrapper over it, leaving the existing 830
-  lines and `tests/age.rs` untouched.
-- `delete_edges_from(pool, edge_type, label, id)` — the bulk sibling of the existing
-  `delete_edge`, needed to rebuild `governs` idempotently.
+> **Corrected during planning.** This helper **already exists**: `age.rs:104` defines a private
+> `cypher_multi(pool, graph, query, columns)`, already used internally at lines 505 and 727. The
+> work is publishing it, not writing it.
+>
+> Conversely, this section missed that `ensure_vertex` (`age.rs:277`), `create_edge` (`age.rs:302`)
+> and `delete_edge` (`age.rs:329`) are each hardcoded to the `chunk` label and the `connects` edge
+> type, so the behavior-rule primitives are genuinely new code. Net effort is about the same; the
+> shape is different. The plan reflects the corrected version.
+
+- `cypher_columns(pool, query, columns) -> Result<Vec<HashMap<String, Value>>, sqlx::Error>` — a
+  public wrapper over the existing private `cypher_multi`, fixed to the `"knowledge"` graph exactly
+  as `cypher` is. It builds the `AS (col agtype, …)` record definition AGE requires, casts each
+  column `::varchar` (sqlx has no `agtype` decoder, so Postgres must stringify before the wire),
+  and reuses `parse_agtype` per cell. Nothing about `cypher` or `tests/age.rs` changes.
+- `upsert_behavior_rule`, `delete_governs_edges`, `link_governs`, `list_behavior_rule_vertices`,
+  `list_governs_edges` — the `behavior_rule` / `governs` primitives, since the existing vertex and
+  edge helpers cannot express a label other than `chunk`.
 
 **A Node bug not to copy.** `packages/api/src/graph/service.ts:86-127` unquotes agtype values
 with `String(r.id).replace(/"/g, "")` — a raw regex over the stringified value. Any title
@@ -174,7 +184,7 @@ staleness spawn. Mirrors `staleness::service::spawn_background_scan`: a 40-secon
 
 The sync body ports `packages/api/src/matrices/graph-sync.ts`: for each matrix, for each rule,
 `ensure_vertex("behavior_rule", id)` then `SET` its title/layer/matrixId/category, then
-`delete_edges_from("governs", …)` before re-creating one `governs` edge per `behavior_cell_code`
+`delete_governs_edges(rule_id)` before re-creating one `governs` edge per `behavior_cell_code`
 link. Deleting before rebuilding is what makes a re-run idempotent.
 
 Note that `governs` edges `MATCH` `code_file` / `code_symbol` vertices without creating them
@@ -198,8 +208,8 @@ Both were weighed and chosen over strict parity:
 ## Scope
 
 - `crates/fubbik-db/src/repo/graph.rs` — five SQL reads.
-- `crates/fubbik-db/src/age.rs` — `cypher_columns`, `delete_edges_from`; `cypher` rewritten as a
-  wrapper.
+- `crates/fubbik-db/src/age.rs` — publish `cypher_columns`; add the five `behavior_rule` /
+  `governs` primitives.
 - `crates/fubbik-api/src/graph/` — DTO, service, `GET /api/graph`, OpenAPI registration.
 - `crates/fubbik-api/src/graph/sync.rs` + the `main.rs` spawn.
 - `packages/api/src/graph/routes.ts` — `codebaseId` → `spaceId` on all six routes, so the two
@@ -242,7 +252,8 @@ a reason recorded above, not by omission.
 
 | Risk | Mitigation |
 | --- | --- |
-| `cypher_columns` changes `cypher`, which 830 lines depend on | `cypher` keeps its exact signature and becomes a one-line wrapper; `tests/age.rs` runs unmodified as the regression check |
+| Publishing `cypher_columns` disturbs the 830 lines that depend on `cypher` | It does not: `cypher_multi` already exists and `cypher` is untouched. `tests/age.rs` runs unmodified as the regression check |
+| AGE is absent from CI (`pgvector/pgvector:pg18`), so every AGE test passes vacuously there | The plan's Task 0 verifies AGE locally and fails if missing; every report must state whether AGE was live |
 | Drizzle's `NOT IN` subquery translated wrong, silently dropping global chunks | The "chunk in no space" case is a named test, not an implied one |
 | Behavior sync divergence (all users, own interval) surprises later comparison | Recorded here and in the code; the differential harness will show a difference and it will be expected |
 | AGE not installed in some environment | Both AGE reads degrade to empty, matching Node; covered by the nonexistent-graph test |
