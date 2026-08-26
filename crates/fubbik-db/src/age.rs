@@ -786,6 +786,163 @@ pub async fn compute_impact_ripple_in_graph(
     Ok(ids)
 }
 
+// ---------------------------------------------------------------------------
+// Behavior rules
+// ---------------------------------------------------------------------------
+//
+// Ports `packages/api/src/matrices/graph-sync.ts`. Kept here rather than in
+// `fubbik-api` for the same reason `get_chunks_affected_by_requirement` is
+// here: hand-written Cypher belongs to the AGE layer, and the service above
+// should not be assembling query strings.
+
+/// A `behavior_rule` vertex as the graph stores it.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct BehaviorRuleVertex {
+    pub id: String,
+    pub title: String,
+    pub layer: String,
+    pub matrix_id: String,
+    pub category: String,
+}
+
+/// A `governs` edge from a rule to the code it controls.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GovernsEdge {
+    pub source_id: String,
+    pub target_id: String,
+    /// `file | symbol` — which vertex label the target is.
+    pub kind: String,
+}
+
+/// `MERGE` the vertex on `id`, then `SET` its properties.
+///
+/// Two statements, not one `MERGE ... SET`, mirroring Node
+/// (`graph-sync.ts:44-50`). AGE's `MERGE` support is the shakiest corner of
+/// its Cypher implementation, and the split form is the one already proven to
+/// work here by [`ensure_vertex`].
+pub async fn upsert_behavior_rule(pool: &PgPool, rule: &BehaviorRuleVertex) -> AppResult<()> {
+    cypher(
+        pool,
+        &format!(
+            "MERGE (:behavior_rule {{id: '{}'}})",
+            esc_cypher(&rule.id)
+        ),
+    )
+    .await?;
+    cypher(
+        pool,
+        &format!(
+            "MATCH (r:behavior_rule {{id: '{}'}}) \
+             SET r.title = '{}', r.layer = '{}', r.matrixId = '{}', r.category = '{}'",
+            esc_cypher(&rule.id),
+            esc_cypher(&rule.title),
+            esc_cypher(&rule.layer),
+            esc_cypher(&rule.matrix_id),
+            esc_cypher(&rule.category),
+        ),
+    )
+    .await?;
+    Ok(())
+}
+
+/// Removes every `governs` edge leaving this rule, so the caller can rebuild
+/// them. Deleting before relinking is what makes the sweep idempotent — the
+/// alternative, `MERGE`-ing each edge, leaves edges behind for cell-code links
+/// that were since deleted.
+pub async fn delete_governs_edges(pool: &PgPool, rule_id: &str) -> AppResult<()> {
+    cypher(
+        pool,
+        &format!(
+            "MATCH (r:behavior_rule {{id: '{}'}})-[e:governs]->() DELETE e",
+            esc_cypher(rule_id)
+        ),
+    )
+    .await?;
+    Ok(())
+}
+
+/// Links a rule to the code vertex whose id ends with `code_ref`.
+///
+/// `ENDS WITH` rather than `=` because `behavior_cell_code.ref` holds a
+/// repo-relative path while `code_file.id` is absolute (`graph-sync.ts:57`).
+/// A no-op when no such vertex exists, which is the normal state: `code-index`
+/// is not ported, so nothing writes `code_file` or `code_symbol` vertices. See
+/// the spec's "Nothing renders code or concept nodes".
+pub async fn link_governs(
+    pool: &PgPool,
+    rule_id: &str,
+    kind: &str,
+    code_ref: &str,
+) -> AppResult<()> {
+    let label = if kind == "symbol" {
+        "code_symbol"
+    } else {
+        "code_file"
+    };
+    cypher(
+        pool,
+        &format!(
+            "MATCH (r:behavior_rule {{id: '{}'}}), (c:{label}) \
+             WHERE c.id ENDS WITH '{}' \
+             MERGE (r)-[:governs {{kind: '{}'}}]->(c)",
+            esc_cypher(rule_id),
+            esc_cypher(code_ref),
+            esc_cypher(kind),
+        ),
+    )
+    .await?;
+    Ok(())
+}
+
+/// Every `behavior_rule` vertex. Degrades to empty when AGE is unavailable.
+pub async fn list_behavior_rule_vertices(pool: &PgPool) -> AppResult<Vec<BehaviorRuleVertex>> {
+    let rows = cypher_columns(
+        pool,
+        "MATCH (r:behavior_rule) \
+         RETURN r.id AS id, r.title AS title, r.layer AS layer, \
+                r.matrixId AS matrix_id, r.category AS category",
+        &["id", "title", "layer", "matrix_id", "category"],
+    )
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .filter_map(|row| {
+            Some(BehaviorRuleVertex {
+                id: row.get("id")?.as_str()?.to_string(),
+                title: row.get("title").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                layer: row.get("layer").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                matrix_id: row.get("matrix_id").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                category: row.get("category").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+            })
+        })
+        .collect())
+}
+
+/// Every `governs` edge. Degrades to empty when AGE is unavailable.
+pub async fn list_governs_edges(pool: &PgPool) -> AppResult<Vec<GovernsEdge>> {
+    let rows = cypher_columns(
+        pool,
+        "MATCH (r:behavior_rule)-[g:governs]->(c) \
+         RETURN r.id AS source_id, c.id AS target_id, g.kind AS kind",
+        &["source_id", "target_id", "kind"],
+    )
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .filter_map(|row| {
+            Some(GovernsEdge {
+                source_id: row.get("source_id")?.as_str()?.to_string(),
+                target_id: row.get("target_id")?.as_str()?.to_string(),
+                kind: row.get("kind").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+            })
+        })
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::parse_agtype;
