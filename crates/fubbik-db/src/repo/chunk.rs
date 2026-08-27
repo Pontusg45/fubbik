@@ -289,6 +289,86 @@ pub async fn update(
     Ok(c)
 }
 
+/// Sparse patch for the AI-written columns. `None` means "leave the column
+/// alone" — mirroring Node's conditional spread at
+/// `packages/db/src/repository/chunk.ts:379-383`, where an absent key is
+/// simply not part of the `SET`.
+#[derive(Debug, Default, Clone)]
+pub struct EnrichmentPatch {
+    pub summary: Option<String>,
+    pub aliases: Option<Vec<String>>,
+    pub not_about: Option<Vec<String>>,
+    pub embedding: Option<Vec<f32>>,
+}
+
+/// Writes the enrichment columns and returns the updated row.
+///
+/// `COALESCE` gives the "absent means unchanged" semantics without building
+/// the SQL dynamically, which would defeat `query_as!`'s compile-time
+/// checking. `embedding_updated_at` is stamped only when an embedding is
+/// actually supplied — Node ties the two together in the same conditional
+/// spread, so a summary-only patch must not move the timestamp.
+pub async fn update_chunk_enrichment(
+    pool: &PgPool,
+    chunk_id: &str,
+    params: EnrichmentPatch,
+) -> AppResult<Option<Chunk>> {
+    // pgvector has no text input parser reachable through sqlx's inferred
+    // parameter types, so the vector goes over the wire as text and is cast
+    // in SQL — the exact mirror of how `embedding::text` reads it back.
+    let embedding_text = params.embedding.as_ref().map(|v| {
+        let joined = v
+            .iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        format!("[{joined}]")
+    });
+
+    let aliases = params.aliases.map(Json) as Option<Json<Vec<String>>>;
+    let not_about = params.not_about.map(Json) as Option<Json<Vec<String>>>;
+
+    let row = sqlx::query_as!(
+        Chunk,
+        r#"
+        UPDATE chunk SET
+            summary    = COALESCE($2, summary),
+            aliases    = COALESCE($3, aliases),
+            not_about  = COALESCE($4, not_about),
+            embedding  = COALESCE($5::text::vector, embedding),
+            embedding_updated_at = CASE
+                WHEN $5::text IS NULL THEN embedding_updated_at
+                ELSE now()
+            END
+        WHERE id = $1
+        RETURNING id, title, content, type AS chunk_type, user_id, summary,
+                  aliases AS "aliases: Json<Vec<String>>",
+                  not_about AS "not_about: Json<Vec<String>>",
+                  scope AS "scope: Json<serde_json::Value>",
+                  rationale,
+                  alternatives AS "alternatives: Json<Vec<String>>",
+                  consequences,
+                  embedding::text AS "embedding: EmbeddingVec",
+                  embedding_updated_at AS "embedding_updated_at: UtcTimestamp",
+                  origin, review_status, reviewed_by,
+                  reviewed_at AS "reviewed_at: UtcTimestamp",
+                  created_at AS "created_at: UtcTimestamp",
+                  updated_at AS "updated_at: UtcTimestamp",
+                  archived_at AS "archived_at: UtcTimestamp",
+                  document_id, document_order, is_entry_point
+        "#,
+        chunk_id,
+        params.summary,
+        aliases as _,
+        not_about as _,
+        embedding_text,
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row)
+}
+
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<bool> {
     let res = sqlx::query!(
         "DELETE FROM chunk WHERE id = $1 AND user_id = $2",

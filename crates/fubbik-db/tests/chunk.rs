@@ -706,3 +706,115 @@ async fn filter_visible_ids_drops_another_users_chunk(pool: sqlx::PgPool) {
         "must drop bob's id even though it was passed in explicitly"
     );
 }
+
+/// The vector write path. `fubbik_db::embedding` decodes the column via
+/// `embedding::text` rather than adding the `pgvector` crate; writes use the
+/// mirror-image `$n::text::vector` cast. This asserts the round trip, which
+/// is the only thing that proves the two halves agree on the format.
+#[sqlx::test]
+async fn update_chunk_enrichment_round_trips_a_vector(pool: sqlx::PgPool) {
+    let user = seed_user(&pool).await;
+    let seeded = a_chunk(&pool, &user, "T").await;
+
+    let vector: Vec<f32> = (0..768).map(|i| i as f32 / 1000.0).collect();
+    let updated = chunk::update_chunk_enrichment(
+        &pool,
+        &seeded.id,
+        chunk::EnrichmentPatch {
+            summary: Some("a summary".into()),
+            aliases: Some(vec!["alpha".into(), "beta".into()]),
+            not_about: Some(vec!["gamma".into()]),
+            embedding: Some(vector.clone()),
+        },
+    )
+    .await
+    .unwrap()
+    .expect("chunk exists");
+
+    assert_eq!(updated.summary.as_deref(), Some("a summary"));
+    assert_eq!(
+        updated.aliases.0,
+        vec!["alpha".to_string(), "beta".to_string()]
+    );
+    assert_eq!(updated.not_about.0, vec!["gamma".to_string()]);
+    assert_eq!(updated.embedding.expect("written").0, vector);
+    assert!(
+        updated.embedding_updated_at.is_some(),
+        "writing an embedding must stamp embedding_updated_at"
+    );
+}
+
+/// Node spreads each field conditionally (`chunk.ts:379-383`), so `None`
+/// means "leave alone", not "set to null". A patch that carries only a
+/// summary must not blank an existing embedding, and must not move
+/// `embedding_updated_at` either — Node ties the timestamp to the embedding
+/// write in the same conditional spread.
+#[sqlx::test]
+async fn update_chunk_enrichment_leaves_absent_fields_untouched(pool: sqlx::PgPool) {
+    let user = seed_user(&pool).await;
+    let seeded = a_chunk(&pool, &user, "T").await;
+
+    let vector: Vec<f32> = vec![0.5; 768];
+    let with_embedding = chunk::update_chunk_enrichment(
+        &pool,
+        &seeded.id,
+        chunk::EnrichmentPatch {
+            summary: None,
+            aliases: None,
+            not_about: None,
+            embedding: Some(vector.clone()),
+        },
+    )
+    .await
+    .unwrap()
+    .expect("chunk exists");
+    let stamped_at = with_embedding
+        .embedding_updated_at
+        .expect("writing an embedding must stamp embedding_updated_at");
+
+    let after = chunk::update_chunk_enrichment(
+        &pool,
+        &seeded.id,
+        chunk::EnrichmentPatch {
+            summary: Some("only the summary".into()),
+            aliases: None,
+            not_about: None,
+            embedding: None,
+        },
+    )
+    .await
+    .unwrap()
+    .expect("chunk exists");
+
+    assert_eq!(after.summary.as_deref(), Some("only the summary"));
+    assert_eq!(
+        after
+            .embedding
+            .expect("must survive a summary-only patch")
+            .0,
+        vector,
+        "a None embedding means 'leave alone', not 'set to null'"
+    );
+    assert_eq!(
+        after.embedding_updated_at.expect("still stamped"),
+        stamped_at,
+        "a summary-only patch must not move embedding_updated_at"
+    );
+}
+
+#[sqlx::test]
+async fn update_chunk_enrichment_returns_none_for_a_missing_chunk(pool: sqlx::PgPool) {
+    let got = chunk::update_chunk_enrichment(
+        &pool,
+        "does-not-exist",
+        chunk::EnrichmentPatch {
+            summary: Some("x".into()),
+            aliases: None,
+            not_about: None,
+            embedding: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert!(got.is_none());
+}
