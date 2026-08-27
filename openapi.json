@@ -528,6 +528,19 @@
         }
       }
     },
+    "/api/chunks/enrich-all": {
+      "post": {
+        "tags": [
+          "crate::enrich::routes"
+        ],
+        "operationId": "enrich_all",
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks/merge": {
       "post": {
         "tags": [
@@ -1161,6 +1174,35 @@
             }
           },
           "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/chunks/{id}/enrich": {
+      "post": {
+        "tags": [
+          "crate::enrich::routes"
+        ],
+        "operationId": "enrich_chunk",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "429": {
             "description": ""
           }
         }
