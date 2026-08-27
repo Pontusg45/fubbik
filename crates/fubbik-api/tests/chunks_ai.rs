@@ -281,3 +281,79 @@ async fn semantic_search_502s_when_ollama_is_unreachable(pool: sqlx::PgPool) {
     .await;
     assert_eq!(res.status(), StatusCode::BAD_GATEWAY);
 }
+
+/// A non-numeric `limit` falls back to the default of 5, not an error and
+/// not "no cap" — pinned by seeding well more than 5 candidates and
+/// asserting the exact count, so this would fail if the fallback silently
+/// became the 20-cap or "all rows" instead of 5.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn semantic_search_with_non_numeric_limit_falls_back_to_default_of_five(pool: sqlx::PgPool) {
+    let server = ollama_mock(one_hot(0)).await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+    let user_id = user_id_by_email(&pool, "a@b.test").await;
+
+    for i in 0..25 {
+        seed_chunk_with_vector(&pool, &user_id, &format!("c{i}"), &format!("C{i}"), i).await;
+    }
+
+    let res = get(
+        app.clone(),
+        &cookie,
+        "/api/chunks/search/semantic?q=whatever&limit=abc",
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = json_body(res).await;
+    assert_eq!(
+        body.as_array().unwrap().len(),
+        5,
+        "a non-numeric limit must fall back to the default of 5, not 0, not 20, not all 25"
+    );
+}
+
+/// `exclude=<term>` filters on `not_about`. The excluded chunk is seeded as
+/// the *closer* match (hot index 0, matching the query vector) so that if
+/// the filter were deleted, it would come back first — a test that only
+/// checked the surviving chunk was present would still pass with the
+/// filter gone.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn semantic_search_excludes_terms_in_not_about(pool: sqlx::PgPool) {
+    let server = ollama_mock(one_hot(0)).await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+    let user_id = user_id_by_email(&pool, "a@b.test").await;
+
+    seed_chunk_with_vector(&pool, &user_id, "near", "Near", 0).await;
+    seed_chunk_with_vector(&pool, &user_id, "far", "Far", 5).await;
+    sqlx::query("UPDATE chunk SET not_about = '[\"billing\"]'::jsonb WHERE id = 'near'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let res = get(
+        app.clone(),
+        &cookie,
+        "/api/chunks/search/semantic?q=whatever&exclude=billing",
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = json_body(res).await;
+    let ids: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        ids,
+        vec!["far"],
+        "the closer 'near' chunk must be filtered out by exclude=billing, leaving only 'far'"
+    );
+}

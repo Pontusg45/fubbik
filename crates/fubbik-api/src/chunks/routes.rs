@@ -130,6 +130,13 @@ pub async fn search_semantic(
             .into_response());
     }
 
+    // A non-numeric `limit` (e.g. `?limit=abc`) falls back to
+    // `ai::semantic_search`'s default of 5. Node's equivalent,
+    // `Number(query.limit ?? 5)`, would instead produce `NaN`, and `NaN`
+    // reaching Drizzle's `.limit()` most likely 500s. That is not a
+    // contract worth reproducing: a 500 on malformed query input is a bug,
+    // not a designed behaviour, and no real caller sends a non-numeric
+    // `limit`. The forgiving fallback here is deliberate.
     let limit = query.limit.as_deref().and_then(|s| s.parse::<i64>().ok());
     let hits = ai::semantic_search(
         &state.pool,

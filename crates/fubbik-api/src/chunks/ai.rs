@@ -19,6 +19,13 @@ fn clamp_limit(limit: Option<i64>) -> i64 {
     limit.unwrap_or(5).min(20)
 }
 
+/// `"a, b"` -> `["a", "b"]`. Node's `query.exclude.split(",").map(s =>
+/// s.trim())` (`chunk-search.ts:61`) — each comma-separated term is
+/// trimmed, and a single term with no comma is a one-element vec.
+fn parse_exclude(raw: &str) -> Vec<String> {
+    raw.split(',').map(|s| s.trim().to_string()).collect()
+}
+
 /// `"a:1,b:2"` -> `{"a":"1","b":"2"}`. Node splits each comma-separated
 /// entry on `:` and keeps only pairs of length exactly 2
 /// (`chunk-search.ts:62-69`), so `"a:b:c"` (3 parts) and `"bare"` (1 part)
@@ -61,9 +68,7 @@ pub async fn semantic_search(
     scope: Option<&str>,
 ) -> AppResult<Vec<SemanticHit>> {
     let embedding = ai.embed_query(q).await.map_err(AppError::from)?;
-    let exclude: Vec<String> = exclude
-        .map(|raw| raw.split(',').map(|s| s.trim().to_string()).collect())
-        .unwrap_or_default();
+    let exclude: Vec<String> = exclude.map(parse_exclude).unwrap_or_default();
     let scope = scope.and_then(parse_scope);
 
     semantic::semantic_search(
@@ -79,7 +84,7 @@ pub async fn semantic_search(
 
 #[cfg(test)]
 mod tests {
-    use super::{clamp_limit, parse_scope};
+    use super::{clamp_limit, parse_exclude, parse_scope};
 
     #[test]
     fn clamp_limit_defaults_to_five() {
@@ -94,6 +99,19 @@ mod tests {
     #[test]
     fn clamp_limit_passes_through_values_under_the_cap() {
         assert_eq!(clamp_limit(Some(3)), 3);
+    }
+
+    #[test]
+    fn parse_exclude_splits_and_trims_whitespace() {
+        assert_eq!(
+            parse_exclude("a, b"),
+            vec!["a".to_string(), "b".to_string()]
+        );
+    }
+
+    #[test]
+    fn parse_exclude_single_term_with_no_comma() {
+        assert_eq!(parse_exclude("billing"), vec!["billing".to_string()]);
     }
 
     #[test]
