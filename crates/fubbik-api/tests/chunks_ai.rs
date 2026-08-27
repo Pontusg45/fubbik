@@ -560,12 +560,54 @@ async fn check_similar_caps_at_three(pool: sqlx::PgPool) {
     );
 }
 
+/// `excludeId` (typically the chunk being edited) must be omitted from its
+/// own similarity results even though it would otherwise match at 1.0.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn check_similar_omits_the_excluded_id(pool: sqlx::PgPool) {
+    let server = ollama_mock_available(one_hot(0)).await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+    let user_id = user_id_by_email(&pool, "a@b.test").await;
+
+    seed_chunk_with_vector(&pool, &user_id, "self", "Self", 0).await;
+    seed_chunk_with_vector(&pool, &user_id, "other", "Other", 0).await;
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        "/api/chunks/check-similar",
+        serde_json::json!({ "title": "New chunk", "content": "some content", "excludeId": "self" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = json_body(res).await;
+    let ids: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        ids,
+        vec!["other"],
+        "excludeId=self must drop 'self' from the results even though it matches at 1.0"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/chunks/{id}/neighbors
 // ---------------------------------------------------------------------------
 
 /// No Ollama call at all on this path: the source chunk's stored embedding
-/// is used, not a freshly generated one. The mock asserts zero requests.
+/// is used, not a freshly generated one. `neighbors()` never references the
+/// AI client on either the missing-embedding branch or the normal branch,
+/// so the zero-requests assertion below holds either way and doesn't by
+/// itself prove the early return — the `note` assertion above it is what
+/// does that. It's kept anyway as a forward-looking guard: if a future
+/// refactor adds an Ollama call to this path, this test should catch it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn neighbors_notes_a_missing_embedding_without_calling_ollama(pool: sqlx::PgPool) {
     let server = ollama_mock(one_hot(0)).await;
