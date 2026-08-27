@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT detail FROM chunk_staleness WHERE chunk_id = $1 AND reason = 'upstream_impact'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "detail",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "e8b8cabe65dadf03d40b9a51509403303440d179d8279504cf8afc6e9a19dacb"
+}

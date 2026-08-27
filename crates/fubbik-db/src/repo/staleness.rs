@@ -102,6 +102,36 @@ pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult
     Ok(rows)
 }
 
+/// Whether `chunk_id` currently carries any undismissed, unsuppressed
+/// staleness flag. Backs `context::service::enrich_chunks`'s `is_stale`
+/// flag — Node's `enrichChunks` fetches the full row set via
+/// `getStaleFlagsForChunk(id)` (`packages/db/src/repository/staleness.ts:
+/// 61-74`) and only ever reads `staleFlags.length > 0`
+/// (`packages/api/src/context/resolvers.ts:64`), so an existence check
+/// reproduces the observable behaviour without materialising rows nothing
+/// downstream reads — the same "just the boolean" shape
+/// `chunk_meta::file_ref_path_exists` uses for an analogous Node call site.
+///
+/// Scoped through the chunk's owner in SQL — the same "through the parent"
+/// hardening as `tag::tags_for_chunk` — even though every caller today
+/// only reaches this after already loading the chunk under `user_id`
+/// itself (`chunk::find_by_id`), so a foreign `chunk_id` is defence in
+/// depth here, not the primary rejection path.
+pub async fn chunk_is_stale(pool: &PgPool, user_id: &str, chunk_id: &str) -> AppResult<bool> {
+    let hit = sqlx::query_scalar!(
+        r#"SELECT 1 AS "exists!" FROM chunk_staleness cs
+           WHERE cs.chunk_id = $1
+             AND cs.dismissed_at IS NULL AND cs.suppress_pair IS NULL
+             AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2)
+           LIMIT 1"#,
+        chunk_id,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(hit.is_some())
+}
+
 /// Counts a user's undismissed, unsuppressed staleness flags. Same filters
 /// as [`list`] minus `reason`/`limit` — Node's `getStaleCount` only takes
 /// `spaceId` (`packages/api/src/staleness/routes.ts`'s `/chunks/stale/count`

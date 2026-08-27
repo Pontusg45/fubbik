@@ -243,3 +243,69 @@ pub async fn file_ref_path_exists(pool: &PgPool, user_id: &str, path: &str) -> A
     .await?;
     Ok(hit.is_some())
 }
+
+/// The ids of `user_id`'s chunks that carry a `chunk_file_ref` with exactly
+/// this `path`. Backs `context::resolvers::resolve_for_files`'s "file-ref"
+/// strategy — the id-only counterpart to Node's full
+/// `lookupChunksByFilePath(path, userId, spaceId)`
+/// (`packages/db/src/repository/file-ref.ts:45-69`), which additionally
+/// projects title/type/ref columns nothing in `resolveForFiles` reads (it
+/// only ever does `results.set(match.chunkId, ...)` after a *separate*
+/// `getChunkById` refetch — `packages/api/src/context-for-file/service.ts:
+/// 82-92` — so the extra columns Node selects here are never the ones that
+/// reach the caller).
+///
+/// `spaceId` narrowing matches Node's own branch exactly: a chunk
+/// explicitly in that space, OR a chunk with no space assignment at all
+/// (global chunks pass through every space filter) — the same `chunk_space`
+/// predicate `staleness::push_space_condition` and `chunk::push_filters`
+/// use.
+pub async fn lookup_chunk_ids_by_path(
+    pool: &PgPool,
+    path: &str,
+    user_id: &str,
+    space_id: Option<&str>,
+) -> AppResult<Vec<String>> {
+    let mut qb = sqlx::QueryBuilder::new(
+        "SELECT DISTINCT c.id FROM chunk_file_ref cfr \
+         JOIN chunk c ON c.id = cfr.chunk_id \
+         WHERE cfr.path = ",
+    );
+    qb.push_bind(path);
+    qb.push(" AND c.user_id = ");
+    qb.push_bind(user_id);
+    if let Some(space_id) = space_id {
+        qb.push(" AND (c.id IN (SELECT chunk_id FROM chunk_space WHERE space_id = ");
+        qb.push_bind(space_id);
+        qb.push(") OR c.id NOT IN (SELECT chunk_id FROM chunk_space))");
+    }
+    let rows: Vec<String> = qb.build_query_scalar().fetch_all(pool).await?;
+    Ok(rows)
+}
+
+/// Every `chunk_applies_to` row touching any of `chunk_ids`, unscoped by
+/// `user_id` — matching Node's `getAppliesToForChunks(chunkIds)`
+/// (`packages/db/src/repository/applies-to.ts:19-21`), a bare
+/// `inArray(chunkAppliesTo.chunkId, chunkIds)` with no ownership join at
+/// all. Safe on the same trust boundary `connection::count_for_chunks`
+/// documents: the caller (`context::resolvers::resolve_for_files`) has
+/// already produced `chunk_ids` from its own `user_id`-scoped
+/// `chunk::list` call, so nothing here can leak a foreign chunk's glob
+/// patterns — it can only be asked about ids the caller already proved it
+/// owns.
+pub async fn get_applies_to_for_chunks(
+    pool: &PgPool,
+    chunk_ids: &[String],
+) -> AppResult<Vec<AppliesTo>> {
+    if chunk_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let rows = sqlx::query_as!(
+        AppliesTo,
+        "SELECT id, chunk_id, pattern, note FROM chunk_applies_to WHERE chunk_id = ANY($1)",
+        chunk_ids
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}

@@ -4,6 +4,7 @@ pub mod chunks;
 pub mod collections;
 pub mod comments;
 pub mod connections;
+pub mod context;
 pub mod coverage;
 pub mod density;
 pub mod documents;
