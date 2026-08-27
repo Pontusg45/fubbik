@@ -114,6 +114,39 @@ pub async fn update_chunk(
                 tracing::error!("[enrich] failed to re-enrich chunk {chunk_id}: {err}");
             }
         });
+
+        // Second, independent fire-and-forget: Node fires this alongside
+        // `enrichChunk` (`chunk-mutations.ts:213-221`), not chained to it —
+        // one failing must not stop the other from running, so this is its
+        // own `tokio::spawn`, not folded into the one above.
+        //
+        // Diverges from Node on which title is passed. Node passes
+        // `body.title ?? "Unknown"` — the *request body's* title, which is
+        // `undefined` (and so literally `"Unknown"`) on a content-only
+        // edit, because Node reaches for the PATCH payload instead of the
+        // row it just wrote. That string is user-visible: it lands verbatim
+        // in `chunk_staleness.detail` as `Impacted by change to "Unknown"`
+        // (`staleness::flag_impact_ripple`). This port uses `updated.title`
+        // — the chunk's actual title after the update — instead. Do not
+        // "fix" this back to `body.title` to match Node; that would be
+        // reintroducing the bug, not restoring parity.
+        let pool = state.pool.clone();
+        let chunk_id = id.clone();
+        let user_id = user.id.clone();
+        let title = updated.title.clone();
+        tokio::spawn(async move {
+            // Node's equivalent call is `.catch(() => {})` — fully silent.
+            // Logged here instead, same as this branch's other
+            // fire-and-forget error paths (e.g. `enrich_all`'s per-item
+            // errors): the outcome for the caller is unchanged (still
+            // detached, still non-fatal to the PATCH), only observability
+            // improves.
+            if let Err(err) =
+                crate::staleness::service::scan_impact(&pool, &user_id, &chunk_id, &title).await
+            {
+                tracing::warn!("[staleness] failed to scan impact for chunk {chunk_id}: {err}");
+            }
+        });
     }
 
     Ok(Json(updated))

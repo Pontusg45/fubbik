@@ -645,3 +645,168 @@ async fn scan_impact_rerun_does_not_accumulate_flags_for_cross_user_targets(pool
         "repeated runs must not accumulate flags on a cross-user target"
     );
 }
+
+// ── PATCH /api/chunks/{id} triggers a detached impact scan ─────────────
+
+async fn patch(
+    app: axum::Router,
+    cookie: &str,
+    path: &str,
+    body: serde_json::Value,
+) -> axum::response::Response {
+    app.oneshot(
+        Request::patch(path)
+            .header("cookie", cookie)
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
+/// The scan is detached (`tokio::spawn` in `chunks::routes::update_chunk`),
+/// so this polls with a deadline rather than sleeping — same shape as
+/// `chunks_ai.rs`'s `wait_for_summary` for the sibling re-enrich spawn.
+async fn wait_for_upstream_impact_flag(pool: &sqlx::PgPool, downstream_id: &str) -> Option<String> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while std::time::Instant::now() < deadline {
+        let detail = sqlx::query_scalar!(
+            "SELECT detail FROM chunk_staleness WHERE chunk_id = $1 AND reason = 'upstream_impact'",
+            downstream_id
+        )
+        .fetch_optional(pool)
+        .await
+        .unwrap();
+        if let Some(detail) = detail {
+            return detail;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+    }
+    None
+}
+
+/// End-to-end proof that `PATCH /api/chunks/{id}` fires the impact scan
+/// automatically, not just that `scan_impact`/the dedicated `scan-impact`
+/// route work in isolation (already covered above). This is the actual
+/// parity gap this port closes: Node fires `flagBidirectionalImpact`
+/// fire-and-forget from the same edit gate as `enrichChunk`
+/// (`chunk-mutations.ts:213-221`); nothing exercised that trigger point
+/// before.
+///
+/// AGE-dependent (`age::compute_impact_ripple` walks the graph) — skipped
+/// when this database has no AGE extension.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn patching_a_chunks_title_triggers_a_detached_impact_scan(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable in this database — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-patch-impact@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-patch-impact@b.test").await;
+
+    let source = seed_chunk(&pool, &user_id, "Source").await;
+    let downstream = seed_chunk(&pool, &user_id, "Downstream").await;
+    fubbik_db::age::ensure_vertex(&pool, &source).await.unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &downstream)
+        .await
+        .unwrap();
+    fubbik_db::age::create_edge(&pool, "depends_on", &source, &downstream)
+        .await
+        .unwrap();
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{source}"),
+        serde_json::json!({ "title": "Source renamed" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let detail = wait_for_upstream_impact_flag(&pool, &downstream).await;
+    assert_eq!(
+        detail.as_deref(),
+        Some("Impacted by change to \"Source renamed\""),
+        "the PATCH must trigger a detached impact scan that flags the downstream chunk, \
+         using the UPDATED row's title (not a request-body fallback)"
+    );
+}
+
+/// Ruling A's regression guard, isolated from the graph plumbing above:
+/// a content-only edit (no `title` in the request body) must still use the
+/// chunk's real title in the flag detail, not Node's literal `"Unknown"`
+/// fallback (`body.title ?? "Unknown"`). Same AGE gate as above — the flag
+/// write still goes through `age::compute_impact_ripple`.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn content_only_patch_uses_the_chunks_real_title_not_unknown(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable in this database — skipping");
+        return;
+    }
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-patch-content@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-patch-content@b.test").await;
+
+    let source = seed_chunk(&pool, &user_id, "Source Title").await;
+    let downstream = seed_chunk(&pool, &user_id, "Downstream").await;
+    fubbik_db::age::ensure_vertex(&pool, &source).await.unwrap();
+    fubbik_db::age::ensure_vertex(&pool, &downstream)
+        .await
+        .unwrap();
+    fubbik_db::age::create_edge(&pool, "depends_on", &source, &downstream)
+        .await
+        .unwrap();
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{source}"),
+        serde_json::json!({ "content": "New content, title untouched" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let detail = wait_for_upstream_impact_flag(&pool, &downstream).await;
+    assert_eq!(
+        detail.as_deref(),
+        Some("Impacted by change to \"Source Title\""),
+        "a content-only PATCH carries no body.title, but the flag must still name \
+         the chunk's real (unchanged) title, not Node's \"Unknown\" fallback"
+    );
+}
+
+/// Does not require AGE: proves the PATCH response itself is unaffected by
+/// the second spawn regardless of whether the graph extension is present.
+/// `age::compute_impact_ripple_in_graph` swallows a Cypher failure against
+/// a nonexistent/unavailable graph into `Ok(vec![])`
+/// (`fubbik-db/src/age.rs`), so `scan_impact` resolves to `Ok(0)` rather
+/// than an `Err` here — this pins that the PATCH still answers 200 promptly
+/// on a database with no AGE extension at all, which is the actual shape
+/// of this test database.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn patch_returns_200_promptly_even_when_the_impact_scan_has_nothing_to_walk(
+    pool: sqlx::PgPool,
+) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-patch-noage@b.test", "Alice").await;
+    let user_id = user_id_for_email(&pool, "alice-patch-noage@b.test").await;
+    let source = seed_chunk(&pool, &user_id, "Source").await;
+
+    let started = std::time::Instant::now();
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{source}"),
+        serde_json::json!({ "title": "Renamed" }),
+    )
+    .await;
+    let elapsed = started.elapsed();
+
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(
+        elapsed < std::time::Duration::from_secs(1),
+        "PATCH must not block on the detached impact scan — it took {elapsed:?}"
+    );
+}
