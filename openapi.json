@@ -528,6 +528,40 @@
         }
       }
     },
+    "/api/chunks/check-similar": {
+      "post": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "summary": "Probes Ollama and degrades to `[]` when it is down — see\n`chunks::ai::check_similar`'s doc comment for why this is the opposite\nof `search_semantic`.",
+        "operationId": "check_similar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckSimilarBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SimilarChunk"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chunks/enrich-all": {
       "post": {
         "tags": [
@@ -1387,6 +1421,51 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/chunks/{id}/neighbors": {
+      "get": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "summary": "`k` defaults to 10 and is clamped to `1..=50`, matching Node's\n`Math.min(Math.max(Number(ctx.query.k ?? 10), 1), 50)`\n(`chunks/routes.ts:303`). Never calls Ollama — see\n`chunks::ai::neighbors`'s doc comment.",
+        "operationId": "chunk_neighbors",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "k",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NeighborsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
           }
         }
       }
@@ -9831,6 +9910,28 @@
           "verified"
         ]
       },
+      "CheckSimilarBody": {
+        "type": "object",
+        "description": "Body of `POST /api/chunks/check-similar` (`chunks/routes.ts:234-239`).",
+        "required": [
+          "title",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "excludeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "Chunk": {
         "type": "object",
         "description": "`camelCase` serialisation is mandatory, not cosmetic: the 106 web files\nthat consume this API were written against Drizzle's camelCase output.\nEmitting snake_case would silently break every one of them.",
@@ -13857,6 +13958,71 @@
           }
         }
       },
+      "NeighborItem": {
+        "type": "object",
+        "description": "[`fubbik_db::repo::semantic::NeighborRow`] plus the hybrid-scoring\nfields Node's `findRelatedChunksHybrid` adds\n(`packages/db/src/repository/semantic.ts:106-115`).",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "distance",
+          "embeddingSimilarity",
+          "graphConnected",
+          "combinedScore"
+        ],
+        "properties": {
+          "combinedScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "distance": {
+            "type": "number",
+            "format": "double"
+          },
+          "embeddingSimilarity": {
+            "type": "number",
+            "format": "double"
+          },
+          "graphConnected": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "NeighborsResponse": {
+        "type": "object",
+        "required": [
+          "neighbors"
+        ],
+        "properties": {
+          "neighbors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NeighborItem"
+            }
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "Notification": {
         "type": "object",
         "description": "`notification.type` is `text NOT NULL` with no check constraint and no\nenum anywhere in the Node source (`packages/db/src/schema/notification.ts`\njust leaves a comment listing example values). The Phase 2b plan's\ngeneral instruction to model constrained value sets as enum-typed DTO\nfields (like `connections::dto::Origin`) does NOT apply here — the\ncaptured contract found no constraint to enforce, so this stays a plain\n`String` end to end. Adding validation Node doesn't have would be a\nsilent, undocumented divergence.\n\n`camelCase` serialisation matches every other wire type in this crate —\nsee the note on `chunk::Chunk` for why that's mandatory, not cosmetic.\n`notification_type` is renamed to the reserved SQL/JSON word `type` for\nthe same reason `chunk::Chunk::chunk_type` is.",
@@ -15794,6 +15960,30 @@
             "type": "string"
           },
           "value": {}
+        }
+      },
+      "SimilarChunk": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "similarity"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "similarity": {
+            "type": "number",
+            "format": "double"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
         }
       },
       "Sort": {

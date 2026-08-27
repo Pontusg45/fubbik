@@ -10,8 +10,8 @@ use fubbik_db::repo::semantic::SemanticHit;
 
 use super::ai;
 use super::dto::{
-    ChunkDetail, ChunkListResponse, CreateChunkBody, ListChunksQuery, SemanticSearchQuery,
-    UpdateChunkBody,
+    CheckSimilarBody, ChunkDetail, ChunkListResponse, CreateChunkBody, ListChunksQuery,
+    NeighborsQuery, SemanticSearchQuery, UpdateChunkBody,
 };
 use super::service;
 use crate::AppState;
@@ -149,6 +149,51 @@ pub async fn search_semantic(
     )
     .await?;
     Ok(Json(hits).into_response())
+}
+
+/// Probes Ollama and degrades to `[]` when it is down — see
+/// `chunks::ai::check_similar`'s doc comment for why this is the opposite
+/// of `search_semantic`.
+#[utoipa::path(post, path = "/api/chunks/check-similar", request_body = CheckSimilarBody,
+    responses((status = 200, body = Vec<fubbik_db::repo::similarity::SimilarChunk>)))]
+pub async fn check_similar(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    ReqJson(body): ReqJson<CheckSimilarBody>,
+) -> ApiResult<Json<Vec<fubbik_db::repo::similarity::SimilarChunk>>> {
+    Ok(Json(
+        ai::check_similar(
+            &state.pool,
+            &state.ai,
+            &user.id,
+            &body.title,
+            &body.content,
+            body.exclude_id.as_deref(),
+        )
+        .await?,
+    ))
+}
+
+/// `k` defaults to 10 and is clamped to `1..=50`, matching Node's
+/// `Math.min(Math.max(Number(ctx.query.k ?? 10), 1), 50)`
+/// (`chunks/routes.ts:303`). Never calls Ollama — see
+/// `chunks::ai::neighbors`'s doc comment.
+#[utoipa::path(get, path = "/api/chunks/{id}/neighbors",
+    params(("id" = String, Path,), NeighborsQuery),
+    responses((status = 200, body = super::ai::NeighborsResponse), (status = 404)))]
+pub async fn chunk_neighbors(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    Query(query): Query<NeighborsQuery>,
+) -> ApiResult<Json<super::ai::NeighborsResponse>> {
+    let k = query
+        .k
+        .as_deref()
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(10)
+        .clamp(1, 50);
+    Ok(Json(ai::neighbors(&state.pool, &user.id, &id, k).await?))
 }
 
 #[utoipa::path(get, path = "/api/chunks/{id}/history", params(("id" = String, Path,)),
@@ -402,6 +447,7 @@ pub fn router() -> Router<AppState> {
         // regardless, but `archived`, `bulk` and `merge` are one segment
         // deep and the ordering is kept explicit.
         .route("/api/chunks/search/semantic", get(search_semantic))
+        .route("/api/chunks/check-similar", post(check_similar))
         .route("/api/chunks/archived", get(list_archived))
         .route("/api/chunks/bulk-update", post(bulk_update))
         .route("/api/chunks/bulk", axum::routing::delete(bulk_delete))
@@ -413,6 +459,7 @@ pub fn router() -> Router<AppState> {
             get(get_chunk).patch(update_chunk).delete(delete_chunk),
         )
         .route("/api/chunks/{id}/history", get(chunk_history))
+        .route("/api/chunks/{id}/neighbors", get(chunk_neighbors))
         .route(
             "/api/chunks/{id}/applies-to",
             get(get_applies_to).put(put_applies_to),

@@ -60,6 +60,23 @@ async fn get(app: axum::Router, cookie: &str, path: &str) -> axum::response::Res
     .unwrap()
 }
 
+async fn post(
+    app: axum::Router,
+    cookie: &str,
+    path: &str,
+    body: serde_json::Value,
+) -> axum::response::Response {
+    app.oneshot(
+        Request::post(path)
+            .header("cookie", cookie)
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
 /// A 768-dimension vector that is all zeros except one hot index, matching
 /// the pattern in `crates/fubbik-db/tests/semantic.rs`. Cosine distance
 /// between two such vectors is exactly 0 when the indices match and 1 when
@@ -108,6 +125,54 @@ async fn seed_chunk_with_vector(
     .unwrap();
 }
 
+/// A chunk with no embedding at all — the `embedding` column is left NULL,
+/// the state a never-enriched chunk is in.
+async fn seed_chunk_no_embedding(pool: &sqlx::PgPool, user_id: &str, id: &str, title: &str) {
+    sqlx::query(
+        "INSERT INTO chunk (id, title, content, type, user_id)
+         VALUES ($1, $2, 'content', 'note', $3)",
+    )
+    .bind(id)
+    .bind(title)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+/// A 768-dimension pgvector literal with two non-zero components, letting
+/// tests place a chunk at an arbitrary angle from a `one_hot` source vector
+/// instead of only "identical" (distance 0) or "orthogonal" (distance 1).
+/// Cosine distance ignores magnitude, so the weights only need to encode
+/// direction.
+fn weighted_pgvector_text(weights: &[(usize, f32)]) -> String {
+    let mut parts = vec!["0".to_string(); 768];
+    for (index, weight) in weights {
+        parts[*index] = weight.to_string();
+    }
+    format!("[{}]", parts.join(","))
+}
+
+async fn seed_chunk_with_weighted_vector(
+    pool: &sqlx::PgPool,
+    user_id: &str,
+    id: &str,
+    title: &str,
+    weights: &[(usize, f32)],
+) {
+    sqlx::query(
+        "INSERT INTO chunk (id, title, content, type, user_id, embedding)
+         VALUES ($1, $2, 'content', 'note', $3, $4::text::vector)",
+    )
+    .bind(id)
+    .bind(title)
+    .bind(user_id)
+    .bind(weighted_pgvector_text(weights))
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
 /// Mounts a mock `/api/embeddings` that answers every request with the
 /// given one-hot vector, regardless of the prompt. No `/api/tags` mock is
 /// registered — this path has no availability probe (see
@@ -121,6 +186,20 @@ async fn ollama_mock(vector: Vec<f32>) -> wiremock::MockServer {
             wiremock::ResponseTemplate::new(200)
                 .set_body_json(serde_json::json!({ "embedding": vector })),
         )
+        .mount(&server)
+        .await;
+    server
+}
+
+/// Same as [`ollama_mock`], plus a `/api/tags` mock answering 200 — needed
+/// on `check-similar`'s path, which probes availability
+/// (`chunks::ai::check_similar`) before embedding, unlike
+/// `semantic_search`.
+async fn ollama_mock_available(vector: Vec<f32>) -> wiremock::MockServer {
+    let server = ollama_mock(vector).await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/tags"))
+        .respond_with(wiremock::ResponseTemplate::new(200))
         .mount(&server)
         .await;
     server
@@ -355,5 +434,306 @@ async fn semantic_search_excludes_terms_in_not_about(pool: sqlx::PgPool) {
         ids,
         vec!["far"],
         "the closer 'near' chunk must be filtered out by exclude=billing, leaving only 'far'"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/chunks/check-similar
+// ---------------------------------------------------------------------------
+
+/// The call site passes threshold 0.75, not the repository's own default of
+/// 0.7 (`similarity.ts:13-15`). An identical-vector chunk (similarity 1.0)
+/// clears it; an orthogonal one (similarity 0.0) does not.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn check_similar_returns_only_matches_at_or_above_the_threshold(pool: sqlx::PgPool) {
+    let server = ollama_mock_available(one_hot(0)).await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+    let user_id = user_id_by_email(&pool, "a@b.test").await;
+
+    seed_chunk_with_vector(&pool, &user_id, "identical", "Identical", 0).await;
+    seed_chunk_with_vector(&pool, &user_id, "orthogonal", "Orthogonal", 5).await;
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        "/api/chunks/check-similar",
+        serde_json::json!({ "title": "New chunk", "content": "some content" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = json_body(res).await;
+    let ids: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        ids,
+        vec!["identical"],
+        "only the chunk at/above the 0.75 threshold should come back"
+    );
+}
+
+/// Node returns `[]`, not a 502, when Ollama is down here — `checkSimilar`
+/// probes availability first (`similarity.ts:9`). This is the opposite of
+/// semantic search, and the asymmetry is Node's.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn check_similar_returns_empty_when_ollama_is_unreachable(pool: sqlx::PgPool) {
+    // Default client in `state()` points at port 1 — nothing listens there,
+    // so `is_available` returns false without a real network call ever
+    // reaching an embeddings endpoint.
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+    let user_id = user_id_by_email(&pool, "a@b.test").await;
+
+    seed_chunk_with_vector(&pool, &user_id, "identical", "Identical", 0).await;
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        "/api/chunks/check-similar",
+        serde_json::json!({ "title": "New chunk", "content": "some content" }),
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::OK,
+        "an unreachable Ollama must degrade to 200 + [], not 502"
+    );
+
+    let body = json_body(res).await;
+    assert_eq!(body.as_array().unwrap().len(), 0);
+}
+
+/// The call site passes limit 3, not the repository's own default of 5
+/// (`similarity.ts:13-15`). Five identical-vector chunks are seeded; only
+/// three must come back.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn check_similar_caps_at_three(pool: sqlx::PgPool) {
+    let server = ollama_mock_available(one_hot(0)).await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+    let user_id = user_id_by_email(&pool, "a@b.test").await;
+
+    for i in 0..5 {
+        seed_chunk_with_vector(&pool, &user_id, &format!("c{i}"), &format!("C{i}"), 0).await;
+    }
+
+    let res = post(
+        app.clone(),
+        &cookie,
+        "/api/chunks/check-similar",
+        serde_json::json!({ "title": "New chunk", "content": "some content" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = json_body(res).await;
+    assert_eq!(
+        body.as_array().unwrap().len(),
+        3,
+        "5 identical-vector matches exist; the call-site limit of 3 must cap the response"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/chunks/{id}/neighbors
+// ---------------------------------------------------------------------------
+
+/// No Ollama call at all on this path: the source chunk's stored embedding
+/// is used, not a freshly generated one. The mock asserts zero requests.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn neighbors_notes_a_missing_embedding_without_calling_ollama(pool: sqlx::PgPool) {
+    let server = ollama_mock(one_hot(0)).await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+    let user_id = user_id_by_email(&pool, "a@b.test").await;
+
+    seed_chunk_no_embedding(&pool, &user_id, "unenriched", "Unenriched").await;
+
+    let res = get(app.clone(), &cookie, "/api/chunks/unenriched/neighbors").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = json_body(res).await;
+    assert_eq!(body["neighbors"].as_array().unwrap().len(), 0);
+    assert_eq!(
+        body["note"].as_str().unwrap(),
+        "Chunk has no embedding — run enrichment first."
+    );
+
+    let requests = server.received_requests().await.unwrap();
+    assert!(
+        requests.is_empty(),
+        "neighbors must never call Ollama, but got: {requests:?}"
+    );
+}
+
+/// Three chunks at distinct angles from the source vector (not just
+/// "identical" or "orthogonal"), so the ordering pins the actual
+/// `combinedScore` sort, not just set membership.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn neighbors_are_ordered_by_combined_score(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+    let user_id = user_id_by_email(&pool, "a@b.test").await;
+
+    seed_chunk_with_vector(&pool, &user_id, "source", "Source", 0).await;
+    // Identical direction to source: distance 0, embeddingSimilarity 1.0.
+    seed_chunk_with_weighted_vector(&pool, &user_id, "closest", "Closest", &[(0, 1.0)]).await;
+    // 45 degrees off source: distance strictly between 0 and 1.
+    seed_chunk_with_weighted_vector(&pool, &user_id, "middle", "Middle", &[(0, 0.5), (1, 0.5)])
+        .await;
+    // Orthogonal to source: distance 1, embeddingSimilarity 0.0.
+    seed_chunk_with_vector(&pool, &user_id, "farthest", "Farthest", 5).await;
+
+    let res = get(app.clone(), &cookie, "/api/chunks/source/neighbors").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = json_body(res).await;
+    assert!(body["note"].is_null());
+    let ids: Vec<&str> = body["neighbors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|n| n["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, vec!["closest", "middle", "farthest"]);
+}
+
+/// `k` defaults to 10 and is clamped to `1..=50` (`chunks/routes.ts:303`).
+/// `k=0` must not mean "no results" and `k=999` must not error.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn neighbors_k_is_clamped_between_one_and_fifty(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+    let user_id = user_id_by_email(&pool, "a@b.test").await;
+
+    seed_chunk_with_vector(&pool, &user_id, "source", "Source", 0).await;
+    for i in 0..3 {
+        seed_chunk_with_vector(&pool, &user_id, &format!("n{i}"), &format!("N{i}"), i).await;
+    }
+
+    let res_zero = get(app.clone(), &cookie, "/api/chunks/source/neighbors?k=0").await;
+    assert_eq!(res_zero.status(), StatusCode::OK);
+    let body_zero = json_body(res_zero).await;
+    assert_eq!(
+        body_zero["neighbors"].as_array().unwrap().len(),
+        1,
+        "k=0 must be clamped up to 1, not treated as 'no results'"
+    );
+
+    let res_big = get(app.clone(), &cookie, "/api/chunks/source/neighbors?k=999").await;
+    assert_eq!(
+        res_big.status(),
+        StatusCode::OK,
+        "k=999 must be clamped down to 50, not passed straight to the query"
+    );
+    let body_big = json_body(res_big).await;
+    assert_eq!(
+        body_big["neighbors"].as_array().unwrap().len(),
+        3,
+        "only 3 candidate neighbors were seeded; clamping to 50 must not error"
+    );
+}
+
+/// The 0.15 graph bonus must be able to REORDER, not just decorate: seed a
+/// slightly-worse embedding match that is graph-connected and assert it
+/// overtakes a slightly-better one that is not.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn the_graph_bonus_reorders_neighbours(pool: sqlx::PgPool) {
+    if !fubbik_db::age::is_available(&pool).await {
+        eprintln!("AGE unavailable in this database — skipping");
+        return;
+    }
+
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+    let user_id = user_id_by_email(&pool, "a@b.test").await;
+
+    seed_chunk_with_vector(&pool, &user_id, "source", "Source", 0).await;
+    // Closer embedding match (embeddingSimilarity ~0.9986), but NOT
+    // graph-connected. With no bonus, combinedScore stays ~0.9986.
+    seed_chunk_with_weighted_vector(
+        &pool,
+        &user_id,
+        "better_unconnected",
+        "Better unconnected",
+        &[(0, 0.95), (1, 0.05)],
+    )
+    .await;
+    // Slightly worse embedding match (embeddingSimilarity ~0.9939), but IS
+    // graph-connected. The two are deliberately close (~0.005 apart) so the
+    // 0.15 bonus (-> combinedScore ~1.1439) comfortably overtakes the
+    // unconnected chunk's ~0.9986 — a gap the bonus could never close if the
+    // two were seeded farther apart.
+    seed_chunk_with_weighted_vector(
+        &pool,
+        &user_id,
+        "worse_connected",
+        "Worse connected",
+        &[(0, 0.9), (1, 0.1)],
+    )
+    .await;
+
+    fubbik_db::age::ensure_vertex(&pool, "source")
+        .await
+        .unwrap();
+    fubbik_db::age::ensure_vertex(&pool, "worse_connected")
+        .await
+        .unwrap();
+    fubbik_db::age::create_edge(&pool, "related_to", "source", "worse_connected")
+        .await
+        .unwrap();
+
+    let res = get(app.clone(), &cookie, "/api/chunks/source/neighbors").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = json_body(res).await;
+    let neighbors = body["neighbors"].as_array().unwrap();
+    let worse_connected = neighbors
+        .iter()
+        .find(|n| n["id"] == "worse_connected")
+        .expect("worse_connected must be present");
+    let better_unconnected = neighbors
+        .iter()
+        .find(|n| n["id"] == "better_unconnected")
+        .expect("better_unconnected must be present");
+
+    assert!(
+        worse_connected["graphConnected"].as_bool().unwrap(),
+        "worse_connected must be flagged as graph-connected"
+    );
+    assert!(
+        !better_unconnected["graphConnected"].as_bool().unwrap(),
+        "better_unconnected must NOT be flagged as graph-connected"
+    );
+    assert!(
+        worse_connected["embeddingSimilarity"].as_f64().unwrap()
+            < better_unconnected["embeddingSimilarity"].as_f64().unwrap(),
+        "worse_connected must genuinely have the worse raw embedding match"
+    );
+    assert!(
+        worse_connected["combinedScore"].as_f64().unwrap()
+            > better_unconnected["combinedScore"].as_f64().unwrap(),
+        "the graph bonus must let worse_connected overtake better_unconnected on combinedScore"
+    );
+
+    let ids: Vec<&str> = neighbors
+        .iter()
+        .map(|n| n["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        ids.first().copied(),
+        Some("worse_connected"),
+        "worse_connected must be ranked first after the bonus reorders it"
     );
 }

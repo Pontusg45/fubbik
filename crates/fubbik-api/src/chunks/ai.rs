@@ -7,6 +7,7 @@
 use fubbik_ai::OllamaClient;
 use fubbik_core::error::{AppError, AppResult};
 use fubbik_db::repo::semantic::{self, SemanticHit};
+use fubbik_db::repo::similarity::{self, SimilarChunk};
 use sqlx::PgPool;
 
 /// `Math.min(Number(query.limit ?? 5), 20)` (`chunk-search.ts:60`).
@@ -80,6 +81,151 @@ pub async fn semantic_search(
         clamp_limit(limit),
     )
     .await
+}
+
+/// Node's `checkSimilar` call-site constants (`similarity.ts:13-15`) —
+/// threshold 0.75 and limit 3, both overriding the repository defaults of
+/// 0.7 and 5.
+const CHECK_SIMILAR_THRESHOLD: f64 = 0.75;
+const CHECK_SIMILAR_LIMIT: i64 = 3;
+
+/// Probes availability and returns `[]` when Ollama is down — the opposite
+/// of [`semantic_search`], which 502s. The asymmetry is Node's
+/// (`similarity.ts:9` has the probe; `chunk-search.ts:71` does not) and is
+/// preserved deliberately.
+///
+/// Why the two endpoints diverge: `checkSimilar` fires on every keystroke
+/// pause while a user is typing in the create-chunk form (see
+/// `apps/web/src/features/chunks/similar-chunks-warning.tsx:23`) — a hard
+/// 502 there would surface as an error toast on a screen where the user is
+/// not asking for a search, just typing, and there is nothing actionable
+/// for them to do about a downed Ollama mid-keystroke. Degrading to "no
+/// similar chunks found" is a safe, silent no-op.
+///
+/// `GET /api/chunks/search/semantic` does the opposite because an empty
+/// result *is* the user's answer there: they explicitly ran a search, so
+/// an empty page must mean "no matches", not silently swallow "the search
+/// never ran". Adding a probe there would make a broken backend
+/// indistinguishable from a true empty result. Do not "fix" this asymmetry
+/// by making the two endpoints consistent — that would break one of them.
+pub async fn check_similar(
+    pool: &PgPool,
+    ai: &OllamaClient,
+    user_id: &str,
+    title: &str,
+    content: &str,
+    exclude_id: Option<&str>,
+) -> AppResult<Vec<SimilarChunk>> {
+    if !ai.is_available().await {
+        return Ok(Vec::new());
+    }
+    let embedding = ai
+        .embed_document(title, None, content)
+        .await
+        .map_err(AppError::from)?;
+    similarity::find_similar_by_embedding(
+        pool,
+        &embedding,
+        user_id,
+        exclude_id,
+        CHECK_SIMILAR_THRESHOLD,
+        CHECK_SIMILAR_LIMIT,
+    )
+    .await
+}
+
+/// Node's graph bonus (`semantic.ts:105`).
+const GRAPH_BONUS: f64 = 0.15;
+/// Node's `graphHops` default (`semantic.ts:99`).
+const GRAPH_HOPS: i32 = 2;
+
+/// [`fubbik_db::repo::semantic::NeighborRow`] plus the hybrid-scoring
+/// fields Node's `findRelatedChunksHybrid` adds
+/// (`packages/db/src/repository/semantic.ts:106-115`).
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct NeighborItem {
+    pub id: String,
+    pub title: String,
+    pub summary: Option<String>,
+    #[serde(rename = "type")]
+    pub chunk_type: String,
+    pub distance: f64,
+    pub embedding_similarity: f64,
+    pub graph_connected: bool,
+    pub combined_score: f64,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct NeighborsResponse {
+    pub neighbors: Vec<NeighborItem>,
+    pub note: Option<String>,
+}
+
+/// Never calls Ollama: the source chunk's *stored* embedding drives this,
+/// so a chunk that has never been enriched gets a note rather than a
+/// freshly generated vector (`chunk-search.ts:31-45`).
+pub async fn neighbors(
+    pool: &PgPool,
+    user_id: &str,
+    chunk_id: &str,
+    k: i64,
+) -> AppResult<NeighborsResponse> {
+    let source = fubbik_db::repo::chunk::find_by_id(pool, user_id, chunk_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Chunk".into()))?;
+
+    if source.embedding.is_none() {
+        return Ok(NeighborsResponse {
+            neighbors: Vec::new(),
+            note: Some("Chunk has no embedding — run enrichment first.".to_string()),
+        });
+    }
+
+    // Node over-fetches `k * 2` so the graph bonus has room to reorder
+    // before the final truncation to `k` (`semantic.ts:101`).
+    let rows = semantic::find_neighbors_by_chunk_id(pool, chunk_id, user_id, k * 2).await?;
+
+    // AGE failure degrades to "no bonus", matching Node's `Effect.catchAll`
+    // (`semantic.ts:103`) — a missing graph must not fail the endpoint.
+    let graph_ids: std::collections::HashSet<String> =
+        fubbik_db::age::get_neighborhood(pool, chunk_id, GRAPH_HOPS)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
+
+    let mut scored: Vec<NeighborItem> = rows
+        .into_iter()
+        .map(|r| {
+            let graph_connected = graph_ids.contains(&r.id);
+            let embedding_similarity = 1.0 - r.distance;
+            NeighborItem {
+                id: r.id,
+                title: r.title,
+                summary: r.summary,
+                chunk_type: r.chunk_type,
+                distance: r.distance,
+                embedding_similarity,
+                graph_connected,
+                combined_score: embedding_similarity
+                    + if graph_connected { GRAPH_BONUS } else { 0.0 },
+            }
+        })
+        .collect();
+
+    scored.sort_by(|a, b| {
+        b.combined_score
+            .partial_cmp(&a.combined_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    scored.truncate(k as usize);
+
+    Ok(NeighborsResponse {
+        neighbors: scored,
+        note: None,
+    })
 }
 
 #[cfg(test)]

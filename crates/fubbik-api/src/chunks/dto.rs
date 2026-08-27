@@ -97,6 +97,23 @@ pub struct SemanticSearchQuery {
     pub scope: Option<String>,
 }
 
+/// Body of `POST /api/chunks/check-similar` (`chunks/routes.ts:234-239`).
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckSimilarBody {
+    pub title: String,
+    pub content: String,
+    pub exclude_id: Option<String>,
+}
+
+/// Query for `GET /api/chunks/{id}/neighbors` (`chunks/routes.ts:303`). `k`
+/// arrives as a string, same reasoning as [`SemanticSearchQuery`]'s
+/// `limit`.
+#[derive(Debug, serde::Deserialize, utoipa::IntoParams)]
+pub struct NeighborsQuery {
+    pub k: Option<String>,
+}
+
 /// Query params arrive as strings from the web client, matching the Elysia
 /// route's `t.Optional(t.String())` shape, so numeric fields parse leniently.
 ///
