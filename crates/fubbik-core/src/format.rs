@@ -31,6 +31,71 @@ pub fn format_chunk_text(chunk: &ScoredChunk) -> String {
     parts.join("\n")
 }
 
+/// A scored chunk plus the enrichment the formatter annotates with.
+/// Ports `packages/api/src/context/formatter.ts:3-7`.
+#[derive(Debug, Clone)]
+pub struct ChunkWithMetadata {
+    pub chunk: ScoredChunk,
+    pub health_score: i64,
+    pub is_stale: bool,
+    pub has_pending_proposal: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ContextSection {
+    pub title: String,
+    pub chunks: Vec<ChunkWithMetadata>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructuredContext {
+    pub sections: Vec<ContextSection>,
+    pub total_chunks: usize,
+}
+
+/// Ports `formatter.ts:20-35`. The `convention` tag is the single case
+/// where a tag rather than the type decides the section.
+fn section_title(c: &ChunkWithMetadata) -> String {
+    if c.chunk.chunk_type == "note" && c.chunk.tags.iter().any(|t| t == "convention") {
+        return "Conventions".to_string();
+    }
+    match c.chunk.chunk_type.as_str() {
+        "note" => "Notes".to_string(),
+        "document" => "Architecture".to_string(),
+        "reference" => "API Reference".to_string(),
+        "schema" => "Schemas".to_string(),
+        "checklist" => "Checklists".to_string(),
+        other => title_case(other),
+    }
+}
+
+/// Groups chunks into sections, preserving first-seen section order.
+///
+/// Node builds a `Map` and iterates its entries, and JS `Map` iteration is
+/// insertion-ordered — so section order follows the order sections were
+/// first encountered, not alphabetical or type order. An `IndexMap`-style
+/// `Vec` scan reproduces that without a new dependency.
+pub fn format_structured(chunks: Vec<ChunkWithMetadata>) -> StructuredContext {
+    let total_chunks = chunks.len();
+    let mut sections: Vec<ContextSection> = Vec::new();
+
+    for c in chunks {
+        let title = section_title(&c);
+        match sections.iter_mut().find(|s| s.title == title) {
+            Some(section) => section.chunks.push(c),
+            None => sections.push(ContextSection {
+                title,
+                chunks: vec![c],
+            }),
+        }
+    }
+
+    StructuredContext {
+        sections,
+        total_chunks,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -88,5 +153,68 @@ mod tests {
             format_chunk_text(&chunk("note", None, "")),
             "## Note: Title"
         );
+    }
+
+    fn with_meta(chunk_type: &str, tags: &[&str]) -> ChunkWithMetadata {
+        ChunkWithMetadata {
+            chunk: ScoredChunk {
+                id: "i".into(),
+                title: "T".into(),
+                content: "c".into(),
+                chunk_type: chunk_type.into(),
+                rationale: None,
+                tags: tags.iter().map(|t| t.to_string()).collect(),
+                score: 0.0,
+            },
+            health_score: 50,
+            is_stale: false,
+            has_pending_proposal: false,
+        }
+    }
+
+    #[test]
+    fn types_map_to_their_section_titles() {
+        let out = format_structured(vec![
+            with_meta("note", &[]),
+            with_meta("document", &[]),
+            with_meta("reference", &[]),
+            with_meta("schema", &[]),
+            with_meta("checklist", &[]),
+        ]);
+        let titles: Vec<&str> = out.sections.iter().map(|s| s.title.as_str()).collect();
+        assert!(titles.contains(&"Notes"));
+        assert!(titles.contains(&"Architecture"));
+        assert!(titles.contains(&"API Reference"));
+        assert!(titles.contains(&"Schemas"));
+        assert!(titles.contains(&"Checklists"));
+    }
+
+    /// A note tagged `convention` is pulled out of Notes into its own
+    /// section — the one case where the tag, not the type, decides.
+    #[test]
+    fn a_note_tagged_convention_becomes_its_own_section() {
+        let out = format_structured(vec![with_meta("note", &["convention"])]);
+        assert_eq!(out.sections.len(), 1);
+        assert_eq!(out.sections[0].title, "Conventions");
+    }
+
+    #[test]
+    fn a_note_without_the_tag_stays_in_notes() {
+        let out = format_structured(vec![with_meta("note", &["other"])]);
+        assert_eq!(out.sections[0].title, "Notes");
+    }
+
+    #[test]
+    fn chunks_of_one_type_group_into_a_single_section() {
+        let out = format_structured(vec![with_meta("note", &[]), with_meta("note", &[])]);
+        assert_eq!(out.sections.len(), 1);
+        assert_eq!(out.sections[0].chunks.len(), 2);
+        assert_eq!(out.total_chunks, 2);
+    }
+
+    #[test]
+    fn unknown_type_gets_a_title_cased_section() {
+        let out = format_structured(vec![with_meta("runbook", &[])]);
+        assert_eq!(out.sections[0].title, "Runbook");
     }
 }
