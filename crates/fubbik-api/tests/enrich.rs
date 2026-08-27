@@ -368,3 +368,95 @@ async fn enrich_all_is_scoped_to_the_caller(pool: sqlx::PgPool) {
         .unwrap();
     assert_eq!(count, Some(0), "A's sweep must not touch B's chunks");
 }
+
+/// Node's per-item `catchAll(() => Effect.succeed(null))` means one
+/// chunk's failure must not abort the sweep — the other chunks still get
+/// enriched. A body-matched mock returns 500 for exactly one chunk's
+/// prompt (registered ahead of the catch-all 200, since wiremock resolves
+/// mocks in registration order); the other two use the normal success
+/// path. This asserts continuation itself (both survivors' summaries are
+/// populated), not just the decremented count.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn enrich_all_continues_past_a_single_chunk_failure(pool: sqlx::PgPool) {
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/tags"))
+        .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .mount(&server)
+        .await;
+    // The specific, failing mock must be registered BEFORE the catch-all
+    // success mock below, or the catch-all would swallow every request.
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/generate"))
+        .and(wiremock::matchers::body_string_contains("Title: Bravo"))
+        .respond_with(wiremock::ResponseTemplate::new(500))
+        .mount(&server)
+        .await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/generate"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "response": "{\"summary\":\"A summary.\",\"aliases\":[\"a1\",\"a2\"],\"notAbout\":[\"n1\"]}"
+            })),
+        )
+        .mount(&server)
+        .await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/embeddings"))
+        .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(embedding_body()))
+        .mount(&server)
+        .await;
+
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+
+    // Distinct titles, chosen so none is a substring of another — unlike
+    // "T1"/"T10", "Bravo" cannot accidentally match "Alpha" or "Charlie".
+    let mut ids = std::collections::HashMap::new();
+    for title in ["Alpha", "Bravo", "Charlie"] {
+        let created = send(
+            app.clone(),
+            &cookie,
+            "POST",
+            "/api/chunks",
+            serde_json::json!({ "title": title, "content": "C", "type": "note" }),
+        )
+        .await;
+        let id = json_body(created).await["id"].as_str().unwrap().to_string();
+        ids.insert(title, id);
+    }
+
+    let res = send(
+        app.clone(),
+        &cookie,
+        "POST",
+        "/api/chunks/enrich-all",
+        serde_json::Value::Null,
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await["enriched"], 2);
+
+    let bravo_summary =
+        sqlx::query_scalar!("SELECT summary FROM chunk WHERE id = $1", ids["Bravo"])
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(
+        bravo_summary.is_none(),
+        "the chunk whose generate call failed must not have a summary"
+    );
+
+    for title in ["Alpha", "Charlie"] {
+        let summary = sqlx::query_scalar!("SELECT summary FROM chunk WHERE id = $1", ids[title])
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert!(
+            summary.is_some(),
+            "{title}'s enrichment must have proceeded despite Bravo's failure"
+        );
+    }
+}
