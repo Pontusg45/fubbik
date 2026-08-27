@@ -63,12 +63,27 @@ It gains:
 - `format.rs` — `format_chunk_text(...)`
 - `health.rs` — **moved** from `crates/fubbik-api/src/chunks/health_score.rs`
 
-**The move is deliberate.** `score_chunk` calls `compute_health_score`, so leaving health
-scoring in `fubbik-api` would point a dependency the wrong way. It is pure logic that never
-touched the database, so it belongs beside the scorer. `fubbik-api` keeps working by
-importing it; its one existing caller at `crates/fubbik-api/src/chunks/service.rs:537` is
-updated. This is churn inside a port, which the plan should minimise elsewhere — it is
-accepted here because the alternative is a permanently inverted dependency.
+**The move is deliberate, and larger than it first looks.** `score_chunk` calls
+`compute_health_score`, so leaving health scoring in `fubbik-api` would point a dependency
+the wrong way. It is pure logic that never touched the database, so it belongs beside the
+scorer.
+
+But it has **five call sites across four files**, not one: `crates/fubbik-api/src/openapi.rs:320-321`,
+`crates/fubbik-api/src/search/service.rs:85,629`, `crates/fubbik-api/src/chunks/service.rs:524`
+and `crates/fubbik-api/src/chunks/dto.rs:285`. Two of those matter more than the rest:
+
+- `HealthScore` and `HealthScoreBreakdown` are **registered utoipa schemas** in `openapi.rs`,
+  so `fubbik-core` gains a `utoipa` dependency (which `fubbik-db` already carries, so this is
+  consistent with the workspace rather than novel).
+- `HealthScore` is a field on `ChunkDetail` (`chunks/dto.rs:285`), making it part of the
+  public API surface. utoipa derives schema names from the type name rather than its module
+  path, so the generated name should stay `HealthScore` — but that is a claim to verify, not
+  assume. **`openapi.json` must be byte-identical after the move**; if it is not, the web
+  client's generated types change and the move has silently altered the API.
+
+This is churn inside a port, which the plan minimises elsewhere. It is accepted here because
+the alternative is a permanently inverted dependency — but it earns its own task, landing
+before anything depends on it.
 
 ## Tokenization — exact parity, via a new dependency
 
