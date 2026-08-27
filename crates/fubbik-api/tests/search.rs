@@ -1434,3 +1434,115 @@ async fn similar_to_degrades_to_empty_when_ollama_is_down(pool: sqlx::PgPool) {
         "graphMeta.type must still be the literal \"semantic\" even when Ollama is unreachable"
     );
 }
+
+/// A 768-dimension vector graded by `rank` (1-based): component `0` (the
+/// query's own axis) holds `26 - rank`, and a distinct per-rank component
+/// (index `rank`) holds `rank`. Neither component is ever zero for
+/// `rank` in `1..=25`, so — unlike `one_hot`, whose off-axis vectors are
+/// all mutually orthogonal (tied at cosine distance 1) — every graded
+/// vector is a genuine, non-orthogonal candidate at a distinct distance
+/// from `one_hot(0)`.
+///
+/// Let `x` denote `26 minus rank` and `y` denote `rank`, both strictly
+/// positive across the whole range this function accepts. Cosine
+/// similarity to `one_hot(0)` then equals `x` divided by the square root
+/// of `x` squared plus `y` squared, which is the same as one divided by
+/// the square root of one plus the square of `y` divided by `x`. That
+/// ratio (`y` divided by `x`) grows strictly monotonically as `rank`
+/// grows, since its numerator rises while its denominator falls, so
+/// similarity falls strictly monotonically in lockstep with it: every
+/// rank is strictly worse than the one before it, a genuine tie-free
+/// total order rather than a pile of vectors tied at the same distance.
+fn graded_pgvector_text(rank: usize) -> String {
+    assert!(
+        (1..=25).contains(&rank),
+        "rank must be in 1..=25, got {rank}"
+    );
+    let mut parts = vec!["0".to_string(); 768];
+    parts[0] = (26 - rank).to_string();
+    parts[rank] = rank.to_string();
+    format!("[{}]", parts.join(","))
+}
+
+async fn seed_chunk_with_graded_vector(pool: &sqlx::PgPool, user_id: &str, id: &str, rank: usize) {
+    sqlx::query(
+        "INSERT INTO chunk (id, title, content, type, user_id, embedding)
+         VALUES ($1, $1, 'content', 'note', $2, $3::text::vector)",
+    )
+    .bind(id)
+    .bind(user_id)
+    .bind(graded_pgvector_text(rank))
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+/// Pins the `limit: 20` constant in the `"similar-to"` match arm
+/// (`search/service.rs`'s `fubbik_db::repo::semantic::semantic_search(...,
+/// 20)` call) — the same shape as
+/// `tests/chunks_ai.rs::semantic_search_caps_limit_at_twenty`, but at the
+/// unified-search clause layer rather than the standalone endpoint.
+///
+/// This matters specifically for `similar-to` because its resolved ids
+/// are *intersected* with every other clause's ids
+/// (`resolve_graph_clauses`' `intersect_ids`, `service.ts`'s `graphIds ?
+/// graphIds.filter(...) : ids`): a silent regression from 20 down to,
+/// say, 1 wouldn't just trim a semantic search's own result list — it
+/// could collapse an otherwise-reasonable multi-clause search down to
+/// almost nothing, with no error surfaced anywhere. 25 chunks are seeded,
+/// each at a distinct, non-orthogonal, strictly-decreasing similarity to
+/// the query vector (see `graded_pgvector_text`'s doc comment for why
+/// orthogonal fillers would not do — tied distances prove nothing about
+/// a specific cutoff), so "top 20 of 25 genuine candidates" is
+/// unambiguous: exactly ranks 1..=20 must come back, never 21..=25.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn similar_to_clause_caps_resolved_ids_at_twenty(pool: sqlx::PgPool) {
+    let server = ollama_mock(one_hot(0)).await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "similar-cap@b.test", "S").await;
+    let user_id = user_id_for_email(&pool, "similar-cap@b.test").await;
+
+    for rank in 1..=25 {
+        seed_chunk_with_graded_vector(&pool, &user_id, &format!("g{rank}"), rank).await;
+    }
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [
+            {"field": "similar-to", "operator": "is", "value": "authentication flow"}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+
+    let ids: std::collections::HashSet<String> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        ids.len(),
+        20,
+        "exactly 20 of the 25 genuine (non-tied) candidates must resolve: {ids:?}"
+    );
+    for rank in 1..=20 {
+        let id = format!("g{rank}");
+        assert!(
+            ids.contains(&id),
+            "rank {rank} ({id}) is strictly better than every excluded rank and must be in the top 20: {ids:?}"
+        );
+    }
+    for rank in 21..=25 {
+        let id = format!("g{rank}");
+        assert!(
+            !ids.contains(&id),
+            "rank {rank} ({id}) is strictly worse than 20 other genuine candidates and must not fit in the top 20: {ids:?}"
+        );
+    }
+}
