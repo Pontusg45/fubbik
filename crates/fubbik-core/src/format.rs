@@ -217,4 +217,22 @@ mod tests {
         let out = format_structured(vec![with_meta("runbook", &[])]);
         assert_eq!(out.sections[0].title, "Runbook");
     }
+
+    /// Node builds a `Map` and iterates its entries; JS `Map` iteration is
+    /// insertion-ordered, so sections must appear in the order they were
+    /// first encountered in the input, not alphabetically or by type. This
+    /// is parity with Node, not an arbitrary choice. The repeated
+    /// `checklist` at the end confirms that re-encountering a type appends
+    /// to the existing section rather than creating a new one or moving it.
+    #[test]
+    fn sections_appear_in_first_encounter_order() {
+        let out = format_structured(vec![
+            with_meta("checklist", &[]),
+            with_meta("note", &[]),
+            with_meta("document", &[]),
+            with_meta("checklist", &[]), // repeat — must not move the section
+        ]);
+        let titles: Vec<&str> = out.sections.iter().map(|s| s.title.as_str()).collect();
+        assert_eq!(titles, vec!["Checklists", "Notes", "Architecture"]);
+    }
 }
