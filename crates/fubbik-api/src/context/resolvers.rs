@@ -18,6 +18,31 @@ use fubbik_core::glob::glob_match;
 use fubbik_db::repo::{chunk, chunk_meta, plan, requirement, semantic};
 use sqlx::PgPool;
 
+/// Appends `id` to `ids` the first time it's seen, using `seen` purely for
+/// O(1) membership tracking — `seen` is never iterated, only indexed into,
+/// so its `HashSet` randomized iteration order never leaks into the
+/// result. `ids`' order is exactly first-encounter order across however
+/// many sources call this in sequence.
+///
+/// All three resolvers below need this: Node's equivalent dedup is
+/// `new Set<string>()` + `[...ids]`, and JS `Set` iterates in insertion
+/// order by spec, so Node returns a deterministic sequence following the
+/// order its sources are queried. A bare `HashSet<String>` collected with
+/// `.into_iter().collect()` does not have that property — its default
+/// hasher is randomly seeded per process, so the same insertions produce a
+/// different order on nearly every construction (confirmed experimentally
+/// before this fix: five inserts into a fresh `HashSet`, printed across
+/// five constructions in one process, gave five different orders). This
+/// mirrors `fubbik_core::format::format_structured`'s `Vec`-plus-
+/// membership-set shape, reviewed and approved in Task 4 for the identical
+/// reason (JS `Map` iteration is also insertion-ordered) — one pattern for
+/// "preserve first-encounter order," not two.
+fn push_unique(id: String, ids: &mut Vec<String>, seen: &mut HashSet<String>) {
+    if seen.insert(id.clone()) {
+        ids.push(id);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // resolve_for_plan
 // ---------------------------------------------------------------------------
@@ -60,7 +85,8 @@ pub async fn resolve_for_plan(
         .await?
         .ok_or_else(|| AppError::NotFound("Plan".into()))?;
 
-    let mut ids: HashSet<String> = HashSet::new();
+    let mut ids: Vec<String> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
 
     // 1. plan_analyze_item where kind = "chunk"
     let analyze_items = plan::list_analyze_items(pool, user_id, plan_id).await?;
@@ -68,7 +94,7 @@ pub async fn resolve_for_plan(
         if item.kind == "chunk"
             && let Some(chunk_id) = item.chunk_id
         {
-            ids.insert(chunk_id);
+            push_unique(chunk_id, &mut ids, &mut seen);
         }
     }
 
@@ -77,7 +103,7 @@ pub async fn resolve_for_plan(
     for pr in plan_reqs {
         let chunks = requirement::get_chunks(pool, user_id, &pr.requirement_id).await?;
         for c in chunks {
-            ids.insert(c.id);
+            push_unique(c.id, &mut ids, &mut seen);
         }
     }
 
@@ -86,11 +112,11 @@ pub async fn resolve_for_plan(
     for t in tasks {
         let task_chunks = plan::list_task_chunks_with_titles(pool, user_id, plan_id, &t.id).await?;
         for tc in task_chunks {
-            ids.insert(tc.chunk_id);
+            push_unique(tc.chunk_id, &mut ids, &mut seen);
         }
     }
 
-    Ok(ids.into_iter().collect())
+    Ok(ids)
 }
 
 // ---------------------------------------------------------------------------
@@ -106,7 +132,8 @@ pub async fn resolve_for_concept(
     query: &str,
     space_id: Option<&str>,
 ) -> AppResult<Vec<String>> {
-    let mut ids: HashSet<String> = HashSet::new();
+    let mut ids: Vec<String> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
 
     // Semantic search — requires Ollama; falls back silently if the
     // embedding call or the search itself fails, matching Node's
@@ -116,7 +143,7 @@ pub async fn resolve_for_concept(
             semantic::semantic_search(pool, &embedding, Some(user_id), &[], None, 20).await
     {
         for h in hits {
-            ids.insert(h.id);
+            push_unique(h.id, &mut ids, &mut seen);
         }
     }
 
@@ -130,11 +157,11 @@ pub async fn resolve_for_concept(
     };
     if let Ok(rows) = chunk::list(pool, user_id, &params).await {
         for c in rows {
-            ids.insert(c.id);
+            push_unique(c.id, &mut ids, &mut seen);
         }
     }
 
-    Ok(ids.into_iter().collect())
+    Ok(ids)
 }
 
 // ---------------------------------------------------------------------------
@@ -167,7 +194,8 @@ pub async fn resolve_for_files(
     paths: &[String],
     space_id: Option<&str>,
 ) -> AppResult<Vec<String>> {
-    let mut ids: HashSet<String> = HashSet::new();
+    let mut ids: Vec<String> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
 
     // 1. Direct file-ref matches, one lookup per path.
     for path in paths {
@@ -175,7 +203,7 @@ pub async fn resolve_for_files(
             chunk_meta::lookup_chunk_ids_by_path(pool, path, user_id, space_id).await
         {
             for id in matches {
-                ids.insert(id);
+                push_unique(id, &mut ids, &mut seen);
             }
         }
     }
@@ -190,7 +218,7 @@ pub async fn resolve_for_files(
     if let Ok(chunks) = chunk::list(pool, user_id, &params).await {
         let unchecked: Vec<String> = chunks
             .iter()
-            .filter(|c| !ids.contains(&c.id))
+            .filter(|c| !seen.contains(&c.id))
             .map(|c| c.id.clone())
             .collect();
 
@@ -206,7 +234,7 @@ pub async fn resolve_for_files(
             }
 
             for c in &chunks {
-                if ids.contains(&c.id) {
+                if seen.contains(&c.id) {
                     continue;
                 }
                 if let Some(pats) = patterns_by_chunk.get(&c.id)
@@ -214,11 +242,11 @@ pub async fn resolve_for_files(
                         .iter()
                         .any(|path| pats.iter().any(|pat| glob_match(pat, path)))
                 {
-                    ids.insert(c.id.clone());
+                    push_unique(c.id.clone(), &mut ids, &mut seen);
                 }
             }
         }
     }
 
-    Ok(ids.into_iter().collect())
+    Ok(ids)
 }

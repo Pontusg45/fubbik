@@ -10,7 +10,7 @@
 //! signing up over HTTP — there is no session boundary being tested here.
 
 use fubbik_core::error::AppError;
-use fubbik_db::repo::{chunk, chunk_meta, plan, user};
+use fubbik_db::repo::{chunk, chunk_meta, plan, requirement, user};
 
 fn new_chunk(title: &str) -> chunk::NewChunk {
     chunk::NewChunk {
@@ -147,6 +147,149 @@ async fn resolve_for_plan_is_scoped_to_the_owner(pool: sqlx::PgPool) {
         owner_ids.contains(&linked.id),
         "the owner must still be able to resolve their own plan after a foreign attempt: {owner_ids:?}"
     );
+}
+
+/// Pins `resolve_for_plan`'s id order end to end, at the resolver itself —
+/// not after `budget_and_format` has already received whatever order the
+/// resolver handed it (that seam is covered separately in
+/// `crates/fubbik-api/src/context/routes.rs`'s
+/// `budget_and_format_preserves_enrichment_order_among_tied_scores`).
+///
+/// Node's dedup is `new Set<string>()` + `[...ids]`; JS `Set` iterates in
+/// insertion order by spec, so Node's result order is exactly the order
+/// its three sources are queried: analyze items, then requirement-linked
+/// chunks, then task-linked chunks. This resolver ports that with a
+/// `Vec`-plus-membership-`HashSet` (`push_unique` in `resolvers.rs`)
+/// instead of collecting into a bare `HashSet` and calling
+/// `.into_iter().collect()` — which would scramble the order via Rust's
+/// per-construction-randomized default hasher (confirmed experimentally
+/// while diagnosing this: five inserts into a fresh `HashSet`, printed
+/// across five constructions in the same process, produced five different
+/// orders).
+///
+/// This test cannot pass by the coincidence a same-order-across-two-calls
+/// test risks: each source below contributes exactly one candidate id (two
+/// analyze items, one requirement with one linked chunk, one task with one
+/// linked chunk), so there is no per-source DB ordering ambiguity to
+/// control for — the *only* thing that decides the returned sequence is
+/// whether the resolver preserves first-encounter order across sources.
+/// Asserted against a fully pinned expected sequence, not "did two calls
+/// agree" — this repeats every call `RUNS` times specifically so a
+/// regression back to a bare `HashSet` reliably shows up as a mismatch on
+/// at least one iteration, rather than possibly matching the expected
+/// order by chance.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn resolve_for_plan_preserves_first_encounter_order_across_all_three_sources(
+    pool: sqlx::PgPool,
+) {
+    let user_id = seed_user(&pool, "order@b.test").await;
+    let p = plan::create(&pool, &user_id, "Ordered plan", None, None)
+        .await
+        .unwrap();
+
+    // Source 1: two chunk-kind analyze items, queried `kind ASC, "order"
+    // ASC, id ASC` — same kind, so insertion order decides `"order"`.
+    let analyze_a = chunk::create(&pool, &user_id, new_chunk("Analyze A"))
+        .await
+        .unwrap();
+    let analyze_b = chunk::create(&pool, &user_id, new_chunk("Analyze B"))
+        .await
+        .unwrap();
+    plan::create_analyze_item(
+        &pool,
+        &user_id,
+        &p.id,
+        "chunk",
+        Some(&analyze_a.id),
+        None,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+    plan::create_analyze_item(
+        &pool,
+        &user_id,
+        &p.id,
+        "chunk",
+        Some(&analyze_b.id),
+        None,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    // Source 2: one requirement, linked to exactly one chunk — a single
+    // linked chunk sidesteps `requirement::get_chunks`'s documented lack
+    // of an `ORDER BY` (fine when there's only one row to return).
+    let req_chunk = chunk::create(&pool, &user_id, new_chunk("Requirement chunk"))
+        .await
+        .unwrap();
+    let req = requirement::create(
+        &pool,
+        &user_id,
+        fubbik_db::repo::requirement::NewRequirement {
+            title: "Req".to_string(),
+            description: None,
+            steps: vec![],
+            priority: None,
+            space_id: None,
+            use_case_id: None,
+            origin: "human".to_string(),
+            review_status: "approved".to_string(),
+        },
+    )
+    .await
+    .unwrap()
+    .expect("requirement should be created");
+    plan::add_requirement(&pool, &user_id, &p.id, &req.id)
+        .await
+        .unwrap()
+        .expect("requirement should link to the plan");
+    requirement::set_chunks(&pool, &user_id, &req.id, std::slice::from_ref(&req_chunk.id))
+        .await
+        .unwrap();
+
+    // Source 3: one task, linked to exactly one chunk.
+    let task_chunk = chunk::create(&pool, &user_id, new_chunk("Task chunk"))
+        .await
+        .unwrap();
+    let task = plan::create_task(
+        &pool,
+        &user_id,
+        &p.id,
+        "A task",
+        None,
+        serde_json::json!([]),
+        None,
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    plan::add_task_chunk(&pool, &user_id, &p.id, &task.id, &task_chunk.id, "context")
+        .await
+        .unwrap()
+        .expect("chunk should link to the task");
+
+    let expected = vec![
+        analyze_a.id.clone(),
+        analyze_b.id.clone(),
+        req_chunk.id.clone(),
+        task_chunk.id.clone(),
+    ];
+
+    const RUNS: usize = 5;
+    for run in 0..RUNS {
+        let ids = fubbik_api::context::resolvers::resolve_for_plan(&pool, &user_id, &p.id)
+            .await
+            .unwrap();
+        assert_eq!(
+            ids, expected,
+            "run {run}: resolve_for_plan must return ids in first-encounter order \
+             (analyze items, then requirement chunks, then task chunks), got {ids:?}"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
