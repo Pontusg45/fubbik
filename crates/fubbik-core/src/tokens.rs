@@ -17,6 +17,19 @@
 //! way. Porting a branch that can never execute would add untestable code
 //! whose only effect, if it somehow fired, would be to silently change what
 //! an export contains.
+//!
+//! `encode_ordinary` does NOT fully mirror js-tiktoken's plain `encode`.
+//! Node's `enc.encode(text)` call uses js-tiktoken's default
+//! `disallowedSpecial = "all"`, which throws if `text` contains a literal
+//! special-token substring such as `<|endoftext|>`. `encode_ordinary` skips
+//! that check entirely and encodes such a substring as ordinary BPE tokens.
+//! This is deliberate, not an oversight: a context export must not fail
+//! because one chunk happens to quote a special-token string — that would
+//! be an accident of a library default becoming a 500, the same class of
+//! thing this project declined to reproduce elsewhere (e.g. the NaN-500 on
+//! a non-numeric `limit` in Phase 4b). Note that the counts still cannot
+//! diverge from Node on this input: where Rust returns a number here, Node
+//! returns nothing at all, having thrown.
 use std::sync::OnceLock;
 
 use tiktoken_rs::CoreBPE;
@@ -73,5 +86,26 @@ mod tests {
     fn handles_non_ascii_without_panicking() {
         assert!(estimate_tokens("héllo wörld — ünïcode") > 0);
         assert!(estimate_tokens("日本語のテキスト") > 0);
+    }
+
+    /// Node's `enc.encode(text)` uses js-tiktoken's default
+    /// `disallowedSpecial = "all"`, which throws on a literal special-token
+    /// substring. `encode_ordinary` deliberately does not: a context export
+    /// must not fail because one chunk happens to quote `<|endoftext|>`.
+    /// Counts cannot diverge from Node here — where this returns a number,
+    /// Node returns nothing at all, having thrown.
+    ///
+    /// Verified against Python's reference `tiktoken` (`o200k_base`,
+    /// `encode_ordinary`): `"foo <|endoftext|> bar"` encodes as 9 ordinary
+    /// tokens (`foo`, ` <`, `|`, `end`, `of`, `text`, `|`, `>`, ` bar`) —
+    /// the literal is split across multiple BPE tokens rather than treated
+    /// as the single special token it would be under Node's default.
+    #[test]
+    fn special_token_text_is_counted_as_ordinary_text() {
+        let n = estimate_tokens("foo <|endoftext|> bar");
+        assert_eq!(
+            n, 9,
+            "expected the literal to split into 9 ordinary BPE tokens, got {n}"
+        );
     }
 }
