@@ -7,10 +7,12 @@
 //! (Ollama unreachable, non-2xx response, unparseable JSON, no `[...]`
 //! found in the model's output) degrades to an empty `Vec`, never an
 //! error — Node's own `.pipe(Effect.catchAll(() => Effect.succeed([])))`
-//! (`suggest.ts:116`). This is the first Ollama-calling code path in this
-//! Rust port (see `crate::search::service`'s module doc, which notes no
-//! such pipeline existed yet); the transport lives in `fubbik_ai::OllamaClient`,
-//! carried on `AppState`.
+//! (`suggest.ts:116`). This is a fourth Ollama-failure policy alongside
+//! the three `crate::search::service`'s module doc describes (probe-first
+//! for enrichment, 502-on-failure for semantic search, `orElse([])` for
+//! `similar-to`): here there is no probe and no error path at all — every
+//! failure mode collapses to `[]`, unconditionally. The transport lives in
+//! `fubbik_ai::OllamaClient`, carried on `AppState`.
 
 const VALID_CATEGORIES: [&str; 6] = ["actor", "action", "target", "outcome", "state", "modifier"];
 

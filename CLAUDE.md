@@ -498,10 +498,12 @@ Required for chunk enrichment (summary, aliases, not_about generation), semantic
   refresh: `summary`, `aliases` and `not_about` are regenerated too, overwriting a
   hand-written summary. Fire-and-forget; failures are logged and never fail the request.
 - Enrichment concurrency: 3 (for enrich-all), which also caps at 1000 chunks per sweep
-- Ollama failures are handled three different ways, all matching the original TypeScript:
+- Ollama failures are handled four different ways, all matching the original TypeScript:
   `enrich` probes availability first and degrades to `null`; `GET /api/chunks/search/semantic`
   does not probe, so an unreachable Ollama surfaces as a 502; the `similar-to:` search
-  clause degrades to an empty clause so one clause's outage cannot fail a whole query.
+  clause degrades to an empty clause so one clause's outage cannot fail a whole query;
+  and `suggest_vocabulary` is infallible — no probe, no error path, every failure mode
+  collapses to `[]`.
 
 ## Environment Variables
 
