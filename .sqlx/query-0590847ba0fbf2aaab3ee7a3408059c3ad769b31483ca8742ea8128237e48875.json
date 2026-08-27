@@ -1,0 +1,43 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            c.id, c.title,\n            c.type AS chunk_type,\n            (1 - (c.embedding <=> $1::text::vector))::float8 AS \"similarity!\"\n        FROM chunk c\n        WHERE c.user_id = $2\n          AND c.embedding IS NOT NULL\n          AND ($3::text IS NULL OR c.id <> $3)\n        ORDER BY c.embedding <=> $1::text::vector\n        LIMIT $4\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "similarity!",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "0590847ba0fbf2aaab3ee7a3408059c3ad769b31483ca8742ea8128237e48875"
+}

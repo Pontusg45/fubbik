@@ -26,6 +26,7 @@ pub mod saved_query;
 pub mod semantic;
 pub mod session;
 pub mod settings;
+pub mod similarity;
 pub mod space;
 pub mod staleness;
 pub mod stats;
