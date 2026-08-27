@@ -221,6 +221,34 @@ mod tests {
         );
     }
 
+    /// Pins the score ABSOLUTELY, not as a difference. The sibling test above
+    /// compares two fixtures, so a constant added term cancels and is invisible
+    /// to it — and Rust's `freshness` is a hardcoded 20 (`health.rs:60`), so a
+    /// double-counted freshness term is exactly that constant case. Only an
+    /// absolute assertion catches it.
+    #[test]
+    fn score_is_exactly_the_sum_of_its_five_documented_terms() {
+        // content len 200 -> richness +8; rationale present -> completeness +4
+        // (base 8); no summary/embedding; 0 connections -> orphan (connectivity 0);
+        // 0 requirements -> coverage 0.
+        // h.total = 20 (freshness) + 12 (completeness) + 8 (richness) + 0 + 0 = 40
+        let h = health_for(&"y".repeat(200), Some("because"), 0);
+        let score = score_chunk(&ScoreInput {
+            chunk_type: "document",
+            rationale: Some("because"),
+            review_status: "approved",
+            connection_count: 3,
+            health: &h,
+        });
+        // health.total/10 + type(document=3) + rationale(2) + connections(min(6,10)=6) + review(approved=2)
+        // = 40/10 + 3.0 + 2.0 + 6.0 + 2.0 = 4.0 + 13.0 = 17.0
+        let expected = h.total as f64 / 10.0 + 3.0 + 2.0 + 6.0 + 2.0;
+        assert_eq!(
+            score, expected,
+            "score must be exactly the five documented terms"
+        );
+    }
+
     /// The budgeter SKIPS an oversized chunk and keeps going; it does not
     /// stop at the first one that will not fit. A test asserting only "the
     /// result fits the budget" passes with a `break` in place of `continue`.
