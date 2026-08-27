@@ -234,3 +234,30 @@ async fn find_neighbors_is_empty_when_the_source_has_no_embedding(pool: sqlx::Pg
         "the CTE yields no source row, so the join yields nothing"
     );
 }
+
+/// `user_id: None` is the global-search path (Node's `semanticSearch` also
+/// takes an optional `userId` that is always passed by callers today, but
+/// the branch is reachable through the public repository API — see
+/// controller ruling in task-4 review round 1). Seeds two distinct users
+/// with one vectorised chunk each and asserts both come back, in distance
+/// order, proving the `$2::text IS NULL OR c.user_id = $2` branch actually
+/// widens the search rather than silently filtering everyone out.
+#[sqlx::test]
+async fn semantic_search_with_no_user_id_searches_across_users(pool: sqlx::PgPool) {
+    let a = seed_user_with_email(&pool, "a@b.test").await;
+    let b = seed_user_with_email(&pool, "b@c.test").await;
+    seed_chunk_with_vector(&pool, &a, "near", "Near", 0).await;
+    seed_chunk_with_vector(&pool, &b, "far", "Far", 5).await;
+
+    let mut query = vec![0.0f32; 768];
+    query[0] = 1.0;
+    let hits = fubbik_db::repo::semantic::semantic_search(&pool, &query, None, &[], None, 10)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        hits.iter().map(|h| h.id.as_str()).collect::<Vec<_>>(),
+        vec!["near", "far"],
+        "None should search across all users, ordered by similarity"
+    );
+}

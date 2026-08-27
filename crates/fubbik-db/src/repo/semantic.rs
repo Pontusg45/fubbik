@@ -63,7 +63,6 @@ pub async fn semantic_search(
     limit: i64,
 ) -> AppResult<Vec<SemanticHit>> {
     let vector = to_pgvector_text(embedding);
-    let exclude: Vec<String> = exclude.to_vec();
 
     let rows = sqlx::query_as!(
         SemanticHit,
@@ -87,7 +86,7 @@ pub async fn semantic_search(
         "#,
         vector,
         user_id,
-        &exclude,
+        exclude,
         scope,
         limit,
     )
