@@ -2,9 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-// `chunks/check-similar` has no Rust route yet — see the "chunks" note in `@/utils/api`.
-import { legacyApi } from "@/utils/api";
-import { unwrapEden } from "@/utils/eden";
+import { api } from "@/utils/api";
 
 interface SimilarChunksWarningProps {
     title: string;
@@ -19,14 +17,13 @@ export function SimilarChunksWarning({ title, content, excludeId }: SimilarChunk
     const { data: similarChunks } = useQuery({
         queryKey: ["check-similar", debouncedTitle, debouncedContent, excludeId],
         queryFn: async () => {
-            const result = unwrapEden(
-                await legacyApi.api.chunks["check-similar"].post({
-                    title: debouncedTitle,
-                    content: debouncedContent,
-                    ...(excludeId ? { excludeId } : {})
-                })
-            );
-            return result as Array<{ id: string; title: string; type: string; similarity: number }>;
+            const { data, error } = await api.api.chunks["check-similar"].post({
+                title: debouncedTitle,
+                content: debouncedContent,
+                ...(excludeId ? { excludeId } : {})
+            });
+            if (error) throw new Error("Failed to check similar chunks");
+            return data;
         },
         enabled: debouncedTitle.length > 3 && debouncedContent.length > 20,
         staleTime: 30_000

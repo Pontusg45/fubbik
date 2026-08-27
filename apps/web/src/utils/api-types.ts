@@ -130,6 +130,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/check-similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Probes Ollama and degrades to `[]` when it is down — see
+         *     `chunks::ai::check_similar`'s doc comment for why this is the opposite
+         *     of `search_semantic`.
+         */
+        post: operations["check_similar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/enrich-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["enrich_all"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/merge": {
         parameters: {
             query?: never;
@@ -140,6 +177,26 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["merge_chunks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/search/semantic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * No availability probe on this path — see `chunks::ai::semantic_search`'s
+         *     doc comment. An unreachable Ollama surfaces as a 502, not an empty 200.
+         */
+        get: operations["search_semantic"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -346,6 +403,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/{id}/enrich": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["enrich_chunk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/{id}/file-refs": {
         parameters: {
             query?: never;
@@ -370,6 +443,28 @@ export interface paths {
             cookie?: never;
         };
         get: operations["chunk_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/{id}/neighbors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `k` defaults to 10 and is clamped to `1..=50`, matching Node's
+         *     `Math.min(Math.max(Number(ctx.query.k ?? 10), 1), 50)`
+         *     (`chunks/routes.ts:303`). Never calls Ollama — see
+         *     `chunks::ai::neighbors`'s doc comment.
+         */
+        get: operations["chunk_neighbors"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3258,6 +3353,12 @@ export interface components {
          * @enum {string}
          */
         CellStatus: "specified" | "unspecified" | "violated" | "verified";
+        /** @description Body of `POST /api/chunks/check-similar` (`chunks/routes.ts:234-239`). */
+        CheckSimilarBody: {
+            content: string;
+            excludeId?: string | null;
+            title: string;
+        };
         /**
          * @description `camelCase` serialisation is mandatory, not cosmetic: the 106 web files
          *     that consume this API were written against Drizzle's camelCase output.
@@ -4943,6 +5044,28 @@ export interface components {
             message: string;
         };
         /**
+         * @description [`fubbik_db::repo::semantic::NeighborRow`] plus the hybrid-scoring
+         *     fields Node's `findRelatedChunksHybrid` adds
+         *     (`packages/db/src/repository/semantic.ts:106-115`).
+         */
+        NeighborItem: {
+            /** Format: double */
+            combinedScore: number;
+            /** Format: double */
+            distance: number;
+            /** Format: double */
+            embeddingSimilarity: number;
+            graphConnected: boolean;
+            id: string;
+            summary?: string | null;
+            title: string;
+            type: string;
+        };
+        NeighborsResponse: {
+            neighbors: components["schemas"]["NeighborItem"][];
+            note?: string | null;
+        };
+        /**
          * @description `notification.type` is `text NOT NULL` with no check constraint and no
          *     enum anywhere in the Node source (`packages/db/src/schema/notification.ts`
          *     just leaves a comment listing example values). The Phase 2b plan's
@@ -5750,6 +5873,19 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        SemanticHit: {
+            aliases: string[];
+            content: string;
+            id: string;
+            scope: {
+                [key: string]: string;
+            };
+            /** Format: double */
+            similarity: number;
+            summary?: string | null;
+            title: string;
+            type: string;
+        };
         /**
          * @description Body of `PUT /features/active` (`packages/api/src/features/routes.ts:
          *     66-68`).
@@ -5787,6 +5923,13 @@ export interface components {
         SetSettingBody: {
             key: string;
             value: unknown;
+        };
+        SimilarChunk: {
+            id: string;
+            /** Format: double */
+            similarity: number;
+            title: string;
+            type: string;
         };
         /** @enum {string} */
         Sort: "newest" | "oldest" | "alpha" | "updated";
@@ -7055,6 +7198,46 @@ export interface operations {
             };
         };
     };
+    check_similar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckSimilarBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarChunk"][];
+                };
+            };
+        };
+    };
+    enrich_all: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     merge_chunks: {
         parameters: {
             query?: never;
@@ -7083,6 +7266,42 @@ export interface operations {
                 content?: never;
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    search_semantic: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: string | null;
+                exclude?: string | null;
+                scope?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SemanticHit"][];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7514,6 +7733,37 @@ export interface operations {
             };
         };
     };
+    enrich_chunk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_file_refs: {
         parameters: {
             query?: never;
@@ -7578,6 +7828,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ChunkVersion"][];
                 };
+            };
+        };
+    };
+    chunk_neighbors: {
+        parameters: {
+            query?: {
+                k?: string | null;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NeighborsResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

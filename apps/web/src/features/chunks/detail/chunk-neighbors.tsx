@@ -2,9 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Compass } from "lucide-react";
 
-// `chunks/{id}/neighbors` has no Rust route yet — see the "chunks" note in `@/utils/api`.
-import { legacyApi } from "@/utils/api";
-import { unwrapEden } from "@/utils/eden";
+import { api } from "@/utils/api";
 
 interface ChunkNeighborsProps {
     chunkId: string;
@@ -26,17 +24,26 @@ function similarityBar(distance: number) {
 export function ChunkNeighbors({ chunkId }: ChunkNeighborsProps) {
     const neighborsQuery = useQuery({
         queryKey: ["chunk-neighbors", chunkId],
-        queryFn: async () =>
-            unwrapEden(await legacyApi.api.chunks({ id: chunkId }).neighbors.get({ query: { k: "10" } })) as {
-                note?: string;
-                neighbors?: Neighbor[];
-            }
+        queryFn: async () => {
+            const { data, error } = await api.api.chunks({ id: chunkId }).neighbors.get({ query: { k: "10" } });
+            if (error) throw new Error("Failed to load neighbors");
+            return data;
+        }
     });
 
     const data = neighborsQuery.data;
     if (!data) return null;
-    const note = data.note;
-    const neighbors = data.neighbors ?? [];
+    // `note` is `Option<String>` in Rust; utoipa omits always-serialised Option
+    // fields from the OpenAPI `required` array, so the generated type admits
+    // `undefined` where the wire never actually sends it. Normalise to null.
+    const note = data.note ?? null;
+    const neighbors: Neighbor[] = (data.neighbors ?? []).map(n => ({
+        id: n.id,
+        title: n.title,
+        type: n.type,
+        summary: n.summary ?? null,
+        distance: n.distance
+    }));
 
     if (note || neighbors.length === 0) return null;
 

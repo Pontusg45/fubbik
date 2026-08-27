@@ -10,7 +10,7 @@ import { PageContainer, PageHeader, PageLoading } from "@/components/ui/page";
 import { BrokenLinkChecker } from "@/features/health/broken-link-checker";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/knowledge-health")({
@@ -281,8 +281,7 @@ function StaleEmbeddingsCard({
     const queryClient = useQueryClient();
     const enrichMutation = useMutation({
         mutationFn: async (chunkId: string) => {
-            // `chunks/{id}/enrich` has no Rust route yet — see the "chunks" note in `@/utils/api`.
-            const res = await legacyApi.api.chunks({ id: chunkId }).enrich.post();
+            const res = await api.api.chunks({ id: chunkId }).enrich.post();
             if (res.error) throw new Error("Enrich failed");
             return res.data;
         },

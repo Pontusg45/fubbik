@@ -91,10 +91,15 @@ import { createClient } from "./api-proxy.future";
 //
 // A few call sites still hit routes *inside* an otherwise-ported domain
 // that Rust hasn't finished:
-//   - chunks: `search/semantic`, `search/federated`, `grouped`,
-//     `check-similar`, `clusters`, `import-docs` (+ `import-docs/preview`),
-//     `{id}/neighbors`, `{id}/suggestions`, `{id}/enrich` have no Rust route
-//     at all — confirmed against `openapi.json` — and stay on `legacyApi`.
+//   - chunks: `search/federated`, `grouped`, `clusters`, `import-docs`
+//     (+ `import-docs/preview`), `{id}/suggestions` have no Rust route at
+//     all — confirmed against `openapi.json` — and stay on `legacyApi`.
+//     `search/semantic`, `check-similar`, `{id}/neighbors` and `{id}/enrich`
+//     DO have a Rust route now; every call site already moved to `api`
+//     (see `utils/api-helpers.ts`, `features/chunks/related-suggestions.tsx`,
+//     `features/chunks/similar-chunks-warning.tsx`,
+//     `features/chunks/detail/chunk-neighbors.tsx`, and
+//     `routes/knowledge-health.tsx`), so they no longer belong on this list.
 //   - `bulk-update`, `{id}/archive`, `{id}/restore` and `archived` DO have a
 //     Rust route now; every call site already moved to `api` (see
 //     `utils/api-helpers.ts`), so they no longer belong on this list.

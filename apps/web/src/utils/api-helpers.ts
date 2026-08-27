@@ -1,12 +1,11 @@
-import { api, legacyApi } from "./api";
+import { api } from "./api";
 import { unwrapEden } from "./eden";
 
 // Typed helpers for common API patterns that Eden can't type correctly
 // (path-parameterized sub-resources like /chunks/:id/archive)
 //
-// Four of the five routes here (archive/restore/archived/bulk-update) are on
-// Rust now. `enrich` is not — it needs Ollama, which the Rust server does not
-// call yet — so this file imports both clients.
+// All five routes here (archive/restore/archived/bulk-update/enrich) are on
+// Rust now.
 
 export async function archiveChunk(id: string) {
     const { error } = await api.api.chunks({ id }).archive.post();
@@ -19,7 +18,8 @@ export async function restoreChunk(id: string) {
 }
 
 export async function enrichChunk(id: string) {
-    return unwrapEden(await legacyApi.api.chunks({ id }).enrich.post());
+    const { error } = await api.api.chunks({ id }).enrich.post();
+    if (error) throw new Error("Failed to enrich chunk");
 }
 
 export async function getArchivedChunks() {
