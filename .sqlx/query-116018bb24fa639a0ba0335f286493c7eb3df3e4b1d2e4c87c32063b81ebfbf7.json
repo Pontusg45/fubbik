@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id FROM chunk WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
+  "query": "SELECT id FROM chunk WHERE user_id = $1 AND archived_at IS NULL ORDER BY created_at DESC LIMIT $2",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       false
     ]
   },
-  "hash": "6b0da2796feb675ff585fea77120e0e8af289b9f7836b7502b957f429595ed1f"
+  "hash": "116018bb24fa639a0ba0335f286493c7eb3df3e4b1d2e4c87c32063b81ebfbf7"
 }

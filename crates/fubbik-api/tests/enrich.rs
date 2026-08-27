@@ -460,3 +460,63 @@ async fn enrich_all_continues_past_a_single_chunk_failure(pool: sqlx::PgPool) {
         );
     }
 }
+
+/// `fubbik_db::repo::chunk::list_ids_for_user` must exclude archived
+/// chunks, matching Node's `listChunks(userId, {...})` which pushes
+/// `isNull(chunk.archivedAt)` whenever `includeArchived` is falsy
+/// (`packages/db/src/repository/chunk.ts:37-39`). Without that filter an
+/// archived chunk would get an embedding it never had under Node, and
+/// would eat into the sweep's 1000-row budget.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn enrich_all_skips_archived_chunks(pool: sqlx::PgPool) {
+    let server = ollama_mock().await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+
+    let mut ids = Vec::new();
+    for i in 0..3 {
+        let created = send(
+            app.clone(),
+            &cookie,
+            "POST",
+            "/api/chunks",
+            serde_json::json!({ "title": format!("T{i}"), "content": "C", "type": "note" }),
+        )
+        .await;
+        ids.push(json_body(created).await["id"].as_str().unwrap().to_string());
+    }
+
+    let archived_id = ids[0].clone();
+    let res = send(
+        app.clone(),
+        &cookie,
+        "POST",
+        &format!("/api/chunks/{archived_id}/archive"),
+        serde_json::Value::Null,
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = send(
+        app.clone(),
+        &cookie,
+        "POST",
+        "/api/chunks/enrich-all",
+        serde_json::Value::Null,
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await["enriched"], 2);
+
+    let archived_summary =
+        sqlx::query_scalar!("SELECT summary FROM chunk WHERE id = $1", archived_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(
+        archived_summary.is_none(),
+        "the archived chunk must not have been swept into enrich-all"
+    );
+}

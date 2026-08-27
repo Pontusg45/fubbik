@@ -325,6 +325,11 @@ pub struct EnrichmentPatch {
 /// (`packages/api/src/enrich/service.ts:39`) never populates it, so adding
 /// a fifth COALESCE branch (and the test to pin it) here would cover a
 /// capability nothing exercises.
+///
+/// This writes `WHERE id = $1` with no `user_id` scoping — safe today only
+/// because its sole caller, `enrich::service::enrich_chunk`, already did a
+/// user-scoped `find_by_id` before calling this. Any new caller must do the
+/// same ownership check first; this function does not do it for you.
 pub async fn update_chunk_enrichment(
     pool: &PgPool,
     chunk_id: &str,
@@ -1185,7 +1190,7 @@ pub async fn merge(
 /// would be more code than this direct query.
 pub async fn list_ids_for_user(pool: &PgPool, user_id: &str, limit: i64) -> AppResult<Vec<String>> {
     let ids = sqlx::query_scalar!(
-        "SELECT id FROM chunk WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
+        "SELECT id FROM chunk WHERE user_id = $1 AND archived_at IS NULL ORDER BY created_at DESC LIMIT $2",
         user_id,
         limit
     )
