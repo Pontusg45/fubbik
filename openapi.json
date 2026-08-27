@@ -2090,6 +2090,206 @@
         }
       }
     },
+    "/api/context/about": {
+      "get": {
+        "tags": [
+          "crate::context::routes"
+        ],
+        "summary": "`GET /api/context/about?q=auth&maxTokens=N&spaceId=X&format=structured-md`.",
+        "operationId": "about",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "maxTokens",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/ContextFormat"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/context/for-files": {
+      "get": {
+        "tags": [
+          "crate::context::routes"
+        ],
+        "summary": "`GET /api/context/for-files?paths=a.ts,b.ts&maxTokens=N&spaceId=X&format=structured-md`.",
+        "operationId": "for_files",
+        "parameters": [
+          {
+            "name": "paths",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "maxTokens",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/ContextFormat"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/context/for-plan": {
+      "get": {
+        "tags": [
+          "crate::context::routes"
+        ],
+        "summary": "`GET /api/context/for-plan?planId=X&maxTokens=N&format=structured-md`.",
+        "description": "`resolve_for_plan` returns `NotFound` for a plan the caller doesn't own\n(a deliberate tightening over Node — see the resolver's own doc comment\nfor the full ruling); this handler just propagates it via `?`, it does\nnot add a second check.",
+        "operationId": "for_plan",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "maxTokens",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/ContextFormat"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/density": {
       "get": {
         "tags": [
@@ -10659,6 +10859,34 @@
           }
         }
       },
+      "ChunkWithMetadata": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ScoredChunk"
+          },
+          {
+            "type": "object",
+            "required": [
+              "healthScore",
+              "isStale",
+              "hasPendingProposal"
+            ],
+            "properties": {
+              "hasPendingProposal": {
+                "type": "boolean"
+              },
+              "healthScore": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "isStale": {
+                "type": "boolean"
+              }
+            }
+          }
+        ],
+        "description": "A scored chunk plus the enrichment the formatter annotates with.\nPorts `packages/api/src/context/formatter.ts:3-7`. Node's\n`ChunkWithMetadata extends ScoredChunk` — this port composes instead of\nflattening, so the wire shape is reproduced with `#[serde(flatten)]`\nrather than duplicating `ScoredChunk`'s fields here."
+      },
       "Collection": {
         "type": "object",
         "description": "`camelCase` serialisation matches every other wire type in this crate.",
@@ -10919,6 +11147,86 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "ContextFormat": {
+        "type": "string",
+        "description": "The `format` query param shared by all three routes. Mirrors Node's\n`t.Union([t.Literal(\"structured-md\"), t.Literal(\"structured-json\")])`\n(`context/routes.ts:49` and its two siblings) — `kebab-case` so\n`StructuredMd`/`StructuredJson` serialise/deserialise as exactly those\ntwo literals.",
+        "enum": [
+          "structured-md",
+          "structured-json"
+        ]
+      },
+      "ContextResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "content",
+              "totalChunks",
+              "format"
+            ],
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "structured-md"
+                ]
+              },
+              "totalChunks": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "sections",
+              "totalChunks",
+              "format"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "structured-json"
+                ]
+              },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ContextSection"
+                }
+              },
+              "totalChunks": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        ],
+        "description": "Shared response envelope for all three routes\n(`context/routes.ts:32-39` and its two siblings). Internally tagged on\n`format` so the wire shape is exactly Node's `{ format: \"structured-md\",\ncontent, totalChunks }` or `{ format: \"structured-json\", sections,\ntotalChunks }` — never both `content` and `sections` on the same\nresponse."
+      },
+      "ContextSection": {
+        "type": "object",
+        "required": [
+          "title",
+          "chunks"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChunkWithMetadata"
+            }
+          },
+          "title": {
+            "type": "string"
           }
         }
       },
@@ -15703,6 +16011,48 @@
         ],
         "properties": {
           "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ScoredChunk": {
+        "type": "object",
+        "description": "Mirrors `ScoredChunk` (`packages/api/src/context/utils.ts:8-15`) on the\nwire — `chunk_type` serialises as `type`, matching Node's field name,\nsince `/api/context/*` (Task 6) serialises this struct directly.",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "type",
+          "tags",
+          "score"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
             "type": "string"
           }
         }

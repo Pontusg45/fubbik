@@ -338,3 +338,322 @@ async fn enrich_chunks_computes_health_and_flags_stale(pool: sqlx::PgPool) {
 // it fails. That is done by hand against the working tree and reverted —
 // see the task report for the captured output.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// HTTP routes: `/api/context/for-plan`, `/api/context/about`,
+// `/api/context/for-files` — Task 6.
+// ---------------------------------------------------------------------------
+
+use axum::body::Body;
+use axum::http::{Request, StatusCode};
+use http_body_util::BodyExt;
+use tower::ServiceExt;
+
+fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
+    fubbik_api::AppState {
+        pool,
+        implicit_dev_session: false,
+        better_auth_secret: "test-secret".into(),
+        ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
+        rate_limiter: Default::default(),
+    }
+}
+
+async fn signup(app: axum::Router, email: &str, name: &str) -> String {
+    let res = app
+        .oneshot(
+            Request::post("/api/auth/sign-up/email")
+                .header("content-type", "application/json")
+                .body(Body::from(format!(
+                    r#"{{"email":"{email}","password":"hunter22","name":"{name}"}}"#
+                )))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK, "signup must succeed");
+    res.headers()
+        .get("set-cookie")
+        .expect("signup should set a session cookie")
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_string()
+}
+
+async fn user_id_for_email(pool: &sqlx::PgPool, email: &str) -> String {
+    sqlx::query_scalar!(r#"SELECT id FROM "user" WHERE email = $1"#, email)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+async fn json_body(response: axum::response::Response) -> serde_json::Value {
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    if body.is_empty() {
+        return serde_json::Value::Null;
+    }
+    serde_json::from_slice(&body).unwrap()
+}
+
+async fn get(app: axum::Router, cookie: &str, path: &str) -> axum::response::Response {
+    app.oneshot(
+        Request::get(path)
+            .header("cookie", cookie)
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
+/// `maxTokens=50` excludes a large linked chunk that `maxTokens=50000`
+/// includes — pinning `budget_chunks` actually receiving the parsed value,
+/// not just that both requests return 200 (Step 5's mutation target).
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn for_plan_returns_the_plans_chunks_within_budget(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "plan-budget@b.test", "Plan Budget").await;
+    let user_id = user_id_for_email(&pool, "plan-budget@b.test").await;
+
+    let p = plan::create(&pool, &user_id, "Budget plan", None, None)
+        .await
+        .unwrap();
+    let task = plan::create_task(
+        &pool,
+        &user_id,
+        &p.id,
+        "A task",
+        None,
+        serde_json::json!([]),
+        None,
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
+    // ~650+ tokens of content — comfortably over a 50-token budget, and
+    // comfortably under a 50000-token one.
+    let mut big_chunk = new_chunk("Large Linked Chunk");
+    big_chunk.content = "word ".repeat(500);
+    let linked = chunk::create(&pool, &user_id, big_chunk).await.unwrap();
+    plan::add_task_chunk(&pool, &user_id, &p.id, &task.id, &linked.id, "context")
+        .await
+        .unwrap()
+        .expect("chunk should link to the task");
+
+    let small = get(
+        app.clone(),
+        &cookie,
+        &format!("/api/context/for-plan?planId={}&maxTokens=50", p.id),
+    )
+    .await;
+    assert_eq!(small.status(), StatusCode::OK);
+    let small_body = json_body(small).await;
+    let small_total = small_body["totalChunks"].as_u64().unwrap();
+
+    let large = get(
+        app.clone(),
+        &cookie,
+        &format!("/api/context/for-plan?planId={}&maxTokens=50000", p.id),
+    )
+    .await;
+    assert_eq!(large.status(), StatusCode::OK);
+    let large_body = json_body(large).await;
+    let large_total = large_body["totalChunks"].as_u64().unwrap();
+    let large_content = large_body["content"].as_str().unwrap();
+
+    assert!(
+        large_content.contains("Large Linked Chunk"),
+        "the plan's linked chunk must appear when the budget is generous: {large_content}"
+    );
+    assert!(
+        small_total < large_total,
+        "maxTokens=50 must yield strictly fewer chunks than maxTokens=50000: small={small_total} large={large_total}"
+    );
+}
+
+/// `resolve_for_plan` 404s a cross-user request rather than returning an
+/// empty context — the deliberate tightening over Node documented on the
+/// resolver itself. This pins that behaviour through the HTTP route.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn for_plan_404s_for_another_users_plan(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let _owner_cookie = signup(app.clone(), "plan-owner-http@b.test", "Owner").await;
+    let owner_id = user_id_for_email(&pool, "plan-owner-http@b.test").await;
+    let intruder_cookie = signup(app.clone(), "plan-intruder-http@b.test", "Intruder").await;
+
+    let p = plan::create(&pool, &owner_id, "Private plan", None, None)
+        .await
+        .unwrap();
+
+    let res = get(
+        app.clone(),
+        &intruder_cookie,
+        &format!("/api/context/for-plan?planId={}", p.id),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+/// The `/api/context/about` route over a wiremock `/api/embeddings`:
+/// asserts the semantically-near chunk appears and a chunk that matches
+/// neither the embedding nor the search text does not.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn about_finds_a_chunk_by_concept(pool: sqlx::PgPool) {
+    let server = ollama_embeddings_mock({
+        let mut v = vec![0.0f32; 768];
+        v[0] = 1.0;
+        v
+    })
+    .await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "about-http@b.test", "About").await;
+    let user_id = user_id_for_email(&pool, "about-http@b.test").await;
+
+    // Near the mocked query embedding (hot index 0).
+    seed_chunk_with_vector(&pool, &user_id, "near-chunk", "Widget Manual", 0).await;
+    // No embedding at all (excluded from the semantic path) and shares no
+    // text with the query, so the text-search path can't find it either.
+    chunk::create(&pool, &user_id, new_chunk("Completely Unrelated Topic"))
+        .await
+        .unwrap();
+
+    let res = get(
+        app.clone(),
+        &cookie,
+        "/api/context/about?q=widget&maxTokens=50000",
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let content = body["content"].as_str().unwrap();
+
+    assert!(
+        content.contains("Widget Manual"),
+        "the semantically-near chunk must appear: {content}"
+    );
+    assert!(
+        !content.contains("Completely Unrelated Topic"),
+        "a distant, non-matching chunk must not appear: {content}"
+    );
+}
+
+/// `paths=a,b` resolves chunks for both paths, not just the first.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn for_files_accepts_a_csv_of_paths(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "files-http@b.test", "Files").await;
+    let user_id = user_id_for_email(&pool, "files-http@b.test").await;
+
+    let a = chunk::create(&pool, &user_id, new_chunk("A File Chunk"))
+        .await
+        .unwrap();
+    chunk_meta::replace_file_refs(
+        &pool,
+        &a.id,
+        &user_id,
+        &[chunk_meta::FileRefInput::from("src/a.rs")],
+    )
+    .await
+    .unwrap();
+
+    let b = chunk::create(&pool, &user_id, new_chunk("B File Chunk"))
+        .await
+        .unwrap();
+    chunk_meta::replace_file_refs(
+        &pool,
+        &b.id,
+        &user_id,
+        &[chunk_meta::FileRefInput::from("src/b.rs")],
+    )
+    .await
+    .unwrap();
+
+    let res = get(
+        app.clone(),
+        &cookie,
+        "/api/context/for-files?paths=src/a.rs,src/b.rs&maxTokens=50000",
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let content = body["content"].as_str().unwrap();
+
+    assert!(
+        content.contains("A File Chunk"),
+        "the chunk for the first path must be returned: {content}"
+    );
+    assert!(
+        content.contains("B File Chunk"),
+        "the chunk for the second path must be returned: {content}"
+    );
+}
+
+/// `format` defaults to `structured-md` (a `content` string, no `sections`)
+/// and `structured-json` is selectable (`sections`, no `content`) — the two
+/// bodies must genuinely differ, not just both return 200.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn format_defaults_to_structured_md_and_json_is_selectable(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "format-http@b.test", "Format").await;
+    let user_id = user_id_for_email(&pool, "format-http@b.test").await;
+
+    let c = chunk::create(&pool, &user_id, new_chunk("Formatted Chunk"))
+        .await
+        .unwrap();
+    chunk_meta::replace_file_refs(
+        &pool,
+        &c.id,
+        &user_id,
+        &[chunk_meta::FileRefInput::from("src/formatted.rs")],
+    )
+    .await
+    .unwrap();
+
+    let default_res = get(
+        app.clone(),
+        &cookie,
+        "/api/context/for-files?paths=src/formatted.rs&maxTokens=50000",
+    )
+    .await;
+    assert_eq!(default_res.status(), StatusCode::OK);
+    let default_body = json_body(default_res).await;
+    assert_eq!(default_body["format"], "structured-md");
+    assert!(
+        default_body.get("content").is_some(),
+        "the default format must carry a markdown `content` string: {default_body:?}"
+    );
+    assert!(
+        default_body.get("sections").is_none(),
+        "the default format must not carry `sections`: {default_body:?}"
+    );
+
+    let json_res = get(
+        app.clone(),
+        &cookie,
+        "/api/context/for-files?paths=src/formatted.rs&maxTokens=50000&format=structured-json",
+    )
+    .await;
+    assert_eq!(json_res.status(), StatusCode::OK);
+    let json_body_val = json_body(json_res).await;
+    assert_eq!(json_body_val["format"], "structured-json");
+    assert!(
+        json_body_val.get("sections").is_some(),
+        "the json format must carry `sections`: {json_body_val:?}"
+    );
+    assert!(
+        json_body_val.get("content").is_none(),
+        "the json format must not carry a markdown `content` string: {json_body_val:?}"
+    );
+
+    assert_ne!(
+        serde_json::to_string(&default_body).unwrap(),
+        serde_json::to_string(&json_body_val).unwrap(),
+        "the two formats must produce genuinely different response bodies"
+    );
+}

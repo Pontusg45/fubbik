@@ -13,4 +13,5 @@
 
 pub mod dto;
 pub mod resolvers;
+pub mod routes;
 pub mod service;

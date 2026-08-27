@@ -15,11 +15,15 @@ use crate::tokens::estimate_tokens;
 /// (`utils.ts:66`).
 const HEADER_SEED: &str = "# Project Context\n\n";
 
-#[derive(Debug, Clone)]
+/// Mirrors `ScoredChunk` (`packages/api/src/context/utils.ts:8-15`) on the
+/// wire — `chunk_type` serialises as `type`, matching Node's field name,
+/// since `/api/context/*` (Task 6) serialises this struct directly.
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
 pub struct ScoredChunk {
     pub id: String,
     pub title: String,
     pub content: String,
+    #[serde(rename = "type")]
     pub chunk_type: String,
     pub rationale: Option<String>,
     pub tags: Vec<String>,

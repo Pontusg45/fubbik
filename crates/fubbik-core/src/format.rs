@@ -32,22 +32,29 @@ pub fn format_chunk_text(chunk: &ScoredChunk) -> String {
 }
 
 /// A scored chunk plus the enrichment the formatter annotates with.
-/// Ports `packages/api/src/context/formatter.ts:3-7`.
-#[derive(Debug, Clone)]
+/// Ports `packages/api/src/context/formatter.ts:3-7`. Node's
+/// `ChunkWithMetadata extends ScoredChunk` — this port composes instead of
+/// flattening, so the wire shape is reproduced with `#[serde(flatten)]`
+/// rather than duplicating `ScoredChunk`'s fields here.
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ChunkWithMetadata {
+    #[serde(flatten)]
     pub chunk: ScoredChunk,
     pub health_score: i64,
     pub is_stale: bool,
     pub has_pending_proposal: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ContextSection {
     pub title: String,
     pub chunks: Vec<ChunkWithMetadata>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct StructuredContext {
     pub sections: Vec<ContextSection>,
     pub total_chunks: usize,
@@ -94,6 +101,51 @@ pub fn format_structured(chunks: Vec<ChunkWithMetadata>) -> StructuredContext {
         sections,
         total_chunks,
     }
+}
+
+/// Ports `formatStructuredMarkdown` (`formatter.ts:96-115`). Not part of
+/// Task 5's interface list — added here (rather than in `fubbik-api`)
+/// because it's the direct sibling of [`format_structured`], which already
+/// lives in this module, and all three `/api/context/*` routes need it for
+/// their `structured-md` (default) response.
+///
+/// Trims trailing whitespace at the end, matching Node's `.join("\n").trimEnd()`.
+pub fn format_structured_markdown(ctx: &StructuredContext) -> String {
+    let mut lines: Vec<String> = vec!["# Project Context".to_string(), String::new()];
+
+    for section in &ctx.sections {
+        lines.push(format!("## {}", section.title));
+        lines.push(String::new());
+        for c in &section.chunks {
+            let mut flags: Vec<&str> = Vec::new();
+            if c.is_stale {
+                flags.push("⚠ STALE");
+            }
+            if c.has_pending_proposal {
+                flags.push("⚠ PENDING PROPOSAL");
+            }
+            let flag_str = if flags.is_empty() {
+                String::new()
+            } else {
+                format!(" {}", flags.join(" "))
+            };
+            lines.push(format!(
+                "### {} [health: {}]{flag_str}",
+                c.chunk.title, c.health_score
+            ));
+            if !c.chunk.content.is_empty() {
+                lines.push(String::new());
+                lines.push(c.chunk.content.clone());
+            }
+            if let Some(rationale) = &c.chunk.rationale {
+                lines.push(String::new());
+                lines.push(format!("**Rationale:** {rationale}"));
+            }
+            lines.push(String::new());
+        }
+    }
+
+    lines.join("\n").trim_end().to_string()
 }
 
 #[cfg(test)]
@@ -234,5 +286,31 @@ mod tests {
         ]);
         let titles: Vec<&str> = out.sections.iter().map(|s| s.title.as_str()).collect();
         assert_eq!(titles, vec!["Checklists", "Notes", "Architecture"]);
+    }
+
+    #[test]
+    fn markdown_includes_health_flags_and_rationale() {
+        let mut meta = with_meta("note", &[]);
+        meta.chunk.title = "Widget".into();
+        meta.chunk.content = "Body text".into();
+        meta.chunk.rationale = Some("because reasons".into());
+        meta.health_score = 42;
+        meta.is_stale = true;
+        meta.has_pending_proposal = true;
+
+        let out = format_structured_markdown(&format_structured(vec![meta]));
+
+        assert!(out.starts_with("# Project Context"));
+        assert!(out.contains("## Notes"));
+        assert!(out.contains("### Widget [health: 42] ⚠ STALE ⚠ PENDING PROPOSAL"));
+        assert!(out.contains("Body text"));
+        assert!(out.contains("**Rationale:** because reasons"));
+    }
+
+    #[test]
+    fn markdown_trims_trailing_whitespace() {
+        let out = format_structured_markdown(&format_structured(vec![with_meta("note", &[])]));
+        assert_eq!(out, out.trim_end());
+        assert!(!out.ends_with('\n'));
     }
 }
