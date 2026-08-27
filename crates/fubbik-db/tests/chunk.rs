@@ -745,38 +745,42 @@ async fn update_chunk_enrichment_round_trips_a_vector(pool: sqlx::PgPool) {
 }
 
 /// Node spreads each field conditionally (`chunk.ts:379-383`), so `None`
-/// means "leave alone", not "set to null". A patch that carries only a
-/// summary must not blank an existing embedding, and must not move
-/// `embedding_updated_at` either — Node ties the timestamp to the embedding
-/// write in the same conditional spread.
+/// means "leave alone", not "set to null" — for all four columns, not just
+/// `embedding`. Seeds every column with a distinct non-default value, then
+/// applies two further single-field patches, each leaving the other three
+/// fields `None`. Each follow-up patch pins the columns it leaves absent:
+/// if any `COALESCE` were replaced by a bare parameter, that column would
+/// be nulled out here and the corresponding assertion would fail.
 #[sqlx::test]
 async fn update_chunk_enrichment_leaves_absent_fields_untouched(pool: sqlx::PgPool) {
     let user = seed_user(&pool).await;
     let seeded = a_chunk(&pool, &user, "T").await;
 
-    let vector: Vec<f32> = vec![0.5; 768];
-    let with_embedding = chunk::update_chunk_enrichment(
+    let seed_vector: Vec<f32> = vec![0.5; 768];
+    let seeded_all = chunk::update_chunk_enrichment(
         &pool,
         &seeded.id,
         chunk::EnrichmentPatch {
-            summary: None,
-            aliases: None,
-            not_about: None,
-            embedding: Some(vector.clone()),
+            summary: Some("seed summary".into()),
+            aliases: Some(vec!["seed-alias".into()]),
+            not_about: Some(vec!["seed-not-about".into()]),
+            embedding: Some(seed_vector.clone()),
         },
     )
     .await
     .unwrap()
     .expect("chunk exists");
-    let stamped_at = with_embedding
+    let stamped_at = seeded_all
         .embedding_updated_at
         .expect("writing an embedding must stamp embedding_updated_at");
 
-    let after = chunk::update_chunk_enrichment(
+    // Sets only `summary`; `aliases`, `not_about` and `embedding` are all
+    // `None` here, so this call alone pins those three COALESCEs.
+    let after_summary_only = chunk::update_chunk_enrichment(
         &pool,
         &seeded.id,
         chunk::EnrichmentPatch {
-            summary: Some("only the summary".into()),
+            summary: Some("updated summary".into()),
             aliases: None,
             not_about: None,
             embedding: None,
@@ -786,19 +790,79 @@ async fn update_chunk_enrichment_leaves_absent_fields_untouched(pool: sqlx::PgPo
     .unwrap()
     .expect("chunk exists");
 
-    assert_eq!(after.summary.as_deref(), Some("only the summary"));
     assert_eq!(
-        after
+        after_summary_only.summary.as_deref(),
+        Some("updated summary")
+    );
+    assert_eq!(
+        after_summary_only.aliases.0,
+        vec!["seed-alias".to_string()],
+        "a None aliases means 'leave alone', not 'set to null'"
+    );
+    assert_eq!(
+        after_summary_only.not_about.0,
+        vec!["seed-not-about".to_string()],
+        "a None not_about means 'leave alone', not 'set to null'"
+    );
+    assert_eq!(
+        after_summary_only
             .embedding
             .expect("must survive a summary-only patch")
             .0,
-        vector,
+        seed_vector,
         "a None embedding means 'leave alone', not 'set to null'"
     );
     assert_eq!(
-        after.embedding_updated_at.expect("still stamped"),
+        after_summary_only
+            .embedding_updated_at
+            .expect("still stamped"),
         stamped_at,
         "a summary-only patch must not move embedding_updated_at"
+    );
+
+    // Sets only `aliases`; `summary` is `None` here, so this call pins the
+    // `summary` COALESCE (the previous call left it non-`None`, so it could
+    // not catch a mutation there).
+    let after_aliases_only = chunk::update_chunk_enrichment(
+        &pool,
+        &seeded.id,
+        chunk::EnrichmentPatch {
+            summary: None,
+            aliases: Some(vec!["updated-alias".into()]),
+            not_about: None,
+            embedding: None,
+        },
+    )
+    .await
+    .unwrap()
+    .expect("chunk exists");
+
+    assert_eq!(
+        after_aliases_only.summary.as_deref(),
+        Some("updated summary"),
+        "a None summary means 'leave alone', not 'set to null'"
+    );
+    assert_eq!(
+        after_aliases_only.aliases.0,
+        vec!["updated-alias".to_string()]
+    );
+    assert_eq!(
+        after_aliases_only.not_about.0,
+        vec!["seed-not-about".to_string()]
+    );
+    assert_eq!(
+        after_aliases_only
+            .embedding
+            .expect("must survive an aliases-only patch")
+            .0,
+        seed_vector
+    );
+    assert_eq!(
+        after_aliases_only
+            .embedding_updated_at
+            .expect("still stamped"),
+        stamped_at,
+        "an aliases-only patch must not move embedding_updated_at"
     );
 }
 

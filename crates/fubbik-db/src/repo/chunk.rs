@@ -308,6 +308,23 @@ pub struct EnrichmentPatch {
 /// checking. `embedding_updated_at` is stamped only when an embedding is
 /// actually supplied — Node ties the two together in the same conditional
 /// spread, so a summary-only patch must not move the timestamp.
+///
+/// `None` means "leave this column unchanged" — never "set it to NULL".
+/// `COALESCE($n, col)` cannot express clearing a column, so this diverges
+/// from Node's `EnrichChunkParams.summary`, which is typed `string | null`
+/// and can blank a summary via an explicit `null` (its conditional spread
+/// keys off `!== undefined`, not truthiness). No current caller needs to
+/// clear a column through this function — `packages/api/src/enrich/service.ts`
+/// only ever writes non-null values — so the gap is intentional, not an
+/// oversight, but it means this function cannot express what Node's type
+/// allows.
+///
+/// `scope` is deliberately not part of `EnrichmentPatch`, even though
+/// Node's `EnrichChunkParams` (`chunk.ts:365-372`) has an optional `scope`
+/// spread the same way as the other fields. The only real caller
+/// (`packages/api/src/enrich/service.ts:39`) never populates it, so adding
+/// a fifth COALESCE branch (and the test to pin it) here would cover a
+/// capability nothing exercises.
 pub async fn update_chunk_enrichment(
     pool: &PgPool,
     chunk_id: &str,
