@@ -247,9 +247,14 @@ async fn resolve_for_plan_preserves_first_encounter_order_across_all_three_sourc
         .await
         .unwrap()
         .expect("requirement should link to the plan");
-    requirement::set_chunks(&pool, &user_id, &req.id, std::slice::from_ref(&req_chunk.id))
-        .await
-        .unwrap();
+    requirement::set_chunks(
+        &pool,
+        &user_id,
+        &req.id,
+        std::slice::from_ref(&req_chunk.id),
+    )
+    .await
+    .unwrap();
 
     // Source 3: one task, linked to exactly one chunk.
     let task_chunk = chunk::create(&pool, &user_id, new_chunk("Task chunk"))
@@ -420,7 +425,8 @@ async fn resolve_for_files_matches_file_refs_and_applies_to_globs(pool: sqlx::Pg
         .unwrap();
 
     let paths = vec!["src/foo.rs".to_string(), "src/nested/bar.rs".to_string()];
-    let ids = fubbik_api::context::resolvers::resolve_for_files(&pool, &user_id, &paths, None)
+    let ai = fubbik_ai::OllamaClient::new("http://127.0.0.1:1");
+    let ids = fubbik_api::context::resolvers::resolve_for_files(&pool, &ai, &user_id, &paths, None)
         .await
         .unwrap();
 

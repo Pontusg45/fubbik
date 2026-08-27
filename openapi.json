@@ -2161,6 +2161,86 @@
         }
       }
     },
+    "/api/context/for-file": {
+      "get": {
+        "tags": [
+          "crate::context_for_file::routes"
+        ],
+        "summary": "`GET /api/context/for-file?path=X&spaceId=&deps=&format=&maxTokens=`.",
+        "operationId": "for_file",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "deps",
+            "in": "query",
+            "description": "Comma-separated dependency names, parsed by the handler — only ever\nread on the `json-legacy` path, matching Node exactly (the\n`structured-md`/`structured-json` branch calls `resolveForFiles`,\nwhose signature carries no `deps` parameter at all).",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "maxTokens",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/ForFileFormat"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForFileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/context/for-files": {
       "get": {
         "tags": [
@@ -11153,6 +11233,45 @@
           }
         }
       },
+      "ContextChunk": {
+        "type": "object",
+        "description": "A chunk in `getContextForFile`'s own result shape — ports `ContextChunk`\n(`context-for-file/service.ts:21-29`). Deliberately a narrower field set\nthan `fubbik_core::format::ChunkWithMetadata`: no `tags`, no\n`healthScore`/`isStale`/`hasPendingProposal`, because this is the\npre-enrichment shape the five strategies themselves produce, not the\noutput of `context::service::enrich_chunks`.",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "content",
+          "matchReason",
+          "score"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "matchReason": {
+            "$ref": "#/components/schemas/MatchReason"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
       "ContextFormat": {
         "type": "string",
         "description": "The `format` query param shared by all three routes. Mirrors Node's\n`t.Union([t.Literal(\"structured-md\"), t.Literal(\"structured-json\")])`\n(`context/routes.ts:49` and its two siblings) — `kebab-case` so\n`StructuredMd`/`StructuredJson` serialise/deserialise as exactly those\ntwo literals.",
@@ -11160,6 +11279,62 @@
           "structured-md",
           "structured-json"
         ]
+      },
+      "ContextRequirement": {
+        "type": "object",
+        "description": "Ports `ContextRequirement` (`context-for-file/service.ts:31-38`).",
+        "required": [
+          "id",
+          "title",
+          "status",
+          "steps",
+          "matchedChunkIds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "matchedChunkIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContextRequirementStep"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ContextRequirementStep": {
+        "type": "object",
+        "description": "One BDD step on a matched requirement — `{keyword, text}` only, matching\nNode's `.map(s => ({ keyword: s.keyword, text: s.text }))`\n(`context-for-file/service.ts:316`), which drops `params`.",
+        "required": [
+          "keyword",
+          "text"
+        ],
+        "properties": {
+          "keyword": {
+            "$ref": "#/components/schemas/StepKeyword"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
       },
       "ContextResponse": {
         "oneOf": [
@@ -13221,6 +13396,28 @@
           }
         }
       },
+      "FileContext": {
+        "type": "object",
+        "description": "Ports `FileContext` (`context-for-file/service.ts:40-43`) — the\n`json-legacy` response body, and `get_context_for_file`'s own return\ntype.",
+        "required": [
+          "chunks",
+          "requirements"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContextChunk"
+            }
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContextRequirement"
+            }
+          }
+        }
+      },
       "FileRef": {
         "type": "object",
         "description": "A `chunk_file_ref` row.\n\n`anchor` and `relation` were missing here for the same reason `note` was\nmissing from [`AppliesTo`] — see that doc comment. `relation` is\n`NOT NULL DEFAULT 'documents'` (`0001_init.sql:200`), so it is a plain\n`String`, not an `Option`; its four-value constraint lives on Node's\n*write* route schema only, and is reproduced in the service layer rather\nthan as a DTO enum or a DB CHECK.",
@@ -13330,6 +13527,26 @@
             "type": "string"
           }
         }
+      },
+      "ForFileFormat": {
+        "type": "string",
+        "description": "The `format` query param, one variant wider than `context::dto::ContextFormat`.",
+        "enum": [
+          "structured-md",
+          "structured-json",
+          "json-legacy"
+        ]
+      },
+      "ForFileResponse": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ContextResponse"
+          },
+          {
+            "$ref": "#/components/schemas/FileContext"
+          }
+        ],
+        "description": "The full response envelope for `GET /api/context/for-file`, spanning all\nthree `format` values. `#[serde(untagged)]` is load-bearing: it is what\nkeeps `JsonLegacy`'s wire shape untagged (`{chunks, requirements}`, no\n`format` key), matching Node's `{ ...result }` spread — an internally\ntagged enum (`context::dto::ContextResponse`'s own `#[serde(tag =\n\"format\")]`) would add a `format` field Node never sends here."
       },
       "Format": {
         "type": "string",
@@ -14119,6 +14336,17 @@
           "exact",
           "prefix",
           "contains"
+        ]
+      },
+      "MatchReason": {
+        "type": "string",
+        "description": "One strategy's name, exactly as it appears on the wire — Node's\n`ContextChunk[\"matchReason\"]` union (`context-for-file/service.ts:27`).",
+        "enum": [
+          "file-ref",
+          "applies-to",
+          "dependency",
+          "semantic",
+          "connected"
         ]
       },
       "MatchRules": {

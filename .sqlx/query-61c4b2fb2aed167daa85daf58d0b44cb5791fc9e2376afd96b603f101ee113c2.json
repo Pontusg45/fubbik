@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, source_id, target_id, relation,\n                  created_at AS \"created_at: UtcTimestamp\",\n                  origin, review_status, reviewed_by,\n                  reviewed_at AS \"reviewed_at: UtcTimestamp\",\n                  weight\n           FROM chunk_connection\n           WHERE source_id = ANY($1) OR target_id = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "source_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "target_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "relation",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "origin",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "review_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "reviewed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "reviewed_at: UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 9,
+        "name": "weight",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "61c4b2fb2aed167daa85daf58d0b44cb5791fc9e2376afd96b603f101ee113c2"
+}

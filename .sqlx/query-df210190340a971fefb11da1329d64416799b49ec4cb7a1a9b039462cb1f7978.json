@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk_connection SET weight = weight + 1 WHERE source_id = ANY($1) AND target_id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "df210190340a971fefb11da1329d64416799b49ec4cb7a1a9b039462cb1f7978"
+}

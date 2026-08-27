@@ -294,3 +294,61 @@ pub async fn connections_for_chunk(
     .await?;
     Ok(rows)
 }
+
+/// Every `chunk_connection` row touching any of `chunk_ids` on either end,
+/// globally — matching Node's `getConnectionsForChunks`
+/// (`packages/db/src/repository/connection.ts:31-37`), a bare
+/// `or(inArray(sourceId, chunkIds), inArray(targetId, chunkIds))` with no
+/// ownership scoping of its own. Connections are a global entity (cross-space,
+/// cross-user linking is the feature — see this module's other doc
+/// comments), so this is not a trust-boundary gap: the caller
+/// (`context_for_file::service::get_context_for_file`) has already produced
+/// `chunk_ids` from its own `user_id`-scoped lookups, and a foreign
+/// connection touching one of them can only ever be *read*, never used to
+/// reach a foreign chunk's contents through this function alone.
+///
+/// **No `ORDER BY`**, matching Node exactly.
+pub async fn connections_for_chunks(
+    pool: &PgPool,
+    chunk_ids: &[String],
+) -> AppResult<Vec<Connection>> {
+    if chunk_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let rows = sqlx::query_as!(
+        Connection,
+        r#"SELECT id, source_id, target_id, relation,
+                  created_at AS "created_at: UtcTimestamp",
+                  origin, review_status, reviewed_by,
+                  reviewed_at AS "reviewed_at: UtcTimestamp",
+                  weight
+           FROM chunk_connection
+           WHERE source_id = ANY($1) OR target_id = ANY($1)"#,
+        chunk_ids
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}
+
+/// Bumps `weight` by one on every `chunk_connection` row whose **both**
+/// ends are in `chunk_ids` — ports `incrementConnectionWeights`
+/// (`packages/db/src/repository/connection.ts:89-98`), which fires this as
+/// a fire-and-forget side effect after `getContextForFile` returns, to
+/// record which chunks tend to be retrieved together. A no-op (returns
+/// `Ok(0)` without touching the database) when `chunk_ids` has fewer than
+/// two entries, matching Node's own early return — a single co-accessed
+/// chunk has no pair to strengthen.
+pub async fn increment_connection_weights(pool: &PgPool, chunk_ids: &[String]) -> AppResult<u64> {
+    if chunk_ids.len() < 2 {
+        return Ok(0);
+    }
+    let result = sqlx::query!(
+        "UPDATE chunk_connection SET weight = weight + 1 \
+         WHERE source_id = ANY($1) AND target_id = ANY($1)",
+        chunk_ids
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}

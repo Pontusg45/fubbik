@@ -102,7 +102,14 @@ pub async fn for_files(
     let max_tokens = parse_max_tokens(query.max_tokens.as_deref());
     let format = query.format.unwrap_or_default();
 
-    let ids = resolve_for_files(&state.pool, &user.id, &paths, query.space_id.as_deref()).await?;
+    let ids = resolve_for_files(
+        &state.pool,
+        &state.ai,
+        &user.id,
+        &paths,
+        query.space_id.as_deref(),
+    )
+    .await?;
     let chunks = enrich_chunks(&state.pool, &user.id, &ids).await?;
     let structured = budget_and_format(chunks, max_tokens);
     Ok(axum::Json(ContextResponse::from_structured(
@@ -132,7 +139,7 @@ pub async fn for_files(
 /// order-independent by construction), then filters the original `chunks`
 /// `Vec` by that set — so the final order is exactly enrichment order,
 /// every time, regardless of how many chunks tie on score.
-fn budget_and_format(
+pub(crate) fn budget_and_format(
     chunks: Vec<fubbik_core::format::ChunkWithMetadata>,
     max_tokens: usize,
 ) -> fubbik_core::format::StructuredContext {

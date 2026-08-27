@@ -451,6 +451,94 @@ pub async fn get_neighborhood(pool: &PgPool, chunk_id: &str, hops: i32) -> AppRe
     get_neighborhood_in_graph(pool, "knowledge", chunk_id, hops).await
 }
 
+/// Ports `getConnectionDegrees` (`packages/db/src/age/query.ts:143-163`):
+/// the number of graph edges touching each of `chunk_ids`, for
+/// `context_for_file::service`'s centrality-boosted scoring.
+///
+/// Degrades to an empty map on any failure — a nonexistent graph, a query
+/// error, or (the case that matters in this deployment) AGE not being
+/// installed at all: [`cypher_columns`] -> [`cypher_multi`] already checks
+/// [`is_available`] first and returns `Ok(vec![])` rather than erroring, so
+/// this function's `unwrap_or_default()` is defence in depth, not the only
+/// thing standing between an unavailable AGE extension and a 500. Matches
+/// Node's own two-layer fallback: `getConnectionDegrees` itself has no
+/// `catchAll`, but every caller wraps it in one
+/// (`context-for-file/service.ts:262`).
+pub async fn get_connection_degrees(pool: &PgPool, chunk_ids: &[String]) -> HashMap<String, i64> {
+    if chunk_ids.is_empty() {
+        return HashMap::new();
+    }
+    let id_list = chunk_ids
+        .iter()
+        .map(|id| format!("'{}'", esc_cypher(id)))
+        .collect::<Vec<_>>()
+        .join(",");
+    let query = format!(
+        "MATCH (c:chunk)-[e]-() WHERE c.id IN [{id_list}] RETURN c.id AS id, count(e) AS degree"
+    );
+    let rows = cypher_columns(pool, &query, &["id", "degree"])
+        .await
+        .unwrap_or_default();
+
+    let mut map = HashMap::new();
+    for row in rows {
+        let id = row.get("id").and_then(|v| v.as_str()).map(str::to_string);
+        let degree = row.get("degree").and_then(|v| v.as_i64());
+        if let (Some(id), Some(degree)) = (id, degree) {
+            map.insert(id, degree);
+        }
+    }
+    map
+}
+
+/// Ports `getGraphProximityBoost` (`packages/db/src/age/query.ts:166-187`):
+/// for each of `candidate_ids` reachable from `anchor_id` within `max_hops`,
+/// `1 / hops` — a hybrid boost applied to semantic matches that are also
+/// graph-close to a high-confidence anchor (a file-ref or applies-to hit).
+///
+/// Same two-layer degradation as [`get_connection_degrees`]: `cypher_columns`
+/// already returns `Ok(vec![])` when AGE is unavailable, and this function's
+/// `unwrap_or_default()` also absorbs a genuine query error (e.g. no path
+/// exists within `max_hops`, which is not an error condition in Cypher but
+/// is handled identically either way — an empty map, not a panic).
+pub async fn get_graph_proximity_boost(
+    pool: &PgPool,
+    anchor_id: &str,
+    candidate_ids: &[String],
+    max_hops: i64,
+) -> HashMap<String, f64> {
+    if candidate_ids.is_empty() {
+        return HashMap::new();
+    }
+    let id_list = candidate_ids
+        .iter()
+        .map(|id| format!("'{}'", esc_cypher(id)))
+        .collect::<Vec<_>>()
+        .join(",");
+    let query = format!(
+        "MATCH (anchor:chunk {{id: '{}'}}), (target:chunk) \
+         WHERE target.id IN [{id_list}] \
+         MATCH p = shortestPath((anchor)-[*1..{max_hops}]-(target)) \
+         RETURN target.id AS id, length(p) AS hops",
+        esc_cypher(anchor_id)
+    );
+    let rows = cypher_columns(pool, &query, &["id", "hops"])
+        .await
+        .unwrap_or_default();
+
+    let mut map = HashMap::new();
+    for row in rows {
+        let id = row.get("id").and_then(|v| v.as_str()).map(str::to_string);
+        let hops = row.get("hops").and_then(|v| v.as_i64());
+        if let (Some(id), Some(hops)) = (id, hops)
+            && hops > 0
+        {
+            map.insert(id, 1.0 / hops as f64);
+        }
+    }
+    map
+}
+
 /// One edge on a resolved path, matching Node's `PathEdge`
 /// (`packages/db/src/age/query.ts:322-326`).
 #[derive(Debug, Clone, PartialEq, Eq)]

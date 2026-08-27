@@ -11,11 +11,10 @@
 //! contribution from this step" rather than failing the whole call.
 //! `resolve_for_plan` is the one exception — see its own doc comment.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use fubbik_core::error::{AppError, AppResult};
-use fubbik_core::glob::glob_match;
-use fubbik_db::repo::{chunk, chunk_meta, plan, requirement, semantic};
+use fubbik_db::repo::{chunk, plan, requirement, semantic};
 use sqlx::PgPool;
 
 /// Appends `id` to `ids` the first time it's seen, using `seen` purely for
@@ -168,28 +167,45 @@ pub async fn resolve_for_concept(
 // resolve_for_files
 // ---------------------------------------------------------------------------
 
-/// Ports `resolveForFiles` (`resolvers.ts:216-235`), narrowed to the two
-/// strategies its declared signature can actually reach.
+/// Ports `resolveForFiles` (`resolvers.ts:216-235`): for each path,
+/// delegates to the full five-strategy `getContextForFile` — file-ref
+/// (+20), applies-to glob (+10), dependency (+3), semantic (+5, needs
+/// Ollama), connected (+2) — and unions the matched chunk ids, exactly as
+/// Node does (`resolvers.ts:220-224`).
 ///
-/// **Scope divergence, not a partial port.** Node's `resolveForFiles`
-/// delegates every path to the full `getContextForFile`
-/// (`packages/api/src/context-for-file/service.ts`), a five-strategy
-/// matcher: file-ref (+20), applies-to glob (+10), dependency (+3),
-/// semantic (+5, needs Ollama), connected (+2). This function's signature —
-/// `(pool, user_id, paths, space_id)`, carrying neither an `ai` client nor
-/// a `deps` list — cannot reach the semantic or dependency strategies at
-/// all, and "connected" only ever expands a result `getContextForFile`
-/// already found. What remains reachable, and what this function
-/// implements, is exactly the two highest-priority strategies: a direct
-/// `chunk_file_ref` match on the literal path, and an `applies_to` glob
-/// match. Porting the full five-strategy service is out of scope here —
-/// it is a much larger, independently testable unit with its own Ollama
-/// and dependency-matching concerns — and is left for whichever task takes
-/// on `context-for-file` itself.
+/// **This function used to implement only two of the five strategies
+/// (file-ref, applies-to) directly**, because `get_context_for_file` did
+/// not exist yet at the time it was ported (Task 5, ahead of Task 7's
+/// `context_for_file::service`). That was a deliberate, documented scope
+/// narrowing at the time — see git history for the original doc comment —
+/// but it meant this function silently under-returned against Node for any
+/// path whose only matching chunks came from the dependency, semantic, or
+/// connected strategies. Task 7 rewires it to delegate to the real
+/// `get_context_for_file`, closing that gap.
 ///
-/// Never fails — see the module doc.
+/// `deps` is never passed (`None`) on this path, matching Node's own call
+/// site exactly (`getContextForFile(userId, path, spaceId)` — no fourth
+/// argument, `resolvers.ts:222`); only the `json-legacy` HTTP handler
+/// threads a caller-supplied `deps` list through to `get_context_for_file`
+/// directly.
+///
+/// Runs the per-path calls at concurrency 5, matching Node's
+/// `Effect.all(paths.map(...), { concurrency: 5 })`
+/// (`resolvers.ts:220`) — and, just as importantly, **preserves path
+/// order** in the result the same way `Effect.all` does: results are
+/// collected by original index, not by completion order, before their
+/// chunk ids are folded into `ids` via `push_unique`. A `JoinSet`'s
+/// completion order is not the input order, so completion-order folding
+/// would reintroduce exactly the nondeterminism this module's other two
+/// resolvers were fixed to avoid (see `push_unique`'s doc comment).
+///
+/// Never fails — see the module doc. A path whose `get_context_for_file`
+/// call somehow does return an error contributes no chunks (Node's
+/// `Effect.catchAll(() => Effect.succeed({chunks: [], requirements: []}))`,
+/// `resolvers.ts:221`) rather than failing the whole request.
 pub async fn resolve_for_files(
     pool: &PgPool,
+    ai: &fubbik_ai::OllamaClient,
     user_id: &str,
     paths: &[String],
     space_id: Option<&str>,
@@ -197,54 +213,44 @@ pub async fn resolve_for_files(
     let mut ids: Vec<String> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
 
-    // 1. Direct file-ref matches, one lookup per path.
-    for path in paths {
-        if let Ok(matches) =
-            chunk_meta::lookup_chunk_ids_by_path(pool, path, user_id, space_id).await
-        {
-            for id in matches {
-                push_unique(id, &mut ids, &mut seen);
-            }
-        }
+    let permits = std::sync::Arc::new(tokio::sync::Semaphore::new(5));
+    let mut tasks = tokio::task::JoinSet::new();
+    for (idx, path) in paths.iter().enumerate() {
+        let pool = pool.clone();
+        let ai = ai.clone();
+        let user_id = user_id.to_string();
+        let path = path.clone();
+        let space_id = space_id.map(str::to_string);
+        let permits = permits.clone();
+        tasks.spawn(async move {
+            let _permit = permits.acquire().await.expect("semaphore never closed");
+            let result = crate::context_for_file::service::get_context_for_file(
+                &pool,
+                &ai,
+                &user_id,
+                &path,
+                space_id.as_deref(),
+                None,
+            )
+            .await
+            .unwrap_or_else(|_| crate::context_for_file::dto::FileContext {
+                chunks: vec![],
+                requirements: vec![],
+            });
+            (idx, result)
+        });
     }
 
-    // 2. Applies-to glob matches, over chunks not already matched by step 1.
-    let params = chunk::ListParams {
-        space_id: space_id.map(str::to_string),
-        limit: 1000,
-        offset: 0,
-        ..Default::default()
-    };
-    if let Ok(chunks) = chunk::list(pool, user_id, &params).await {
-        let unchecked: Vec<String> = chunks
-            .iter()
-            .filter(|c| !seen.contains(&c.id))
-            .map(|c| c.id.clone())
-            .collect();
+    let mut by_index: Vec<Option<crate::context_for_file::dto::FileContext>> =
+        (0..paths.len()).map(|_| None).collect();
+    while let Some(joined) = tasks.join_next().await {
+        let (idx, file_context) = joined.expect("get_context_for_file task should not panic");
+        by_index[idx] = Some(file_context);
+    }
 
-        if !unchecked.is_empty()
-            && let Ok(patterns) = chunk_meta::get_applies_to_for_chunks(pool, &unchecked).await
-        {
-            let mut patterns_by_chunk: HashMap<String, Vec<String>> = HashMap::new();
-            for p in patterns {
-                patterns_by_chunk
-                    .entry(p.chunk_id)
-                    .or_default()
-                    .push(p.pattern);
-            }
-
-            for c in &chunks {
-                if seen.contains(&c.id) {
-                    continue;
-                }
-                if let Some(pats) = patterns_by_chunk.get(&c.id)
-                    && paths
-                        .iter()
-                        .any(|path| pats.iter().any(|pat| glob_match(pat, path)))
-                {
-                    push_unique(c.id.clone(), &mut ids, &mut seen);
-                }
-            }
+    for file_context in by_index.into_iter().flatten() {
+        for c in file_context.chunks {
+            push_unique(c.id, &mut ids, &mut seen);
         }
     }
 
