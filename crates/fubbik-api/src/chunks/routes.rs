@@ -83,9 +83,40 @@ pub async fn update_chunk(
     Path(id): Path<String>,
     ReqJson(body): ReqJson<UpdateChunkBody>,
 ) -> ApiResult<Json<Chunk>> {
-    Ok(Json(
-        service::update(&state.pool, &user.id, &id, body).await?,
-    ))
+    // Node fires this from the service layer (`chunk-mutations.ts:213-217`).
+    // Here it lives in the route because `chunks::service::update` takes
+    // only a `&PgPool` — threading the Ollama client through every service
+    // function to reach one call site would be a wider change than the
+    // behaviour warrants, and the route is the only layer that already
+    // holds both the pool and `state.ai`.
+    //
+    // Gate captured *before* `body` is moved into `service::update`.
+    let should_reenrich = body.title.is_some() || body.content.is_some();
+
+    let updated = service::update(&state.pool, &user.id, &id, body).await?;
+
+    if should_reenrich {
+        // Detached and failure-tolerant: a PATCH must return 200 even when
+        // Ollama is down or the re-enrich fails, so errors are logged, not
+        // propagated. This deliberately reproduces Node's *full* re-enrich
+        // (`enrichChunk`), which regenerates `summary`, `aliases` and
+        // `notAbout` as well as the embedding — overwriting a hand-written
+        // summary. That is Node's actual behaviour today; changing it is a
+        // product decision, not a port decision, and is out of scope here.
+        let pool = state.pool.clone();
+        let ai = state.ai.clone();
+        let chunk_id = id.clone();
+        let user_id = user.id.clone();
+        tokio::spawn(async move {
+            if let Err(err) =
+                crate::enrich::service::enrich_chunk(&pool, &ai, &user_id, &chunk_id).await
+            {
+                tracing::error!("[enrich] failed to re-enrich chunk {chunk_id}: {err}");
+            }
+        });
+    }
+
+    Ok(Json(updated))
 }
 
 #[utoipa::path(delete, path = "/api/chunks/{id}", params(("id" = String, Path,)),

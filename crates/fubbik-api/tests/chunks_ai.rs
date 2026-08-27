@@ -77,6 +77,23 @@ async fn post(
     .unwrap()
 }
 
+async fn patch(
+    app: axum::Router,
+    cookie: &str,
+    path: &str,
+    body: serde_json::Value,
+) -> axum::response::Response {
+    app.oneshot(
+        Request::patch(path)
+            .header("cookie", cookie)
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
 /// A 768-dimension vector that is all zeros except one hot index, matching
 /// the pattern in `crates/fubbik-db/tests/semantic.rs`. Cosine distance
 /// between two such vectors is exactly 0 when the indices match and 1 when
@@ -736,4 +753,285 @@ async fn the_graph_bonus_reorders_neighbours(pool: sqlx::PgPool) {
         Some("worse_connected"),
         "worse_connected must be ranked first after the bonus reorders it"
     );
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/chunks/{id} — re-enrich on title/content edit
+// ---------------------------------------------------------------------------
+
+/// Same shape as `enrich.rs`'s `ollama_mock`: an availability probe plus
+/// generation and embedding endpoints, all needed because a re-enrich runs
+/// the same full pipeline as a manual `/enrich` call.
+async fn ollama_mock_for_reenrich() -> wiremock::MockServer {
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/tags"))
+        .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .mount(&server)
+        .await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/generate"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "response": "{\"summary\":\"A summary.\",\"aliases\":[\"a1\",\"a2\"],\"notAbout\":[\"n1\"]}"
+            })),
+        )
+        .mount(&server)
+        .await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/embeddings"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({ "embedding": vec![0.01f32; 768] })),
+        )
+        .mount(&server)
+        .await;
+    server
+}
+
+/// The re-enrich is detached, so this polls with a deadline rather than
+/// sleeping: a sleep long enough to be reliable is long enough to slow the
+/// suite, and a short one is flaky.
+async fn wait_for_summary(pool: &sqlx::PgPool, id: &str) -> Option<String> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while std::time::Instant::now() < deadline {
+        let row = sqlx::query!("SELECT summary FROM chunk WHERE id = $1", id)
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        if row.summary.is_some() {
+            return row.summary;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+    }
+    None
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn patching_the_title_triggers_a_re_enrich(pool: sqlx::PgPool) {
+    let server = ollama_mock_for_reenrich().await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+
+    let created = post(
+        app.clone(),
+        &cookie,
+        "/api/chunks",
+        serde_json::json!({ "title": "T", "content": "C", "type": "note" }),
+    )
+    .await;
+    let id = json_body(created).await["id"].as_str().unwrap().to_string();
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{id}"),
+        serde_json::json!({ "title": "New title" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    assert_eq!(
+        wait_for_summary(&pool, &id).await.as_deref(),
+        Some("A summary."),
+        "patching the title must trigger a detached re-enrich that writes the summary"
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn patching_the_content_triggers_a_re_enrich(pool: sqlx::PgPool) {
+    let server = ollama_mock_for_reenrich().await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+
+    let created = post(
+        app.clone(),
+        &cookie,
+        "/api/chunks",
+        serde_json::json!({ "title": "T", "content": "C", "type": "note" }),
+    )
+    .await;
+    let id = json_body(created).await["id"].as_str().unwrap().to_string();
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{id}"),
+        serde_json::json!({ "content": "New content" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    assert_eq!(
+        wait_for_summary(&pool, &id).await.as_deref(),
+        Some("A summary."),
+        "patching the content must trigger a detached re-enrich that writes the summary"
+    );
+}
+
+/// Node gates on `title !== undefined || content !== undefined`
+/// (`chunk-mutations.ts:213`). A PATCH of any other field must not spend an
+/// Ollama call.
+///
+/// A poll-with-deadline can only prove a positive ("the summary showed up
+/// eventually"); it cannot prove a negative, because "not yet" and "never"
+/// look identical to a poll that times out. So this asserts directly on the
+/// mock's request log instead: after the PATCH response comes back (and a
+/// short settle window to let a wrongly-spawned task's first HTTP call land),
+/// `received_requests()` must show no `/api/generate` hit. That is not
+/// racy — a spawned re-enrich would either have already made the call by
+/// then, or the test would need to wait forever for something that isn't
+/// coming, which is exactly what "no re-enrich was triggered" means.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn patching_another_field_does_not_trigger_a_re_enrich(pool: sqlx::PgPool) {
+    let server = ollama_mock_for_reenrich().await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+
+    let created = post(
+        app.clone(),
+        &cookie,
+        "/api/chunks",
+        serde_json::json!({ "title": "T", "content": "C", "type": "note" }),
+    )
+    .await;
+    let id = json_body(created).await["id"].as_str().unwrap().to_string();
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{id}"),
+        serde_json::json!({ "rationale": "Some rationale" }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    // Give a wrongly-spawned task a generous window to have made its first
+    // Ollama call — this is not a poll for absence-of-evidence-as-proof, it
+    // just bounds how long we wait before inspecting the mock's log.
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+    let requests = server.received_requests().await.unwrap();
+    let generate_calls: Vec<_> = requests
+        .iter()
+        .filter(|r| r.url.path() == "/api/generate")
+        .collect();
+    assert!(
+        generate_calls.is_empty(),
+        "patching a non-title/content field must not call /api/generate, but got: {generate_calls:?}"
+    );
+
+    let row = sqlx::query!("SELECT summary FROM chunk WHERE id = $1", id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert!(
+        row.summary.is_none(),
+        "summary must stay NULL when no re-enrich was triggered"
+    );
+}
+
+/// The spawned task must not be able to fail the request.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn a_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPool) {
+    // Default client in `state()` points at port 1 — nothing listens there,
+    // so `enrich_chunk` returns `Ok(None)` (Ollama unavailable) without
+    // ever reaching a real network call.
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+
+    let created = post(
+        app.clone(),
+        &cookie,
+        "/api/chunks",
+        serde_json::json!({ "title": "T", "content": "C", "type": "note" }),
+    )
+    .await;
+    let id = json_body(created).await["id"].as_str().unwrap().to_string();
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{id}"),
+        serde_json::json!({ "title": "New title" }),
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::OK,
+        "a PATCH must return 200 even when the spawned re-enrich cannot reach Ollama"
+    );
+
+    let body = json_body(res).await;
+    assert_eq!(body["id"].as_str().unwrap(), id);
+    assert_eq!(body["title"].as_str().unwrap(), "New title");
+}
+
+/// The port-1 scenario above only exercises `enrich_chunk`'s `Ok(None)`
+/// branch (Ollama unavailable) — it never reaches the `Err` branch that
+/// `tracing::error!` actually logs. This test forces a *genuine* failure
+/// (Ollama reachable, but `/api/generate` returns an undecodable body, so
+/// `enrich_chunk` returns `Err`) to prove the PATCH is tolerant of that
+/// path too, not just the "unavailable" one.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn a_genuinely_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPool) {
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/tags"))
+        .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .mount(&server)
+        .await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/generate"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({ "response": "not valid json at all" })),
+        )
+        .mount(&server)
+        .await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/embeddings"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({ "embedding": vec![0.01f32; 768] })),
+        )
+        .mount(&server)
+        .await;
+
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+
+    let created = post(
+        app.clone(),
+        &cookie,
+        "/api/chunks",
+        serde_json::json!({ "title": "T", "content": "C", "type": "note" }),
+    )
+    .await;
+    let id = json_body(created).await["id"].as_str().unwrap().to_string();
+
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{id}"),
+        serde_json::json!({ "title": "New title" }),
+    )
+    .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::OK,
+        "a PATCH must return 200 even when the spawned re-enrich genuinely errors (not just when Ollama is unreachable)"
+    );
+
+    let body = json_body(res).await;
+    assert_eq!(body["id"].as_str().unwrap(), id);
+    assert_eq!(body["title"].as_str().unwrap(), "New title");
 }
