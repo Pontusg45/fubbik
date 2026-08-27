@@ -1035,3 +1035,83 @@ async fn a_genuinely_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPoo
     assert_eq!(body["id"].as_str().unwrap(), id);
     assert_eq!(body["title"].as_str().unwrap(), "New title");
 }
+
+/// Pins that the PATCH response does not wait on the re-enrich call —
+/// gap (b) from review: removing `tokio::spawn` and awaiting inline left
+/// every other test in this file green, so nothing was pinning "must not
+/// block on Ollama" until this test existed.
+///
+/// A dedicated `MockServer` (not the shared `ollama_mock_for_reenrich`
+/// helper) because this one needs a `/api/generate` mock that stalls for 5
+/// seconds — sharing that with tests that expect fast, synchronous-looking
+/// enrichment would slow them down or make them racy for no reason, the
+/// same logic that split `ollama_mock_available` from `ollama_mock`
+/// earlier in this file.
+///
+/// Threshold: asserts the PATCH returns in well under 1 second. The only
+/// work on the response path is a database UPDATE plus building the JSON
+/// response — nothing that should approach 100ms even on slow CI, let alone
+/// 1s — while the mutation this guards against (awaiting the re-enrich
+/// inline) would take at least 5s, the mock's delay. A 1s bar leaves a 50x
+/// margin against the failure case while still being generous enough that
+/// no legitimate scheduling jitter could trip it.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn patching_the_title_returns_before_the_re_enrich_completes(pool: sqlx::PgPool) {
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/tags"))
+        .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .mount(&server)
+        .await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/generate"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({
+                    "response": "{\"summary\":\"A summary.\",\"aliases\":[\"a1\",\"a2\"],\"notAbout\":[\"n1\"]}"
+                }))
+                .set_delay(std::time::Duration::from_secs(5)),
+        )
+        .mount(&server)
+        .await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/embeddings"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({ "embedding": vec![0.01f32; 768] })),
+        )
+        .mount(&server)
+        .await;
+
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "a@b.test", "A").await;
+
+    let created = post(
+        app.clone(),
+        &cookie,
+        "/api/chunks",
+        serde_json::json!({ "title": "T", "content": "C", "type": "note" }),
+    )
+    .await;
+    let id = json_body(created).await["id"].as_str().unwrap().to_string();
+
+    let start = std::time::Instant::now();
+    let res = patch(
+        app.clone(),
+        &cookie,
+        &format!("/api/chunks/{id}"),
+        serde_json::json!({ "title": "New title" }),
+    )
+    .await;
+    let elapsed = start.elapsed();
+
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(
+        elapsed < std::time::Duration::from_secs(1),
+        "PATCH must not block on the re-enrich call — it took {elapsed:?}, \
+         but the mock's /api/generate delay is 5s, so anything approaching \
+         that means the response is waiting on the spawned task"
+    );
+}
