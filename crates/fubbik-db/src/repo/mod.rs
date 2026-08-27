@@ -23,6 +23,7 @@ pub mod requirement;
 pub mod requirement_dependency;
 pub mod saved_graph;
 pub mod saved_query;
+pub mod semantic;
 pub mod session;
 pub mod settings;
 pub mod space;

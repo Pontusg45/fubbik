@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH source AS (\n            SELECT embedding FROM chunk\n            WHERE id = $1 AND user_id = $2 AND embedding IS NOT NULL\n        )\n        SELECT\n            c.id, c.title, c.summary,\n            c.type AS chunk_type,\n            (c.embedding <=> (SELECT embedding FROM source))::float8 AS \"distance!\"\n        FROM chunk c, source\n        WHERE c.id <> $1\n          AND c.user_id = $2\n          AND c.embedding IS NOT NULL\n          AND c.archived_at IS NULL\n        ORDER BY c.embedding <=> (SELECT embedding FROM source)\n        LIMIT $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "distance!",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "154bb2815c7054c2fba96c482c6af23053afba7ee0c30e06f838665d45b56316"
+}

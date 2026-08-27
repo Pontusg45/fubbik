@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            c.id, c.title, c.content, c.summary,\n            c.type AS chunk_type,\n            c.aliases AS \"aliases: Json<Vec<String>>\",\n            c.scope AS \"scope: Json<serde_json::Value>\",\n            (1 - (c.embedding <=> $1::text::vector))::float8 AS \"similarity!\"\n        FROM chunk c\n        WHERE c.embedding IS NOT NULL\n          AND ($2::text IS NULL OR c.user_id = $2)\n          AND NOT EXISTS (\n                SELECT 1 FROM unnest($3::text[]) AS term\n                WHERE c.not_about @> to_jsonb(ARRAY[term])\n              )\n          AND ($4::jsonb IS NULL OR c.scope @> $4)\n        ORDER BY c.embedding <=> $1::text::vector\n        LIMIT $5\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "chunk_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "aliases: Json<Vec<String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "scope: Json<serde_json::Value>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "similarity!",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "TextArray",
+        "Jsonb",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "73650adc9abd81d6067cf357b995dc93bc16cac651c3342a2636eddb9f861e1c"
+}
