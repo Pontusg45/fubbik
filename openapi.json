@@ -577,6 +577,79 @@
         }
       }
     },
+    "/api/chunks/search/semantic": {
+      "get": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "summary": "No availability probe on this path — see `chunks::ai::semantic_search`'s\ndoc comment. An unreachable Ollama surfaces as a 502, not an empty 200.",
+        "operationId": "search_semantic",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "exclude",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SemanticHit"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": ""
+          },
+          "502": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks/stale": {
       "get": {
         "tags": [
@@ -15608,6 +15681,57 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "SemanticHit": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "type",
+          "aliases",
+          "scope",
+          "similarity"
+        ],
+        "properties": {
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "similarity": {
+            "type": "number",
+            "format": "double"
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
           }
         }
       },

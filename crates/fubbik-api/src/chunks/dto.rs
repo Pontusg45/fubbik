@@ -84,6 +84,19 @@ where
     serde::Deserialize::deserialize(deserializer).map(Some)
 }
 
+/// Query for `GET /api/chunks/search/semantic`
+/// (`packages/api/src/chunks/routes.ts:192-206`). All values arrive as
+/// strings from Node's `t.Object` schema, so `limit` is parsed rather than
+/// typed — keeping the wire contract identical.
+#[derive(Debug, serde::Deserialize, utoipa::IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct SemanticSearchQuery {
+    pub q: String,
+    pub limit: Option<String>,
+    pub exclude: Option<String>,
+    pub scope: Option<String>,
+}
+
 /// Query params arrive as strings from the web client, matching the Elysia
 /// route's `t.Optional(t.String())` shape, so numeric fields parse leniently.
 ///

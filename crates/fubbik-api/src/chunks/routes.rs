@@ -1,11 +1,17 @@
+use std::time::Duration;
+
 use axum::extract::{Path, State};
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use fubbik_db::repo::chunk::Chunk;
 use fubbik_db::repo::chunk_meta::{self, AppliesTo, FileRef};
+use fubbik_db::repo::semantic::SemanticHit;
 
+use super::ai;
 use super::dto::{
-    ChunkDetail, ChunkListResponse, CreateChunkBody, ListChunksQuery, UpdateChunkBody,
+    ChunkDetail, ChunkListResponse, CreateChunkBody, ListChunksQuery, SemanticSearchQuery,
+    UpdateChunkBody,
 };
 use super::service;
 use crate::AppState;
@@ -91,6 +97,51 @@ pub async fn delete_chunk(
 ) -> ApiResult<Json<serde_json::Value>> {
     service::delete(&state.pool, &user.id, &id).await?;
     Ok(Json(serde_json::json!({ "success": true })))
+}
+
+/// Node's limit for this path (`chunks/routes.ts:197`) — 30 per 60s, keyed
+/// per user, same shape as `enrich`'s but a distinct key prefix so the two
+/// endpoints' budgets don't share a bucket.
+const SEMANTIC_SEARCH_MAX: u32 = 30;
+const SEMANTIC_SEARCH_WINDOW: Duration = Duration::from_secs(60);
+
+/// No availability probe on this path — see `chunks::ai::semantic_search`'s
+/// doc comment. An unreachable Ollama surfaces as a 502, not an empty 200.
+#[utoipa::path(get, path = "/api/chunks/search/semantic", params(SemanticSearchQuery),
+    responses((status = 200, body = Vec<SemanticHit>), (status = 429), (status = 502)))]
+pub async fn search_semantic(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Query(query): Query<SemanticSearchQuery>,
+) -> ApiResult<axum::response::Response> {
+    let decision = state.rate_limiter.check(
+        &format!("semantic-search:{}", user.id),
+        SEMANTIC_SEARCH_MAX,
+        SEMANTIC_SEARCH_WINDOW,
+    );
+    if !decision.allowed {
+        return Ok((
+            axum::http::StatusCode::TOO_MANY_REQUESTS,
+            Json(serde_json::json!({
+                "error": "Rate limit exceeded",
+                "retryAfter": decision.retry_after_secs,
+            })),
+        )
+            .into_response());
+    }
+
+    let limit = query.limit.as_deref().and_then(|s| s.parse::<i64>().ok());
+    let hits = ai::semantic_search(
+        &state.pool,
+        &state.ai,
+        &user.id,
+        &query.q,
+        limit,
+        query.exclude.as_deref(),
+        query.scope.as_deref(),
+    )
+    .await?;
+    Ok(Json(hits).into_response())
 }
 
 #[utoipa::path(get, path = "/api/chunks/{id}/history", params(("id" = String, Path,)),
@@ -343,6 +394,7 @@ pub fn router() -> Router<AppState> {
         // Static segments first: axum resolves these ahead of `/{id}`
         // regardless, but `archived`, `bulk` and `merge` are one segment
         // deep and the ordering is kept explicit.
+        .route("/api/chunks/search/semantic", get(search_semantic))
         .route("/api/chunks/archived", get(list_archived))
         .route("/api/chunks/bulk-update", post(bulk_update))
         .route("/api/chunks/bulk", axum::routing::delete(bulk_delete))
