@@ -71,11 +71,14 @@ pub async fn enrich_all(
         let permits = permits.clone();
         tasks.spawn(async move {
             let _permit = permits.acquire().await.expect("semaphore never closed");
-            super::service::enrich_chunk(&pool, &ai, &user_id, &id)
-                .await
-                .ok()
-                .flatten()
-                .is_some()
+            let result = super::service::enrich_chunk(&pool, &ai, &user_id, &id).await;
+            if let Err(ref err) = result {
+                // The sweep's contract (a bare count, matching Node's
+                // catchAll) doesn't change — this is purely so a partial
+                // sweep is debuggable instead of a silent gap.
+                tracing::warn!("enrich-all failed for chunk {id}: {err}");
+            }
+            result.ok().flatten().is_some()
         });
     }
 
