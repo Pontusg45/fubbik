@@ -521,7 +521,7 @@ pub async fn get_detail(
         requirement_count > 0 && requirements.iter().all(|r| r.status == "passing");
 
     let health_score =
-        super::health_score::compute_health_score(&super::health_score::ChunkHealthInput {
+        fubbik_core::health::compute_health_score(&fubbik_core::health::ChunkHealthInput {
             content: &chunk.content,
             summary: chunk.summary.as_deref(),
             rationale: chunk.rationale.as_deref(),

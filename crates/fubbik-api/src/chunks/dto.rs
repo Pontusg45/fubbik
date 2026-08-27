@@ -282,7 +282,7 @@ pub struct ChunkDetail {
     pub tags: Vec<fubbik_db::repo::tag::Tag>,
     pub requirements: Vec<fubbik_db::repo::requirement::ChunkRequirement>,
     pub all_deltas: Vec<fubbik_db::repo::feature::DeltaWithFeature>,
-    pub health_score: crate::chunks::health_score::HealthScore,
+    pub health_score: fubbik_core::health::HealthScore,
     /// Ids of the features whose deltas were actually applied to `chunk`,
     /// in application order. Underscore-prefixed on the wire because Node
     /// names it that way; `rename_all = "camelCase"` would produce

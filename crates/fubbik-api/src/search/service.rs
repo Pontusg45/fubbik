@@ -82,7 +82,7 @@ use super::dto::{
     SearchResultChunk,
 };
 use super::parser::QueryClause;
-use crate::chunks::health_score::{self, ChunkHealthInput};
+use fubbik_core::health::{self, ChunkHealthInput};
 
 /// Port of `mapSortParam` (`service.ts:30-34`) fused with `listChunks`'s
 /// own `switch (params.sort)` default arm (`packages/db/src/repository/chunk.ts:128-141`):
@@ -626,7 +626,7 @@ pub async fn execute_search(
             // `referencedInSession: false`. Search results never carry the
             // real embedding/requirement-coverage signal that the chunk
             // detail page's health score eventually will.
-            let health = health_score::compute_health_score(&ChunkHealthInput {
+            let health = health::compute_health_score(&ChunkHealthInput {
                 content: &c.content,
                 summary: c.summary.as_deref(),
                 rationale: None,
