@@ -134,4 +134,31 @@ mod tests {
         assert_eq!(limiter.len(), 1);
         assert!(limiter.contains("kept"));
     }
+
+    /// The eviction pass runs BEFORE the entry lookup, so a key whose window
+    /// has expired is recreated fresh rather than resurrected with its old
+    /// count. Reordering those two steps would judge the first request after
+    /// every expiry against the stale count and deny it spuriously — one
+    /// bogus 429 per window per user.
+    ///
+    /// This needs a real (non-zero) window: a zero-length one self-evicts
+    /// within the same call regardless of ordering, so it cannot
+    /// distinguish the two (see `the_window_resets_once_it_expires`, which
+    /// does not catch that reordering for exactly this reason).
+    #[test]
+    fn an_expired_window_is_not_judged_against_its_old_count() {
+        let limiter = RateLimiter::new();
+        let window = Duration::from_millis(50);
+
+        // Exhaust the budget.
+        assert!(limiter.check("k", 1, window).allowed);
+        assert!(!limiter.check("k", 1, window).allowed);
+
+        std::thread::sleep(Duration::from_millis(70));
+
+        assert!(
+            limiter.check("k", 1, window).allowed,
+            "the first request after a window expires must start a fresh budget"
+        );
+    }
 }
