@@ -161,4 +161,24 @@ mod tests {
             "the first request after a window expires must start a fresh budget"
         );
     }
+
+    /// Node uses `Math.ceil` (`rate-limit.ts`), so a partial second always
+    /// rounds UP. With a 60s window and near-zero elapsed time the remaining
+    /// duration is ~59.999s: `.ceil()` yields 60, while `.floor()` or a
+    /// truncating `as_secs()` yields 59. Asserting the exact value is what
+    /// distinguishes them — a bounds check like `<= 60` passes either way.
+    #[test]
+    fn retry_after_rounds_a_partial_second_up() {
+        let limiter = RateLimiter::new();
+        let window = Duration::from_secs(60);
+
+        assert!(limiter.check("k", 1, window).allowed);
+        let denied = limiter.check("k", 1, window);
+
+        assert!(!denied.allowed);
+        assert_eq!(
+            denied.retry_after_secs, 60,
+            "a partial second must round up, matching Node's Math.ceil"
+        );
+    }
 }
