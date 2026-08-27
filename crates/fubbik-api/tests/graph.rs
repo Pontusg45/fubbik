@@ -508,12 +508,56 @@ async fn graph_does_not_leak_another_users_behavior_rules(pool: sqlx::PgPool) {
         .as_str()
         .unwrap()
         .to_string();
-    send(
+    let rule_b = send(
         app.clone(),
         &cookie_b,
         "POST",
         &format!("/api/matrices/{matrix_b_id}/rules"),
         serde_json::json!({ "title": "B's secret rule" }),
+    )
+    .await;
+    let rule_b_id = json_body(rule_b).await["id"].as_str().unwrap().to_string();
+
+    // A `code_file` vertex for B's rule to govern — `link_governs` only
+    // MATCHes existing code vertices, it never creates them.
+    fubbik_db::age::cypher(&pool, "CREATE (:code_file {id: 'src/auth/session.ts'})")
+        .await
+        .unwrap();
+
+    // Wire B's rule to code so the sweep produces a `governs` edge for it.
+    // Without this the graph holds no edges at all, and the `governsEdges`
+    // half of the ownership filter could be deleted outright with this test
+    // still passing — the leak would only be caught for rule titles.
+    let dimension_b = send(
+        app.clone(),
+        &cookie_b,
+        "POST",
+        &format!("/api/matrices/{matrix_b_id}/dimensions"),
+        serde_json::json!({ "name": "Auth" }),
+    )
+    .await;
+    let dimension_b_id = json_body(dimension_b).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let cell_b = send(
+        app.clone(),
+        &cookie_b,
+        "PUT",
+        &format!("/api/matrices/{matrix_b_id}/cells"),
+        serde_json::json!({ "ruleId": rule_b_id, "dimensionId": dimension_b_id }),
+    )
+    .await;
+    let cell_b_id = json_body(cell_b).await["cell"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    send(
+        app.clone(),
+        &cookie_b,
+        "POST",
+        &format!("/api/matrices/{matrix_b_id}/cells/{cell_b_id}/code"),
+        serde_json::json!({ "kind": "file", "ref": "auth/session.ts" }),
     )
     .await;
 
@@ -528,6 +572,12 @@ async fn graph_does_not_leak_another_users_behavior_rules(pool: sqlx::PgPool) {
     let all_titles: Vec<&str> = vertices.iter().map(|v| v.title.as_str()).collect();
     assert!(all_titles.contains(&"A's secret rule"));
     assert!(all_titles.contains(&"B's secret rule"));
+    let all_edges = fubbik_db::age::list_governs_edges(&pool).await.unwrap();
+    assert!(
+        all_edges.iter().any(|e| e.source_id == rule_b_id),
+        "B's governs edge must exist in AGE, or the edge-filter assertion \
+         below would pass vacuously"
+    );
 
     let res = send(
         app.clone(),
@@ -553,6 +603,14 @@ async fn graph_does_not_leak_another_users_behavior_rules(pool: sqlx::PgPool) {
     assert!(
         !returned_titles.contains(&"B's secret rule"),
         "user A's graph must not contain user B's behavior rule title, got {returned_titles:?}"
+    );
+
+    let returned_edges = body["governsEdges"].as_array().unwrap();
+    assert!(
+        !returned_edges
+            .iter()
+            .any(|e| e["sourceId"].as_str() == Some(rule_b_id.as_str())),
+        "user A's graph must not contain a governs edge for user B's rule, got {returned_edges:?}"
     );
 }
 
