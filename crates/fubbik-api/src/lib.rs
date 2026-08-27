@@ -16,6 +16,7 @@ pub mod graph;
 pub mod health;
 pub mod learning_paths;
 pub mod matrices;
+pub mod middleware;
 pub mod notifications;
 pub mod openapi;
 pub mod plans;
@@ -53,6 +54,10 @@ pub struct AppState {
     /// can inject its own `wiremock` base URL — see
     /// `crates/fubbik-ai/src/client.rs`'s module doc.
     pub ai: fubbik_ai::OllamaClient,
+    /// Per-user request windows for the two endpoints Node rate-limits.
+    /// Process-local, like Node's — this is not a distributed limiter and
+    /// is not meant to be.
+    pub rate_limiter: crate::middleware::rate_limit::RateLimiter,
 }
 
 pub fn router(state: AppState) -> Router {
