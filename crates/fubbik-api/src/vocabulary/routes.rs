@@ -48,7 +48,7 @@ pub async fn suggest_vocabulary(
     ReqJson(body): ReqJson<SuggestBody>,
 ) -> ApiResult<Json<Vec<SuggestedEntry>>> {
     Ok(Json(
-        service::suggest_from_chunks(&state.pool, &user.id, &body.space_id).await?,
+        service::suggest_from_chunks(&state.pool, &state.ai, &user.id, &body.space_id).await?,
     ))
 }
 

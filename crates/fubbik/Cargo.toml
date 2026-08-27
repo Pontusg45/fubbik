@@ -17,6 +17,7 @@ tower-http = { version = "0.6", features = ["cors"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 utoipa = "5"
+fubbik-ai = { path = "../fubbik-ai" }
 fubbik-api = { path = "../fubbik-api" }
 fubbik-cli = { path = "../fubbik-cli" }
 fubbik-db = { path = "../fubbik-db" }

@@ -8,6 +8,7 @@ fn dev_state(pool: sqlx::PgPool) -> fubbik_api::AppState {
         pool,
         implicit_dev_session: true,
         better_auth_secret: "test-secret".into(),
+        ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
     }
 }
 
@@ -76,6 +77,7 @@ async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
         pool,
         implicit_dev_session: false,
         better_auth_secret: "test-secret".into(),
+        ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
     });
 
     let res = app

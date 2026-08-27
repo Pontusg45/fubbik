@@ -683,6 +683,7 @@ dependencies = [
  "anyhow",
  "axum",
  "clap",
+ "fubbik-ai",
  "fubbik-api",
  "fubbik-cli",
  "fubbik-db",
@@ -716,6 +717,7 @@ dependencies = [
  "axum-extra",
  "base64",
  "chrono",
+ "fubbik-ai",
  "fubbik-core",
  "fubbik-db",
  "hmac",
@@ -731,6 +733,7 @@ dependencies = [
  "tower",
  "tracing",
  "utoipa",
+ "wiremock",
 ]
 
 [[package]]

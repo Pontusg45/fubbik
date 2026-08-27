@@ -48,6 +48,11 @@ pub struct AppState {
     /// environment per request. Used to verify the HMAC signature on
     /// better-auth's session cookies (see `auth::better_auth_cookie`).
     pub better_auth_secret: String,
+    /// The Ollama transport, constructed once at startup. Carried here
+    /// rather than resolved from `OLLAMA_URL` per call so that each test
+    /// can inject its own `wiremock` base URL — see
+    /// `crates/fubbik-ai/src/client.rs`'s module doc.
+    pub ai: fubbik_ai::OllamaClient,
 }
 
 pub fn router(state: AppState) -> Router {

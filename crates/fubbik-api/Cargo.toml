@@ -21,12 +21,12 @@ tracing.workspace = true
 utoipa = { version = "5", features = ["axum_extras", "chrono"] }
 fubbik-core = { path = "../fubbik-core" }
 fubbik-db = { path = "../fubbik-db" }
-# Used by `vocabulary::suggest` to call Ollama's `/api/generate` — the
-# first Ollama-calling code path in this Rust port (see that module's doc
-# comment). Was previously a dev-only dependency; promoted to a real one
-# here.
+fubbik-ai = { path = "../fubbik-ai" }
+# `vocabulary::suggest` now calls Ollama through `fubbik_ai::OllamaClient`;
+# this dependency remains for `tests/differential.rs`'s direct HTTP calls.
 reqwest = { version = "0.12", features = ["json"] }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
+wiremock = "0.6"

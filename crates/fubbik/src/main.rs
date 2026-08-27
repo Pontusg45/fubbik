@@ -160,6 +160,7 @@ async fn main() -> anyhow::Result<()> {
                 pool,
                 implicit_dev_session,
                 better_auth_secret,
+                ai: fubbik_ai::OllamaClient::from_env(),
             };
 
             let cors_origin_env =

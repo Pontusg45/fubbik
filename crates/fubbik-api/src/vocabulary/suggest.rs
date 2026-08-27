@@ -9,8 +9,8 @@
 //! error — Node's own `.pipe(Effect.catchAll(() => Effect.succeed([])))`
 //! (`suggest.ts:116`). This is the first Ollama-calling code path in this
 //! Rust port (see `crate::search::service`'s module doc, which notes no
-//! such pipeline existed yet); `reqwest` was already a `fubbik-api`
-//! dependency, added ahead of this domain landing.
+//! such pipeline existed yet); the transport lives in `fubbik_ai::OllamaClient`,
+//! carried on `AppState`.
 
 const VALID_CATEGORIES: [&str; 6] = ["actor", "action", "target", "outcome", "state", "modifier"];
 
@@ -27,33 +27,26 @@ pub struct SuggestedEntry {
     pub expects: Option<Vec<String>>,
 }
 
-#[derive(serde::Deserialize)]
-struct OllamaGenerateResponse {
-    response: String,
-}
-
 const PROMPT_TEMPLATE: &str = "You are analyzing code documentation chunks to extract a controlled vocabulary for behavior-driven requirements (BDD/Gherkin style).\n\nGiven the following chunks of documentation/code, extract meaningful vocabulary entries. Each entry has:\n- \"word\": a short word or phrase (1-3 words, lowercase)\n- \"category\": one of \"actor\", \"action\", \"target\", \"outcome\", \"state\", \"modifier\"\n- \"expects\" (optional): array of category names that should follow this word\n\nCategories:\n- actor: who performs the action (e.g., \"user\", \"admin\", \"system\")\n- action: what is done (e.g., \"click\", \"submit\", \"navigate\")\n- target: what the action is performed on (e.g., \"button\", \"form\", \"page\")\n- outcome: what should result (e.g., \"displayed\", \"saved\", \"redirected\")\n- state: a condition (e.g., \"logged in\", \"visible\", \"enabled\")\n- modifier: connecting/clarifying words (e.g., \"the\", \"a\", \"should\")\n\nActions typically expect [\"target\"]. Actors typically expect [\"action\"].\n\nReturn a JSON array of objects. Only return the JSON array, no other text.\n\nCHUNKS:\n";
 
-/// `ollama_url` overrides the `OLLAMA_URL` env var (defaulting to
-/// `http://localhost:11434` when neither is set) — matches Node's
-/// `suggestVocabulary(chunks, ollamaUrl?)` optional-override parameter,
-/// kept for the same reason: tests can point this at a mock server without
-/// touching process environment.
+/// Infallible, matching Node's `Effect.Effect<SuggestedEntry[], never>`:
+/// every failure mode degrades to an empty `Vec`.
+///
+/// The `ollama_url` override parameter this function used to take is gone —
+/// the client now arrives from `AppState`, which supersedes it and gives
+/// tests a better injection point (a real mock server rather than a URL
+/// string threaded through the service layer).
 pub async fn suggest_vocabulary(
+    client: &fubbik_ai::OllamaClient,
     chunks: &[(String, String)],
-    ollama_url: Option<&str>,
 ) -> Vec<SuggestedEntry> {
-    try_suggest(chunks, ollama_url).await.unwrap_or_default()
+    try_suggest(client, chunks).await.unwrap_or_default()
 }
 
 async fn try_suggest(
+    client: &fubbik_ai::OllamaClient,
     chunks: &[(String, String)],
-    ollama_url: Option<&str>,
 ) -> Option<Vec<SuggestedEntry>> {
-    let url = ollama_url.map(|s| s.to_string()).unwrap_or_else(|| {
-        std::env::var("OLLAMA_URL").unwrap_or_else(|_| "http://localhost:11434".to_string())
-    });
-
     // Truncate chunk content to fit context (~8000 chars total), matching
     // Node's loop exactly: `chars().count()` stands in for JS's UTF-16
     // `.length` (equal for ASCII/BMP text, the expected shape here).
@@ -76,24 +69,13 @@ async fn try_suggest(
 
     let prompt = format!("{PROMPT_TEMPLATE}{}", truncated_chunks.join("\n\n"));
 
-    let client = reqwest::Client::new();
-    let res = client
-        .post(format!("{url}/api/generate"))
-        .json(&serde_json::json!({
-            "model": "llama3.2",
-            "prompt": prompt,
-            "stream": false
-        }))
-        .send()
-        .await
-        .ok()?;
-
-    if !res.status().is_success() {
-        return Some(Vec::new());
-    }
-
-    let data: OllamaGenerateResponse = res.json().await.ok()?;
-    let response_text = data.response.trim();
+    // Node does NOT pass `format: "json"` here — it asks for a bare
+    // completion and then greedily extracts the first `[` to the last `]`,
+    // because llama3.2 reliably wraps the array in prose. `generate_json`
+    // would reject that prose, so this path keeps the raw-string contract
+    // and does its own extraction below.
+    let response_text: String = client.generate_raw(&prompt, "llama3.2").await.ok()?;
+    let response_text = response_text.trim();
 
     // Node: `responseText.match(/\[[\s\S]*\]/)` — greedy, first `[` to
     // last `]` in the whole string.

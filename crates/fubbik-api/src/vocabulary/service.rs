@@ -153,6 +153,7 @@ pub async fn parse_step(
 /// succeeds — see `suggest::suggest_vocabulary`'s doc comment.
 pub async fn suggest_from_chunks(
     pool: &PgPool,
+    client: &fubbik_ai::OllamaClient,
     user_id: &str,
     space_id: &str,
 ) -> AppResult<Vec<SuggestedEntry>> {
@@ -167,5 +168,5 @@ pub async fn suggest_from_chunks(
     let chunks = chunk::list(pool, user_id, &params).await?;
     let pairs: Vec<(String, String)> = chunks.into_iter().map(|c| (c.title, c.content)).collect();
 
-    Ok(suggest::suggest_vocabulary(&pairs, None).await)
+    Ok(suggest::suggest_vocabulary(client, &pairs).await)
 }

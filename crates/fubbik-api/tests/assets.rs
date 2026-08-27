@@ -8,6 +8,7 @@ async fn unknown_api_path_is_404_not_spa_fallback(pool: sqlx::PgPool) {
         pool,
         implicit_dev_session: true,
         better_auth_secret: "test-secret".into(),
+        ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
     });
 
     let res = app

@@ -19,6 +19,7 @@ fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
         pool,
         implicit_dev_session: false,
         better_auth_secret: "test-secret".into(),
+        ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
     }
 }
 
@@ -75,6 +76,29 @@ async fn seed_space(pool: &sqlx::PgPool, user_id: &str, name: &str) -> String {
     .await
     .unwrap()
     .id
+}
+
+async fn seed_chunk(
+    pool: &sqlx::PgPool,
+    user_id: &str,
+    space_id: &str,
+    title: &str,
+    content: &str,
+) {
+    let chunk = fubbik_db::repo::chunk::create(
+        pool,
+        user_id,
+        fubbik_db::repo::chunk::NewChunk {
+            title: title.into(),
+            content: content.into(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    fubbik_db::repo::space::set_chunk_spaces(pool, user_id, &chunk.id, &[space_id.to_string()])
+        .await
+        .unwrap();
 }
 
 async fn get_vocabulary(
@@ -387,6 +411,56 @@ async fn suggest_404s_for_a_foreign_space_and_200s_with_an_array_otherwise(pool:
         .unwrap();
     assert_eq!(owned_res.status(), StatusCode::OK);
     assert_eq!(json_body(owned_res).await, serde_json::json!([]));
+}
+
+/// The success path of `suggest_vocabulary` — parsing entries out of a
+/// prose-wrapped model response, and dropping an entry with an unknown
+/// category — has never been executed by any test in this repository
+/// before this one: reaching it previously required a real Ollama server
+/// running locally. `state()` now injects a client, so a `wiremock` server
+/// standing in for Ollama exercises it here for the first time.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn suggest_returns_entries_from_the_model(pool: sqlx::PgPool) {
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/generate"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "response": "Here you go: [{\"word\":\"user\",\"category\":\"actor\",\"expects\":[\"action\"]},{\"word\":\"x\",\"category\":\"bogus\"}]"
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "vocab-suggest@b.test", "Suggester").await;
+    let user_id = user_id_for_email(&pool, "vocab-suggest@b.test").await;
+    let sid = seed_space(&pool, &user_id, "Suggest space").await;
+    seed_chunk(&pool, &user_id, &sid, "How auth works", "The user logs in.").await;
+
+    let res = app
+        .oneshot(
+            Request::post("/api/vocabulary/suggest")
+                .header("cookie", &cookie)
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({ "spaceId": sid }).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = json_body(res).await;
+    // The prose wrapper is stripped, the valid entry survives, and the
+    // entry with an unknown category is dropped by the validation loop.
+    assert_eq!(body.as_array().unwrap().len(), 1);
+    assert_eq!(body[0]["word"], "user");
+    assert_eq!(body[0]["category"], "actor");
+    assert_eq!(body[0]["expects"][0], "action");
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
