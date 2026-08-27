@@ -17,18 +17,28 @@
 //!   *can* fail, and Node doesn't wrap them in `orElse` either
 //!   (`packages/api/src/search/routes.ts:67-112` lets them propagate).
 //!
-//! ## The four graph clauses (Task 9)
+//! ## The four graph clauses (Task 9, `similar-to` completed Task 11)
 //!
 //! `near`, `path`, and `affected-by` resolve against Apache AGE
-//! (`fubbik_db::age`); `similar-to` is meant to resolve via a pgvector
-//! embedding search, but no Ollama/embedding pipeline exists anywhere in
-//! this Rust port yet (`crates/fubbik-api` never calls out to Ollama), so
-//! it always resolves to zero ids — the same degrade-to-empty result Node
-//! produces when `generateQueryEmbedding` itself fails
-//! (`service.ts:117-121`'s own `Effect.orElse`). [`resolve_graph_clauses`]
-//! does the resolving; [`execute_search`] intersects a query's standard
-//! (non-graph) filters with whatever ids came back, exactly like Node's
-//! `graphIds ? graphIds.filter(...) : ids` loop (`service.ts:88-127`).
+//! (`fubbik_db::age`); `similar-to` resolves via a real pgvector embedding
+//! search — [`fubbik_ai::OllamaClient::embed_query`] turns the clause's
+//! text into a vector, then `fubbik_db::repo::semantic::semantic_search`
+//! ranks chunks against it, capped at 20 (`service.ts:117-121`). This is
+//! the *third* distinct Ollama-failure policy in the codebase, and all
+//! three trace back to Node: `chunks::ai` enrichment probes availability
+//! first and degrades to `null`; `GET /api/chunks/search/semantic`
+//! (Task 8) does not probe and turns a failure into a 502; this clause
+//! wraps the whole embed-then-search chain the same way Node's
+//! `Effect.orElse(() => Effect.succeed([]))` does
+//! (`service.ts:117-121`), so an unreachable Ollama degrades the clause to
+//! zero ids rather than failing the request. That distinction matters here
+//! specifically: a multi-clause search shouldn't fail wholesale because
+//! one clause's backend is down — the other clauses should still narrow
+//! the result the way they would if `similar-to` were simply absent.
+//! [`resolve_graph_clauses`] does the resolving; [`execute_search`]
+//! intersects a query's standard (non-graph) filters with whatever ids
+//! came back, exactly like Node's `graphIds ? graphIds.filter(...) : ids`
+//! loop (`service.ts:88-127`).
 //!
 //! The underlying `fubbik_db::age` functions (`get_neighborhood`,
 //! `find_shortest_path_with_details`, `get_chunks_affected_by_requirement`)
@@ -206,20 +216,24 @@ struct GraphResolution {
     /// (`service.ts:193`), not the post-intersection set.
     path_chunks: Option<Vec<String>>,
     /// `similar-to`'s raw query text, for the `matchedRequirement` context
-    /// message (`service.ts:209`) — never actually reached today, since
-    /// `similar-to` always resolves to zero ids (see the module doc), but
-    /// kept for shape parity with Node's structure.
+    /// message (`service.ts:209`) — set whenever a `similar-to` clause
+    /// runs, whether or not it actually resolved any ids (an unreachable
+    /// Ollama still sets this; only the resolved id set degrades to
+    /// empty).
     similar_to_query: Option<String>,
 }
 
 /// Resolves every graph clause (`near`/`path`/`affected-by`/`similar-to`)
-/// in `clauses` against Apache AGE, matching Node's sequential
-/// `for (const clause of graphClauses)` loop (`service.ts:88-127`). Clauses
-/// with any other field are ignored here (the same implicit no-op
-/// `build_list_params`'s own `_ => {}` arm gives them), so callers can pass
-/// a query's *entire* clause list rather than pre-filtering it.
+/// in `clauses`. `near`/`path`/`affected-by` resolve against Apache AGE;
+/// `similar-to` resolves against pgvector via `ai`. Matches Node's
+/// sequential `for (const clause of graphClauses)` loop
+/// (`service.ts:88-127`). Clauses with any other field are ignored here
+/// (the same implicit no-op `build_list_params`'s own `_ => {}` arm gives
+/// them), so callers can pass a query's *entire* clause list rather than
+/// pre-filtering it.
 async fn resolve_graph_clauses(
     pool: &PgPool,
+    ai: &fubbik_ai::OllamaClient,
     user_id: &str,
     clauses: &[QueryClause],
 ) -> GraphResolution {
@@ -396,15 +410,36 @@ async fn resolve_graph_clauses(
                 });
             }
             "similar-to" => {
-                // No embedding/Ollama pipeline exists anywhere in this Rust
-                // port yet, so this always resolves to zero ids — the same
-                // degrade-to-empty result Node produces when
-                // `generateQueryEmbedding` itself fails
-                // (`service.ts:117-121`'s own `Effect.orElse`). `graphMeta.type`
-                // still comes back as the literal string `"semantic"`
-                // (see the module doc) — that fidelity holds even though
-                // the id resolution isn't implemented yet.
-                let resolved: Vec<String> = Vec::new();
+                // Node: `generateQueryEmbedding(clause.value)` →
+                // `semanticSearch({ embedding, userId, limit: 20 })` → ids,
+                // the whole chain wrapped in one
+                // `Effect.orElse(() => Effect.succeed([]))`
+                // (`service.ts:117-121`). An unreachable Ollama therefore
+                // degrades this clause to an empty id set rather than
+                // failing the request — deliberately unlike
+                // `GET /api/chunks/search/semantic` (Task 8), which has no
+                // such wrapper and surfaces the same failure as a 502. The
+                // difference is deliberate, not an oversight: a multi-clause
+                // search shouldn't fail wholesale because one clause's
+                // backend happens to be down, whereas a request that is
+                // *only* asking for a semantic search has nothing left to
+                // fall back to. See the module doc for the third policy
+                // (`chunks::ai` enrichment, which probes availability first
+                // and degrades to `null`).
+                let resolved: Vec<String> = match ai.embed_query(&clause.value).await {
+                    Ok(embedding) => fubbik_db::repo::semantic::semantic_search(
+                        pool,
+                        &embedding,
+                        Some(user_id),
+                        &[],
+                        None,
+                        20,
+                    )
+                    .await
+                    .map(|hits| hits.into_iter().map(|h| h.id).collect())
+                    .unwrap_or_default(),
+                    Err(_) => Vec::new(),
+                };
                 out.ids = Some(intersect_ids(out.ids, resolved));
                 out.meta = Some(GraphMeta {
                     meta_type: "semantic".to_string(),
@@ -425,8 +460,13 @@ async fn resolve_graph_clauses(
 /// Port of `executeSearch` (`service.ts:77-255`). Infallible: see the
 /// module doc for why this returns `SearchResult` directly rather than an
 /// `AppResult`.
-pub async fn execute_search(pool: &PgPool, user_id: &str, query: &SearchQueryBody) -> SearchResult {
-    let graph = resolve_graph_clauses(pool, user_id, &query.clauses).await;
+pub async fn execute_search(
+    pool: &PgPool,
+    ai: &fubbik_ai::OllamaClient,
+    user_id: &str,
+    query: &SearchQueryBody,
+) -> SearchResult {
+    let graph = resolve_graph_clauses(pool, ai, user_id, &query.clauses).await;
 
     // Matches Node's `if (graphIds !== undefined && graphIds.length === 0)
     // return { chunks: [], total: 0, graphMeta }` (`service.ts:130-132`):

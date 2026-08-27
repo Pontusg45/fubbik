@@ -40,7 +40,7 @@ pub async fn query(
     ReqJson(body): ReqJson<SearchQueryBody>,
 ) -> ApiResult<Json<SearchResult>> {
     Ok(Json(
-        service::execute_search(&state.pool, &user.id, &body).await,
+        service::execute_search(&state.pool, &state.ai, &user.id, &body).await,
     ))
 }
 

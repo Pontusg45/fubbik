@@ -777,12 +777,15 @@ async fn path_clause_must_not_leak_another_users_chunk_in_graph_meta(pool: sqlx:
     );
 }
 
-/// `similar-to:` has no embedding pipeline wired into this Rust port at
-/// all (no Ollama client exists anywhere in `crates/`), so it always
-/// degrades to zero ids — but `graphMeta.type` must still come back as the
-/// literal string `"semantic"`, the fourth value Node's own three-literal
-/// TS union doesn't declare (see the module doc). Must not fail the suite
-/// even though nothing resembling Ollama is running in this environment.
+/// `similar-to:` degrades to zero ids when Ollama is unreachable — this
+/// test's `state()` points `ai` at `http://127.0.0.1:1`, nothing is
+/// listening there, so `embed_query` always fails and the clause resolves
+/// to `[]` (see `similar_to_degrades_to_empty_when_ollama_is_down` for the
+/// same behaviour pinned directly at the service layer). `graphMeta.type`
+/// must still come back as the literal string `"semantic"`, the fourth
+/// value Node's own three-literal TS union doesn't declare (see the
+/// module doc). Must not fail the suite even though nothing resembling
+/// Ollama is running in this environment.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn similar_to_clause_degrades_to_empty_but_sets_graph_meta_type_semantic(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool.clone()));
@@ -836,6 +839,7 @@ async fn a_failing_query_degrades_to_empty_results_not_a_500(pool: sqlx::PgPool)
 
     let result = fubbik_api::search::service::execute_search(
         &pool,
+        &fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
         &uid,
         &SearchQueryBody {
             clauses: vec![QueryClause {
@@ -1234,4 +1238,199 @@ async fn saved_requires_a_session(pool: sqlx::PgPool) {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+// ── `similar-to:` clause (Task 11) ─────────────────────────────────────
+
+/// A 768-dimension vector that is all zeros except one hot index, matching
+/// the pattern in `crates/fubbik-db/tests/semantic.rs` and
+/// `tests/chunks_ai.rs`. Cosine distance between two such vectors is
+/// exactly 0 when the indices match and 1 when they differ, so expected
+/// orderings/membership are unambiguous rather than approximate.
+fn one_hot_pgvector_text(index: usize) -> String {
+    let mut parts = vec!["0"; 768];
+    parts[index] = "1";
+    format!("[{}]", parts.join(","))
+}
+
+fn one_hot(index: usize) -> Vec<f32> {
+    let mut v = vec![0.0f32; 768];
+    v[index] = 1.0;
+    v
+}
+
+async fn seed_chunk_with_vector(
+    pool: &sqlx::PgPool,
+    user_id: &str,
+    id: &str,
+    title: &str,
+    hot: usize,
+) {
+    sqlx::query(
+        "INSERT INTO chunk (id, title, content, type, user_id, embedding)
+         VALUES ($1, $2, 'content', 'note', $3, $4::text::vector)",
+    )
+    .bind(id)
+    .bind(title)
+    .bind(user_id)
+    .bind(one_hot_pgvector_text(hot))
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+/// A 768-dimension vector that is all zeros except one index set to `-1`
+/// — the antipode of `one_hot(index)`. Cosine distance from `one_hot(index)`
+/// is 2 (maximally dissimilar), strictly worse than any orthogonal
+/// (distance-1) vector, so it can be used to build a chunk guaranteed to
+/// rank last against a same-index query.
+fn opposite_pgvector_text(index: usize) -> String {
+    let mut parts = vec!["0"; 768];
+    parts[index] = "-1";
+    format!("[{}]", parts.join(","))
+}
+
+async fn seed_chunk_with_opposite_vector(
+    pool: &sqlx::PgPool,
+    user_id: &str,
+    id: &str,
+    title: &str,
+    hot: usize,
+) {
+    sqlx::query(
+        "INSERT INTO chunk (id, title, content, type, user_id, embedding)
+         VALUES ($1, $2, 'content', 'note', $3, $4::text::vector)",
+    )
+    .bind(id)
+    .bind(title)
+    .bind(user_id)
+    .bind(opposite_pgvector_text(hot))
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+/// Mounts a mock `/api/embeddings` that answers every request with the
+/// given vector, regardless of the prompt. No `/api/tags` mock is
+/// registered — this clause has no availability probe (see
+/// `search::service`'s module doc), so nothing should ever hit that
+/// endpoint.
+async fn ollama_mock(vector: Vec<f32>) -> wiremock::MockServer {
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/embeddings"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({ "embedding": vector })),
+        )
+        .mount(&server)
+        .await;
+    server
+}
+
+/// `similar-to:` has resolved to zero ids since this port began, because
+/// no embedding pipeline existed (`search/service.rs:399`'s comment, since
+/// rewritten). This is the first test that proves it resolves to
+/// something real: two chunks are seeded at opposite one-hot vectors, the
+/// mocked embedding for the query text matches the "near" chunk exactly,
+/// and only "near" must come back — a stub returning every chunk (or
+/// nothing) would fail this, unlike a membership-only check.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn similar_to_resolves_real_ids(pool: sqlx::PgPool) {
+    let server = ollama_mock(one_hot(0)).await;
+    let mut st = state(pool.clone());
+    st.ai = fubbik_ai::OllamaClient::new(server.uri());
+    let app = fubbik_api::router(st);
+    let cookie = signup(app.clone(), "similar-real@b.test", "S").await;
+    let user_id = user_id_for_email(&pool, "similar-real@b.test").await;
+
+    // `semantic_search` has no similarity floor — it is a plain top-K
+    // nearest-neighbour query (`fubbik_db::repo::semantic::semantic_search`'s
+    // `ORDER BY ... LIMIT $5`, no `WHERE similarity > ...`). Two chunks
+    // alone would both come back regardless of distance, since both fit
+    // within the clause's `limit: 20`. To make "near" vs. "far" a real
+    // discriminator, this seeds 20 filler chunks strictly closer to the
+    // query than "far": one exact match ("near", cosine distance 0) plus
+    // 20 orthogonal fillers (distance 1) already fill every one of the 20
+    // slots, so "far" — placed at the opposite pole of the query vector
+    // (cosine distance 2, worse than every filler) — can never make the
+    // cut. "near" is always rank 1, so it always does.
+    seed_chunk_with_vector(&pool, &user_id, "near", "Near", 0).await;
+    for i in 1..=20 {
+        seed_chunk_with_vector(&pool, &user_id, &format!("filler{i}"), "Filler", i).await;
+    }
+    seed_chunk_with_opposite_vector(&pool, &user_id, "far", "Far", 0).await;
+
+    let res = post(
+        app,
+        "/api/search/query",
+        &cookie,
+        serde_json::json!({"clauses": [
+            {"field": "similar-to", "operator": "is", "value": "authentication flow"}
+        ]}),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    assert_eq!(body["graphMeta"]["type"], "semantic");
+
+    let ids: Vec<&str> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        ids.contains(&"near"),
+        "the chunk whose vector matches the mocked embedding must be resolved: {ids:?}"
+    );
+    assert!(
+        !ids.contains(&"far"),
+        "the orthogonal chunk must not be resolved: {ids:?}"
+    );
+}
+
+/// Node wraps the whole resolution in `Effect.orElse(() => [])`
+/// (`search/service.ts:117-121`), so an unreachable Ollama yields an empty
+/// clause, not an error — unlike the standalone semantic endpoint
+/// (`GET /api/chunks/search/semantic`), which surfaces the same failure as
+/// a 502. Pinned directly at the service layer against an `OllamaClient`
+/// pointed at a port nothing listens on, so the failure is deterministic
+/// rather than depending on network timing.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn similar_to_degrades_to_empty_when_ollama_is_down(pool: sqlx::PgPool) {
+    let uid = user::create(&pool, "similar-down@b.test", "S", None)
+        .await
+        .unwrap()
+        .id;
+    seed_chunk(&pool, &uid, "Some chunk", "content").await;
+
+    let result = fubbik_api::search::service::execute_search(
+        &pool,
+        &fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
+        &uid,
+        &SearchQueryBody {
+            clauses: vec![QueryClause {
+                field: "similar-to".into(),
+                operator: "is".into(),
+                value: "authentication flow".into(),
+                params: None,
+                negate: None,
+            }],
+            join: None,
+            sort: None,
+            limit: None,
+            offset: None,
+            space_id: None,
+        },
+    )
+    .await;
+
+    assert_eq!(result.chunks, vec![]);
+    assert_eq!(result.total, 0);
+    assert_eq!(
+        result.graph_meta.as_ref().map(|m| m.meta_type.as_str()),
+        Some("semantic"),
+        "graphMeta.type must still be the literal \"semantic\" even when Ollama is unreachable"
+    );
 }
