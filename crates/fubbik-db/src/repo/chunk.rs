@@ -1177,3 +1177,19 @@ pub async fn merge(
     tx.commit().await?;
     Ok(updated)
 }
+
+/// Just the ids for a user's chunks, for `enrich-all`'s sweep
+/// (`enrich/routes.ts:35`, `listChunks(userId, { limit: "1000", offset: "0" })`).
+/// `chunk::list` takes a large non-`Default` `ListParams` struct built for
+/// the full listing endpoint; constructing one purely to read ids back out
+/// would be more code than this direct query.
+pub async fn list_ids_for_user(pool: &PgPool, user_id: &str, limit: i64) -> AppResult<Vec<String>> {
+    let ids = sqlx::query_scalar!(
+        "SELECT id FROM chunk WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
+        user_id,
+        limit
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(ids)
+}

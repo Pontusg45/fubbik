@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT summary, aliases, not_about,\n                  embedding::text AS embedding,\n                  embedding_updated_at\n           FROM chunk WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "aliases",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 2,
+        "name": "not_about",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "embedding",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "embedding_updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      null,
+      true
+    ]
+  },
+  "hash": "83df88f5ec54fe01e37b827c55340080e28f1aeae14e31af40c9afc19461479c"
+}

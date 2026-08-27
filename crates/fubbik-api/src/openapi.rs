@@ -21,6 +21,8 @@ use utoipa::OpenApi;
         crate::chunks::routes::put_applies_to,
         crate::chunks::routes::get_file_refs,
         crate::chunks::routes::put_file_refs,
+        crate::enrich::routes::enrich_chunk,
+        crate::enrich::routes::enrich_all,
         crate::matrices::routes::list_matrices,
         crate::matrices::routes::create_matrix,
         crate::matrices::routes::get_matrix,

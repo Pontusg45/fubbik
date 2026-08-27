@@ -7,6 +7,7 @@ pub mod connections;
 pub mod coverage;
 pub mod density;
 pub mod documents;
+pub mod enrich;
 pub mod error;
 pub mod extract;
 pub mod favorites;
@@ -69,6 +70,7 @@ pub fn router(state: AppState) -> Router {
         .merge(connections::routes::router())
         .merge(coverage::routes::router())
         .merge(documents::routes::router())
+        .merge(enrich::routes::router())
         .merge(comments::routes::router())
         .merge(favorites::routes::router())
         .merge(graph::routes::router())
