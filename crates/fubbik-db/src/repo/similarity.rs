@@ -17,20 +17,15 @@ pub struct SimilarChunk {
     pub similarity: f64,
 }
 
-/// The threshold is applied **after** `LIMIT`, in Rust, not in SQL. This
-/// mirrors Node's shape (`similarity.ts:78-81`): it orders and limits in
-/// the query, then filters the returned array in JS. A below-threshold row
-/// can therefore consume a limit slot and shrink the result below `LIMIT`,
-/// which is preserved deliberately.
-///
-/// Note: for *this* query, applying the threshold in the `WHERE` clause
-/// instead is not observably different — `similarity` (the threshold key)
-/// and `c.embedding <=> $1` (the `ORDER BY` key) are the same monotonic
-/// function of cosine distance, so pre- or post-`LIMIT` filtering on it
-/// always produces the same result set for any input. The Rust-side filter
-/// is kept for structural fidelity to the Node original (and so a reader
-/// diffing against `similarity.ts` sees the same two steps), not because
-/// it is behaviourally load-bearing here.
+/// The threshold is applied after `LIMIT`, mirroring Node's two-step shape
+/// (`similarity.ts:78-81`): order and limit in SQL, then filter by
+/// threshold. For this query the ordering of these two steps is cosmetic,
+/// not behavioural — `similarity` and the `ORDER BY` distance key are the
+/// same monotonic function of cosine distance, so filtering in `WHERE`
+/// instead would produce an identical result set for any input. The
+/// Rust-side filter exists so this function's shape matches
+/// `similarity.ts` line-for-line, not because moving it into SQL would
+/// change behaviour.
 pub async fn find_similar_by_embedding(
     pool: &PgPool,
     embedding: &[f32],
