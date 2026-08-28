@@ -8193,6 +8193,55 @@
         }
       }
     },
+    "/api/spaces/{id}/generate-instructions": {
+      "get": {
+        "tags": [
+          "crate::generate_instructions::routes"
+        ],
+        "summary": "`unknown_format_is_rejected_or_defaults`: an unrecognised `format`\nvalue fails to deserialize against `InstructionFormat`'s three\nliterals, so `extract::Query` rejects the request with\n`AppError::Validation` -> `400`, the same \"reject\" behaviour Node's\nElysia `t.Union([t.Literal(...), ...])` query schema produces (Elysia\nresponds non-2xx for a query value outside the declared union before\nthe handler body ever runs) — not a silent default to `claude`.",
+        "operationId": "generate_instructions_route",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/InstructionFormat"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateInstructionsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/spaces/{id}/reset": {
       "post": {
         "tags": [
@@ -14109,6 +14158,21 @@
           }
         }
       },
+      "GenerateInstructionsResponse": {
+        "type": "object",
+        "required": [
+          "format",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          }
+        }
+      },
       "GoverningBehavior": {
         "type": "object",
         "description": "A behaviour-matrix rule linked to a file via `behavior_cell_code`,\nsurfaced by `GET /api/context/for-file`'s \"governing behaviours\"\nsection. Ports Node's `GoverningBehavior` interface\n(`packages/api/src/context/formatter.ts:57-69`) field for field —\n`code_ref` serialises as `ref`, matching Node's own field name, which\nthis port cannot use directly since `ref` is a Rust keyword.",
@@ -14769,6 +14833,15 @@
           "unchanged",
           "created",
           "synced"
+        ]
+      },
+      "InstructionFormat": {
+        "type": "string",
+        "description": "The `format` query param. Node's `t.Union([t.Literal(\"claude\"),\nt.Literal(\"agents\"), t.Literal(\"cursor\")])` (`routes.ts:21`) rejects\nanything outside these three literals at the schema layer, before the\nhandler ever runs — Elysia responds `422` for an unrecognised value\nrather than falling back to a default. This port matches that with\nserde's own literal-enum rejection: an unknown `format` fails to\ndeserialize the query string, which `extract::Query` turns into a `400`\n(see `unknown_format_is_rejected_or_defaults` in\n`tests/generate_instructions.rs` for which of the two — reject vs.\nsilently default — this actually is).",
+        "enum": [
+          "claude",
+          "agents",
+          "cursor"
         ]
       },
       "KnowledgeHealth": {
