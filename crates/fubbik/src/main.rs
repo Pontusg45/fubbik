@@ -3,6 +3,12 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "fubbik", version, about = "Local-first knowledge framework")]
 struct Cli {
+    /// Emit machine-readable JSON for CLI commands and plugins
+    #[arg(long, global = true, conflicts_with = "quiet")]
+    json: bool,
+    /// Emit only identifiers or scalar values
+    #[arg(short, long, global = true, conflicts_with = "json")]
+    quiet: bool,
     #[command(subcommand)]
     command: Commands,
 }
@@ -121,7 +127,16 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    match Cli::parse().command {
+    let cli = Cli::parse();
+    let output = if cli.json {
+        fubbik_cli::OutputMode::Json
+    } else if cli.quiet {
+        fubbik_cli::OutputMode::Quiet
+    } else {
+        fubbik_cli::OutputMode::Human
+    };
+
+    match cli.command {
         Commands::Serve { port, host } => {
             let database_url = std::env::var("DATABASE_URL")
                 .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
@@ -205,7 +220,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Cli(cmd) => {
             let base =
                 std::env::var("FUBBIK_URL").unwrap_or_else(|_| "http://localhost:3100".into());
-            fubbik_cli::run(cmd, &base).await
+            fubbik_cli::run(cmd, &base, output).await
         }
     }
 }

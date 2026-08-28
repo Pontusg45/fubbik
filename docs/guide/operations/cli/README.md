@@ -24,3 +24,4 @@ fubbik init
 - [Plan and Requirement Commands](./plan-commands.md) — manage plans, steps, and requirements
 - [Codebase and Workspace Commands](./codebase-commands.md) — manage codebases, tags, and scoping
 - [Document Commands](./document-commands.md) — import, sync, and render documents
+- [CLI Plugins](./plugins.md) — add external `fubbik-*` commands to the Rust CLI
