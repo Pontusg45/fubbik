@@ -125,8 +125,12 @@ connections score `min(count * 2, 10)`; review status scores 2 for `approved`, 1
 budget rather than stopping. That distinction is behavioural: a single oversized chunk does
 not truncate the export, it is passed over while smaller lower-scored chunks still fit.
 
-**`context/for-file`** (`context-for-file/service.ts`) combines five strategies with additive
-bonuses — file-ref (+20), applies-to (+10), dependency (+3), semantic (+5, requires Ollama),
+**`context/for-file`** (`context-for-file/service.ts`) combines five strategies with
+**first-strategy-wins** scoring, not additive bonuses. Every strategy opens with
+`if (results.has(id)) continue`, so a chunk already found keeps the bonus of the strategy
+that found it first and never accumulates a second. An earlier revision of this spec said
+"additive", which was wrong — corrected after Task 7's review checked the source.
+The bonuses — file-ref (+20), applies-to (+10), dependency (+3), semantic (+5, requires Ollama),
 connected (+2) — each tagging its results with a `matchReason`. The semantic strategy uses
 Phase 4b's `embed_query` and `semantic_search`, capped at 10 results.
 
