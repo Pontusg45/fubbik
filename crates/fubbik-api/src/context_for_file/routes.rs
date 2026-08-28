@@ -4,11 +4,13 @@
 //! Three `format` values, two different pipelines:
 //!
 //! - `json-legacy` calls [`service::get_context_for_file`] directly and
-//!   returns its raw `{chunks, requirements}` shape — scores carry the
-//!   five strategies' additive bonuses and each chunk's `matchReason`. It
-//!   never fetches governing behaviours (matches Node: the `json-legacy`
-//!   branch returns before `getBehaviorsForCodePath` is even called,
-//!   `context-for-file/routes.ts:22-29`).
+//!   returns its raw `{chunks, requirements}` shape — each chunk's score
+//!   carries exactly ONE strategy's bonus (first-strategy-wins: once a
+//!   chunk id is found, later strategies skip it entirely rather than
+//!   adding a second bonus — see `service`'s module doc) plus its
+//!   `matchReason`. It never fetches governing behaviours (matches Node:
+//!   the `json-legacy` branch returns before `getBehaviorsForCodePath` is
+//!   even called, `context-for-file/routes.ts:22-29`).
 //! - `structured-md`/`structured-json` (default) instead go through
 //!   `resolve_for_files` -> `enrich_chunks` -> budget -> format, the same
 //!   pipeline every other `/api/context/*` route uses. This means the

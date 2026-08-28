@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE chunk SET created_at = now() - interval '1 day' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3dc533d95921f9f05b0606712bac92c1c8e457a24c87ae3930823b4a190a3020"
+}

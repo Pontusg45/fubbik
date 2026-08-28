@@ -49,7 +49,14 @@ pub fn score_chunk(input: &ScoreInput) -> f64 {
         "note" => 1.0,
         _ => 2.0,
     };
-    let rationale_points = if input.rationale.is_some() { 2.0 } else { 0.0 };
+    // Node: `c.rationale ? 2 : 0` — JS truthiness treats `""` the same as
+    // absent, so an empty-string rationale must score 0, not 2. `is_some()`
+    // alone would score `Some("")` as present and diverge from Node.
+    let rationale_points = if input.rationale.is_some_and(|r| !r.is_empty()) {
+        2.0
+    } else {
+        0.0
+    };
     let connection_points = (input.connection_count * 2).min(10) as f64;
     let review_points = match input.review_status {
         "approved" => 2.0,
@@ -157,6 +164,33 @@ mod tests {
             health: &h,
         });
         assert_eq!(with - without, 2.0);
+    }
+
+    /// Finding 6 (final whole-branch review): Node's `c.rationale ? 2 : 0`
+    /// truthy-checks the string, so an empty-string rationale scores the
+    /// same as no rationale at all. `Some("")` must score 0, matching
+    /// `None`, not 2.
+    #[test]
+    fn empty_rationale_scores_the_same_as_no_rationale() {
+        let h = health_for("x", None, 0);
+        let without = score_chunk(&ScoreInput {
+            chunk_type: "note",
+            rationale: None,
+            review_status: "draft",
+            connection_count: 0,
+            health: &h,
+        });
+        let empty = score_chunk(&ScoreInput {
+            chunk_type: "note",
+            rationale: Some(""),
+            review_status: "draft",
+            connection_count: 0,
+            health: &h,
+        });
+        assert_eq!(
+            empty, without,
+            "Some(\"\") must score 0 rationale points, same as None"
+        );
     }
 
     #[test]

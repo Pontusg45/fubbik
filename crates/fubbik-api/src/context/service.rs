@@ -22,10 +22,20 @@ use sqlx::PgPool;
 
 /// Fetches, scores, and enriches a set of candidate chunk ids. Ids that
 /// don't exist, or aren't `user_id`'s, are silently dropped — same as
-/// Node's `null`-filter (`resolvers.ts:83`). Input order is not preserved
-/// (Node deduplicates via a `Set` and the result order follows fetch
-/// completion, not input order, since every id is resolved with `{
-/// concurrency: 8 }`); callers that need a stable order must sort.
+/// Node's `null`-filter (`resolvers.ts:83`). **Input order IS preserved**:
+/// this loop walks `unique` (deduplicated, first-occurrence order)
+/// sequentially, so the result comes back in the same order the ids were
+/// given. Node's `Effect.all(..., { concurrency: 8 })` also preserves input
+/// order in its return value — `Effect.all`, like `Promise.all`, always
+/// returns results indexed by input position regardless of concurrency or
+/// completion order; concurrency only affects how many sub-fetches run at
+/// once, never the order they're assembled back into. This ordering
+/// guarantee matters: `budget_metadata`/`budget_and_format`
+/// (`context/routes.rs`) rely on `enrich_chunks`' output order for
+/// deterministic tie-breaking when chunks share a score. Do not
+/// "optimize" this loop into a concurrent/unordered fetch (e.g.
+/// `futures::stream::iter(...).buffer_unordered(8)`) without re-deriving
+/// that ordering guarantee some other way first.
 pub async fn enrich_chunks(
     pool: &PgPool,
     user_id: &str,

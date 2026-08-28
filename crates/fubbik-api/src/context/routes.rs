@@ -118,27 +118,9 @@ pub async fn for_files(
 }
 
 /// Shared resolve->enrich tail: budgets the enriched chunks into
-/// `max_tokens`, then groups the survivors into sections. `budget_chunks`
-/// operates on bare `ScoredChunk`s and Node's own `budgetChunks` takes and
-/// returns the full `ChunkWithMetadata[]` (`utils.ts:39`) — this port's
-/// `budget_chunks` signature (Task 4b/5) only knows about `ScoredChunk`, so
-/// budgeting here strips the metadata, budgets, then re-attaches it by id.
-///
-/// **Must preserve `chunks`' original order end to end.** An earlier draft
-/// routed the re-pairing through a `HashMap<String, ChunkWithMetadata>` and
-/// iterated `.values()` to build the `Vec<ScoredChunk>` fed to
-/// `budget_chunks`. `HashMap` iteration order is not stable across
-/// constructions, so on a tie between two chunks' scores — `budget_chunks`'s
-/// `sort_by` is stable, but stability only preserves whatever order it's
-/// given — which chunk lands on the budget boundary could differ between
-/// two calls of the very same request. Node's array preserves
-/// `enrichChunks`' order deterministically, so ties there always break the
-/// same way. This version never moves `chunks` into a map: it clones the
-/// `ScoredChunk` half (in `chunks`' order) for `budget_chunks` to sort and
-/// trim, collects the *surviving ids* into a `HashSet` (membership only,
-/// order-independent by construction), then filters the original `chunks`
-/// `Vec` by that set — so the final order is exactly enrichment order,
-/// every time, regardless of how many chunks tie on score.
+/// `max_tokens`, then groups the survivors into sections. See
+/// `budget_metadata`'s doc comment for the ordering contract this delegates
+/// to.
 pub(crate) fn budget_and_format(
     chunks: Vec<fubbik_core::format::ChunkWithMetadata>,
     max_tokens: usize,
@@ -150,42 +132,52 @@ pub(crate) fn budget_and_format(
 /// (which formats the survivors into sections) and
 /// `snapshot::create_snapshot` (which freezes the survivors verbatim into
 /// `context_snapshot.chunks` instead of formatting them). Extracted out of
-/// `budget_and_format` rather than duplicated so the fragile part — never
-/// routing `chunks` through a `HashMap` on the way back out, see the doc
-/// comment below — has exactly one implementation for both callers to
-/// share.
+/// `budget_and_format` rather than duplicated so the ordering contract below
+/// has exactly one implementation for both callers to share.
 ///
-/// **Must preserve `chunks`' original order end to end.** An earlier draft
-/// routed the re-pairing through a `HashMap<String, ChunkWithMetadata>` and
-/// iterated `.values()` to build the `Vec<ScoredChunk>` fed to
-/// `budget_chunks`. `HashMap` iteration order is not stable across
-/// constructions, so on a tie between two chunks' scores — `budget_chunks`'s
-/// `sort_by` is stable, but stability only preserves whatever order it's
-/// given — which chunk lands on the budget boundary could differ between
-/// two calls of the very same request. Node's array preserves
-/// `enrichChunks`' order deterministically, so ties there always break the
-/// same way. This version never moves `chunks` into a map: it clones the
-/// `ScoredChunk` half (in `chunks`' order) for `budget_chunks` to sort and
-/// trim, collects the *surviving ids* into a `HashSet` (membership only,
-/// order-independent by construction), then filters the original `chunks`
-/// `Vec` by that set — so the final order is exactly enrichment order,
-/// every time, regardless of how many chunks tie on score.
+/// **Output order is `budget_chunks`' score-descending order, not
+/// `chunks`' input order.** Node's `budgetChunks` (`utils.ts:63-76`) sorts a
+/// clone of its input by score descending and pushes survivors into
+/// `selected` while walking that sorted copy — so its return value is
+/// score-descending, and `formatStructured(budgeted)` derives both section
+/// order and within-section order from exactly that. This port must match:
+/// `budget_chunks` operates on bare `ScoredChunk`s while
+/// `ChunkWithMetadata` carries more than `budget_chunks` (Task 4b/5) knows
+/// about, so budgeting here strips the metadata, budgets, then re-attaches
+/// it by id — but the id *order* returned by `budget_chunks` must drive the
+/// final `Vec`, not the id order of `chunks`. Concretely: collect
+/// `budget_chunks`' output ids into a `Vec` (preserving its score-descending
+/// order), index the original `chunks` into a `HashMap<String,
+/// ChunkWithMetadata>` (indexed into by id, never iterated — so its
+/// unordered iteration can't leak into the result), then walk the id `Vec`
+/// removing each match from the map. Tie-breaking is still deterministic:
+/// `budget_chunks`' `sort_by` is a stable sort over whatever order it's
+/// given, and it's given `chunks` in enrichment order, so ties still break
+/// by enrichment order — `budget_and_format_preserves_enrichment_order_among_tied_scores`
+/// (below) covers exactly this and needs no change. What changes is chunks
+/// that are *not* tied: those must come back sorted by score, highest
+/// first, which is what a relevance-ordered export means.
 pub(crate) fn budget_metadata(
     chunks: Vec<fubbik_core::format::ChunkWithMetadata>,
     max_tokens: usize,
 ) -> Vec<fubbik_core::format::ChunkWithMetadata> {
-    use std::collections::HashSet;
+    use std::collections::HashMap;
 
     let scored: Vec<_> = chunks.iter().map(|c| c.chunk.clone()).collect();
 
-    let budgeted_ids: HashSet<String> = budget_chunks(scored, max_tokens)
+    let order: Vec<String> = budget_chunks(scored, max_tokens)
         .into_iter()
         .map(|c| c.id)
         .collect();
 
-    chunks
+    let mut by_id: HashMap<String, fubbik_core::format::ChunkWithMetadata> = chunks
         .into_iter()
-        .filter(|c| budgeted_ids.contains(&c.chunk.id))
+        .map(|c| (c.chunk.id.clone(), c))
+        .collect();
+
+    order
+        .into_iter()
+        .filter_map(|id| by_id.remove(&id))
         .collect()
 }
 
@@ -199,21 +191,18 @@ pub fn router() -> Router<AppState> {
 
 #[cfg(test)]
 mod tests {
-    //! Unit-level coverage for `budget_and_format`'s order-preservation
-    //! contract, deliberately NOT routed through an HTTP call.
+    //! Unit-level coverage for `budget_and_format`'s ordering contract,
+    //! deliberately NOT routed through an HTTP call.
     //!
     //! All three resolvers (`resolve_for_plan`/`resolve_for_files`/
-    //! `resolve_for_concept`) collect candidate ids into a `HashSet<String>`
-    //! and return `ids.into_iter().collect()` — confirmed experimentally
-    //! (see the task report) to already randomize order on every single
-    //! call, independent of anything in this file. An HTTP-level "repeated
-    //! calls return the same order" test would therefore be testing two
-    //! stacked sources of nondeterminism at once and could fail even on a
-    //! correctly fixed `budget_and_format`, or pass by coincidence on a
-    //! broken one. Testing `budget_and_format` directly, with a
+    //! `resolve_for_concept`) now push into an order-preserving
+    //! `push_unique` collector rather than a `HashSet`, so their output
+    //! order is deterministic. Testing `budget_and_format` directly, with a
     //! hand-ordered `Vec<ChunkWithMetadata>` standing in for
-    //! `enrich_chunks`' output, isolates exactly the seam Finding 1 was
-    //! about and gives a deterministic, reproducible assertion.
+    //! `enrich_chunks`' output, isolates exactly the seam these findings are
+    //! about (tie-breaking order, and score-descending order for non-tied
+    //! chunks) and gives a deterministic, reproducible assertion without
+    //! depending on the resolvers or the database at all.
     use fubbik_core::format::ChunkWithMetadata;
     use fubbik_core::score::ScoredChunk;
 
@@ -272,6 +261,61 @@ mod tests {
             ids.to_vec(),
             "budget_and_format must preserve enrichment order among chunks tied on score, \
              not scramble it through an intermediate HashMap"
+        );
+    }
+
+    fn scored_chunk(id: &str, score: f64) -> ChunkWithMetadata {
+        ChunkWithMetadata {
+            chunk: ScoredChunk {
+                id: id.to_string(),
+                title: format!("Title {id}"),
+                content: "short body".to_string(),
+                chunk_type: "note".to_string(),
+                rationale: None,
+                tags: vec![],
+                score,
+            },
+            health_score: 50,
+            is_stale: false,
+            has_pending_proposal: false,
+        }
+    }
+
+    /// Finding 1: `budget_and_format`'s output must be score-descending,
+    /// matching Node's `budgetChunks` (`utils.ts:63-76`), which pushes into
+    /// `selected` while walking a `sorted` (score-descending) copy of its
+    /// input. Here the enrichment order (`c0, c1, c2, c3`) is deliberately
+    /// the *reverse* of score order, so a bug that returns enrichment order
+    /// instead of score order cannot pass by coincidence.
+    #[test]
+    fn budget_and_format_orders_survivors_by_score_descending() {
+        let input = vec![
+            scored_chunk("c0", 1.0),
+            scored_chunk("c1", 2.0),
+            scored_chunk("c2", 3.0),
+            scored_chunk("c3", 4.0),
+        ];
+
+        let structured = budget_and_format(input, 100_000);
+
+        let all_chunks: Vec<&ChunkWithMetadata> = structured
+            .sections
+            .iter()
+            .flat_map(|s| s.chunks.iter())
+            .collect();
+
+        assert_eq!(
+            all_chunks.len(),
+            4,
+            "a 100,000-token budget must admit every chunk, not drop any"
+        );
+
+        let returned_order: Vec<&str> = all_chunks.iter().map(|c| c.chunk.id.as_str()).collect();
+        assert_eq!(
+            returned_order,
+            vec!["c3", "c2", "c1", "c0"],
+            "budget_and_format must return survivors in score-descending order, \
+             matching Node's budgetChunks output order — not enrichment/input order"
         );
     }
 }

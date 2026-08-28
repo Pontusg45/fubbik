@@ -411,6 +411,75 @@ async fn for_files_finds_a_chunk_via_the_semantic_strategy(pool: sqlx::PgPool) {
 }
 
 // ---------------------------------------------------------------------------
+// Review follow-up: the applies-to strategy's `chunk::list` call must see
+// beyond the 100-row HTTP clamp (Finding 2, final whole-branch review).
+// Bulk-inserts filler rows via a single SQL statement rather than 150+
+// `chunk::create` round trips, matching the pattern used for the same
+// review-follow-up tests in `tests/context_export.rs`.
+// ---------------------------------------------------------------------------
+
+/// `get_context_for_file`'s applies-to strategy (`service.rs`, step 2) must
+/// consider more than the 100 newest chunks. `chunk::list` clamps to
+/// `[1,100]` regardless of `params.limit`; the applies-to strategy must go
+/// through `chunk::list_internal` instead (`limit: 1000`, matching Node's
+/// uncapped `listChunks` call at `context-for-file/service.ts:97-101`) or a
+/// chunk ranked 151st by `created_at` is silently unreachable via
+/// applies-to, even with a matching glob pattern.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn applies_to_strategy_considers_more_than_100_qualifying_chunks(pool: sqlx::PgPool) {
+    let user_id = seed_user(&pool, "applies-to-wide@b.test").await;
+
+    // 150 filler chunks, ids "filler-0001".."filler-0150", all inserted (and
+    // therefore `created_at`-stamped) in one statement.
+    sqlx::query!(
+        r#"INSERT INTO chunk (id, title, content, type, user_id, review_status)
+           SELECT 'filler-' || lpad(gs::text, 4, '0'), 'Filler ' || gs, repeat('x', 200), 'note', $1, 'approved'
+           FROM generate_series(1, 150) AS gs"#,
+        user_id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // `chunk::list`'s default sort is `Newest`: `ORDER BY created_at DESC,
+    // id ASC` — newest first. An explicitly *older* `created_at` than every
+    // filler (each of which took the column's own `now()` default) makes
+    // this chunk unambiguously the last of the 151 rows in that order —
+    // well beyond position 100.
+    let target = chunk::create(&pool, &user_id, new_chunk("Beyond Position 100"))
+        .await
+        .unwrap();
+    sqlx::query!(
+        "UPDATE chunk SET created_at = now() - interval '1 day' WHERE id = $1",
+        target.id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    chunk_meta::replace_applies_to(
+        &pool,
+        &target.id,
+        &user_id,
+        &[chunk_meta::AppliesToInput::from("wide/**/*.rs")],
+    )
+    .await
+    .unwrap();
+
+    let ai = unreachable_ai();
+    let result = get_context_for_file(&pool, &ai, &user_id, "wide/nested/foo.rs", None, None)
+        .await
+        .unwrap();
+
+    let found = result.chunks.iter().find(|c| c.id == target.id);
+    assert!(
+        found.is_some(),
+        "a chunk ranked 151st must still be reachable via the applies-to strategy \
+         once the fetch width is 1000, not silently dropped by a 100-row cap"
+    );
+    assert_eq!(found.unwrap().match_reason, MatchReason::AppliesTo);
+}
+
+// ---------------------------------------------------------------------------
 // governing behaviors — Fix round 1
 // ---------------------------------------------------------------------------
 

@@ -147,12 +147,21 @@ pub enum ForFileResponse {
     JsonLegacy(FileContext),
 }
 
-/// Parses `deps` the same way Node's route handler does
+/// Parses `deps` mostly the same way Node's route handler does
 /// (`ctx.query.deps ? ctx.query.deps.split(",").filter(Boolean) : undefined`,
 /// `context-for-file/routes.ts:28`): `None` when the query param is absent,
 /// `Some(vec![])` is never produced for an absent param but IS possible for
 /// a present-but-empty one (`deps=`) after filtering out empty segments —
 /// matching `.filter(Boolean)` dropping empty strings.
+///
+/// **One deliberate divergence: `.trim()` on each segment, which Node's
+/// `.split(",").filter(Boolean)` does not do.** Node keeps a leading/
+/// trailing-space segment verbatim (`"react, lodash"` -> `["react", "
+/// lodash"]`, space and all) and lets it fail `depMatchesCodebase`'s exact
+/// match silently downstream. That is very likely a client typo either
+/// way — trimming is friendlier and changes nothing for well-formed input,
+/// so it stays. Flagging it here only so a future byte-for-byte parity
+/// check on this function doesn't mistake it for an accidental gap.
 pub fn parse_deps(raw: Option<&str>) -> Option<Vec<String>> {
     raw.map(|s| {
         s.split(',')

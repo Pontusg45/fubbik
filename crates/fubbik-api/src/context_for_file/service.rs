@@ -1,6 +1,9 @@
 //! Ports `getContextForFile` (`packages/api/src/context-for-file/
-//! service.ts:72-332`) — five ranking strategies over a single file path,
-//! each contributing an additive bonus to a per-chunk score:
+//! service.ts:72-332`) — five ranking strategies over a single file path.
+//! **First-strategy-wins, not additive**: a chunk found by more than one
+//! strategy is scored and labelled by whichever strategy finds it first
+//! (see below); it never accumulates more than one bonus. Each strategy's
+//! own bonus, for the chunks it alone contributes:
 //!
 //! | strategy    | bonus | requires                  |
 //! |-------------|-------|----------------------------|
@@ -170,13 +173,21 @@ pub async fn get_context_for_file(
     // ------------------------------------------------------------------
     // 2. Applies-to glob matches, over chunks not already matched.
     // ------------------------------------------------------------------
+    // Node calls the repository `listChunks` directly at `limit: 1000` with
+    // no cap (`context-for-file/service.ts:97-101`). `chunk::list` clamps
+    // to `[1,100]` regardless of `params.limit` (see its own doc comment),
+    // so this internal, non-HTTP-triggered caller must go through
+    // `chunk::list_internal` instead — same query, same ordering, but a
+    // caller-chosen bound instead of the 100-row HTTP clamp. Using `list`
+    // here would silently glob-check only the 100 newest chunks instead of
+    // 1000.
     let list_params = chunk::ListParams {
         space_id: space_id.map(str::to_string),
         limit: 1000,
         offset: 0,
         ..Default::default()
     };
-    let all_chunks = chunk::list(pool, user_id, &list_params)
+    let all_chunks = chunk::list_internal(pool, user_id, &list_params, 1000)
         .await
         .unwrap_or_default();
     let unchecked: Vec<String> = all_chunks

@@ -189,7 +189,9 @@ fn categorize_chunks(chunks: &[ChunkWithTags]) -> CategorizedChunks {
             landed = true;
         }
 
-        if chunk.rationale.is_some()
+        // Node: `chunk.rationale || ...` — JS truthiness, so `Some("")` must
+        // not count as present.
+        if chunk.rationale.as_deref().is_some_and(|r| !r.is_empty())
             || lower_tags
                 .iter()
                 .any(|t| t == "convention" || t == "conventions")
@@ -258,7 +260,11 @@ fn format_claude(chunks: &[ChunkWithTags], cat: &CategorizedChunks) -> String {
             sections.push(format!("### {}", c.title));
             sections.push(String::new());
             sections.push(c.content.clone());
-            if let Some(r) = &c.rationale {
+            // Node: `if (c.rationale)` — truthy-checks the string, so an
+            // empty-string rationale must be omitted, not just `None`.
+            if let Some(r) = &c.rationale
+                && !r.is_empty()
+            {
                 sections.push(String::new());
                 sections.push(format!("**Rationale:** {r}"));
             }
@@ -311,7 +317,10 @@ fn format_agents(chunks: &[ChunkWithTags], cat: &CategorizedChunks) -> String {
             let c = &chunks[i];
             let first_line = c.content.split('\n').next().unwrap_or("");
             sections.push(format!("- **{}**: {first_line}", c.title));
-            if let Some(r) = &c.rationale {
+            // Node: `if (c.rationale)` — same truthy-check as above.
+            if let Some(r) = &c.rationale
+                && !r.is_empty()
+            {
                 sections.push(format!("  - Rationale: {r}"));
             }
         }

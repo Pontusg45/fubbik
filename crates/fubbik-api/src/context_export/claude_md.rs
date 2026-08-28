@@ -85,14 +85,18 @@ fn section_label(chunk_type: &str) -> &'static str {
 }
 
 /// Ports `formatChunkEntry` (`claude-md.ts:33-38`): a `### Title` heading,
-/// then content (only when non-empty), then a `**Rationale:**` line (only
-/// when present), each joined by a blank line.
+/// then content (only when truthy), then a `**Rationale:**` line (only
+/// when truthy), each joined by a blank line. Node's `if (c.rationale)`
+/// truthy-checks the string, so `Some("")` must be treated the same as
+/// `None`, not just filtered on `is_some()`.
 fn format_chunk_entry(c: &Chunk) -> String {
     let mut parts = vec![format!("### {}", c.title)];
     if !c.content.is_empty() {
         parts.push(c.content.clone());
     }
-    if let Some(r) = &c.rationale {
+    if let Some(r) = &c.rationale
+        && !r.is_empty()
+    {
         parts.push(format!("**Rationale:** {r}"));
     }
     parts.join("\n\n")

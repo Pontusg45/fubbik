@@ -20,12 +20,17 @@ pub fn format_chunk_text(chunk: &ScoredChunk) -> String {
     };
 
     let mut parts = vec![format!("## {type_label}: {}", chunk.title)];
-    // Node pushes content only when truthy, so an empty string is omitted
-    // rather than contributing a blank line.
+    // Node pushes content/rationale only when truthy (`if (chunk.content)`,
+    // `if (chunk.rationale)`), so an empty string is omitted rather than
+    // contributing a blank line — JS truthiness treats `""` the same as
+    // absent. `Some("")` must be treated as absent here too, not just
+    // `None`.
     if !chunk.content.is_empty() {
         parts.push(chunk.content.clone());
     }
-    if let Some(rationale) = &chunk.rationale {
+    if let Some(rationale) = &chunk.rationale
+        && !rationale.is_empty()
+    {
         parts.push(format!("**Rationale:** {rationale}"));
     }
     parts.join("\n")
@@ -137,7 +142,9 @@ pub fn format_structured_markdown(ctx: &StructuredContext) -> String {
                 lines.push(String::new());
                 lines.push(c.chunk.content.clone());
             }
-            if let Some(rationale) = &c.chunk.rationale {
+            if let Some(rationale) = &c.chunk.rationale
+                && !rationale.is_empty()
+            {
                 lines.push(String::new());
                 lines.push(format!("**Rationale:** {rationale}"));
             }
@@ -279,6 +286,17 @@ mod tests {
         assert_eq!(
             format_chunk_text(&chunk("note", None, "")),
             "## Note: Title"
+        );
+    }
+
+    /// Finding 6 (final whole-branch review): Node's `if (chunk.rationale)`
+    /// truthy-checks the string, so `Some("")` must be omitted the same
+    /// way `None` is — not rendered as a bare `**Rationale:** ` line.
+    #[test]
+    fn empty_rationale_is_omitted_not_rendered() {
+        assert_eq!(
+            format_chunk_text(&chunk("note", Some(""), "body")),
+            "## Note: Title\nbody"
         );
     }
 

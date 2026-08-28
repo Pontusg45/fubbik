@@ -75,6 +75,22 @@ fn push_unique(id: String, ids: &mut Vec<String>, seen: &mut HashSet<String>) {
 /// layer. The chunk-level filter in `service::enrich_chunks` stays too.
 /// **Do not delete either layer to "match `resolvers.ts`" — that is the
 /// divergence, not a bug.**
+///
+/// **Second, separate divergence: this function propagates repository
+/// errors with `?` instead of swallowing them.** The module doc above
+/// states Node's resolver error channel is `never` — every sub-effect
+/// wrapped in `Effect.catchAll(() => Effect.succeed([]))` — and that
+/// `resolve_for_concept`/`resolve_for_files` reproduce that. This function
+/// does not: `plan::find_by_id` and every `plan::list_*`/
+/// `requirement::get_chunks` call below is propagated via `?`, so a
+/// transient `DatabaseError` on any one of them fails the whole plan
+/// lookup rather than silently contributing zero ids for that step. This
+/// is deliberate, not an oversight — for a plan-scoped lookup, "the plan
+/// has fewer chunks than it should because one query failed" is a worse
+/// failure mode to hand back silently than a 500: the caller asked for
+/// *this specific plan's* context, and a partial, uncommunicated result
+/// would be actively misleading in a way that "no results for a fuzzy
+/// concept search" is not.
 pub async fn resolve_for_plan(
     pool: &PgPool,
     user_id: &str,
