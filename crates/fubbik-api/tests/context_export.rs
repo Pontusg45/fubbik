@@ -435,3 +435,134 @@ async fn claude_md_includes_active_plans_and_requirements(pool: sqlx::PgPool) {
         "must list the requirement's linked chunks: {content}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Review follow-up: both endpoints must see beyond `chunk::list`'s
+// HTTP-facing 100-row clamp (`chunk::list_internal`, `crates/fubbik-db/src/
+// repo/chunk.rs`). Both tests below bulk-insert their filler rows via a
+// single SQL statement each (not 150+ HTTP calls, and not 150+ `chunk::
+// create` round trips) specifically to keep this fast — the whole point is
+// to seed "a lot of rows" cheaply, not to exercise chunk creation itself.
+// ---------------------------------------------------------------------------
+
+/// `export_context`'s two `chunk::list_internal` calls (`service.rs`,
+/// `FETCH_LIMIT = 500`) must see a chunk ranked 151st, which a 100-row cap
+/// would silently drop before enrichment/scoring/budgeting ever see it.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn export_context_considers_more_than_100_qualifying_chunks(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "export-wide@b.test", "Export Wide").await;
+    let user_id = user_id_for_email(&pool, "export-wide@b.test").await;
+
+    // 150 filler chunks, ids "filler-0001".."filler-0150", all approved
+    // (the column default), all inserted — and therefore `created_at`
+    // stamped — in one statement.
+    sqlx::query!(
+        r#"INSERT INTO chunk (id, title, user_id)
+           SELECT 'filler-' || lpad(gs::text, 4, '0'), 'Filler ' || gs, $1
+           FROM generate_series(1, 150) AS gs"#,
+        user_id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // `chunk::list`'s default sort is `Newest`: `ORDER BY created_at DESC,
+    // id ASC` — newest first. Giving this row an explicitly *older*
+    // `created_at` than every filler (each of which took the column's own
+    // `now()` default) makes it unambiguously the last of the 151 rows in
+    // that order, regardless of the two statements' actual wall-clock
+    // timing — well beyond position 100.
+    sqlx::query!(
+        r#"INSERT INTO chunk (id, title, user_id, created_at)
+           VALUES ('zzzz-target-chunk', 'Beyond Position 100', $1, now() - interval '1 day')"#,
+        user_id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let res = get(
+        app.clone(),
+        &cookie,
+        "/api/chunks/export/context?maxTokens=1000000&format=json",
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let titles: Vec<&str> = body["chunks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["title"].as_str().unwrap())
+        .collect();
+
+    assert!(
+        titles.contains(&"Beyond Position 100"),
+        "a chunk ranked 151st must still be considered once the fetch width \
+         is 500, not silently dropped by a 100-row cap: {titles:?}"
+    );
+}
+
+/// `generate_claude_md`'s `chunk::list_internal` call (`claude_md.rs`,
+/// `CLAUDE_MD_FETCH_LIMIT = 2000`) must see a tagged chunk ranked 151st by
+/// title, which a 100-row cap would silently drop.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn claude_md_considers_more_than_100_tagged_chunks(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "claude-md-wide@b.test", "Claude Wide").await;
+    let user_id = user_id_for_email(&pool, "claude-md-wide@b.test").await;
+
+    let t = tag::find_or_create(&pool, &user_id, "claude-context")
+        .await
+        .unwrap();
+
+    // 150 filler chunks, all titled "AAA Filler NNNN" so they sort first
+    // under `Sort::Alpha`'s `ORDER BY title ASC`.
+    sqlx::query!(
+        r#"INSERT INTO chunk (id, title, user_id)
+           SELECT 'filler-' || lpad(gs::text, 4, '0'), 'AAA Filler ' || lpad(gs::text, 4, '0'), $1
+           FROM generate_series(1, 150) AS gs"#,
+        user_id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Sorts after every filler title, so it's row 151 of 151 under
+    // `ORDER BY title ASC` — well beyond position 100.
+    sqlx::query!(
+        r#"INSERT INTO chunk (id, title, user_id)
+           VALUES ('zzzz-target-chunk', 'ZZZ Target Chunk', $1)"#,
+        user_id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query!(
+        r#"INSERT INTO chunk_tag (chunk_id, tag_id)
+           SELECT id, $1 FROM chunk WHERE user_id = $2"#,
+        t.id,
+        user_id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let res = get(app.clone(), &cookie, "/api/chunks/export/claude-md").await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = json_body(res).await;
+    let content = body["content"].as_str().unwrap();
+
+    assert_eq!(
+        body["chunks"].as_u64().unwrap(),
+        151,
+        "all 151 tagged chunks must be counted, not silently capped at 100"
+    );
+    assert!(
+        content.contains("ZZZ Target Chunk"),
+        "a tagged chunk ranked 151st by title must still be considered once \
+         the fetch width is 2000, not silently dropped by a 100-row cap: {content}"
+    );
+}

@@ -31,6 +31,25 @@ pub const DEFAULT_MAX_TOKENS: usize = 32000;
 /// Node's default tag name when `tag` is omitted (`claude-md.ts:41`).
 const DEFAULT_TAG: &str = "claude-context";
 
+/// **Divergence from Node's fetch width.** Node's `listChunksByTag`
+/// (`tag-new.ts:179-208`) has no `LIMIT` at all — every chunk carrying the
+/// tag is fetched, however many there are. This port bounds it instead of
+/// reproducing that literally: an unbounded query against a table that
+/// grows without limit is not obviously safer than a documented cap, and
+/// `chunk::list`'s own HTTP-facing clamp (100) exists for a reason this
+/// endpoint doesn't share, so this uses `chunk::list_internal` with its own
+/// number rather than either of those.
+///
+/// `2000` was chosen as generous headroom over `enrich::routes::enrich_all`'s
+/// own existing cap of 1000 chunks per sweep (see this repo's root
+/// `CLAUDE.md`, "Enrichment concurrency") — the closest existing precedent
+/// in this codebase for "how many chunks is a single bulk operation
+/// expected to touch." A `claude-context`-tagged set is, by construction, a
+/// curated subset of a space's chunks (the whole point of tagging is to
+/// narrow it down for exactly this export), so 2000 is expected to be far
+/// above what any real tag filter produces while still bounding worst case.
+const CLAUDE_MD_FETCH_LIMIT: i64 = 2000;
+
 pub struct ClaudeMdParams<'a> {
     pub space_id: Option<&'a str>,
     pub tag: Option<&'a str>,
@@ -107,16 +126,16 @@ pub async fn generate_claude_md(
     // membership check (`tag-new.ts:179-208`) — including its space
     // semantics (a chunk in the named space, or in no space at all) and
     // its `ORDER BY chunk.title` (`Sort::Alpha`).
-    let chunks = chunk::list(
+    let chunks = chunk::list_internal(
         pool,
         user_id,
         &chunk::ListParams {
             tags: Some(vec![tag_name.clone()]),
             space_id: params.space_id.map(str::to_string),
             sort: chunk::Sort::Alpha,
-            limit: 100,
             ..Default::default()
         },
+        CLAUDE_MD_FETCH_LIMIT,
     )
     .await?;
 

@@ -7,14 +7,16 @@
 //! relevant to a `forPath`, budgets the result into `maxTokens`, and
 //! formats it as either markdown or a bare JSON chunk list.
 //!
-//! **Divergence from Node's fetch width.** Node's two `listChunksRepo`
-//! calls each request up to 500 rows (`service.ts:19-32`). This port's
-//! `chunk::list` clamps its `limit` to 100 (the same cap `GET /api/chunks`
-//! and `POST /api/search/query` both carry — see `chunk.rs::list`'s own
-//! doc comment) — there is no unlimited variant in this crate to call
-//! instead. A space with more than 100 approved (or 100 total) chunks will
-//! see a narrower export here than Node produces for the same data. Not
-//! exercised by this task's tests, which stay well under the cap.
+//! **Fetch width matches Node's, via `chunk::list_internal`.** Node's two
+//! `listChunksRepo` calls each request up to 500 rows (`service.ts:19-32`).
+//! `chunk::list` (the function every HTTP-facing chunk listing goes
+//! through) clamps to 100 — deliberately, to protect `GET /api/chunks` and
+//! `POST /api/search/query` — so this internal caller uses
+//! `chunk::list_internal` instead, requesting exactly `500` to match
+//! Node's own width rather than being silently narrowed by a clamp meant
+//! for a different pair of endpoints. See `chunk::list_internal`'s own doc
+//! comment for why that function exists rather than widening the shared
+//! clamp.
 
 use std::collections::HashSet;
 
@@ -95,26 +97,31 @@ pub async fn export_context(
     user_id: &str,
     params: ExportContextParams<'_>,
 ) -> AppResult<ExportContextResponse> {
-    let approved = chunk::list(
+    // Matches Node's `listChunksRepo({ ..., limit: 500, offset: 0 })` width
+    // exactly (`service.ts:19-32`) — see the module doc for why this is
+    // `list_internal`, not `list`.
+    const FETCH_LIMIT: i64 = 500;
+
+    let approved = chunk::list_internal(
         pool,
         user_id,
         &chunk::ListParams {
             review_status: Some("approved".to_string()),
             space_id: params.space_id.map(str::to_string),
-            limit: 100,
             ..Default::default()
         },
+        FETCH_LIMIT,
     )
     .await?;
 
-    let all = chunk::list(
+    let all = chunk::list_internal(
         pool,
         user_id,
         &chunk::ListParams {
             space_id: params.space_id.map(str::to_string),
-            limit: 100,
             ..Default::default()
         },
+        FETCH_LIMIT,
     )
     .await?;
 

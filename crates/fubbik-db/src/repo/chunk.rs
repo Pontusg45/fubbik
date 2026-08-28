@@ -628,11 +628,17 @@ fn push_filters<'a>(
     }
 }
 
-/// Lists a user's non-archived chunks.
-///
-/// Uses QueryBuilder rather than `query_as!` because the filter set is
-/// dynamic.
-pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResult<Vec<Chunk>> {
+/// Shared query construction for [`list`] and [`list_internal`]: same
+/// filters (via `push_filters`), same `ORDER BY`, differing only in the
+/// caller-supplied, already-clamped `limit` value — so the two public
+/// functions can never drift on filter or ordering semantics, only on how
+/// wide a net they cast.
+async fn list_with_limit(
+    pool: &PgPool,
+    user_id: &str,
+    params: &ListParams,
+    limit: i64,
+) -> AppResult<Vec<Chunk>> {
     let mut qb = sqlx::QueryBuilder::new(
         "SELECT id, title, content, type AS chunk_type, user_id, summary, \
          aliases, not_about, scope, rationale, alternatives, consequences, \
@@ -659,24 +665,69 @@ pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResul
         Sort::Updated => " ORDER BY updated_at DESC, id ASC",
     });
 
-    // Clamped to 100, the same cap `chunks::dto::ListChunksQuery::into_params`
-    // applies before `GET /api/chunks` ever reaches here (divergence #11).
-    // This clamp is the *only* one `POST /api/search/query` hits — nothing
-    // upstream in `search::service::build_list_params` pre-clamps — so this
-    // single line is the shared cap for both chunk-listing endpoints.
-    // Deliberately still a floor of 1, not 0: `limit: 0` clamps *up* to 1
-    // row, matching this port's existing (documented) lower-bound
-    // behaviour, not "no rows" — see `chunk_list_limit_is_clamped_identically_above_both_caps`
-    // (`fubbik-api/tests/differential.rs`) and `query_limit_is_clamped_to_100`
-    // (`fubbik-api/tests/search.rs`) for the pinned cases. Node has no cap on
-    // the search path at all (search bypasses the chunks service where the
-    // 100-cap lives), so `limit: 1000` is a documented divergence: Node
-    // returns 1000 rows, this port 100.
-    qb.push(" LIMIT ").push_bind(params.limit.clamp(1, 100));
+    qb.push(" LIMIT ").push_bind(limit);
     qb.push(" OFFSET ").push_bind(params.offset.max(0));
 
     let rows = qb.build_query_as::<Chunk>().fetch_all(pool).await?;
     Ok(rows)
+}
+
+/// Lists a user's non-archived chunks.
+///
+/// Uses QueryBuilder rather than `query_as!` because the filter set is
+/// dynamic.
+///
+/// `limit` is clamped to `[1, 100]` — the same cap
+/// `chunks::dto::ListChunksQuery::into_params` applies before `GET
+/// /api/chunks` ever reaches here (divergence #11). This clamp is the
+/// *only* one `POST /api/search/query` hits — nothing upstream in
+/// `search::service::build_list_params` pre-clamps — so this single call
+/// site is the shared cap for both HTTP-facing chunk-listing endpoints.
+/// Deliberately still a floor of 1, not 0: `limit: 0` clamps *up* to 1 row,
+/// matching this port's existing (documented) lower-bound behaviour, not
+/// "no rows" — see `chunk_list_limit_is_clamped_identically_above_both_caps`
+/// (`fubbik-api/tests/differential.rs`) and `query_limit_is_clamped_to_100`
+/// (`fubbik-api/tests/search.rs`) for the pinned cases. Node has no cap on
+/// the search path at all (search bypasses the chunks service where the
+/// 100-cap lives), so `limit: 1000` is a documented divergence: Node
+/// returns 1000 rows, this port 100.
+///
+/// **This clamp is baked into this function, not a boundary an internal
+/// caller can opt out of by passing a larger `params.limit`** — see
+/// [`list_internal`] for the function that exists precisely because of
+/// that. Do not widen the clamp here to serve an internal caller's need for
+/// more rows; its doc comment ties it deliberately to the two HTTP routes
+/// above, both of which have their own passing tests pinned to exactly 100.
+pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResult<Vec<Chunk>> {
+    list_with_limit(pool, user_id, params, params.limit.clamp(1, 100)).await
+}
+
+/// The same query as [`list`] — same filters, same ordering — but for
+/// **internal, non-HTTP-triggered callers** that need more than 100 rows
+/// and are not the two request paths [`list`]'s 100-row clamp exists to
+/// protect.
+///
+/// `limit` here is only floored at 1 (never `0` rows, same rationale as
+/// `list`), never capped at 100 — that upper bound is `list`'s clamp
+/// specifically, not a property of the underlying query. Every caller of
+/// this function must therefore choose and document its own bound; there
+/// is no default here that would silently reintroduce a hidden cap.
+///
+/// Added for Task 9 review follow-up: `context_export::service` and
+/// `context_export::claude_md` were both calling `list` and therefore
+/// both silently capped at 100 rows — one of the two divergences from
+/// Node's uncapped (or differently-capped) fetch width was undocumented.
+/// Routing both through this function instead keeps the 100-row HTTP
+/// clamp intact for `GET /api/chunks` and `POST /api/search/query` while
+/// letting those two internal callers request the width they actually
+/// need.
+pub async fn list_internal(
+    pool: &PgPool,
+    user_id: &str,
+    params: &ListParams,
+    limit: i64,
+) -> AppResult<Vec<Chunk>> {
+    list_with_limit(pool, user_id, params, limit.max(1)).await
 }
 
 /// Counts the rows [`list`] would return for the same filters, WITHOUT

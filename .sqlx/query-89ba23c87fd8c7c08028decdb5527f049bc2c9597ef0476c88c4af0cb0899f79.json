@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk (id, title, user_id)\n           SELECT 'filler-' || lpad(gs::text, 4, '0'), 'AAA Filler ' || lpad(gs::text, 4, '0'), $1\n           FROM generate_series(1, 150) AS gs",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "89ba23c87fd8c7c08028decdb5527f049bc2c9597ef0476c88c4af0cb0899f79"
+}

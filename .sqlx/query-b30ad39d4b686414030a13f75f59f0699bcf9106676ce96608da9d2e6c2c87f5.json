@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk (id, title, user_id)\n           VALUES ('zzzz-target-chunk', 'ZZZ Target Chunk', $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b30ad39d4b686414030a13f75f59f0699bcf9106676ce96608da9d2e6c2c87f5"
+}
