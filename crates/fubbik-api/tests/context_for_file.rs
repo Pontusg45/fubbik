@@ -5,7 +5,7 @@
 
 use fubbik_api::context_for_file::dto::MatchReason;
 use fubbik_api::context_for_file::service::get_context_for_file;
-use fubbik_db::repo::{chunk, chunk_meta, space, user};
+use fubbik_db::repo::{behavior_matrix as bm, chunk, chunk_meta, space, user};
 
 fn new_chunk(title: &str) -> chunk::NewChunk {
     chunk::NewChunk {
@@ -407,6 +407,118 @@ async fn for_files_finds_a_chunk_via_the_semantic_strategy(pool: sqlx::PgPool) {
         content.contains("Semantic Only Chunk"),
         "resolve_for_files must delegate to get_context_for_file and reach the semantic \
          strategy, not just file-ref/applies-to: {content}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// governing behaviors — Fix round 1
+// ---------------------------------------------------------------------------
+
+/// Seeds one behaviour rule linked, via a cell's `behavior_cell_code` row,
+/// to the exact path being requested — the reverse lookup
+/// `matrices::service::behaviors_for_path` performs. Asserts:
+///
+/// 1. A request for that path gets a `structured-md` response whose
+///    `content` contains the `## Behaviors governing this file` heading
+///    and the rule's title.
+/// 2. A request for an UNRELATED path — no linked behaviour at all — gets
+///    NEITHER that heading NOR a dangling blank-line separator artefact.
+///    This half is the one that would catch a broken emptiness check:
+///    appending unconditionally would leave a dangling separator (or an
+///    empty heading section) even when there is nothing to append.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn for_file_appends_governing_behaviors_to_markdown(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "behaviors-md@b.test", "Behaviors Md").await;
+    let user_id = user_id_for_email(&pool, "behaviors-md@b.test").await;
+
+    let matrix = bm::create(
+        &pool,
+        &user_id,
+        bm::NewMatrix {
+            name: "Invariants".to_string(),
+            layer: "invariant".to_string(),
+            description: None,
+            space_id: None,
+        },
+    )
+    .await
+    .unwrap()
+    .expect("a matrix with no space_id always inserts");
+    let rule = bm::create_rule(
+        &pool,
+        &matrix.id,
+        &user_id,
+        bm::NewRule {
+            title: "Never log secrets".to_string(),
+            description: None,
+            category: None,
+            rationale: None,
+            alternatives: None,
+            consequences: None,
+            counterexample: None,
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let dimension = bm::create_dimension(&pool, &matrix.id, &user_id, "Logging")
+        .await
+        .unwrap()
+        .unwrap();
+    let cell = bm::create_cell(&pool, &rule.id, &dimension.id, &matrix.id, &user_id)
+        .await
+        .unwrap()
+        .unwrap();
+    bm::link_cell_code(
+        &pool,
+        &cell.id,
+        "file",
+        "src/governed.rs",
+        &matrix.id,
+        &user_id,
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
+    // Half one: the governed path gets the section.
+    let governed = get(
+        app.clone(),
+        &cookie,
+        "/api/context/for-file?path=src/governed.rs",
+    )
+    .await;
+    assert_eq!(governed.status(), StatusCode::OK);
+    let governed_body = json_body(governed).await;
+    let governed_content = governed_body["content"].as_str().unwrap();
+    assert!(
+        governed_content.contains("## Behaviors governing this file"),
+        "a path with a linked behaviour must get the governing-behaviors heading: {governed_content}"
+    );
+    assert!(
+        governed_content.contains("Never log secrets"),
+        "the linked rule's title must appear: {governed_content}"
+    );
+
+    // Half two: an unrelated path gets neither the heading nor a dangling
+    // separator artefact.
+    let unrelated = get(
+        app.clone(),
+        &cookie,
+        "/api/context/for-file?path=src/unrelated.rs",
+    )
+    .await;
+    assert_eq!(unrelated.status(), StatusCode::OK);
+    let unrelated_body = json_body(unrelated).await;
+    let unrelated_content = unrelated_body["content"].as_str().unwrap();
+    assert!(
+        !unrelated_content.contains("## Behaviors governing this file"),
+        "a path with no linked behaviour must NOT get the heading: {unrelated_content}"
+    );
+    assert!(
+        !unrelated_content.ends_with("\n\n"),
+        "an empty behaviors section must not leave a dangling blank-line separator: {unrelated_content:?}"
     );
 }
 

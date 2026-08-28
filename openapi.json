@@ -13540,13 +13540,74 @@
       "ForFileResponse": {
         "oneOf": [
           {
-            "$ref": "#/components/schemas/ContextResponse"
+            "$ref": "#/components/schemas/ForFileStructuredResponse"
           },
           {
             "$ref": "#/components/schemas/FileContext"
           }
         ],
-        "description": "The full response envelope for `GET /api/context/for-file`, spanning all\nthree `format` values. `#[serde(untagged)]` is load-bearing: it is what\nkeeps `JsonLegacy`'s wire shape untagged (`{chunks, requirements}`, no\n`format` key), matching Node's `{ ...result }` spread — an internally\ntagged enum (`context::dto::ContextResponse`'s own `#[serde(tag =\n\"format\")]`) would add a `format` field Node never sends here."
+        "description": "The full response envelope for `GET /api/context/for-file`, spanning all\nthree `format` values. `#[serde(untagged)]` is load-bearing: it is what\nkeeps `JsonLegacy`'s wire shape untagged (`{chunks, requirements}`, no\n`format` key), matching Node's `{ ...result }` spread — an internally\ntagged enum would add a `format` field Node never sends there."
+      },
+      "ForFileStructuredResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "content",
+              "totalChunks",
+              "format"
+            ],
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "structured-md"
+                ]
+              },
+              "totalChunks": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "sections",
+              "totalChunks",
+              "behaviors",
+              "format"
+            ],
+            "properties": {
+              "behaviors": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GoverningBehavior"
+                }
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "structured-json"
+                ]
+              },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ContextSection"
+                }
+              },
+              "totalChunks": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        ],
+        "description": "The `structured-md`/`structured-json` envelope, ports the two literal\nobject shapes Node builds inline at `context-for-file/routes.ts:39-60`.\n`StructuredJson` carries `behaviors: governing` verbatim (the raw,\npossibly rule-duplicating list — see [`fubbik_core::format::\nformat_behaviors_markdown`]'s doc comment on why the markdown side\ndedupes and this one does not); `StructuredMd` has no `behaviors` field\nat all, because Node's markdown branch folds the rendered section\ndirectly into `content` instead of also exposing the raw list."
       },
       "Format": {
         "type": "string",
@@ -13593,6 +13654,64 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "GoverningBehavior": {
+        "type": "object",
+        "description": "A behaviour-matrix rule linked to a file via `behavior_cell_code`,\nsurfaced by `GET /api/context/for-file`'s \"governing behaviours\"\nsection. Ports Node's `GoverningBehavior` interface\n(`packages/api/src/context/formatter.ts:57-69`) field for field —\n`code_ref` serialises as `ref`, matching Node's own field name, which\nthis port cannot use directly since `ref` is a Rust keyword.",
+        "required": [
+          "ruleId",
+          "ruleTitle",
+          "matrixId",
+          "matrixName",
+          "layer",
+          "dimensionName",
+          "kind",
+          "ref"
+        ],
+        "properties": {
+          "counterexample": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dimensionName": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string"
+          },
+          "matrixId": {
+            "type": "string"
+          },
+          "matrixName": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ref": {
+            "type": "string"
+          },
+          "ruleId": {
+            "type": "string"
+          },
+          "ruleTitle": {
+            "type": "string"
           }
         }
       },

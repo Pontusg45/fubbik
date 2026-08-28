@@ -8,14 +8,22 @@
 //! (`context-for-file/routes.ts:26`), returns `getContextForFile`'s raw
 //! `{ chunks, requirements }` shape directly — untagged, no `format` field
 //! on the wire at all (`Effect.map(result => ({ ...result }))`,
-//! `routes.ts:29`) — while `structured-md`/`structured-json` share
-//! `context::dto::ContextResponse`'s tagged envelope.
+//! `routes.ts:29`).
+//!
+//! `structured-md`/`structured-json` do NOT reuse `context::dto::
+//! ContextResponse` — that shared envelope backs `for-plan`/`about`/
+//! `for-files`, none of which carry a `behaviors` field in Node. This
+//! route's own `getBehaviorsForCodePath` lookup
+//! (`context-for-file/routes.ts:36-38`) is unique to it: `structured-json`
+//! gains a `behaviors` array, and `structured-md` appends a rendered
+//! section — both would be a lie on the other three routes, so
+//! [`ForFileStructuredResponse`] is this route's own envelope, not a
+//! variant bolted onto the shared one.
 
 use fubbik_core::error::AppResult;
+use fubbik_core::format::{ContextSection, GoverningBehavior};
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
-
-use crate::context::dto::ContextResponse;
 
 /// The `format` query param, one variant wider than `context::dto::ContextFormat`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, ToSchema)]
@@ -103,16 +111,39 @@ pub struct FileContext {
     pub requirements: Vec<ContextRequirement>,
 }
 
+/// The `structured-md`/`structured-json` envelope, ports the two literal
+/// object shapes Node builds inline at `context-for-file/routes.ts:39-60`.
+/// `StructuredJson` carries `behaviors: governing` verbatim (the raw,
+/// possibly rule-duplicating list — see [`fubbik_core::format::
+/// format_behaviors_markdown`]'s doc comment on why the markdown side
+/// dedupes and this one does not); `StructuredMd` has no `behaviors` field
+/// at all, because Node's markdown branch folds the rendered section
+/// directly into `content` instead of also exposing the raw list.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(tag = "format")]
+pub enum ForFileStructuredResponse {
+    #[serde(rename = "structured-md", rename_all = "camelCase")]
+    StructuredMd {
+        content: String,
+        total_chunks: usize,
+    },
+    #[serde(rename = "structured-json", rename_all = "camelCase")]
+    StructuredJson {
+        sections: Vec<ContextSection>,
+        total_chunks: usize,
+        behaviors: Vec<GoverningBehavior>,
+    },
+}
+
 /// The full response envelope for `GET /api/context/for-file`, spanning all
 /// three `format` values. `#[serde(untagged)]` is load-bearing: it is what
 /// keeps `JsonLegacy`'s wire shape untagged (`{chunks, requirements}`, no
 /// `format` key), matching Node's `{ ...result }` spread — an internally
-/// tagged enum (`context::dto::ContextResponse`'s own `#[serde(tag =
-/// "format")]`) would add a `format` field Node never sends here.
+/// tagged enum would add a `format` field Node never sends there.
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(untagged)]
 pub enum ForFileResponse {
-    Structured(ContextResponse),
+    Structured(ForFileStructuredResponse),
     JsonLegacy(FileContext),
 }
 

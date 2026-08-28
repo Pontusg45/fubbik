@@ -148,6 +148,81 @@ pub fn format_structured_markdown(ctx: &StructuredContext) -> String {
     lines.join("\n").trim_end().to_string()
 }
 
+/// A behaviour-matrix rule linked to a file via `behavior_cell_code`,
+/// surfaced by `GET /api/context/for-file`'s "governing behaviours"
+/// section. Ports Node's `GoverningBehavior` interface
+/// (`packages/api/src/context/formatter.ts:57-69`) field for field —
+/// `code_ref` serialises as `ref`, matching Node's own field name, which
+/// this port cannot use directly since `ref` is a Rust keyword.
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GoverningBehavior {
+    pub rule_id: String,
+    pub rule_title: String,
+    pub description: Option<String>,
+    pub rationale: Option<String>,
+    pub counterexample: Option<String>,
+    pub matrix_id: String,
+    pub matrix_name: String,
+    pub layer: String,
+    pub dimension_name: String,
+    pub kind: String,
+    #[serde(rename = "ref")]
+    pub code_ref: String,
+}
+
+/// Ports `formatBehaviorsMarkdown` (`formatter.ts:75-90`) verbatim,
+/// including its "## Behaviors governing this file" heading and each
+/// rule's `- [layer/matrixName] title — description` line, with an
+/// indented counterexample line when present.
+///
+/// **Returns an empty string for an empty list, deliberately, not an
+/// `Option<String>`** — Node's own doc comment says why: "so callers can
+/// append unconditionally". `context_for_file::routes::for_file` relies on
+/// that contract directly: it only inserts the blank-line separator when
+/// this string is non-empty, so an `Option` here would just move the same
+/// emptiness check into every caller instead of answering it once.
+///
+/// De-duplicates by `rule_id` before rendering — a rule can be linked to
+/// the same file through more than one `behavior_cell_code` row (e.g. both
+/// a `file` and a `symbol` link), and Node's `Set<string>` guard
+/// (`formatter.ts:80-83`) ensures each rule appears once in the markdown
+/// even though the caller's raw `behaviors` list (surfaced unfiltered in
+/// the `structured-json` format's own `behaviors` field) may still contain
+/// duplicates.
+pub fn format_behaviors_markdown(behaviors: &[GoverningBehavior]) -> String {
+    if behaviors.is_empty() {
+        return String::new();
+    }
+
+    let mut lines: Vec<String> = vec![
+        "## Behaviors governing this file".to_string(),
+        String::new(),
+    ];
+
+    let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    for b in behaviors {
+        if !seen.insert(b.rule_id.as_str()) {
+            continue;
+        }
+
+        let desc = b
+            .description
+            .as_deref()
+            .map(|d| format!(" — {d}"))
+            .unwrap_or_default();
+        lines.push(format!(
+            "- [{}/{}] {}{desc}",
+            b.layer, b.matrix_name, b.rule_title
+        ));
+        if let Some(counterexample) = &b.counterexample {
+            lines.push(format!("  ↳ counterexample: {counterexample}"));
+        }
+    }
+
+    lines.join("\n").trim_end().to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
