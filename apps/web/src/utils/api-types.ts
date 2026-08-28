@@ -167,6 +167,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/export/claude-md": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /api/chunks/export/claude-md?spaceId=&tag=&maxTokens=`. */
+        get: operations["export_claude_md_route"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/export/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /api/chunks/export/context?spaceId=&maxTokens=&format=markdown|json&forPath=`. */
+        get: operations["export_context_route"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/merge": {
         parameters: {
             query?: never;
@@ -525,6 +559,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/codebases/{id}/generate-instructions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Deprecated alias: `GET /api/codebases/{id}/generate-instructions`.
+         * @description **This is Node's *actual* (and only) registration.** Node's
+         *     `generateInstructionsRoutes` (`packages/api/src/generate-instructions/
+         *     routes.ts:8`) registers exactly one path, `/codebases/:id/generate-
+         *     instructions` — it never registers `/spaces/:id/generate-instructions`
+         *     at all, and `codebaseRoutes` (the `/api/codebases` -> `/api/spaces`
+         *     forwarding layer used for every other space endpoint) does not cover
+         *     this route either, since it forwards the opposite direction and this
+         *     handler isn't one of the ones it re-exports.
+         *
+         *     Yet Node's own CLI (`apps/cli/src/commands/generate.ts:35,58,81`) calls
+         *     `/api/spaces/${spaceId}/generate-instructions` at all three call sites
+         *     — matching how every *other* CLI call in that codebase addresses spaces
+         *     (`api/spaces`, never `api/codebases`). So in a live Node deployment,
+         *     `fubbik generate claude.md`/`agents.md`/`.cursorrules` all 404 today.
+         *     This is fallout from the project's `codebases` -> `spaces` rename: the
+         *     CLI's call sites and the rest of the API surface were renamed, but this
+         *     one route registration was missed.
+         *
+         *     This port serves **both** paths, pointed at the same handler
+         *     ([`generate_instructions_route`]), rather than picking one:
+         *     `/api/spaces/{id}/generate-instructions` is primary — it matches the
+         *     CLI and the project's own rename, and fixes the three broken commands.
+         *     This `/api/codebases/{id}/...` path is kept as a deprecated
+         *     compatibility alias matching the *real* shape of Node's API today, the
+         *     same pattern already used for `/api/codebases` elsewhere in this
+         *     codebase (see CLAUDE.md: "`/api/codebases` is a deprecated alias kept
+         *     for backward compatibility with older VS Code extension builds and
+         *     external consumers."). Serving only `/spaces` would silently drop a
+         *     path that genuinely exists in Node today, breaking any external
+         *     consumer or older client still calling it at cutover.
+         */
+        get: operations["generate_instructions_codebases_alias_route"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/collections": {
         parameters: {
             query?: never;
@@ -654,6 +737,135 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["delete_connection"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/context/about": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /api/context/about?q=auth&maxTokens=N&spaceId=X&format=structured-md`. */
+        get: operations["about"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/context/for-file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /api/context/for-file?path=X&spaceId=&deps=&format=&maxTokens=`. */
+        get: operations["for_file"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/context/for-files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /api/context/for-files?paths=a.ts,b.ts&maxTokens=N&spaceId=X&format=structured-md`. */
+        get: operations["for_files"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/context/for-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /api/context/for-plan?planId=X&maxTokens=N&format=structured-md`.
+         * @description `resolve_for_plan` returns `NotFound` for a plan the caller doesn't own
+         *     (a deliberate tightening over Node — see the resolver's own doc comment
+         *     for the full ruling); this handler just propagates it via `?`, it does
+         *     not add a second check.
+         */
+        get: operations["for_plan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/context/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["create_snapshot_route"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/context/snapshot/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_snapshot_route"];
+        put?: never;
+        post?: never;
+        /**
+         * Always 200 with a `null` body on success — matching Node, whose
+         *     `DELETE` handler never sets an explicit response (`snapshot-routes.ts:49-63`):
+         *     the Effect chain resolves to `deleteSnapshot`'s return value, `void`,
+         *     which Elysia serialises as an empty/`null` body at the default 200
+         *     status. A foreign or unknown id 404s via [`delete_snapshot`] instead.
+         */
+        delete: operations["delete_snapshot_route"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/context/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_snapshots_route"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2553,6 +2765,31 @@ export interface paths {
         patch: operations["update_space"];
         trace?: never;
     };
+    "/api/spaces/{id}/generate-instructions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `unknown_format_is_rejected_or_defaults`: an unrecognised `format`
+         *     value fails to deserialize against `InstructionFormat`'s three
+         *     literals, so `extract::Query` rejects the request with
+         *     `AppError::Validation` -> `400`, the same "reject" behaviour Node's
+         *     Elysia `t.Union([t.Literal(...), ...])` query schema produces (Elysia
+         *     responds non-2xx for a query value outside the declared union before
+         *     the handler body ever runs) — not a silent default to `claude`.
+         */
+        get: operations["generate_instructions_route"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/spaces/{id}/reset": {
         parameters: {
             query?: never;
@@ -3670,6 +3907,27 @@ export interface components {
             /** Format: int32 */
             version: number;
         };
+        /**
+         * @description A scored chunk plus the enrichment the formatter annotates with.
+         *     Ports `packages/api/src/context/formatter.ts:3-7`. Node's
+         *     `ChunkWithMetadata extends ScoredChunk` — this port composes instead of
+         *     flattening, so the wire shape is reproduced with `#[serde(flatten)]`
+         *     rather than duplicating `ScoredChunk`'s fields here.
+         */
+        ChunkWithMetadata: components["schemas"]["ScoredChunk"] & {
+            hasPendingProposal: boolean;
+            /** Format: int64 */
+            healthScore: number;
+            isStale: boolean;
+        };
+        /**
+         * @description Matches Node's `{content, chunks}` response (`claude-md.ts:188`) —
+         *     `chunks` is the tagged-chunk *count*, not the chunk list itself.
+         */
+        ClaudeMdResponse: {
+            chunks: number;
+            content: string;
+        };
         /** @description `camelCase` serialisation matches every other wire type in this crate. */
         Collection: {
             /** Format: date-time */
@@ -3766,6 +4024,92 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             userId?: string | null;
+        };
+        /**
+         * @description A chunk in `getContextForFile`'s own result shape — ports `ContextChunk`
+         *     (`context-for-file/service.ts:21-29`). Deliberately a narrower field set
+         *     than `fubbik_core::format::ChunkWithMetadata`: no `tags`, no
+         *     `healthScore`/`isStale`/`hasPendingProposal`, because this is the
+         *     pre-enrichment shape the five strategies themselves produce, not the
+         *     output of `context::service::enrich_chunks`.
+         */
+        ContextChunk: {
+            content: string;
+            id: string;
+            matchReason: components["schemas"]["MatchReason"];
+            /** Format: double */
+            score: number;
+            summary?: string | null;
+            title: string;
+            type: string;
+        };
+        /**
+         * @description The `format` query param shared by all three routes. Mirrors Node's
+         *     `t.Union([t.Literal("structured-md"), t.Literal("structured-json")])`
+         *     (`context/routes.ts:49` and its two siblings) — `kebab-case` so
+         *     `StructuredMd`/`StructuredJson` serialise/deserialise as exactly those
+         *     two literals.
+         * @enum {string}
+         */
+        ContextFormat: "structured-md" | "structured-json";
+        /** @description Ports `ContextRequirement` (`context-for-file/service.ts:31-38`). */
+        ContextRequirement: {
+            id: string;
+            matchedChunkIds: string[];
+            priority?: string | null;
+            status: string;
+            steps: components["schemas"]["ContextRequirementStep"][];
+            title: string;
+        };
+        /**
+         * @description One BDD step on a matched requirement — `{keyword, text}` only, matching
+         *     Node's `.map(s => ({ keyword: s.keyword, text: s.text }))`
+         *     (`context-for-file/service.ts:316`), which drops `params`.
+         */
+        ContextRequirementStep: {
+            keyword: components["schemas"]["StepKeyword"];
+            text: string;
+        };
+        /**
+         * @description Shared response envelope for all three routes
+         *     (`context/routes.ts:32-39` and its two siblings). Internally tagged on
+         *     `format` so the wire shape is exactly Node's `{ format: "structured-md",
+         *     content, totalChunks }` or `{ format: "structured-json", sections,
+         *     totalChunks }` — never both `content` and `sections` on the same
+         *     response.
+         */
+        ContextResponse: {
+            content: string;
+            /** @enum {string} */
+            format: "structured-md";
+            totalChunks: number;
+        } | {
+            /** @enum {string} */
+            format: "structured-json";
+            sections: components["schemas"]["ContextSection"][];
+            totalChunks: number;
+        };
+        ContextSection: {
+            chunks: components["schemas"]["ChunkWithMetadata"][];
+            title: string;
+        };
+        /**
+         * @description `camelCase` on the wire, matching every other repo row type in this
+         *     crate. `query`/`chunks` are stored and returned as opaque JSON blobs —
+         *     `query` is a free-form subset of the create request
+         *     (`packages/api/src/context/snapshot-service.ts:46-52`'s
+         *     `Record<string, unknown>`), and `chunks` is the frozen
+         *     `ChunkWithMetadata[]` the create call budgeted.
+         */
+        ContextSnapshot: {
+            chunks: components["schemas"]["ChunkWithMetadata"][];
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            query: unknown;
+            /** Format: int32 */
+            tokenCount: number;
+            userId: string;
         };
         /**
          * @description Shape of `GET /api/notifications/count`
@@ -4137,6 +4481,33 @@ export interface components {
              */
             valueType?: string | null;
         };
+        /**
+         * @description Body of `POST /api/context/snapshot`
+         *     (`packages/api/src/context/snapshot-routes.ts:27-34`). Resolver
+         *     selection order — `planId`, else non-empty `filePaths`, else `concept`
+         *     — is decided in [`create_snapshot`], mirroring
+         *     `snapshot-service.ts:32-38`'s `if`/`else if` chain exactly.
+         */
+        CreateSnapshotBody: {
+            concept?: string | null;
+            filePaths?: string[] | null;
+            maxTokens?: number | null;
+            planId?: string | null;
+            spaceId?: string | null;
+            taskId?: string | null;
+        };
+        /**
+         * @description Response of `POST /api/context/snapshot`
+         *     (`snapshot-service.ts:61-66`).
+         */
+        CreateSnapshotResponse: {
+            chunkCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            snapshotId: string;
+            /** Format: int32 */
+            tokenCount: number;
+        };
         CreateSpaceBody: {
             description?: string | null;
             kind?: string | null;
@@ -4488,6 +4859,42 @@ export interface components {
             word: string;
         };
         /**
+         * @description Internally tagged on `format`, matching Node's `{format: "json", ...}` /
+         *     `{format: "markdown", ...}` response shapes (`service.ts:56-81`) — never
+         *     both `content` and `chunks` on the same response.
+         */
+        ExportContextResponse: {
+            content: string;
+            /** @enum {string} */
+            format: "markdown";
+            tokens: number;
+        } | {
+            chunks: components["schemas"]["ExportedChunk"][];
+            /** @enum {string} */
+            format: "json";
+            tokens: number;
+        };
+        /**
+         * @description The `format` query param. Mirrors Node's
+         *     `t.Union([t.Literal("markdown"), t.Literal("json")])`
+         *     (`context-export/routes.ts:27`) — deliberately NOT the
+         *     `structured-md`/`structured-json` vocabulary `context::dto::
+         *     ContextFormat` uses; this is a distinct, narrower export endpoint with
+         *     its own two literal values.
+         * @enum {string}
+         */
+        ExportFormat: "markdown" | "json";
+        /**
+         * @description One chunk in the `format=json` response, matching Node's inline
+         *     `{title, content, type, tags}` projection (`service.ts:63-68`).
+         */
+        ExportedChunk: {
+            content: string;
+            tags: string[];
+            title: string;
+            type: string;
+        };
+        /**
          * @description The six chunk fields a template's field mappings can populate — a real
          *     `t.Union` of literals (`packages/api/src/templates/routes.ts:29-36`).
          * @enum {string}
@@ -4644,6 +5051,15 @@ export interface components {
             target: components["schemas"]["ExtractionTarget"];
         };
         /**
+         * @description Ports `FileContext` (`context-for-file/service.ts:40-43`) — the
+         *     `json-legacy` response body, and `get_context_for_file`'s own return
+         *     type.
+         */
+        FileContext: {
+            chunks: components["schemas"]["ContextChunk"][];
+            requirements: components["schemas"]["ContextRequirement"][];
+        };
+        /**
          * @description A `chunk_file_ref` row.
          *
          *     `anchor` and `relation` were missing here for the same reason `note` was
@@ -4697,6 +5113,41 @@ export interface components {
             relation: string;
         };
         /**
+         * @description The `format` query param, one variant wider than `context::dto::ContextFormat`.
+         * @enum {string}
+         */
+        ForFileFormat: "structured-md" | "structured-json" | "json-legacy";
+        /**
+         * @description The full response envelope for `GET /api/context/for-file`, spanning all
+         *     three `format` values. `#[serde(untagged)]` is load-bearing: it is what
+         *     keeps `JsonLegacy`'s wire shape untagged (`{chunks, requirements}`, no
+         *     `format` key), matching Node's `{ ...result }` spread — an internally
+         *     tagged enum would add a `format` field Node never sends there.
+         */
+        ForFileResponse: components["schemas"]["ForFileStructuredResponse"] | components["schemas"]["FileContext"];
+        /**
+         * @description The `structured-md`/`structured-json` envelope, ports the two literal
+         *     object shapes Node builds inline at `context-for-file/routes.ts:39-60`.
+         *     `StructuredJson` carries `behaviors: governing` verbatim (the raw,
+         *     possibly rule-duplicating list — see [`fubbik_core::format::
+         *     format_behaviors_markdown`]'s doc comment on why the markdown side
+         *     dedupes and this one does not); `StructuredMd` has no `behaviors` field
+         *     at all, because Node's markdown branch folds the rendered section
+         *     directly into `content` instead of also exposing the raw list.
+         */
+        ForFileStructuredResponse: {
+            content: string;
+            /** @enum {string} */
+            format: "structured-md";
+            totalChunks: number;
+        } | {
+            behaviors: components["schemas"]["GoverningBehavior"][];
+            /** @enum {string} */
+            format: "structured-json";
+            sections: components["schemas"]["ContextSection"][];
+            totalChunks: number;
+        };
+        /**
          * @description Matches Node's `FormatSchema` (`t.Union([t.Literal("gherkin"),
          *     t.Literal("vitest"), t.Literal("markdown")])`).
          * @enum {string}
@@ -4713,6 +5164,31 @@ export interface components {
             match: components["schemas"]["FrontmatterMatchMode"];
             value?: string | null;
             values?: string[] | null;
+        };
+        GenerateInstructionsResponse: {
+            content: string;
+            format: string;
+        };
+        /**
+         * @description A behaviour-matrix rule linked to a file via `behavior_cell_code`,
+         *     surfaced by `GET /api/context/for-file`'s "governing behaviours"
+         *     section. Ports Node's `GoverningBehavior` interface
+         *     (`packages/api/src/context/formatter.ts:57-69`) field for field —
+         *     `code_ref` serialises as `ref`, matching Node's own field name, which
+         *     this port cannot use directly since `ref` is a Rust keyword.
+         */
+        GoverningBehavior: {
+            counterexample?: string | null;
+            description?: string | null;
+            dimensionName: string;
+            kind: string;
+            layer: string;
+            matrixId: string;
+            matrixName: string;
+            rationale?: string | null;
+            ref: string;
+            ruleId: string;
+            ruleTitle: string;
         };
         /** @description A `governs` edge from a rule to the code it controls. */
         GovernsEdge: {
@@ -4936,6 +5412,20 @@ export interface components {
          * @enum {string}
          */
         ImportStatus: "unchanged" | "created" | "synced";
+        /**
+         * @description The `format` query param. Node's `t.Union([t.Literal("claude"),
+         *     t.Literal("agents"), t.Literal("cursor")])` (`routes.ts:21`) rejects
+         *     anything outside these three literals at the schema layer, before the
+         *     handler ever runs — Elysia responds `422` for an unrecognised value
+         *     rather than falling back to a default. This port matches that with
+         *     serde's own literal-enum rejection: an unknown `format` fails to
+         *     deserialize the query string, which `extract::Query` turns into a `400`
+         *     (see `unknown_format_is_rejected_or_defaults` in
+         *     `tests/generate_instructions.rs` for which of the two — reject vs.
+         *     silently default — this actually is).
+         * @enum {string}
+         */
+        InstructionFormat: "claude" | "agents" | "cursor";
         /** @description The five buckets, in the order the panel renders them. */
         KnowledgeHealth: {
             fileRefs: components["schemas"]["FileRefBucket"];
@@ -4990,6 +5480,12 @@ export interface components {
          * @enum {string}
          */
         MatchMode: "exact" | "prefix" | "contains";
+        /**
+         * @description One strategy's name, exactly as it appears on the wire — Node's
+         *     `ContextChunk["matchReason"]` union (`context-for-file/service.ts:27`).
+         * @enum {string}
+         */
+        MatchReason: "file-ref" | "applies-to" | "dependency" | "semantic" | "connected";
         MatchRules: {
             frontmatter: components["schemas"]["FrontmatterRule"][];
             headings: components["schemas"]["HeadingRule"][];
@@ -5827,6 +6323,21 @@ export interface components {
         };
         ScopeKeyMessage: {
             message: string;
+        };
+        /**
+         * @description Mirrors `ScoredChunk` (`packages/api/src/context/utils.ts:8-15`) on the
+         *     wire — `chunk_type` serialises as `type`, matching Node's field name,
+         *     since `/api/context/*` (Task 6) serialises this struct directly.
+         */
+        ScoredChunk: {
+            content: string;
+            id: string;
+            rationale?: string | null;
+            /** Format: double */
+            score: number;
+            tags: string[];
+            title: string;
+            type: string;
         };
         /**
          * @description Body of `POST /api/search/query`
@@ -7238,6 +7749,53 @@ export interface operations {
             };
         };
     };
+    export_claude_md_route: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+                tag?: string | null;
+                maxTokens?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaudeMdResponse"];
+                };
+            };
+        };
+    };
+    export_context_route: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+                maxTokens?: string | null;
+                format?: null | components["schemas"]["ExportFormat"];
+                forPath?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportContextResponse"];
+                };
+            };
+        };
+    };
     merge_chunks: {
         parameters: {
             query?: never;
@@ -7972,6 +8530,35 @@ export interface operations {
             };
         };
     };
+    generate_instructions_codebases_alias_route: {
+        parameters: {
+            query?: {
+                format?: null | components["schemas"]["InstructionFormat"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateInstructionsResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_collections: {
         parameters: {
             query?: never;
@@ -8354,6 +8941,220 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    about: {
+        parameters: {
+            query: {
+                q: string;
+                maxTokens?: string | null;
+                spaceId?: string | null;
+                format?: null | components["schemas"]["ContextFormat"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    for_file: {
+        parameters: {
+            query: {
+                path: string;
+                spaceId?: string | null;
+                /**
+                 * @description Comma-separated dependency names, parsed by the handler — only ever
+                 *     read on the `json-legacy` path, matching Node exactly (the
+                 *     `structured-md`/`structured-json` branch calls `resolveForFiles`,
+                 *     whose signature carries no `deps` parameter at all).
+                 */
+                deps?: string | null;
+                maxTokens?: string | null;
+                format?: null | components["schemas"]["ForFileFormat"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForFileResponse"];
+                };
+            };
+        };
+    };
+    for_files: {
+        parameters: {
+            query: {
+                paths: string;
+                maxTokens?: string | null;
+                spaceId?: string | null;
+                format?: null | components["schemas"]["ContextFormat"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    for_plan: {
+        parameters: {
+            query: {
+                planId: string;
+                maxTokens?: string | null;
+                format?: null | components["schemas"]["ContextFormat"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_snapshot_route: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSnapshotBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateSnapshotResponse"];
+                };
+            };
+        };
+    };
+    get_snapshot_route: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextSnapshot"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_snapshot_route: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_snapshots_route: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextSnapshot"][];
+                };
             };
         };
     };
@@ -12354,6 +13155,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Space"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    generate_instructions_route: {
+        parameters: {
+            query?: {
+                format?: null | components["schemas"]["InstructionFormat"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateInstructionsResponse"];
                 };
             };
             404: {

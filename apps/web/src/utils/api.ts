@@ -19,15 +19,19 @@ import { createClient } from "./api-proxy.future";
 // authentication regardless), so nothing user-facing degrades while the
 // port is incomplete.
 //
-// As of this writing, Rust's `openapi.json` has no entry at all for 2
-// domains:
+// As of this writing, Rust's `openapi.json` has no entry at all for 1
+// domain:
 //
-//   ai, context
+//   ai
 //
 // Every call site under those top-level segments (`api.api.<domain>...`)
 // is on `legacyApi` instead. This list SHRINKS as Rust ports each domain —
 // when one lands, move its call sites back to `api` and drop it from the
 // list above (both here and in the call sites themselves).
+//
+// `context` is fully on `api`. Its web page explicitly requests
+// `format=json-legacy` because that page renders the raw matched chunks;
+// the endpoint defaults to structured Markdown for CLI/MCP consumers.
 //
 // `requirements` is fully on `api`, including `GET /requirements/coverage`
 // and `GET /requirements/traceability` (ported alongside the migration).

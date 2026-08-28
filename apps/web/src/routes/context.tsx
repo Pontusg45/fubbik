@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/context")({
@@ -25,15 +25,6 @@ export const Route = createFileRoute("/context")({
         return { session };
     }
 });
-
-interface ContextResult {
-    id: string;
-    title: string;
-    type: string;
-    content: string;
-    summary: string | null;
-    matchReason: string;
-}
 
 const typeVariant: Record<string, "default" | "secondary" | "outline"> = {
     note: "secondary",
@@ -76,14 +67,16 @@ function ContextPage() {
         queryKey: ["context-for-file", searchPath, spaceId],
         queryFn: async () => {
             const result = unwrapEden(
-                await legacyApi.api.context["for-file"].get({
+                await api.api.context["for-file"].get({
                     query: {
                         path: searchPath,
+                        format: "json-legacy",
                         ...(spaceId && spaceId !== "global" ? { spaceId } : {})
                     }
                 })
             );
-            return (result.chunks ?? []) as ContextResult[];
+            if (!("chunks" in result)) throw new Error("Unexpected context response format");
+            return result.chunks;
         },
         enabled: searchPath.length > 0
     });
