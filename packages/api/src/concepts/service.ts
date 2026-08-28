@@ -1,6 +1,6 @@
-import { getCoReferenceCounts, isAgeAvailable } from "@fubbik/db/repository";
 import { cypher, cypherVoid, escCypher } from "@fubbik/db/age/client";
 import { ensureVertex } from "@fubbik/db/age/sync";
+import { getCoReferenceCounts, isAgeAvailable } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { logger } from "../logger";
@@ -112,7 +112,7 @@ export function listConcepts() {
             label: String(row.label).replace(/"/g, ""),
             strength: Number(row.strength),
             memberChunkIds: String(row.member_ids)
-                .replace(/[\[\]"]/g, "")
+                .replace(/[[\]"]/g, "")
                 .split(",")
                 .map(s => s.trim())
                 .filter(Boolean)

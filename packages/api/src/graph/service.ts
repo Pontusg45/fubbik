@@ -101,7 +101,7 @@ export function getUserGraph(userId?: string, codebaseId?: string, workspaceId?:
                                 label: String(r.label).replace(/"/g, ""),
                                 strength: Number(r.str),
                                 memberChunkIds: String(r.members)
-                                    .replace(/[\[\]"]/g, "")
+                                    .replace(/[[\]"]/g, "")
                                     .split(",")
                                     .map(s => s.trim())
                                     .filter(Boolean)

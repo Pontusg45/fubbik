@@ -105,14 +105,16 @@ function ChunkDetail() {
         }
     });
 
+    const viewedChunk = data?.chunk;
+
     // Track in recently viewed (with title/type) once data loads
     useEffect(() => {
-        if (data?.chunk) {
-            const c = data.chunk as { id: string; title: string; type: string };
+        if (viewedChunk) {
+            const c = viewedChunk as { id: string; title: string; type: string };
             addRecentlyViewed({ id: c.id, title: c.title, type: c.type });
             addVisit({ id: c.id, title: c.title, type: c.type });
         }
-    }, [data?.chunk?.id, data?.chunk?.title, data?.chunk?.type, addRecentlyViewed, addVisit]);
+    }, [viewedChunk, addRecentlyViewed, addVisit]);
 
     const reviewMutation = useMutation({
         mutationFn: async (reviewStatus: "reviewed" | "approved") => {

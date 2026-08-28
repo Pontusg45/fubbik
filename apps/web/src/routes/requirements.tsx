@@ -96,7 +96,7 @@ function RequirementsPage() {
         }
     });
 
-    const useCases = (useCasesQuery.data ?? []) as UseCase[];
+    const useCases = useMemo(() => (useCasesQuery.data ?? []) as UseCase[], [useCasesQuery.data]);
 
     const activeUseCaseIds = useMemo(() => {
         if (!activeUseCaseId) return null;

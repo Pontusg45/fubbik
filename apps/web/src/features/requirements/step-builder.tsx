@@ -62,7 +62,7 @@ interface StepBuilderProps {
     stepErrors: StepError[];
 }
 
-export function StepBuilder({ steps, onStepsChange, spaceId: spaceId, stepErrors }: StepBuilderProps) {
+export function StepBuilder({ steps, onStepsChange, spaceId, stepErrors }: StepBuilderProps) {
     const queryClient = useQueryClient();
 
     // Vocabulary parsing state
@@ -103,8 +103,9 @@ export function StepBuilder({ steps, onStepsChange, spaceId: spaceId, stepErrors
 
     // Cleanup timers on unmount
     useEffect(() => {
+        const timers = debounceTimers.current;
         return () => {
-            for (const timer of Object.values(debounceTimers.current)) {
+            for (const timer of Object.values(timers)) {
                 clearTimeout(timer);
             }
         };

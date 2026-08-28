@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronRight, Eye, FileText, FolderOpen, Menu, Search, Tag, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Badge } from "@/components/ui/badge";
@@ -74,16 +74,19 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         }
     });
 
-    const setSelectedId = (id: string | null) => {
-        setSelectedIdState(id);
-        setSelectedGroupState(null);
-        navigate({
-            to: "/docs",
-            search: (prev: Record<string, unknown>) => ({ ...prev, id: id ?? undefined, section: undefined }),
-            replace: true
-        });
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    };
+    const setSelectedId = useCallback(
+        (id: string | null) => {
+            setSelectedIdState(id);
+            setSelectedGroupState(null);
+            navigate({
+                to: "/docs",
+                search: (prev: Record<string, unknown>) => ({ ...prev, id: id ?? undefined, section: undefined }),
+                replace: true
+            });
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        },
+        [navigate]
+    );
 
     const setSelectedGroup = (name: string | null) => {
         setSelectedGroupState(name);
@@ -95,6 +98,11 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         });
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
+
+    const clearSearch = useCallback(() => {
+        setSearchQuery("");
+        setIsSearching(false);
+    }, []);
 
     // Fetch document list
     const listQuery = useQuery({
@@ -155,7 +163,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         staleTime: 30_000
     });
 
-    const documents = listQuery.data ?? [];
+    const documents = useMemo(() => listQuery.data ?? [], [listQuery.data]);
 
     const allTags = useMemo(() => collectAllTags(documents), [documents]);
     const allTypes = useMemo(() => collectAllTypes(documents), [documents]);
@@ -226,7 +234,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
                 });
             }
         }
-    }, [documents]);
+    }, [selectedId, documents, isSearching, initialDocId, navigate]);
 
     // Scroll to section from URL on detail load
     useEffect(() => {
@@ -275,7 +283,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [prevDoc, nextDoc, isSearching]);
+    }, [prevDoc, nextDoc, isSearching, clearSearch, setSelectedId]);
 
     // Sync filter state to URL
     useEffect(() => {
@@ -289,7 +297,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
             }),
             replace: true
         });
-    }, [activeTags, activeTypes, groupBy]);
+    }, [activeTags, activeTypes, groupBy, navigate]);
 
     // Filter action handlers
     const toggleTag = (tag: string) => {
@@ -370,7 +378,7 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         return () => clearTimeout(timer);
     }, [highlightQuery, detail]);
 
-    const searchResults = searchServerQuery.data ?? [];
+    const searchResults = useMemo(() => searchServerQuery.data ?? [], [searchServerQuery.data]);
 
     const groupedSearchResults = useMemo(() => {
         const map = new Map<string, { doc: { id: string; title: string }; results: SearchResult[] }>();
@@ -407,11 +415,6 @@ export function DocumentBrowser({ initialDocId, initialSection, initialGroupBy, 
         } else {
             setIsSearching(false);
         }
-    };
-
-    const clearSearch = () => {
-        setSearchQuery("");
-        setIsSearching(false);
     };
 
     const navigateToResult = (result: SearchResult) => {

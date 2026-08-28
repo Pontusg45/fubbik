@@ -173,8 +173,8 @@ export function useTagsData() {
 
     // --- Derived data ---
 
-    const tags = Array.isArray(tagsQuery.data) ? tagsQuery.data : [];
-    const tagTypes = Array.isArray(tagTypesQuery.data) ? tagTypesQuery.data : [];
+    const tags = useMemo(() => (Array.isArray(tagsQuery.data) ? tagsQuery.data : []), [tagsQuery.data]);
+    const tagTypes = useMemo(() => (Array.isArray(tagTypesQuery.data) ? tagTypesQuery.data : []), [tagTypesQuery.data]);
 
     const filteredTags = useMemo(() => {
         const q = search.trim().toLowerCase();

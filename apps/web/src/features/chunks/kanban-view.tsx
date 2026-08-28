@@ -71,7 +71,11 @@ export function KanbanView({ chunks, onBulkDelete, onBulkArchive }: KanbanViewPr
                                         onCheckedChange={() => {
                                             setSelectedIds(prev => {
                                                 const next = new Set(prev);
-                                                next.has(chunk.id) ? next.delete(chunk.id) : next.add(chunk.id);
+                                                if (next.has(chunk.id)) {
+                                                    next.delete(chunk.id);
+                                                } else {
+                                                    next.add(chunk.id);
+                                                }
                                                 return next;
                                             });
                                         }}

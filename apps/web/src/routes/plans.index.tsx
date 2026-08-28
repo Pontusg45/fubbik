@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Archive, ArchiveRestore, Copy, Plus, Search, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -57,20 +57,23 @@ function PlansIndexPage() {
     const [qDraft, setQDraft] = useState(q);
     const searchRef = useRef<HTMLInputElement>(null);
 
-    const setSearch = (patch: Partial<{ status?: StatusFilter; space?: string; q?: string }>) => {
-        navigate({
-            to: "/plans",
-            search: (prev: Record<string, unknown>) => {
-                const next = { ...prev, ...patch };
-                // Strip empties so the URL stays clean.
-                for (const k of Object.keys(next) as Array<keyof typeof next>) {
-                    if (next[k] === "" || next[k] === undefined) delete next[k];
-                }
-                return next;
-            },
-            replace: true
-        });
-    };
+    const setSearch = useCallback(
+        (patch: Partial<{ status?: StatusFilter; space?: string; q?: string }>) => {
+            navigate({
+                to: "/plans",
+                search: (prev: Record<string, unknown>) => {
+                    const next = { ...prev, ...patch };
+                    // Strip empties so the URL stays clean.
+                    for (const k of Object.keys(next) as Array<keyof typeof next>) {
+                        if (next[k] === "" || next[k] === undefined) delete next[k];
+                    }
+                    return next;
+                },
+                replace: true
+            });
+        },
+        [navigate]
+    );
 
     // Debounced commit of the search input → URL.
     useEffect(() => {
@@ -78,7 +81,7 @@ function PlansIndexPage() {
             if (qDraft !== q) setSearch({ q: qDraft || undefined });
         }, 200);
         return () => clearTimeout(t);
-    }, [qDraft, q]);
+    }, [qDraft, q, setSearch]);
 
     // `/` to focus search.
     useEffect(() => {
