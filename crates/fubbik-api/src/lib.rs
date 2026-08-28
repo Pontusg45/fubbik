@@ -5,6 +5,7 @@ pub mod collections;
 pub mod comments;
 pub mod connections;
 pub mod context;
+pub mod context_export;
 pub mod context_for_file;
 pub mod coverage;
 pub mod density;
@@ -71,6 +72,7 @@ pub fn router(state: AppState) -> Router {
         .merge(collections::routes::router())
         .merge(connections::routes::router())
         .merge(context::routes::router())
+        .merge(context_export::routes::router())
         .merge(context_for_file::routes::router())
         .merge(coverage::routes::router())
         .merge(documents::routes::router())

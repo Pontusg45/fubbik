@@ -575,6 +575,133 @@
         }
       }
     },
+    "/api/chunks/export/claude-md": {
+      "get": {
+        "tags": [
+          "crate::context_export::routes"
+        ],
+        "summary": "`GET /api/chunks/export/claude-md?spaceId=&tag=&maxTokens=`.",
+        "operationId": "export_claude_md_route",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "maxTokens",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaudeMdResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chunks/export/context": {
+      "get": {
+        "tags": [
+          "crate::context_export::routes"
+        ],
+        "summary": "`GET /api/chunks/export/context?spaceId=&maxTokens=&format=markdown|json&forPath=`.",
+        "operationId": "export_context_route",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "maxTokens",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/ExportFormat"
+                }
+              ]
+            }
+          },
+          {
+            "name": "forPath",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportContextResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chunks/merge": {
       "post": {
         "tags": [
@@ -11081,6 +11208,23 @@
         ],
         "description": "A scored chunk plus the enrichment the formatter annotates with.\nPorts `packages/api/src/context/formatter.ts:3-7`. Node's\n`ChunkWithMetadata extends ScoredChunk` — this port composes instead of\nflattening, so the wire shape is reproduced with `#[serde(flatten)]`\nrather than duplicating `ScoredChunk`'s fields here."
       },
+      "ClaudeMdResponse": {
+        "type": "object",
+        "description": "Matches Node's `{content, chunks}` response (`claude-md.ts:188`) —\n`chunks` is the tagged-chunk *count*, not the chunk list itself.",
+        "required": [
+          "content",
+          "chunks"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
       "Collection": {
         "type": "object",
         "description": "`camelCase` serialisation matches every other wire type in this crate.",
@@ -13362,6 +13506,95 @@
             }
           },
           "word": {
+            "type": "string"
+          }
+        }
+      },
+      "ExportContextResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "tokens",
+              "content",
+              "format"
+            ],
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "markdown"
+                ]
+              },
+              "tokens": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "tokens",
+              "chunks",
+              "format"
+            ],
+            "properties": {
+              "chunks": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ExportedChunk"
+                }
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              },
+              "tokens": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        ],
+        "description": "Internally tagged on `format`, matching Node's `{format: \"json\", ...}` /\n`{format: \"markdown\", ...}` response shapes (`service.ts:56-81`) — never\nboth `content` and `chunks` on the same response."
+      },
+      "ExportFormat": {
+        "type": "string",
+        "description": "The `format` query param. Mirrors Node's\n`t.Union([t.Literal(\"markdown\"), t.Literal(\"json\")])`\n(`context-export/routes.ts:27`) — deliberately NOT the\n`structured-md`/`structured-json` vocabulary `context::dto::\nContextFormat` uses; this is a distinct, narrower export endpoint with\nits own two literal values.",
+        "enum": [
+          "markdown",
+          "json"
+        ]
+      },
+      "ExportedChunk": {
+        "type": "object",
+        "description": "One chunk in the `format=json` response, matching Node's inline\n`{title, content, type, tags}` projection (`service.ts:63-68`).",
+        "required": [
+          "title",
+          "content",
+          "type",
+          "tags"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
             "type": "string"
           }
         }
