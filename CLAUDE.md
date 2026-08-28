@@ -243,7 +243,12 @@ Input Source → Chunk Resolver → Enrichment (health, stale, features) → Sco
 - **Feature Overlays** (`resolveFeatureOverlays`): Applies active feature deltas to chunks in the enrichment pipeline. All context paths get
   overlays automatically.
 - **Scoring** (`context/utils.ts`): `scoreChunk` combines health, type, rationale, connections, review status. `budgetChunks` greedily fills
-  a token budget. Token estimation uses `js-tiktoken` (cl200k_base encoding) with char/4 fallback.
+  a token budget. Token estimation uses the **o200k_base** encoding — Node via `js-tiktoken`'s
+  `encodingForModel("gpt-4o")`, Rust via the `tiktoken-rs` crate — so both backends select the
+  same chunks for the same budget. (This line previously said `cl200k_base`, which was wrong:
+  `gpt-4o` maps to `o200k_base`.) Node falls back to `ceil(len/4)` if its encoder fails to load;
+  Rust does not port that fallback, because `tiktoken-rs` embeds its BPE data at compile time
+  and cannot fail the same way.
 - **Formatting** (`context/formatter.ts`): Groups by section, adds `[health: N]`, `⚠ STALE`, `⚠ PENDING PROPOSAL` annotations.
 - **Low-level retrieval** (`context-for-file/service.ts`): Five strategies — file-ref (+20 bonus), applies-to (+10), dependency (+3),
   semantic (+5, requires Ollama), connected (+2). Results scored and sorted by relevance.
