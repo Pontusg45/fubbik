@@ -341,9 +341,7 @@ export function linkCodeToCell(matrixId: string, cellId: string, userId: string,
     return withOwnedCell(matrixId, cellId, userId, () =>
         Effect.gen(function* () {
             if (!CODE_LINK_KINDS.includes(body.kind as (typeof CODE_LINK_KINDS)[number])) {
-                return yield* Effect.fail(
-                    new ValidationError({ message: `Code link kind must be one of: ${CODE_LINK_KINDS.join(", ")}` })
-                );
+                return yield* Effect.fail(new ValidationError({ message: `Code link kind must be one of: ${CODE_LINK_KINDS.join(", ")}` }));
             }
             if (!body.ref.trim()) {
                 return yield* Effect.fail(new ValidationError({ message: "Code link ref is required" }));

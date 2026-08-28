@@ -15,7 +15,7 @@ import { chunkTemplates } from "@/features/chunks/templates";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -111,17 +111,16 @@ function NewChunk() {
         content: string;
         isBuiltIn: boolean;
     };
-    const templatesQuery = useApiQuery<TemplateRow[]>({
+    const templatesQuery = useApiListQuery<TemplateRow>({
         queryKey: ["templates"],
-        queryFn: () => api.api.templates.get(),
-        fallback: []
+        queryFn: () => api.api.templates.get()
     });
 
-    const serverTemplates = Array.isArray(templatesQuery.data) ? templatesQuery.data : [];
+    const serverTemplates = templatesQuery.data;
 
     // Duplicate check needs its own queryFn: the raw response carries a
     // { chunks } envelope and we strip/filter before caching.
-    const duplicateQuery = useApiQuery<{ id: string; title: string }[]>({
+    const duplicateQuery = useApiListQuery<{ id: string; title: string }>({
         queryKey: ["duplicate-check", debouncedTitle],
         queryFn: async () => {
             if (!debouncedTitle.trim() || debouncedTitle.length < 3) {
@@ -132,11 +131,10 @@ function NewChunk() {
             const filtered = raw?.chunks?.filter(c => c.title.toLowerCase() !== debouncedTitle.toLowerCase()).slice(0, 3) ?? [];
             return { data: filtered, error: null };
         },
-        fallback: [],
         enabled: debouncedTitle.length >= 3
     });
 
-    const duplicates = duplicateQuery.data ?? [];
+    const duplicates = duplicateQuery.data;
 
     const generateMutation = useMutation({
         mutationFn: async () => {

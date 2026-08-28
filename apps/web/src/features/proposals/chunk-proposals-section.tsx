@@ -16,9 +16,7 @@ export function ChunkProposalsSection({ chunkId }: ChunkProposalsSectionProps) {
         // Bridge through `unknown`: the client's inferred shape doesn't structurally overlap
         // the local `Proposal` shape used for rendering.
         queryFn: async () =>
-            unwrapEden(
-                await api.api.chunks({ id: chunkId }).proposals.get({ query: { status: "pending" } })
-            ) as unknown as Proposal[]
+            unwrapEden(await api.api.chunks({ id: chunkId }).proposals.get({ query: { status: "pending" } })) as unknown as Proposal[]
     });
 
     const proposals = proposalsQuery.data ?? [];

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { crossSubDomainCookies } from "../src/cross-subdomain-cookie";
 
 describe("crossSubDomainCookies", () => {

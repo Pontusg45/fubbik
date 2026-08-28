@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { detectEmergentConcepts, listConcepts } from "../concepts/service";
 
 describe("concepts service", () => {

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-    createEdgeLogged,
-    deleteEdgeLogged,
-    deleteVertexLogged,
-    ensureVertexLogged
-} from "../../age/sync-logged";
+import { createEdgeLogged, deleteEdgeLogged, deleteVertexLogged, ensureVertexLogged } from "../../age/sync-logged";
 
 describe("sync-logged", () => {
     it("exports ensureVertexLogged", () => {

@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -24,16 +24,14 @@ export function useTagsData() {
     const [ttName, setTtName] = useState("");
     const [ttColor, setTtColor] = useState("#8b5cf6");
 
-    const tagsQuery = useApiQuery<Tag[]>({
+    const tagsQuery = useApiListQuery<Tag>({
         queryKey: ["tags"],
-        queryFn: () => api.api.tags.get(),
-        fallback: []
+        queryFn: () => api.api.tags.get()
     });
 
-    const tagTypesQuery = useApiQuery<TagType[]>({
+    const tagTypesQuery = useApiListQuery<TagType>({
         queryKey: ["tag-types"],
-        queryFn: () => api.api["tag-types"].get(),
-        fallback: []
+        queryFn: () => api.api["tag-types"].get()
     });
 
     // --- Mutations ---
@@ -173,8 +171,8 @@ export function useTagsData() {
 
     // --- Derived data ---
 
-    const tags = useMemo(() => (Array.isArray(tagsQuery.data) ? tagsQuery.data : []), [tagsQuery.data]);
-    const tagTypes = useMemo(() => (Array.isArray(tagTypesQuery.data) ? tagTypesQuery.data : []), [tagTypesQuery.data]);
+    const tags = tagsQuery.data;
+    const tagTypes = tagTypesQuery.data;
 
     const filteredTags = useMemo(() => {
         const q = search.trim().toLowerCase();

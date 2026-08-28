@@ -3,6 +3,7 @@ import * as schema from "@fubbik/db/schema/auth";
 import { env } from "@fubbik/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+
 import { crossSubDomainCookies } from "./cross-subdomain-cookie";
 
 export { crossSubDomainCookies } from "./cross-subdomain-cookie";

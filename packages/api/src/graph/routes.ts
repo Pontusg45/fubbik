@@ -50,23 +50,14 @@ export const graphRoutes = new Elysia()
             ),
         { query: t.Object({ spaceId: t.Optional(t.String()), workspaceId: t.Optional(t.String()) }) }
     )
-    .get(
-        "/graph/at",
-        ctx =>
-            Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() => reconstructGraphAt(new Date(ctx.query.t)))
-                )
-            ),
-        { query: t.Object({ t: t.String() }) }
-    )
+    .get("/graph/at", ctx => Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(() => reconstructGraphAt(new Date(ctx.query.t))))), {
+        query: t.Object({ t: t.String() })
+    })
     .get(
         "/graph/events",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(
-                    Effect.flatMap(() => getGraphEventsBetween(new Date(ctx.query.from), new Date(ctx.query.to)))
-                )
+                requireSession(ctx).pipe(Effect.flatMap(() => getGraphEventsBetween(new Date(ctx.query.from), new Date(ctx.query.to))))
             ),
         { query: t.Object({ from: t.String(), to: t.String() }) }
     );

@@ -84,18 +84,12 @@ async function request(
     const res = await fetch(buildUrl(base, segments, query), {
         method: method.toUpperCase(),
         credentials: "include",
-        ...(payload === undefined
-            ? {}
-            : { headers: { "content-type": "application/json" }, body: JSON.stringify(payload) })
+        ...(payload === undefined ? {} : { headers: { "content-type": "application/json" }, body: JSON.stringify(payload) })
     });
 
-    const value = res.headers.get("content-type")?.includes("application/json")
-        ? await res.json()
-        : await res.text();
+    const value = res.headers.get("content-type")?.includes("application/json") ? await res.json() : await res.text();
 
-    return res.ok
-        ? { data: value, error: null }
-        : { data: null, error: { status: res.status, value } };
+    return res.ok ? { data: value, error: null } : { data: null, error: { status: res.status, value } };
 }
 
 export function createClient(base: string): Client {

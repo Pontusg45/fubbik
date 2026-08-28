@@ -41,8 +41,7 @@ export function PlanRequirementsSection({ planId, requirements, onUpdate }: Plan
     });
 
     const addMutation = useMutation({
-        mutationFn: async (requirementId: string) =>
-            unwrapEden(await api.api.plans({ id: planId }).requirements.post({ requirementId })),
+        mutationFn: async (requirementId: string) => unwrapEden(await api.api.plans({ id: planId }).requirements.post({ requirementId })),
         onSuccess: () => {
             setPickerOpen(false);
             setPickerQuery("");

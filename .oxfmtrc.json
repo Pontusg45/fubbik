@@ -22,5 +22,14 @@
         "internalPattern": ["~/tests/", "@/", "@api/", "@repo/", "~/"],
         "newlinesBetween": true
     },
-    "ignorePatterns": ["**/_generated/**", "**/*.gen.ts"]
+    "ignorePatterns": [
+        "**/_generated/**",
+        "**/*.gen.ts",
+        ".sqlx/**",
+        "docs/**",
+        "**/*.md",
+        "tests/fixtures/**",
+        "openapi.json",
+        "apps/web/src/utils/api-types.ts"
+    ]
 }

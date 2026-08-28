@@ -19,12 +19,7 @@ export function insertGraphEvent(data: {
 
 export function getGraphEventsUpTo(before: Date, limit = 10000) {
     return dbEffect(async () => {
-        return db
-            .select()
-            .from(graphEvent)
-            .where(lte(graphEvent.createdAt, before))
-            .orderBy(graphEvent.createdAt)
-            .limit(limit);
+        return db.select().from(graphEvent).where(lte(graphEvent.createdAt, before)).orderBy(graphEvent.createdAt).limit(limit);
     });
 }
 

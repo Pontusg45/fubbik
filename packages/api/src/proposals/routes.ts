@@ -44,7 +44,9 @@ export const proposalRoutes = new Elysia()
         "/chunks/:id/proposals",
         async ctx => {
             return await Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(session => proposalService.listProposalsForChunk(ctx.params.id, session.user.id, ctx.query.status)))
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session => proposalService.listProposalsForChunk(ctx.params.id, session.user.id, ctx.query.status))
+                )
             );
         },
         {
@@ -111,7 +113,9 @@ export const proposalRoutes = new Elysia()
     )
     // Single proposal detail
     .get("/proposals/:proposalId", async ctx => {
-        return await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => proposalService.getProposal(ctx.params.proposalId, session.user.id))));
+        return await Effect.runPromise(
+            requireSession(ctx).pipe(Effect.flatMap(session => proposalService.getProposal(ctx.params.proposalId, session.user.id)))
+        );
     })
     // Approve proposal
     .post(

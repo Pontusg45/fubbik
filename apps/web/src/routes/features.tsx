@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
 import { getUser } from "@/functions/get-user";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -76,10 +76,9 @@ function FeaturesPage() {
     const [archiveTarget, setArchiveTarget] = useState<Feature | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Feature | null>(null);
 
-    const featuresQuery = useApiQuery<Feature[]>({
+    const featuresQuery = useApiListQuery<Feature>({
         queryKey: ["features"],
-        queryFn: () => api.api.features.get({ query: {} }),
-        fallback: []
+        queryFn: () => api.api.features.get({ query: {} })
     });
 
     const createMutation = useMutation({
@@ -193,7 +192,7 @@ function FeaturesPage() {
         );
     }
 
-    const features = Array.isArray(featuresQuery.data) ? featuresQuery.data : [];
+    const features = featuresQuery.data;
     const activeCount = features.filter(f => f.status === "active").length;
 
     return (

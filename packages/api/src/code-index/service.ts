@@ -1,11 +1,11 @@
-// packages/api/src/code-index/service.ts
-import { Effect } from "effect";
 import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
 
-import { isAgeAvailable, listAllFileRefs } from "@fubbik/db/repository";
 import { cypherVoid, escCypher } from "@fubbik/db/age/client";
 import { createEdge, deleteEdgesFrom, ensureVertex } from "@fubbik/db/age/sync";
+import { isAgeAvailable, listAllFileRefs } from "@fubbik/db/repository";
+// packages/api/src/code-index/service.ts
+import { Effect } from "effect";
 
 import { logger } from "../logger";
 

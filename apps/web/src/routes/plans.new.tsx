@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageContainer, PageHeader } from "@/components/ui/page";
 import { Textarea } from "@/components/ui/textarea";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import type { components } from "@/utils/api-types";
 import { unwrapEden } from "@/utils/eden";
@@ -29,24 +29,22 @@ function NewPlanPage() {
     const [bootstrapTasks, setBootstrapTasks] = useState("");
     const [tasksExpanded, setTasksExpanded] = useState(false);
 
-    const spacesQuery = useApiQuery<Array<{ id: string; name: string }>>({
+    const spacesQuery = useApiListQuery<{ id: string; name: string }>({
         queryKey: ["spaces"],
-        queryFn: () => api.api.spaces.get() as unknown as Promise<{ data: Array<{ id: string; name: string }>; error: unknown }>,
-        fallback: []
+        queryFn: () => api.api.spaces.get() as unknown as Promise<{ data: Array<{ id: string; name: string }>; error: unknown }>
     });
 
-    const requirementsListQuery = useApiQuery<RequirementRow[]>({
+    const requirementsListQuery = useApiListQuery<RequirementRow>({
         queryKey: ["requirements-for-plan-picker"],
         queryFn: async () => {
             const response = await api.api.requirements.get({ query: {} });
             return { data: response.data?.requirements ?? null, error: response.error };
         },
-        fallback: [],
         enabled: requirementsExpanded
     });
 
     const filteredRequirements = useMemo(() => {
-        const all = requirementsListQuery.data ?? [];
+        const all = requirementsListQuery.data;
         const q = requirementsQuery.trim().toLowerCase();
         if (!q) return all;
         return all.filter(r => r.title.toLowerCase().includes(q));

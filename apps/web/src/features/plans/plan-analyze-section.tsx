@@ -132,8 +132,7 @@ function AnalyzeKindBlock({
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (itemId: string) =>
-            unwrapEden(await api.api.plans({ id: planId }).analyze({ itemId }).delete()),
+        mutationFn: async (itemId: string) => unwrapEden(await api.api.plans({ id: planId }).analyze({ itemId }).delete()),
         onSuccess: () => onUpdate()
     });
 

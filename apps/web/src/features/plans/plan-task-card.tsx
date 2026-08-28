@@ -101,17 +101,13 @@ export function PlanTaskCard({
 
     const addDependencyMutation = useMutation({
         mutationFn: async (dependsOnTaskId: string) =>
-            unwrapEden(
-                await api.api.plans({ id: planId }).tasks({ taskId: task.id }).dependencies.post({ dependsOnTaskId })
-            ),
+            unwrapEden(await api.api.plans({ id: planId }).tasks({ taskId: task.id }).dependencies.post({ dependsOnTaskId })),
         onSuccess: () => onUpdate()
     });
 
     const removeDependencyMutation = useMutation({
         mutationFn: async (depId: string) =>
-            unwrapEden(
-                await api.api.plans({ id: planId }).tasks({ taskId: task.id }).dependencies({ depId }).delete()
-            ),
+            unwrapEden(await api.api.plans({ id: planId }).tasks({ taskId: task.id }).dependencies({ depId }).delete()),
         onSuccess: () => onUpdate()
     });
 

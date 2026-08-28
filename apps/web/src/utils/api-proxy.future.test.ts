@@ -12,41 +12,39 @@
 // suppressed here rather than weakening the shared tsconfig or adding
 // non-null assertions that would mask a real future fix.
 import { describe, expect, it, vi, beforeEach } from "vitest";
+
 import { createClient } from "./api-proxy.future";
 
 describe("proxy api client (parked)", () => {
     beforeEach(() => {
-        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true }), {
-            status: 200,
-            headers: { "content-type": "application/json" }
-        })));
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                async () =>
+                    new Response(JSON.stringify({ ok: true }), {
+                        status: 200,
+                        headers: { "content-type": "application/json" }
+                    })
+            )
+        );
     });
 
     it("builds a path from property access", async () => {
         const api = createClient("http://x.test");
         await api.api.chunks.get();
-        expect(fetch).toHaveBeenCalledWith(
-            "http://x.test/api/chunks",
-            expect.objectContaining({ method: "GET", credentials: "include" })
-        );
+        expect(fetch).toHaveBeenCalledWith("http://x.test/api/chunks", expect.objectContaining({ method: "GET", credentials: "include" }));
     });
 
     it("interpolates path params from a call segment", async () => {
         const api = createClient("http://x.test");
         await api.api.chunks({ id: "abc" }).get();
-        expect(fetch).toHaveBeenCalledWith(
-            "http://x.test/api/chunks/abc",
-            expect.objectContaining({ method: "GET" })
-        );
+        expect(fetch).toHaveBeenCalledWith("http://x.test/api/chunks/abc", expect.objectContaining({ method: "GET" }));
     });
 
     it("converts camelCase segments to kebab-case paths", async () => {
         const api = createClient("http://x.test");
         await api.api.chunks({ id: "abc" })["applies-to"].get();
-        expect(fetch).toHaveBeenCalledWith(
-            "http://x.test/api/chunks/abc/applies-to",
-            expect.anything()
-        );
+        expect(fetch).toHaveBeenCalledWith("http://x.test/api/chunks/abc/applies-to", expect.anything());
     });
 
     it("sends a JSON body on post", async () => {
@@ -64,10 +62,7 @@ describe("proxy api client (parked)", () => {
     it("serialises query params", async () => {
         const api = createClient("http://x.test");
         await api.api.chunks.get({ query: { type: "note", limit: "10" } });
-        expect(fetch).toHaveBeenCalledWith(
-            "http://x.test/api/chunks?type=note&limit=10",
-            expect.anything()
-        );
+        expect(fetch).toHaveBeenCalledWith("http://x.test/api/chunks?type=note&limit=10", expect.anything());
     });
 
     it("returns { data, error } like eden", async () => {
@@ -77,10 +72,16 @@ describe("proxy api client (parked)", () => {
     });
 
     it("puts the payload in error on a failed response", async () => {
-        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ message: "nope" }), {
-            status: 404,
-            headers: { "content-type": "application/json" }
-        })));
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                async () =>
+                    new Response(JSON.stringify({ message: "nope" }), {
+                        status: 404,
+                        headers: { "content-type": "application/json" }
+                    })
+            )
+        );
         const api = createClient("http://x.test");
         const res = await api.api.chunks.get();
         expect(res.data).toBeNull();

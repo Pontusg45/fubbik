@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
 import { useApiMutation } from "@/hooks/use-api-mutation";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -35,10 +35,9 @@ function SpacesPage() {
     const [remoteUrl, setRemoteUrl] = useState("");
     const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
-    const spacesQuery = useApiQuery<any[]>({
+    const spacesQuery = useApiListQuery<any>({
         queryKey: ["spaces"],
-        queryFn: () => api.api.spaces.get(),
-        fallback: []
+        queryFn: () => api.api.spaces.get()
     });
 
     const createMutation = useApiMutation<unknown, { name: string; remoteUrl?: string }>({
@@ -76,7 +75,7 @@ function SpacesPage() {
         }
     });
 
-    const spaces = Array.isArray(spacesQuery.data) ? spacesQuery.data : [];
+    const spaces = spacesQuery.data;
 
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();

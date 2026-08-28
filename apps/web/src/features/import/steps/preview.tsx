@@ -2,7 +2,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -61,13 +61,12 @@ export function StepPreview({
     const [filter, setFilter] = useState("");
     const [activePath, setActivePath] = useState<string>(initialActivePath ?? "");
 
-    const { data: rawTemplates } = useApiQuery<any[]>({
+    const { data: rawTemplates } = useApiListQuery<any>({
         queryKey: ["templates"],
-        queryFn: () => api.api.templates.get(),
-        fallback: []
+        queryFn: () => api.api.templates.get()
     });
 
-    const templates = useMemo(() => (rawTemplates ?? []).map((t: any) => ({ id: t.id, name: t.name })), [rawTemplates]);
+    const templates = useMemo(() => rawTemplates.map((t: any) => ({ id: t.id, name: t.name })), [rawTemplates]);
 
     // ----- Load preview on mount if not already loaded -----
     useEffect(() => {

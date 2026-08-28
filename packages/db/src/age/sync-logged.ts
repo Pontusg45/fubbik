@@ -19,15 +19,11 @@ function logEvent(
 }
 
 export function ensureVertexLogged(label: string, id: string, snapshot?: Record<string, unknown>) {
-    return ensureVertex(label, id).pipe(
-        Effect.tap(() => logEvent(label, id, "created", { snapshot }))
-    );
+    return ensureVertex(label, id).pipe(Effect.tap(() => logEvent(label, id, "created", { snapshot })));
 }
 
 export function deleteVertexLogged(label: string, id: string) {
-    return deleteVertex(label, id).pipe(
-        Effect.tap(() => logEvent(label, id, "deleted"))
-    );
+    return deleteVertex(label, id).pipe(Effect.tap(() => logEvent(label, id, "deleted")));
 }
 
 export function createEdgeLogged(
@@ -52,8 +48,6 @@ export function createEdgeLogged(
 export function deleteEdgeLogged(edgeLabel: string, props: Record<string, string>) {
     const sourceId = props.id ?? Object.values(props)[0] ?? "unknown";
     return deleteEdge(edgeLabel, props).pipe(
-        Effect.tap(() =>
-            logEvent("edge", sourceId, "deleted", { edgeType: edgeLabel, snapshot: props })
-        )
+        Effect.tap(() => logEvent("edge", sourceId, "deleted", { edgeType: edgeLabel, snapshot: props }))
     );
 }

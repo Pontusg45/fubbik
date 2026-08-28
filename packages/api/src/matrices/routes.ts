@@ -211,7 +211,11 @@ export const matrixRoutes = new Elysia()
         "/matrices/:id/cells",
         ctx =>
             Effect.runPromise(
-                requireSession(ctx).pipe(Effect.flatMap(session => matrixService.toggleCell(ctx.params.id, session.user.id, ctx.body.ruleId, ctx.body.dimensionId)))
+                requireSession(ctx).pipe(
+                    Effect.flatMap(session =>
+                        matrixService.toggleCell(ctx.params.id, session.user.id, ctx.body.ruleId, ctx.body.dimensionId)
+                    )
+                )
             ),
         {
             body: t.Object({
@@ -225,7 +229,9 @@ export const matrixRoutes = new Elysia()
         ctx =>
             Effect.runPromise(
                 requireSession(ctx).pipe(
-                    Effect.flatMap(session => matrixService.linkRequirementToCell(ctx.params.id, ctx.params.cellId, session.user.id, ctx.body.requirementId)),
+                    Effect.flatMap(session =>
+                        matrixService.linkRequirementToCell(ctx.params.id, ctx.params.cellId, session.user.id, ctx.body.requirementId)
+                    ),
                     Effect.tap(() =>
                         Effect.sync(() => {
                             ctx.set.status = 201;
@@ -242,13 +248,19 @@ export const matrixRoutes = new Elysia()
     .delete("/matrices/:id/cells/:cellId/requirements/:reqId", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session => matrixService.unlinkRequirementFromCell(ctx.params.id, ctx.params.cellId, session.user.id, ctx.params.reqId)),
+                Effect.flatMap(session =>
+                    matrixService.unlinkRequirementFromCell(ctx.params.id, ctx.params.cellId, session.user.id, ctx.params.reqId)
+                ),
                 Effect.map(() => ({ message: "Unlinked" }))
             )
         )
     )
     .get("/matrices/:id/cells/:cellId/requirements", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => matrixService.getRequirementsForCell(ctx.params.id, ctx.params.cellId, session.user.id))))
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => matrixService.getRequirementsForCell(ctx.params.id, ctx.params.cellId, session.user.id))
+            )
+        )
     )
     // --- Cell code links (behavior ↔ code) ---
     .post(
@@ -274,13 +286,19 @@ export const matrixRoutes = new Elysia()
     .delete("/matrices/:id/cells/:cellId/code/:codeId", ctx =>
         Effect.runPromise(
             requireSession(ctx).pipe(
-                Effect.flatMap(session => matrixService.unlinkCodeFromCell(ctx.params.id, ctx.params.cellId, session.user.id, ctx.params.codeId)),
+                Effect.flatMap(session =>
+                    matrixService.unlinkCodeFromCell(ctx.params.id, ctx.params.cellId, session.user.id, ctx.params.codeId)
+                ),
                 Effect.map(() => ({ message: "Unlinked" }))
             )
         )
     )
     .get("/matrices/:id/cells/:cellId/code", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => matrixService.getCodeForCell(ctx.params.id, ctx.params.cellId, session.user.id))))
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => matrixService.getCodeForCell(ctx.params.id, ctx.params.cellId, session.user.id))
+            )
+        )
     )
     // --- Cell test results (behavior verification) ---
     .post(
@@ -305,7 +323,11 @@ export const matrixRoutes = new Elysia()
         }
     )
     .get("/matrices/:id/cells/:cellId/test-results", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => matrixService.getTestResultsForCell(ctx.params.id, ctx.params.cellId, session.user.id))))
+        Effect.runPromise(
+            requireSession(ctx).pipe(
+                Effect.flatMap(session => matrixService.getTestResultsForCell(ctx.params.id, ctx.params.cellId, session.user.id))
+            )
+        )
     )
     // --- Reverse lookup: which behaviors govern a file path ---
     .get(

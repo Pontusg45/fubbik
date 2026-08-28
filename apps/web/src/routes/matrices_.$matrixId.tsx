@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CellPanel } from "@/features/matrices/cell-panel";
 import { MatrixGrid, type Dimension, type Rule, type ViewCell } from "@/features/matrices/matrix-grid";
 import { getUser } from "@/functions/get-user";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery, useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -416,9 +416,7 @@ function MatrixDetailPage() {
 
             {/* Rule history dialog */}
             <Dialog open={historyRule !== null} onOpenChange={open => !open && setHistoryRule(null)}>
-                {historyRule && (
-                    <RuleHistoryDialog matrixId={matrixId} ruleId={historyRule.id} ruleTitle={historyRule.title} />
-                )}
+                {historyRule && <RuleHistoryDialog matrixId={matrixId} ruleId={historyRule.id} ruleTitle={historyRule.title} />}
             </Dialog>
         </PageContainer>
     );
@@ -435,13 +433,12 @@ const HISTORY_FIELDS: { key: keyof RuleHistoryEntry["snapshot"]; label: string }
 ];
 
 function RuleHistoryDialog({ matrixId, ruleId, ruleTitle }: { matrixId: string; ruleId: string; ruleTitle: string }) {
-    const historyQuery = useApiQuery<RuleHistoryEntry[]>({
+    const historyQuery = useApiListQuery<RuleHistoryEntry>({
         queryKey: ["matrix-rule-history", ruleId],
-        queryFn: () => api.api.matrices({ id: matrixId }).rules({ ruleId }).history.get(),
-        fallback: []
+        queryFn: () => api.api.matrices({ id: matrixId }).rules({ ruleId }).history.get()
     });
 
-    const history = Array.isArray(historyQuery.data) ? historyQuery.data : [];
+    const history = historyQuery.data;
 
     return (
         <DialogPopup className="max-w-2xl">

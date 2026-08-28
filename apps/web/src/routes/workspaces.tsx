@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getUser } from "@/functions/get-user";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery, useApiQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -36,16 +36,14 @@ function WorkspacesPage() {
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-    const workspacesQuery = useApiQuery<any[]>({
+    const workspacesQuery = useApiListQuery<any>({
         queryKey: ["workspaces"],
-        queryFn: () => api.api.workspaces.get(),
-        fallback: []
+        queryFn: () => api.api.workspaces.get()
     });
 
-    const spacesQuery = useApiQuery<any[]>({
+    const spacesQuery = useApiListQuery<any>({
         queryKey: ["spaces"],
-        queryFn: () => api.api.spaces.get(),
-        fallback: []
+        queryFn: () => api.api.spaces.get()
     });
 
     const createMutation = useMutation({
@@ -96,8 +94,8 @@ function WorkspacesPage() {
         onError: () => toast.error("Failed to remove space")
     });
 
-    const workspaces = Array.isArray(workspacesQuery.data) ? workspacesQuery.data : [];
-    const spaces = Array.isArray(spacesQuery.data) ? spacesQuery.data : [];
+    const workspaces = workspacesQuery.data;
+    const spaces = spacesQuery.data;
 
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();

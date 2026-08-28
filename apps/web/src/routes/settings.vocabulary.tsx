@@ -329,8 +329,7 @@ function ConnectionRelationsPanel() {
     const [adding, setAdding] = useState(false);
 
     const createMutation = useMutation({
-        mutationFn: async (body: RelationCreateBody) =>
-            unwrapEden(await api.api["connection-relations"].post(body)),
+        mutationFn: async (body: RelationCreateBody) => unwrapEden(await api.api["connection-relations"].post(body)),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["connection-relations"] });
             toast.success("Relation added");

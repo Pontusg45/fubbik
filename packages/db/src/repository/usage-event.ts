@@ -3,13 +3,7 @@ import { gte, sql } from "drizzle-orm";
 import { db, dbEffect } from "../index";
 import { usageEvent } from "../schema/usage-event";
 
-export function insertUsageEvent(data: {
-    id: string;
-    kind: string;
-    chunkIds: string[];
-    query?: string;
-    userId: string;
-}) {
+export function insertUsageEvent(data: { id: string; kind: string; chunkIds: string[]; query?: string; userId: string }) {
     return dbEffect(async () => {
         await db.insert(usageEvent).values(data);
     });
@@ -17,11 +11,7 @@ export function insertUsageEvent(data: {
 
 export function getRecentUsageEvents(since: Date) {
     return dbEffect(async () => {
-        return db
-            .select()
-            .from(usageEvent)
-            .where(gte(usageEvent.createdAt, since))
-            .orderBy(usageEvent.createdAt);
+        return db.select().from(usageEvent).where(gte(usageEvent.createdAt, since)).orderBy(usageEvent.createdAt);
     });
 }
 

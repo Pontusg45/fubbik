@@ -74,10 +74,7 @@ type MethodFn<Op> = [RequestBodyOf<Op>] extends [undefined]
           body?: { query?: Record<string, unknown> },
           options?: { query?: Record<string, unknown> }
       ) => Promise<EdenLikeResponse<SuccessBody<Op>>>
-    : (
-          body: RequestBodyOf<Op>,
-          options?: { query?: Record<string, unknown> }
-      ) => Promise<EdenLikeResponse<SuccessBody<Op>>>;
+    : (body: RequestBodyOf<Op>, options?: { query?: Record<string, unknown> }) => Promise<EdenLikeResponse<SuccessBody<Op>>>;
 
 /** Path keys that continue below `Prefix`, e.g. "/api/chunks" under "/api". */
 type ChildRoutes<Prefix extends string> = Extract<keyof paths, `${Prefix}/${string}`>;
@@ -111,9 +108,9 @@ type Methods<Route extends string> = {
         : never]: Route extends keyof paths ? MethodFn<paths[Route][M]> : never;
 };
 
-export type BuildNode<Prefix extends string> = Methods<Prefix> &
-    { [Seg in LiteralSegments<Prefix>]: BuildNode<`${Prefix}/${Seg}`> } &
-    ([ParamSegment<Prefix>] extends [never]
+export type BuildNode<Prefix extends string> = Methods<Prefix> & { [Seg in LiteralSegments<Prefix>]: BuildNode<`${Prefix}/${Seg}`> } & ([
+        ParamSegment<Prefix>
+    ] extends [never]
         ? unknown
         : (params: Record<string, string>) => BuildNode<`${Prefix}/${ParamSegment<Prefix>}`>);
 

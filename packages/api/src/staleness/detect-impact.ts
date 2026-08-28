@@ -8,11 +8,7 @@ export function flagImpactRipple(updatedChunkId: string, updatedChunkTitle: stri
         if (targets.length === 0) return { flagged: 0 };
 
         const existingFlags = yield* getStaleFlags(userId, { reason: "upstream_impact" });
-        const alreadyFlagged = new Map(
-            existingFlags
-                .filter(f => f.relatedChunkId === updatedChunkId)
-                .map(f => [f.chunkId, f])
-        );
+        const alreadyFlagged = new Map(existingFlags.filter(f => f.relatedChunkId === updatedChunkId).map(f => [f.chunkId, f]));
 
         let flagged = 0;
         for (const target of targets) {

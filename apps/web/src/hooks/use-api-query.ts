@@ -3,6 +3,7 @@ import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { unwrapEden } from "@/utils/eden";
 
 type QueryKey = readonly unknown[];
+const EMPTY_API_LIST: never[] = [];
 
 /**
  * Shape of what eden treaty returns — but intentionally loose. Declaring it
@@ -61,4 +62,26 @@ export function useApiQuery<TData>(options: UseApiQueryOptions<TData> & { queryK
             }
         }
     });
+}
+
+/**
+ * List-specialized API query whose `data` is always a stable array.
+ *
+ * React Query leaves `data` undefined until the first result. Writing
+ * `query.data ?? []` at each call site creates a new array every render,
+ * which invalidates memo/effect dependencies even though the list is still
+ * empty. This wrapper shares one empty fallback until real data arrives and
+ * also uses it when the request fails unless a caller supplies another
+ * fallback.
+ */
+export function useApiListQuery<TItem>(options: UseApiQueryOptions<TItem[]> & { queryKey: QueryKey }) {
+    const query = useApiQuery<TItem[]>({
+        ...options,
+        fallback: options.fallback ?? (EMPTY_API_LIST as TItem[])
+    });
+
+    return {
+        ...query,
+        data: query.data ?? (EMPTY_API_LIST as TItem[])
+    };
 }

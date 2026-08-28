@@ -26,30 +26,15 @@ export function TimelineScrubber({ earliest, latest, onTimeChange, isPlaying, on
         [earliest, range, onTimeChange]
     );
 
-    const displayDate =
-        value >= 1
-            ? "Now"
-            : new Date(earliest.getTime() + value * range).toLocaleDateString();
+    const displayDate = value >= 1 ? "Now" : new Date(earliest.getTime() + value * range).toLocaleDateString();
 
     return (
-        <div className="flex items-center gap-2 rounded-lg border bg-background/80 px-3 py-1.5 backdrop-blur">
-            <button
-                onClick={onPlayToggle}
-                className="text-sm hover:text-primary"
-                aria-label={isPlaying ? "Pause" : "Play"}
-            >
+        <div className="bg-background/80 flex items-center gap-2 rounded-lg border px-3 py-1.5 backdrop-blur">
+            <button onClick={onPlayToggle} className="hover:text-primary text-sm" aria-label={isPlaying ? "Pause" : "Play"}>
                 {isPlaying ? "||" : ">"}
             </button>
-            <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.001}
-                value={value}
-                onChange={handleChange}
-                className="w-48 accent-primary"
-            />
-            <span className="min-w-[5rem] text-xs text-muted-foreground">{displayDate}</span>
+            <input type="range" min={0} max={1} step={0.001} value={value} onChange={handleChange} className="accent-primary w-48" />
+            <span className="text-muted-foreground min-w-[5rem] text-xs">{displayDate}</span>
         </div>
     );
 }

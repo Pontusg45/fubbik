@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 
 import { StepImport } from "./steps/import-step";
@@ -74,10 +74,9 @@ export function ImportWizard() {
     const [existingHashes, setExistingHashes] = useState<Record<string, string>>({});
     const [previewActivePath, setPreviewActivePath] = useState<string>("");
 
-    const { data: spaces } = useApiQuery<{ id: string; name: string }[]>({
+    const { data: spaces } = useApiListQuery<{ id: string; name: string }>({
         queryKey: ["spaces"],
-        queryFn: () => api.api.spaces.get(),
-        fallback: []
+        queryFn: () => api.api.spaces.get()
     });
 
     const spaceName = spaces?.find(c => c.id === spaceId)?.name ?? spaceId;

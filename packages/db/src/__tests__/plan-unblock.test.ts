@@ -15,7 +15,7 @@ describe("unblockDependentsOf", () => {
         const userId = crypto.randomUUID();
         await db.insert(user).values({
             id: userId,
-            email: `test-${Date.now()}@example.com`,
+            email: `test-${userId}@example.com`,
             name: "Test",
             emailVerified: false,
             createdAt: new Date(),

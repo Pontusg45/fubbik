@@ -1,8 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-import { getChunkSize } from "@/features/chunks/chunk-size";
 import type { ChunkRowChunk } from "@/features/chunks/chunk-row";
+import { getChunkSize } from "@/features/chunks/chunk-size";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
 import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";

@@ -11,7 +11,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -49,13 +49,12 @@ function TemplatesPage() {
     const [formType, setFormType] = useState("note");
     const [formContent, setFormContent] = useState("");
 
-    const templatesQuery = useApiQuery<Template[]>({
+    const templatesQuery = useApiListQuery<Template>({
         queryKey: ["templates"],
-        queryFn: () => api.api.templates.get(),
-        fallback: []
+        queryFn: () => api.api.templates.get()
     });
 
-    const templates = Array.isArray(templatesQuery.data) ? templatesQuery.data : [];
+    const templates = templatesQuery.data;
 
     const createMutation = useMutation({
         mutationFn: async (body: { name: string; description?: string; type: string; content: string }) => {

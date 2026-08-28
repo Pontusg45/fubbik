@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 // `chunks/import-docs` has no Rust route yet — see the "chunks" note in `@/utils/api`.
 import { api, legacyApi } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
@@ -103,10 +103,9 @@ export function ImportQuickMode() {
     const [result, setResult] = useState<ImportResult | null>(null);
     const [showErrors, setShowErrors] = useState(false);
 
-    const { data: spaces } = useApiQuery<Array<{ id: string; name: string }>>({
+    const { data: spaces } = useApiListQuery<{ id: string; name: string }>({
         queryKey: ["spaces"],
-        queryFn: () => api.api.spaces.get(),
-        fallback: []
+        queryFn: () => api.api.spaces.get()
     });
 
     const importMutation = useMutation({

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { PageContainer, PageEmpty, PageHeader, PageLoading } from "@/components/ui/page";
 import { getUser } from "@/functions/get-user";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -48,10 +48,9 @@ function MatricesPage() {
     const [newLayer, setNewLayer] = useState<"invariant" | "contract">("invariant");
     const [newDescription, setNewDescription] = useState("");
 
-    const matricesQuery = useApiQuery<Matrix[]>({
+    const matricesQuery = useApiListQuery<Matrix>({
         queryKey: ["matrices"],
-        queryFn: () => api.api.matrices.get({ query: {} }),
-        fallback: []
+        queryFn: () => api.api.matrices.get({ query: {} })
     });
 
     const createMutation = useMutation({
@@ -88,7 +87,7 @@ function MatricesPage() {
         });
     }
 
-    const matrices = Array.isArray(matricesQuery.data) ? matricesQuery.data : [];
+    const matrices = matricesQuery.data;
 
     return (
         <PageContainer maxWidth="4xl">

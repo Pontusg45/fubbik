@@ -1,15 +1,10 @@
-import { getCoReferenceCounts, insertUsageEvent, isAgeAvailable } from "@fubbik/db/repository";
 import { cypherVoid, escCypher } from "@fubbik/db/age/client";
+import { getCoReferenceCounts, insertUsageEvent, isAgeAvailable } from "@fubbik/db/repository";
 import { Effect } from "effect";
 
 import { logger } from "../logger";
 
-export function recordUsage(
-    kind: "context_query" | "chunk_view" | "mcp_resolve",
-    chunkIds: string[],
-    userId: string,
-    query?: string
-) {
+export function recordUsage(kind: "context_query" | "chunk_view" | "mcp_resolve", chunkIds: string[], userId: string, query?: string) {
     if (chunkIds.length === 0) return Effect.succeed(undefined);
     return insertUsageEvent({
         id: crypto.randomUUID(),

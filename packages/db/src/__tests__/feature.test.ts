@@ -65,7 +65,7 @@ async function createTestUser(suffix?: string) {
     const id = crypto.randomUUID();
     await db.insert(user).values({
         id,
-        email: `test-${suffix ?? Date.now()}@example.com`,
+        email: `test-${suffix ?? id}@example.com`,
         name: "Test",
         emailVerified: false,
         createdAt: new Date(),

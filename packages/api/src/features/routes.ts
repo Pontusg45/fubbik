@@ -121,7 +121,9 @@ export const featureRoutes = new Elysia()
         }
     )
     .get("/chunks/:id/deltas", ctx =>
-        Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => featureService.getDeltasForChunk(ctx.params.id, session.user.id))))
+        Effect.runPromise(
+            requireSession(ctx).pipe(Effect.flatMap(session => featureService.getDeltasForChunk(ctx.params.id, session.user.id)))
+        )
     )
     .put(
         "/chunks/:id/deltas/:featureId",

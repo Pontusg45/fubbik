@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
 
 import { db, dbEffect } from "../index";
-import { space } from "../schema/space";
 import { codebaseSettings, instanceSettings, userSettings } from "../schema/settings";
+import { space } from "../schema/space";
 
 // --- User Settings ---
 

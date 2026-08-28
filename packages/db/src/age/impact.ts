@@ -36,13 +36,14 @@ export function computeImpactRipple(changedChunkId: string): Effect.Effect<Impac
             const chunkId = String(row.did).replace(/"/g, "");
             const hops = Number(row.hops);
             const pathRaw = String(row.path);
-            const relations = pathRaw.replace(/[[\]"]/g, "").split(",").map(s => s.trim()).filter(Boolean);
+            const relations = pathRaw
+                .replace(/[[\]"]/g, "")
+                .split(",")
+                .map(s => s.trim())
+                .filter(Boolean);
 
             const distanceFactor = DISTANCE_DECAY[hops] ?? 0.1;
-            const relationFactor = relations.reduce(
-                (min, rel) => Math.min(min, RELATION_WEIGHT[rel] ?? 0.2),
-                1.0
-            );
+            const relationFactor = relations.reduce((min, rel) => Math.min(min, RELATION_WEIGHT[rel] ?? 0.2), 1.0);
             const degree = distanceFactor * relationFactor;
 
             if (degree <= 0.1) continue;

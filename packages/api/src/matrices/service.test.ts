@@ -252,9 +252,7 @@ describe("updateRule", () => {
         vi.mocked(insertRuleVersionRepo).mockReturnValue(Effect.succeed({ id: "ver-1" }) as any);
         vi.mocked(updateRuleRepo).mockReturnValue(Effect.succeed(existingRule({ title: "New title" })) as any);
 
-        const result = await Effect.runPromise(
-            service.updateRule("mat-1", "rule-1", "user-1", { title: "New title" })
-        );
+        const result = await Effect.runPromise(service.updateRule("mat-1", "rule-1", "user-1", { title: "New title" }));
 
         expect(result.title).toBe("New title");
         expect(insertRuleVersionRepo).toHaveBeenCalledOnce();
@@ -283,9 +281,7 @@ describe("updateRule", () => {
         vi.mocked(getMatrixById).mockReturnValue(Effect.succeed(mockMatrix()) as any);
         vi.mocked(getRuleById).mockReturnValue(Effect.succeed(null) as any);
 
-        await expect(
-            Effect.runPromise(service.updateRule("mat-1", "nope", "user-1", { title: "x" }))
-        ).rejects.toThrow();
+        await expect(Effect.runPromise(service.updateRule("mat-1", "nope", "user-1", { title: "x" }))).rejects.toThrow();
         expect(insertRuleVersionRepo).not.toHaveBeenCalled();
     });
 });
@@ -302,9 +298,7 @@ describe("linkCodeToCell", () => {
         );
 
         expect(result).toMatchObject({ kind: "file", ref: "src/foo.ts" });
-        expect(linkCellCodeRepo).toHaveBeenCalledWith(
-            expect.objectContaining({ cellId: "cell-1", kind: "file", ref: "src/foo.ts" })
-        );
+        expect(linkCellCodeRepo).toHaveBeenCalledWith(expect.objectContaining({ cellId: "cell-1", kind: "file", ref: "src/foo.ts" }));
     });
 
     it.each(["symbol", "test"])("accepts kind %s", async kind => {
@@ -338,14 +332,10 @@ describe("recordTestResult", () => {
             Effect.succeed({ id: "res-1", cellId: "cell-1", testRef: "t", status, detail: null }) as any
         );
 
-        const result = await Effect.runPromise(
-            service.recordTestResult("mat-1", "cell-1", "user-1", { testRef: "t", status })
-        );
+        const result = await Effect.runPromise(service.recordTestResult("mat-1", "cell-1", "user-1", { testRef: "t", status }));
 
         expect(result).toMatchObject({ status });
-        expect(recordTestResultRepo).toHaveBeenCalledWith(
-            expect.objectContaining({ cellId: "cell-1", testRef: "t", status })
-        );
+        expect(recordTestResultRepo).toHaveBeenCalledWith(expect.objectContaining({ cellId: "cell-1", testRef: "t", status }));
     });
 
     it("rejects an invalid status", async () => {
@@ -518,9 +508,7 @@ describe("cell surface authorization", () => {
         vi.mocked(getCellInMatrix).mockReturnValue(Effect.succeed(null) as any);
         vi.mocked(getRequirementsForCellRepo).mockClear();
 
-        await expect(
-            Effect.runPromise(service.getRequirementsForCell("mat-1", "cell-from-mat-2", "owner"))
-        ).rejects.toThrow();
+        await expect(Effect.runPromise(service.getRequirementsForCell("mat-1", "cell-from-mat-2", "owner"))).rejects.toThrow();
         expect(getRequirementsForCellRepo).not.toHaveBeenCalled();
     });
 

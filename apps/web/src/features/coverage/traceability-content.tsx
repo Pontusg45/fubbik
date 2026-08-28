@@ -33,7 +33,6 @@ interface PlanStepRef {
     planStatus: string;
 }
 
-
 export function TraceabilityContent() {
     const { spaceId } = useActiveSpace();
 
@@ -89,10 +88,7 @@ export function TraceabilityContent() {
             <div className="space-y-3">
                 {rows.map(req => {
                     // Group plan steps by plan
-                    const planGroups = new Map<
-                        string,
-                        { planId: string; planTitle: string; planStatus: string; steps: PlanStepRef[] }
-                    >();
+                    const planGroups = new Map<string, { planId: string; planTitle: string; planStatus: string; steps: PlanStepRef[] }>();
                     for (const step of req.planSteps as PlanStepRef[]) {
                         if (!planGroups.has(step.planId)) {
                             planGroups.set(step.planId, {

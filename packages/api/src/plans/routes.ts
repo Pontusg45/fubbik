@@ -34,7 +34,9 @@ const planBase = new Elysia({ prefix: "/plans" })
         }
     )
     .get("/:id", async ctx => {
-        return await Effect.runPromise(requireSession(ctx).pipe(Effect.flatMap(session => planService.getPlanDetail(ctx.params.id, session.user.id))));
+        return await Effect.runPromise(
+            requireSession(ctx).pipe(Effect.flatMap(session => planService.getPlanDetail(ctx.params.id, session.user.id)))
+        );
     })
     .post(
         "/",

@@ -3,7 +3,7 @@ import { useMemo, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 
 import { buildTree, FileTree } from "../file-tree";
@@ -52,10 +52,9 @@ interface StepSelectFilesProps {
 export function StepSelectFiles({ files, onFilesChange, selectedPaths, onSelectionChange, spaceId, onSpaceChange }: StepSelectFilesProps) {
     const folderInputRef = useRef<HTMLInputElement>(null);
 
-    const { data: spaces } = useApiQuery<{ id: string; name: string }[]>({
+    const { data: spaces } = useApiListQuery<{ id: string; name: string }>({
         queryKey: ["spaces"],
-        queryFn: () => api.api.spaces.get(),
-        fallback: []
+        queryFn: () => api.api.spaces.get()
     });
 
     const tree = useMemo(() => buildTree(files.map(f => f.path)), [files]);

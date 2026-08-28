@@ -1,56 +1,55 @@
 name: rust
 on:
-  push:
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
-  pull_request:
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
+    push:
+        paths-ignore:
+            - "docs/**"
+            - "**/*.md"
+    pull_request:
+        paths-ignore:
+            - "docs/**"
+            - "**/*.md"
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: pgvector/pgvector:pg18
+    test:
+        runs-on: ubuntu-latest
+        services:
+            postgres:
+                image: pgvector/pgvector:pg18
+                env:
+                    POSTGRES_PASSWORD: postgres
+                    # Required: the postgres image only auto-creates a database matching
+                    # POSTGRES_DB (defaults to "postgres"). sqlx's test harness connects
+                    # directly to the database named in DATABASE_URL with no admin-db
+                    # fallback, so without this every #[sqlx::test] fails with
+                    # "database fubbik_rs does not exist" on a fresh CI run.
+                    POSTGRES_DB: fubbik_rs
+                    # Required: without this the cluster initializes with the libc locale
+                    # provider, which orders text differently from the ICU provider the
+                    # reference Node backend runs on (e.g. libc sorts "Catalog-driven"
+                    # before "Catalog tables:"; ICU sorts the reverse). That breaks
+                    # crates/fubbik-db/tests/collation.rs and, more importantly, would
+                    # silently reintroduce the exact ordering divergence documented in
+                    # docs/superpowers/specs/2026-07-28-rust-backend-cli-rewrite-design.md
+                    # ("DATABASE COLLATION MUST MATCH") if removed. pgvector/pgvector:pg18
+                    # is built --with-icu (confirmed via `pg_config --configure` and 807
+                    # rows in pg_collation where collprovider='i' after init with this
+                    # flag set), so this is safe to rely on.
+                    POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-US"
+                options: >-
+                    --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+                ports: ["5432:5432"]
         env:
-          POSTGRES_PASSWORD: postgres
-          # Required: the postgres image only auto-creates a database matching
-          # POSTGRES_DB (defaults to "postgres"). sqlx's test harness connects
-          # directly to the database named in DATABASE_URL with no admin-db
-          # fallback, so without this every #[sqlx::test] fails with
-          # "database fubbik_rs does not exist" on a fresh CI run.
-          POSTGRES_DB: fubbik_rs
-          # Required: without this the cluster initializes with the libc locale
-          # provider, which orders text differently from the ICU provider the
-          # reference Node backend runs on (e.g. libc sorts "Catalog-driven"
-          # before "Catalog tables:"; ICU sorts the reverse). That breaks
-          # crates/fubbik-db/tests/collation.rs and, more importantly, would
-          # silently reintroduce the exact ordering divergence documented in
-          # docs/superpowers/specs/2026-07-28-rust-backend-cli-rewrite-design.md
-          # ("DATABASE COLLATION MUST MATCH") if removed. pgvector/pgvector:pg18
-          # is built --with-icu (confirmed via `pg_config --configure` and 807
-          # rows in pg_collation where collprovider='i' after init with this
-          # flag set), so this is safe to rely on.
-          POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-US"
-        options: >-
-          --health-cmd pg_isready --health-interval 10s
-          --health-timeout 5s --health-retries 5
-        ports: ["5432:5432"]
-    env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/fubbik_rs
-    steps:
-      - uses: actions/checkout@v4
-      # No explicit toolchain-install action: ubuntu-latest runners ship
-      # rustup preinstalled, and rustup auto-installs the exact toolchain
-      # (and its rustfmt/clippy components) pinned in rust-toolchain.toml
-      # the first time cargo/rustup is invoked in this directory.
-      # `dtolnay/rust-toolchain@stable` installed whatever "stable" happened
-      # to be that day instead, silently downloading a second toolchain
-      # alongside the pinned one.
-      - run: rustup show
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test --workspace
+            DATABASE_URL: postgres://postgres:postgres@localhost:5432/fubbik_rs
+        steps:
+            - uses: actions/checkout@v4
+            # No explicit toolchain-install action: ubuntu-latest runners ship
+            # rustup preinstalled, and rustup auto-installs the exact toolchain
+            # (and its rustfmt/clippy components) pinned in rust-toolchain.toml
+            # the first time cargo/rustup is invoked in this directory.
+            # `dtolnay/rust-toolchain@stable` installed whatever "stable" happened
+            # to be that day instead, silently downloading a second toolchain
+            # alongside the pinned one.
+            - run: rustup show
+            - run: cargo fmt --check
+            - run: cargo clippy --all-targets -- -D warnings
+            - run: cargo test --workspace

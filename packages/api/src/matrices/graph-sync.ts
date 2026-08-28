@@ -1,9 +1,8 @@
-// packages/api/src/matrices/graph-sync.ts
-import { Effect } from "effect";
-
-import { getCodeForCell, getMatrixView, getRulesForMatrix, isAgeAvailable, listMatrices } from "@fubbik/db/repository";
 import { cypherVoid, escCypher } from "@fubbik/db/age/client";
 import { deleteEdgesFrom, ensureVertex } from "@fubbik/db/age/sync";
+import { getCodeForCell, getMatrixView, getRulesForMatrix, isAgeAvailable, listMatrices } from "@fubbik/db/repository";
+// packages/api/src/matrices/graph-sync.ts
+import { Effect } from "effect";
 
 import { logger } from "../logger";
 

@@ -168,8 +168,7 @@ export function UnifiedFeed() {
         queryKey: ["proposals-pending-feed"],
         // Bridge through `unknown`: the client's inferred shape (Date fields, a narrower `changes`
         // type) doesn't structurally overlap the local `ProposalData` shape used for rendering.
-        queryFn: async () =>
-            unwrapEden(await api.api.proposals.get({ query: { status: "pending" } })) as unknown as ProposalData[]
+        queryFn: async () => unwrapEden(await api.api.proposals.get({ query: { status: "pending" } })) as unknown as ProposalData[]
     });
 
     const staleQuery = useQuery({

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useApiQuery } from "@/hooks/use-api-query";
+import { useApiListQuery } from "@/hooks/use-api-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -73,22 +73,19 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
     const [testStatus, setTestStatus] = useState<"pass" | "fail">("pass");
     const [testDetail, setTestDetail] = useState("");
 
-    const requirementsQuery = useApiQuery<CellRequirement[]>({
+    const requirementsQuery = useApiListQuery<CellRequirement>({
         queryKey: ["matrix-cell-requirements", cellId],
-        queryFn: () => api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.get(),
-        fallback: []
+        queryFn: () => api.api.matrices({ id: matrixId }).cells({ cellId }).requirements.get()
     });
 
-    const codeQuery = useApiQuery<CellCodeLink[]>({
+    const codeQuery = useApiListQuery<CellCodeLink>({
         queryKey: ["matrix-cell-code", cellId],
-        queryFn: () => api.api.matrices({ id: matrixId }).cells({ cellId }).code.get(),
-        fallback: []
+        queryFn: () => api.api.matrices({ id: matrixId }).cells({ cellId }).code.get()
     });
 
-    const testResultsQuery = useApiQuery<CellTestResult[]>({
+    const testResultsQuery = useApiListQuery<CellTestResult>({
         queryKey: ["matrix-cell-test-results", cellId],
-        queryFn: () => api.api.matrices({ id: matrixId }).cells({ cellId })["test-results"].get(),
-        fallback: []
+        queryFn: () => api.api.matrices({ id: matrixId }).cells({ cellId })["test-results"].get()
     });
 
     const linkMutation = useMutation({
@@ -188,9 +185,9 @@ export function CellPanel({ matrixId, cellId, ruleTitle, dimensionName, onClose 
         addTestResultMutation.mutate({ testRef: ref, status: testStatus, ...(detail ? { detail } : {}) });
     }
 
-    const requirements = Array.isArray(requirementsQuery.data) ? requirementsQuery.data : [];
-    const codeLinks = Array.isArray(codeQuery.data) ? codeQuery.data : [];
-    const testResults = Array.isArray(testResultsQuery.data) ? testResultsQuery.data : [];
+    const requirements = requirementsQuery.data;
+    const codeLinks = codeQuery.data;
+    const testResults = testResultsQuery.data;
 
     return (
         <div className="bg-background fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l shadow-lg">
