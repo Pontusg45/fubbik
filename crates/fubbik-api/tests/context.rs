@@ -558,6 +558,34 @@ async fn get(app: axum::Router, cookie: &str, path: &str) -> axum::response::Res
     .unwrap()
 }
 
+async fn post(
+    app: axum::Router,
+    cookie: &str,
+    path: &str,
+    body: serde_json::Value,
+) -> axum::response::Response {
+    app.oneshot(
+        Request::post(path)
+            .header("cookie", cookie)
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
+async fn delete(app: axum::Router, cookie: &str, path: &str) -> axum::response::Response {
+    app.oneshot(
+        Request::delete(path)
+            .header("cookie", cookie)
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
 /// `maxTokens=50` excludes a large linked chunk that `maxTokens=50000`
 /// includes — pinning `budget_chunks` actually receiving the parsed value,
 /// not just that both requests return 200 (Step 5's mutation target).
@@ -804,5 +832,278 @@ async fn format_defaults_to_structured_md_and_json_is_selectable(pool: sqlx::PgP
         serde_json::to_string(&default_body).unwrap(),
         serde_json::to_string(&json_body_val).unwrap(),
         "the two formats must produce genuinely different response bodies"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Context snapshots — `POST /api/context/snapshot`,
+// `GET /api/context/snapshot/{id}`, `GET /api/context/snapshots`,
+// `DELETE /api/context/snapshot/{id}`.
+//
+// Every one of these four tests drives a snapshot through a plan
+// (`{"planId": ...}`), the same resolver `resolve_for_plan_*` above
+// already covers end to end — snapshot creation is not re-testing the
+// resolver, only that its output survives being frozen into JSONB and
+// read back through the four routes, scoped to the caller throughout.
+
+/// Creates a plan owned by `user_id` with one task linked to one chunk,
+/// and returns `(plan_id, chunk_id, chunk_title)` — the fixture every
+/// snapshot test below builds a `{"planId": ...}` snapshot from.
+async fn seed_plan_with_chunk(pool: &sqlx::PgPool, user_id: &str, title: &str) -> (String, String) {
+    let p = plan::create(pool, user_id, "Snapshot plan", None, None)
+        .await
+        .unwrap();
+    let task = plan::create_task(
+        pool,
+        user_id,
+        &p.id,
+        "A task",
+        None,
+        serde_json::json!([]),
+        None,
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let c = chunk::create(pool, user_id, new_chunk(title))
+        .await
+        .unwrap();
+    plan::add_task_chunk(pool, user_id, &p.id, &task.id, &c.id, "context")
+        .await
+        .unwrap()
+        .expect("chunk should link to the task");
+    (p.id, c.id)
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn snapshot_round_trips_its_frozen_content(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "snap-roundtrip@b.test", "Snap").await;
+    let user_id = user_id_for_email(&pool, "snap-roundtrip@b.test").await;
+
+    let (plan_id, _chunk_id) =
+        seed_plan_with_chunk(&pool, &user_id, "Snapshot Round Trip Chunk").await;
+
+    let create_res = post(
+        app.clone(),
+        &cookie,
+        "/api/context/snapshot",
+        serde_json::json!({ "planId": plan_id, "maxTokens": 50000 }),
+    )
+    .await;
+    assert_eq!(create_res.status(), StatusCode::OK, "create must succeed");
+    let create_body = json_body(create_res).await;
+    let snapshot_id = create_body["snapshotId"]
+        .as_str()
+        .expect("create must return a snapshotId")
+        .to_string();
+    assert_eq!(
+        create_body["chunkCount"], 1,
+        "the plan's single linked chunk must be resolved and budgeted: {create_body:?}"
+    );
+
+    let get_res = get(
+        app.clone(),
+        &cookie,
+        &format!("/api/context/snapshot/{snapshot_id}"),
+    )
+    .await;
+    assert_eq!(get_res.status(), StatusCode::OK);
+    let get_body = json_body(get_res).await;
+
+    assert_eq!(get_body["id"], snapshot_id);
+    assert_eq!(
+        get_body["tokenCount"], create_body["tokenCount"],
+        "the retrieved snapshot's token count must match what create reported: {get_body:?}"
+    );
+    let chunks = get_body["chunks"]
+        .as_array()
+        .expect("retrieved snapshot must carry its frozen chunks array");
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(
+        chunks[0]["title"], "Snapshot Round Trip Chunk",
+        "the frozen chunk content must match what was resolved at create time: {chunks:?}"
+    );
+    assert_eq!(get_body["query"]["planId"], plan_id);
+}
+
+/// Both halves: user B retrieving user A's snapshot gets 404, and A's
+/// snapshot is still retrievable by A afterwards — proving the request was
+/// rejected, not the row damaged.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn snapshot_retrieval_is_user_scoped(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie_a = signup(app.clone(), "snap-scope-a@b.test", "Alice").await;
+    let user_a = user_id_for_email(&pool, "snap-scope-a@b.test").await;
+    let cookie_b = signup(app.clone(), "snap-scope-b@b.test", "Bob").await;
+
+    let (plan_id, _chunk_id) = seed_plan_with_chunk(&pool, &user_a, "Alice's Scoped Chunk").await;
+
+    let create_body = json_body(
+        post(
+            app.clone(),
+            &cookie_a,
+            "/api/context/snapshot",
+            serde_json::json!({ "planId": plan_id }),
+        )
+        .await,
+    )
+    .await;
+    let snapshot_id = create_body["snapshotId"].as_str().unwrap().to_string();
+
+    // Half one: a foreign user gets 404, not Alice's frozen content.
+    let foreign_res = get(
+        app.clone(),
+        &cookie_b,
+        &format!("/api/context/snapshot/{snapshot_id}"),
+    )
+    .await;
+    assert_eq!(
+        foreign_res.status(),
+        StatusCode::NOT_FOUND,
+        "a foreign user must not be able to retrieve another user's snapshot"
+    );
+
+    // Half two: the snapshot is intact and Alice can still read it — proof
+    // the request was rejected, not that the row was damaged.
+    let owner_res = get(
+        app.clone(),
+        &cookie_a,
+        &format!("/api/context/snapshot/{snapshot_id}"),
+    )
+    .await;
+    assert_eq!(owner_res.status(), StatusCode::OK);
+    let owner_body = json_body(owner_res).await;
+    assert_eq!(owner_body["id"], snapshot_id);
+    assert_eq!(owner_body["chunks"][0]["title"], "Alice's Scoped Chunk");
+}
+
+/// Both halves: user B deleting user A's snapshot gets 404, and A's
+/// snapshot survives (both a GET and a subsequent delete by A itself
+/// succeed) — again proving rejection, not silent damage.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn snapshot_deletion_is_user_scoped(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie_a = signup(app.clone(), "snap-del-a@b.test", "Alice").await;
+    let user_a = user_id_for_email(&pool, "snap-del-a@b.test").await;
+    let cookie_b = signup(app.clone(), "snap-del-b@b.test", "Bob").await;
+
+    let (plan_id, _chunk_id) =
+        seed_plan_with_chunk(&pool, &user_a, "Alice's Deletable Chunk").await;
+
+    let create_body = json_body(
+        post(
+            app.clone(),
+            &cookie_a,
+            "/api/context/snapshot",
+            serde_json::json!({ "planId": plan_id }),
+        )
+        .await,
+    )
+    .await;
+    let snapshot_id = create_body["snapshotId"].as_str().unwrap().to_string();
+
+    // Half one: a foreign delete is rejected with 404.
+    let foreign_delete = delete(
+        app.clone(),
+        &cookie_b,
+        &format!("/api/context/snapshot/{snapshot_id}"),
+    )
+    .await;
+    assert_eq!(
+        foreign_delete.status(),
+        StatusCode::NOT_FOUND,
+        "a foreign user must not be able to delete another user's snapshot"
+    );
+
+    // Half two: the snapshot survived the foreign attempt — the owner can
+    // still read it, and can still delete it herself afterwards.
+    let survives = get(
+        app.clone(),
+        &cookie_a,
+        &format!("/api/context/snapshot/{snapshot_id}"),
+    )
+    .await;
+    assert_eq!(
+        survives.status(),
+        StatusCode::OK,
+        "the snapshot must survive a rejected foreign delete attempt"
+    );
+
+    let owner_delete = delete(
+        app.clone(),
+        &cookie_a,
+        &format!("/api/context/snapshot/{snapshot_id}"),
+    )
+    .await;
+    assert_eq!(
+        owner_delete.status(),
+        StatusCode::OK,
+        "the real owner must still be able to delete her own snapshot afterwards"
+    );
+
+    let gone = get(
+        app.clone(),
+        &cookie_a,
+        &format!("/api/context/snapshot/{snapshot_id}"),
+    )
+    .await;
+    assert_eq!(gone.status(), StatusCode::NOT_FOUND);
+}
+
+/// `GET /api/context/snapshots` must return only the caller's own
+/// snapshots — not a foreign user's, even though both exist in the table.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn snapshots_list_only_returns_the_callers_own(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie_a = signup(app.clone(), "snap-list-a@b.test", "Alice").await;
+    let user_a = user_id_for_email(&pool, "snap-list-a@b.test").await;
+    let cookie_b = signup(app.clone(), "snap-list-b@b.test", "Bob").await;
+    let user_b = user_id_for_email(&pool, "snap-list-b@b.test").await;
+
+    let (plan_a, _) = seed_plan_with_chunk(&pool, &user_a, "Alice's List Chunk").await;
+    let (plan_b, _) = seed_plan_with_chunk(&pool, &user_b, "Bob's List Chunk").await;
+
+    let snap_a = json_body(
+        post(
+            app.clone(),
+            &cookie_a,
+            "/api/context/snapshot",
+            serde_json::json!({ "planId": plan_a }),
+        )
+        .await,
+    )
+    .await;
+    let snap_a_id = snap_a["snapshotId"].as_str().unwrap().to_string();
+
+    let snap_b = json_body(
+        post(
+            app.clone(),
+            &cookie_b,
+            "/api/context/snapshot",
+            serde_json::json!({ "planId": plan_b }),
+        )
+        .await,
+    )
+    .await;
+    let snap_b_id = snap_b["snapshotId"].as_str().unwrap().to_string();
+
+    let list_res = get(app.clone(), &cookie_a, "/api/context/snapshots").await;
+    assert_eq!(list_res.status(), StatusCode::OK);
+    let list_body = json_body(list_res).await;
+    let ids: Vec<&str> = list_body
+        .as_array()
+        .expect("list must be a bare array")
+        .iter()
+        .map(|s| s["id"].as_str().unwrap())
+        .collect();
+
+    assert!(
+        ids.contains(&snap_a_id.as_str()),
+        "Alice's own snapshot must appear in her list: {ids:?}"
+    );
+    assert!(
+        !ids.contains(&snap_b_id.as_str()),
+        "Bob's snapshot must never appear in Alice's list: {ids:?}"
     );
 }

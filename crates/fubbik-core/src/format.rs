@@ -36,7 +36,7 @@ pub fn format_chunk_text(chunk: &ScoredChunk) -> String {
 /// `ChunkWithMetadata extends ScoredChunk` — this port composes instead of
 /// flattening, so the wire shape is reproduced with `#[serde(flatten)]`
 /// rather than duplicating `ScoredChunk`'s fields here.
-#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ChunkWithMetadata {
     #[serde(flatten)]

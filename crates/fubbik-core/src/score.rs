@@ -18,7 +18,7 @@ const HEADER_SEED: &str = "# Project Context\n\n";
 /// Mirrors `ScoredChunk` (`packages/api/src/context/utils.ts:8-15`) on the
 /// wire — `chunk_type` serialises as `type`, matching Node's field name,
 /// since `/api/context/*` (Task 6) serialises this struct directly.
-#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct ScoredChunk {
     pub id: String,
     pub title: String,

@@ -143,6 +143,37 @@ pub(crate) fn budget_and_format(
     chunks: Vec<fubbik_core::format::ChunkWithMetadata>,
     max_tokens: usize,
 ) -> fubbik_core::format::StructuredContext {
+    format_structured(budget_metadata(chunks, max_tokens))
+}
+
+/// The order-preserving resolve->budget tail shared by `budget_and_format`
+/// (which formats the survivors into sections) and
+/// `snapshot::create_snapshot` (which freezes the survivors verbatim into
+/// `context_snapshot.chunks` instead of formatting them). Extracted out of
+/// `budget_and_format` rather than duplicated so the fragile part — never
+/// routing `chunks` through a `HashMap` on the way back out, see the doc
+/// comment below — has exactly one implementation for both callers to
+/// share.
+///
+/// **Must preserve `chunks`' original order end to end.** An earlier draft
+/// routed the re-pairing through a `HashMap<String, ChunkWithMetadata>` and
+/// iterated `.values()` to build the `Vec<ScoredChunk>` fed to
+/// `budget_chunks`. `HashMap` iteration order is not stable across
+/// constructions, so on a tie between two chunks' scores — `budget_chunks`'s
+/// `sort_by` is stable, but stability only preserves whatever order it's
+/// given — which chunk lands on the budget boundary could differ between
+/// two calls of the very same request. Node's array preserves
+/// `enrichChunks`' order deterministically, so ties there always break the
+/// same way. This version never moves `chunks` into a map: it clones the
+/// `ScoredChunk` half (in `chunks`' order) for `budget_chunks` to sort and
+/// trim, collects the *surviving ids* into a `HashSet` (membership only,
+/// order-independent by construction), then filters the original `chunks`
+/// `Vec` by that set — so the final order is exactly enrichment order,
+/// every time, regardless of how many chunks tie on score.
+pub(crate) fn budget_metadata(
+    chunks: Vec<fubbik_core::format::ChunkWithMetadata>,
+    max_tokens: usize,
+) -> Vec<fubbik_core::format::ChunkWithMetadata> {
     use std::collections::HashSet;
 
     let scored: Vec<_> = chunks.iter().map(|c| c.chunk.clone()).collect();
@@ -152,12 +183,10 @@ pub(crate) fn budget_and_format(
         .map(|c| c.id)
         .collect();
 
-    let budgeted: Vec<fubbik_core::format::ChunkWithMetadata> = chunks
+    chunks
         .into_iter()
         .filter(|c| budgeted_ids.contains(&c.chunk.id))
-        .collect();
-
-    format_structured(budgeted)
+        .collect()
 }
 
 pub fn router() -> Router<AppState> {
@@ -165,6 +194,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/context/for-plan", get(for_plan))
         .route("/api/context/about", get(about))
         .route("/api/context/for-files", get(for_files))
+        .merge(super::snapshot::router())
 }
 
 #[cfg(test)]

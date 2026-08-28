@@ -2373,6 +2373,117 @@
         }
       }
     },
+    "/api/context/snapshot": {
+      "post": {
+        "tags": [
+          "crate::context::snapshot"
+        ],
+        "operationId": "create_snapshot_route",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSnapshotBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSnapshotResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/context/snapshot/{id}": {
+      "get": {
+        "tags": [
+          "crate::context::snapshot"
+        ],
+        "operationId": "get_snapshot_route",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextSnapshot"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "crate::context::snapshot"
+        ],
+        "summary": "Always 200 with a `null` body on success — matching Node, whose\n`DELETE` handler never sets an explicit response (`snapshot-routes.ts:49-63`):\nthe Effect chain resolves to `deleteSnapshot`'s return value, `void`,\nwhich Elysia serialises as an empty/`null` body at the default 200\nstatus. A foreign or unknown id 404s via [`delete_snapshot`] instead.",
+        "operationId": "delete_snapshot_route",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/context/snapshots": {
+      "get": {
+        "tags": [
+          "crate::context::snapshot"
+        ],
+        "operationId": "list_snapshots_route",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContextSnapshot"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/density": {
       "get": {
         "tags": [
@@ -11408,6 +11519,41 @@
           }
         }
       },
+      "ContextSnapshot": {
+        "type": "object",
+        "description": "`camelCase` on the wire, matching every other repo row type in this\ncrate. `query`/`chunks` are stored and returned as opaque JSON blobs —\n`query` is a free-form subset of the create request\n(`packages/api/src/context/snapshot-service.ts:46-52`'s\n`Record<string, unknown>`), and `chunks` is the frozen\n`ChunkWithMetadata[]` the create call budgeted.",
+        "required": [
+          "id",
+          "userId",
+          "query",
+          "chunks",
+          "tokenCount",
+          "createdAt"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChunkWithMetadata"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "query": {},
+          "tokenCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "userId": {
+            "type": "string"
+          }
+        }
+      },
       "CountResponse": {
         "type": "object",
         "description": "Shape of `GET /api/notifications/count`\n(`tests/fixtures/node-contract-2b/notifications-count.json`): a bare\n`{ \"count\": N }` object, not the chunks-style envelope.",
@@ -12256,6 +12402,79 @@
               "null"
             ],
             "description": "`string | number | boolean | enum`. Defaults to `string`, matching the\ncolumn default."
+          }
+        }
+      },
+      "CreateSnapshotBody": {
+        "type": "object",
+        "description": "Body of `POST /api/context/snapshot`\n(`packages/api/src/context/snapshot-routes.ts:27-34`). Resolver\nselection order — `planId`, else non-empty `filePaths`, else `concept`\n— is decided in [`create_snapshot`], mirroring\n`snapshot-service.ts:32-38`'s `if`/`else if` chain exactly.",
+        "properties": {
+          "concept": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filePaths": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxTokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "planId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taskId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateSnapshotResponse": {
+        "type": "object",
+        "description": "Response of `POST /api/context/snapshot`\n(`snapshot-service.ts:61-66`).",
+        "required": [
+          "snapshotId",
+          "tokenCount",
+          "chunkCount",
+          "createdAt"
+        ],
+        "properties": {
+          "chunkCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "snapshotId": {
+            "type": "string"
+          },
+          "tokenCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
