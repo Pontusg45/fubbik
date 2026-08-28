@@ -1759,6 +1759,56 @@
         }
       }
     },
+    "/api/codebases/{id}/generate-instructions": {
+      "get": {
+        "tags": [
+          "crate::generate_instructions::routes"
+        ],
+        "summary": "Deprecated alias: `GET /api/codebases/{id}/generate-instructions`.",
+        "description": "**This is Node's *actual* (and only) registration.** Node's\n`generateInstructionsRoutes` (`packages/api/src/generate-instructions/\nroutes.ts:8`) registers exactly one path, `/codebases/:id/generate-\ninstructions` — it never registers `/spaces/:id/generate-instructions`\nat all, and `codebaseRoutes` (the `/api/codebases` -> `/api/spaces`\nforwarding layer used for every other space endpoint) does not cover\nthis route either, since it forwards the opposite direction and this\nhandler isn't one of the ones it re-exports.\n\nYet Node's own CLI (`apps/cli/src/commands/generate.ts:35,58,81`) calls\n`/api/spaces/${spaceId}/generate-instructions` at all three call sites\n— matching how every *other* CLI call in that codebase addresses spaces\n(`api/spaces`, never `api/codebases`). So in a live Node deployment,\n`fubbik generate claude.md`/`agents.md`/`.cursorrules` all 404 today.\nThis is fallout from the project's `codebases` -> `spaces` rename: the\nCLI's call sites and the rest of the API surface were renamed, but this\none route registration was missed.\n\nThis port serves **both** paths, pointed at the same handler\n([`generate_instructions_route`]), rather than picking one:\n`/api/spaces/{id}/generate-instructions` is primary — it matches the\nCLI and the project's own rename, and fixes the three broken commands.\nThis `/api/codebases/{id}/...` path is kept as a deprecated\ncompatibility alias matching the *real* shape of Node's API today, the\nsame pattern already used for `/api/codebases` elsewhere in this\ncodebase (see CLAUDE.md: \"`/api/codebases` is a deprecated alias kept\nfor backward compatibility with older VS Code extension builds and\nexternal consumers.\"). Serving only `/spaces` would silently drop a\npath that genuinely exists in Node today, breaking any external\nconsumer or older client still calling it at cutover.",
+        "operationId": "generate_instructions_codebases_alias_route",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/InstructionFormat"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateInstructionsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/collections": {
       "get": {
         "tags": [

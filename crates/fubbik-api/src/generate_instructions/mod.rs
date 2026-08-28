@@ -6,16 +6,24 @@
 //! three plain-text documents (`claude` → CLAUDE.md, `agents` → AGENTS.md,
 //! `cursor` → .cursorrules) depending on `?format=`.
 //!
-//! **Route path diverges from Node on purpose.** Node only ever registers
-//! this handler at `/api/codebases/:id/generate-instructions`
+//! **Both route paths are served, deliberately.** Node only ever
+//! registers this handler at `/api/codebases/:id/generate-instructions`
 //! (`packages/api/src/generate-instructions/routes.ts:8`) — there is no
 //! `/api/spaces/:id/generate-instructions` route in Node at all, even
 //! though `apps/cli/src/commands/generate.ts:35,58,81` calls exactly that
-//! `/api/spaces/...` URL for all three formats. That looks like a live bug
-//! in Node (the CLI's `generate` commands 404 against a real Node server
-//! today) rather than a deliberate alias. This port registers the path the
-//! CLI actually calls, `/api/spaces/{id}/generate-instructions`, so the
-//! three CLI commands this task was asked to keep working actually work.
+//! `/api/spaces/...` URL for all three formats. Confirmed as a live bug in
+//! Node (Phase 4a's `codebases` -> `spaces` rename updated the CLI's call
+//! sites but missed this one route registration), not a deliberate alias:
+//! the CLI's `generate` commands 404 against a real Node server today.
+//!
+//! This port serves `/api/spaces/{id}/generate-instructions` as the
+//! primary route — matching the CLI and the project's own rename, and
+//! fixing the three broken commands — **and** keeps
+//! `/api/codebases/{id}/generate-instructions` as a deprecated
+//! compatibility alias pointed at the same handler, matching the path
+//! Node's API genuinely still exposes today. See
+//! `generate_instructions_codebases_alias_route`'s doc comment
+//! (`routes.rs`) for the full reasoning.
 //!
 //! **Ownership check is a deliberate addition, not a port.** Node's
 //! service (`service.ts:29-40`) never verifies the given `spaceId` belongs

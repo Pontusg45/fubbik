@@ -62,6 +62,7 @@ use utoipa::OpenApi;
         crate::file_refs::routes::list_file_refs,
         crate::file_refs::routes::lookup_file_refs,
         crate::generate_instructions::routes::generate_instructions_route,
+        crate::generate_instructions::routes::generate_instructions_codebases_alias_route,
         crate::scope_keys::routes::list_scope_keys,
         crate::scope_keys::routes::create_scope_key,
         crate::scope_keys::routes::delete_scope_key,

@@ -309,6 +309,52 @@ async fn missing_format_defaults_to_claude(pool: sqlx::PgPool) {
 }
 
 // ---------------------------------------------------------------------------
+// codebases alias parity
+// ---------------------------------------------------------------------------
+
+/// Node's only real registration is `/api/codebases/:id/generate-
+/// instructions` (`packages/api/src/generate-instructions/routes.ts:8`);
+/// this port keeps that path alive as a deprecated alias pointed at the
+/// same handler as the primary `/api/spaces/...` route (see
+/// `generate_instructions_codebases_alias_route`'s doc comment in
+/// `routes.rs`). Asserts the alias returns the *same* body as the primary
+/// route for the same space and format — without this, a later cleanup
+/// could delete the alias (or let it drift, e.g. by wiring it to a
+/// different handler) and nothing would catch it until an external
+/// consumer complained.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn codebases_alias_matches_spaces_route(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alias@b.test", "Alias").await;
+    let user_id = user_id_for_email(&pool, "alias@b.test").await;
+    let space_id = make_space(&pool, &user_id, "alias-space").await;
+    seed_categorized_chunks(&pool, &user_id, &space_id).await;
+
+    let primary = get(
+        app.clone(),
+        &cookie,
+        &format!("/api/spaces/{space_id}/generate-instructions?format=agents"),
+    )
+    .await;
+    assert_eq!(primary.status(), StatusCode::OK);
+    let primary_body = json_body(primary).await;
+
+    let alias = get(
+        app.clone(),
+        &cookie,
+        &format!("/api/codebases/{space_id}/generate-instructions?format=agents"),
+    )
+    .await;
+    assert_eq!(alias.status(), StatusCode::OK);
+    let alias_body = json_body(alias).await;
+
+    assert_eq!(
+        primary_body, alias_body,
+        "the /api/codebases alias must return the same body as /api/spaces for the same space and format"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // generate_instructions_is_scoped_to_the_space_owner
 // ---------------------------------------------------------------------------
 
