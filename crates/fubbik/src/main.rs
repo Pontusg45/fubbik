@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "fubbik", version, about = "Local-first knowledge framework")]
@@ -9,6 +9,9 @@ struct Cli {
     /// Emit only identifiers or scalar values
     #[arg(short, long, global = true, conflicts_with = "json")]
     quiet: bool,
+    /// API server URL (overrides FUBBIK_URL and fubbik.config.json)
+    #[arg(long, global = true)]
+    url: Option<String>,
     #[command(subcommand)]
     command: Commands,
 }
@@ -38,6 +41,8 @@ enum Commands {
     /// Cypher `MERGE` rather than `CREATE`. Never runs automatically; this
     /// is the only entry point.
     BackfillConnections,
+    /// Generate shell completion definitions
+    Completions { shell: clap_complete::Shell },
     #[command(flatten)]
     Cli(fubbik_cli::Command),
 }
@@ -128,6 +133,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
+    let explicit_url = cli.url.clone();
     let output = if cli.json {
         fubbik_cli::OutputMode::Json
     } else if cli.quiet {
@@ -217,9 +223,28 @@ async fn main() -> anyhow::Result<()> {
             println!("projected {count} chunk_connection row(s) into the AGE graph");
             Ok(())
         }
+        Commands::Completions { shell } => {
+            let mut command = Cli::command();
+            let name = command.get_name().to_string();
+            clap_complete::generate(shell, &mut command, name, &mut std::io::stdout());
+            Ok(())
+        }
         Commands::Cli(cmd) => {
-            let base =
-                std::env::var("FUBBIK_URL").unwrap_or_else(|_| "http://localhost:3100".into());
+            let base = match fubbik_cli::config::resolve_base_url(explicit_url.as_deref()) {
+                Ok(base) => base,
+                Err(_)
+                    if matches!(
+                        cmd,
+                        fubbik_cli::Command::Doctor | fubbik_cli::Command::Init { .. }
+                    ) =>
+                {
+                    explicit_url
+                        .clone()
+                        .or_else(|| std::env::var("FUBBIK_URL").ok())
+                        .unwrap_or_else(|| "http://localhost:3100".into())
+                }
+                Err(error) => return Err(error),
+            };
             fubbik_cli::run(cmd, &base, output).await
         }
     }

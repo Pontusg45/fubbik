@@ -14,6 +14,27 @@ pub struct Chunk {
     pub updated_at: String,
 }
 
+#[derive(Debug, serde::Deserialize)]
+#[serde(untagged)]
+enum ChunkResponse {
+    Detail { chunk: Chunk },
+    Flat(Chunk),
+}
+
+impl ChunkResponse {
+    fn into_chunk(self) -> Chunk {
+        match self {
+            Self::Detail { chunk } | Self::Flat(chunk) => chunk,
+        }
+    }
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct ClaudeMdResponse {
+    pub content: String,
+    pub chunks: usize,
+}
+
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Proposal {
@@ -100,6 +121,10 @@ impl Client {
         }
     }
 
+    pub fn base_url(&self) -> &str {
+        &self.base
+    }
+
     async fn get_json<T: serde::de::DeserializeOwned>(
         &self,
         path: &str,
@@ -162,7 +187,8 @@ impl Client {
     }
 
     pub async fn get_chunk(&self, id: &str) -> Result<Chunk> {
-        self.get_json(&format!("/api/chunks/{id}"), &[]).await
+        let response: ChunkResponse = self.get_json(&format!("/api/chunks/{id}"), &[]).await?;
+        Ok(response.into_chunk())
     }
 
     pub async fn create_chunk(
@@ -170,11 +196,19 @@ impl Client {
         title: &str,
         content: &str,
         chunk_type: &str,
+        tags: &[String],
+        spaces: &[String],
     ) -> Result<Chunk> {
         let res = self
             .http
             .post(format!("{}/api/chunks", self.base))
-            .json(&serde_json::json!({ "title": title, "content": content, "type": chunk_type }))
+            .json(&serde_json::json!({
+                "title": title,
+                "content": content,
+                "type": chunk_type,
+                "tags": tags,
+                "spaceIds": spaces,
+            }))
             .send()
             .await
             .with_context(|| format!("could not reach fubbik at {}", self.base))?;
@@ -183,6 +217,105 @@ impl Client {
             bail!("create failed with {}", res.status());
         }
         Ok(res.json().await?)
+    }
+
+    pub async fn update_chunk(
+        &self,
+        id: &str,
+        title: Option<&str>,
+        content: Option<&str>,
+        chunk_type: Option<&str>,
+        tags: Option<&[String]>,
+        spaces: Option<&[String]>,
+    ) -> Result<Chunk> {
+        let mut body = serde_json::Map::new();
+        if let Some(value) = title {
+            body.insert("title".into(), value.into());
+        }
+        if let Some(value) = content {
+            body.insert("content".into(), value.into());
+        }
+        if let Some(value) = chunk_type {
+            body.insert("type".into(), value.into());
+        }
+        if let Some(value) = tags {
+            body.insert("tags".into(), serde_json::to_value(value)?);
+        }
+        if let Some(value) = spaces {
+            body.insert("spaceIds".into(), serde_json::to_value(value)?);
+        }
+        if body.is_empty() {
+            bail!("nothing to update; provide at least one field");
+        }
+        self.send_json(
+            reqwest::Method::PATCH,
+            &format!("/api/chunks/{id}"),
+            body.into(),
+        )
+        .await
+    }
+
+    pub async fn delete_chunk(&self, id: &str) -> Result<serde_json::Value> {
+        self.send_json(
+            reqwest::Method::DELETE,
+            &format!("/api/chunks/{id}"),
+            serde_json::Value::Null,
+        )
+        .await
+    }
+
+    pub async fn export_context(
+        &self,
+        space: Option<&str>,
+        max_tokens: usize,
+        format: &str,
+        for_path: Option<&str>,
+    ) -> Result<serde_json::Value> {
+        let mut query = vec![
+            ("maxTokens", max_tokens.to_string()),
+            ("format", format.to_string()),
+        ];
+        if let Some(value) = space {
+            query.push(("spaceId", value.to_string()));
+        }
+        if let Some(value) = for_path {
+            query.push(("forPath", value.to_string()));
+        }
+        self.get_json("/api/chunks/export/context", &query).await
+    }
+
+    pub async fn context_for_file(
+        &self,
+        path: &str,
+        space: Option<&str>,
+        max_tokens: usize,
+        format: &str,
+    ) -> Result<serde_json::Value> {
+        let mut query = vec![
+            ("path", path.to_string()),
+            ("maxTokens", max_tokens.to_string()),
+            ("format", format.to_string()),
+        ];
+        if let Some(value) = space {
+            query.push(("spaceId", value.to_string()));
+        }
+        self.get_json("/api/context/for-file", &query).await
+    }
+
+    pub async fn claude_md(
+        &self,
+        space: Option<&str>,
+        tag: Option<&str>,
+        max_tokens: usize,
+    ) -> Result<ClaudeMdResponse> {
+        let mut query = vec![("maxTokens", max_tokens.to_string())];
+        if let Some(value) = space {
+            query.push(("spaceId", value.to_string()));
+        }
+        if let Some(value) = tag {
+            query.push(("tag", value.to_string()));
+        }
+        self.get_json("/api/chunks/export/claude-md", &query).await
     }
 
     pub async fn health(&self) -> Result<serde_json::Value> {

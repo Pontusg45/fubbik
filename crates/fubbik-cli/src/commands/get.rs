@@ -16,3 +16,15 @@ pub async fn run(client: &Client, id: &str, mode: OutputMode) -> Result<()> {
     println!("{}", chunk.content);
     Ok(())
 }
+
+pub async fn cat(client: &Client, id: &str, mode: OutputMode) -> Result<()> {
+    let chunk = client.get_chunk(id).await?;
+    if mode == OutputMode::Json {
+        return output::json(&serde_json::json!({ "id": chunk.id, "content": chunk.content }));
+    }
+    print!("{}", chunk.content);
+    if !chunk.content.ends_with('\n') {
+        println!();
+    }
+    Ok(())
+}

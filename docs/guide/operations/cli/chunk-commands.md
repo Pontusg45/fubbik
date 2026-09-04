@@ -14,14 +14,12 @@ description: CLI commands for chunk CRUD and search
 # Create a chunk
 fubbik add "Auth Flow" --content "Users authenticate via..." --type document
 
-# Interactive creation (opens $EDITOR)
-fubbik add -i
+# Read content from a file or stdin
+fubbik add "Auth Flow" --file docs/auth.md --tags auth,backend
+git diff | fubbik add "Current changes" --stdin
 
-# Create from template
-fubbik add --template "Architecture Decision"
-
-# Quick one-liner (auto-detects codebase)
-fubbik quick "Always use prepared statements" --type note --tags security,backend
+# Associate a chunk with one or more spaces
+fubbik add "Prepared statements" --space api --tags security,backend
 ```
 
 ## Listing and Searching
@@ -29,16 +27,16 @@ fubbik quick "Always use prepared statements" --type note --tags security,backen
 ```bash
 # List chunks
 fubbik list
-fubbik list --codebase myproject --tags auth,backend
+fubbik list --type document
 
 # Search by keyword
 fubbik search "authentication"
 
-# Semantic search (requires Ollama)
-fubbik search "how do we handle user auth" --semantic
-
 # View a chunk
 fubbik get <id>
+
+# Print raw content for piping
+fubbik cat <id>
 ```
 
 ## Updating and Deleting
@@ -46,28 +44,16 @@ fubbik get <id>
 ```bash
 # Update
 fubbik update <id> --title "New Title"
+fubbik update <id> --file replacement.md --tags auth,current
 
-# Delete
-fubbik remove <id>
+# Delete interactively, or explicitly confirm in scripts
+fubbik delete <id>
+fubbik delete <id> --yes
 ```
 
-## Connections
+## Machine-readable Output
 
 ```bash
-# Link two chunks
-fubbik link <source-id> <target-id> --relation depends_on
-
-# Remove a connection
-fubbik unlink <source-id> <target-id>
-```
-
-## Git Integration
-
-```bash
-# Install pre-commit hook
-fubbik hooks install
-
-# Check files manually
-fubbik check-files src/auth/session.ts
-fubbik check-files --staged
+fubbik --json get <id>
+fubbik --quiet add "Automation note" --stdin
 ```

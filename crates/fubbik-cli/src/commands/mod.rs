@@ -1,12 +1,17 @@
 pub mod add;
+pub mod config;
+pub mod context;
+pub mod delete;
 pub mod get;
 pub mod health;
+pub mod input;
 pub mod list;
 pub mod plan;
 pub mod plugin;
 pub mod review;
 pub mod search;
 pub mod task;
+pub mod update;
 
 use crate::client::Chunk;
 use comfy_table::{Table, presets::UTF8_FULL};
