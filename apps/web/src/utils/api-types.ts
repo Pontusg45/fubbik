@@ -2073,6 +2073,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/plans/{planId}/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["read_board"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{planId}/board/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["write_entry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{planId}/board/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["join_board"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{planId}/board/runs/{runId}/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ack_board"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{planId}/board/tasks/{taskId}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["claim_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{planId}/board/tasks/{taskId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["transition_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/proposals": {
         parameters: {
             query?: never;
@@ -3199,6 +3295,11 @@ export interface components {
             done: boolean;
             text: string;
         };
+        AckRunBody: {
+            status?: string | null;
+            /** Format: int64 */
+            throughSequence: number;
+        };
         /** @description `camelCase` serialisation matches every other wire type in this crate. */
         Activity: {
             action: string;
@@ -3244,6 +3345,26 @@ export interface components {
          */
         AddTaskDependencyBody: {
             dependsOnTaskId: string;
+        };
+        AgentRun: {
+            capabilities: string[];
+            /** Format: date-time */
+            createdAt: string;
+            externalKey?: string | null;
+            handle: string;
+            id: string;
+            /** Format: int64 */
+            lastAckSequence: number;
+            /** Format: date-time */
+            lastHeartbeatAt: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+            parentRunId?: string | null;
+            planId: string;
+            status: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         /**
          * @description The five fixed analyze-item buckets, always present even when empty —
@@ -3491,6 +3612,35 @@ export interface components {
             /** @description `pass | fail`, free `text`. */
             status: string;
             testRef: string;
+        };
+        BoardCursor: {
+            /** Format: int64 */
+            acknowledgedSequence?: number | null;
+            hasMore: boolean;
+            /** Format: int64 */
+            nextSequence: number;
+        };
+        BoardPlan: {
+            id: string;
+            status: string;
+            title: string;
+        };
+        BoardSnapshot: {
+            claims: components["schemas"]["TaskClaim"][];
+            cursor: components["schemas"]["BoardCursor"];
+            entries: components["schemas"]["CoordinationEntry"][];
+            plan: components["schemas"]["BoardPlan"];
+            runs: components["schemas"]["AgentRun"][];
+            tasks: components["schemas"]["BoardTask"][];
+        };
+        BoardTask: {
+            dependsOn: string[];
+            description?: string | null;
+            id: string;
+            /** Format: int32 */
+            order: number;
+            status: string;
+            title: string;
         };
         /**
          * @description `t.Union([t.Literal("approve"), t.Literal("reject")])`
@@ -3920,6 +4070,18 @@ export interface components {
             healthScore: number;
             isStale: boolean;
         };
+        /** @enum {string} */
+        ClaimAction: "claim" | "renew" | "release";
+        ClaimBody: {
+            action: components["schemas"]["ClaimAction"];
+            /** Format: int64 */
+            leaseSeconds?: number | null;
+            runId: string;
+        };
+        ClaimResponse: {
+            action: string;
+            claim?: null | components["schemas"]["TaskClaim"];
+        };
         /**
          * @description Matches Node's `{content, chunks}` response (`claude-md.ts:188`) —
          *     `chunks` is the tagged-chunk *count*, not the chunk list itself.
@@ -4110,6 +4272,34 @@ export interface components {
             /** Format: int32 */
             tokenCount: number;
             userId: string;
+        };
+        CoordinationCreateEntryBody: {
+            body: string;
+            clientMutationId: string;
+            kind: string;
+            metadata?: unknown;
+            recipientRunId?: string | null;
+            replyToId?: string | null;
+            runId: string;
+            taskId?: string | null;
+        };
+        CoordinationEntry: {
+            authorRunId: string;
+            body: string;
+            clientMutationId: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            kind: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+            planId: string;
+            recipientRunId?: string | null;
+            replyToId?: string | null;
+            /** Format: int64 */
+            sequence: number;
+            taskId?: string | null;
         };
         /**
          * @description Shape of `GET /api/notifications/count`
@@ -5426,6 +5616,13 @@ export interface components {
          * @enum {string}
          */
         InstructionFormat: "claude" | "agents" | "cursor";
+        JoinRunBody: {
+            capabilities?: string[];
+            externalKey?: string | null;
+            handle: string;
+            metadata?: unknown;
+            parentRunId?: string | null;
+        };
         /** @description The five buckets, in the order the panel renders them. */
         KnowledgeHealth: {
             fileRefs: components["schemas"]["FileRefBucket"];
@@ -6691,6 +6888,18 @@ export interface components {
             chunkId: string;
             relation: string;
         };
+        TaskClaim: {
+            agentRunId: string;
+            /** Format: date-time */
+            claimedAt: string;
+            expired: boolean;
+            /** Format: date-time */
+            leaseExpiresAt: string;
+            planId: string;
+            taskId: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         /**
          * @description A task in the `GET /api/plans/{id}` detail envelope: the raw
          *     `plan_task` row's fields, plus `acceptanceCriteria` normalised (not the
@@ -6828,6 +7037,16 @@ export interface components {
             sessions: unknown[];
             status: string;
             title: string;
+        };
+        TransitionTaskBody: {
+            clientMutationId: string;
+            note?: string | null;
+            runId: string;
+            status: string;
+        };
+        TransitionTaskResponse: {
+            entry: components["schemas"]["CoordinationEntry"];
+            task: components["schemas"]["PlanTask"];
         };
         /**
          * @description A chunk no requirement references
@@ -11769,6 +11988,249 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    read_board: {
+        parameters: {
+            query?: {
+                runId?: string | null;
+                afterSequence?: number | null;
+                limit?: number | null;
+            };
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardSnapshot"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    write_entry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinationCreateEntryBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationEntry"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    join_board: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinRunBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRun"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ack_board: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AckRunBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRun"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    claim_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    transition_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionTaskBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransitionTaskResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

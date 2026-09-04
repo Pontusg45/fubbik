@@ -6329,6 +6329,340 @@
         }
       }
     },
+    "/api/plans/{planId}/board": {
+      "get": {
+        "tags": [
+          "crate::coordination::routes"
+        ],
+        "operationId": "read_board",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "runId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "afterSequence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{planId}/board/entries": {
+      "post": {
+        "tags": [
+          "crate::coordination::routes"
+        ],
+        "operationId": "write_entry",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoordinationCreateEntryBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoordinationEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{planId}/board/runs": {
+      "post": {
+        "tags": [
+          "crate::coordination::routes"
+        ],
+        "operationId": "join_board",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinRunBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRun"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{planId}/board/runs/{runId}/ack": {
+      "post": {
+        "tags": [
+          "crate::coordination::routes"
+        ],
+        "operationId": "ack_board",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AckRunBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRun"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{planId}/board/tasks/{taskId}/claim": {
+      "post": {
+        "tags": [
+          "crate::coordination::routes"
+        ],
+        "operationId": "claim_task",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/plans/{planId}/board/tasks/{taskId}/transition": {
+      "post": {
+        "tags": [
+          "crate::coordination::routes"
+        ],
+        "operationId": "transition_task",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionTaskBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransitionTaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/proposals": {
       "get": {
         "tags": [
@@ -9542,6 +9876,24 @@
         ],
         "description": "One entry of the write-side `acceptanceCriteria` array accepted by\n`POST`/`PATCH /api/plans/{id}/tasks[/:taskId]` — Node's\n`acceptanceCriteriaBodySchema` (`tasks.ts:15`) is `t.Array(t.Union([\nt.String(), t.Object({text: t.String(), done: t.Boolean()})]))`: a bare\nstring OR an object with both `text` and `done` present (not the more\nlenient shape `normalize_acceptance_criteria` tolerates on read paths,\nwhere a malformed object degrades to `{text:\"\", done:false}` instead of\nbeing rejected). `#[serde(untagged)]` reproduces that union at\ndeserialisation time — a value matching neither variant is a 400 via\n`crate::extract::Json`'s rejection mapping, same as an Elysia schema\nmismatch."
       },
+      "AckRunBody": {
+        "type": "object",
+        "required": [
+          "throughSequence"
+        ],
+        "properties": {
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "throughSequence": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "Activity": {
         "type": "object",
         "description": "`camelCase` serialisation matches every other wire type in this crate.",
@@ -9648,6 +10000,76 @@
         "properties": {
           "dependsOnTaskId": {
             "type": "string"
+          }
+        }
+      },
+      "AgentRun": {
+        "type": "object",
+        "required": [
+          "id",
+          "planId",
+          "handle",
+          "status",
+          "capabilities",
+          "metadata",
+          "lastAckSequence",
+          "lastHeartbeatAt",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "externalKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "handle": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastAckSequence": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastHeartbeatAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "parentRunId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -10310,6 +10732,128 @@
             "description": "`pass | fail`, free `text`."
           },
           "testRef": {
+            "type": "string"
+          }
+        }
+      },
+      "BoardCursor": {
+        "type": "object",
+        "required": [
+          "nextSequence",
+          "hasMore"
+        ],
+        "properties": {
+          "acknowledgedSequence": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextSequence": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "BoardPlan": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "BoardSnapshot": {
+        "type": "object",
+        "required": [
+          "plan",
+          "tasks",
+          "runs",
+          "claims",
+          "entries",
+          "cursor"
+        ],
+        "properties": {
+          "claims": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskClaim"
+            }
+          },
+          "cursor": {
+            "$ref": "#/components/schemas/BoardCursor"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoordinationEntry"
+            }
+          },
+          "plan": {
+            "$ref": "#/components/schemas/BoardPlan"
+          },
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentRun"
+            }
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardTask"
+            }
+          }
+        }
+      },
+      "BoardTask": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status",
+          "order",
+          "dependsOn"
+        ],
+        "properties": {
+          "dependsOn": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
             "type": "string"
           }
         }
@@ -11307,6 +11851,57 @@
         ],
         "description": "A scored chunk plus the enrichment the formatter annotates with.\nPorts `packages/api/src/context/formatter.ts:3-7`. Node's\n`ChunkWithMetadata extends ScoredChunk` — this port composes instead of\nflattening, so the wire shape is reproduced with `#[serde(flatten)]`\nrather than duplicating `ScoredChunk`'s fields here."
       },
+      "ClaimAction": {
+        "type": "string",
+        "enum": [
+          "claim",
+          "renew",
+          "release"
+        ]
+      },
+      "ClaimBody": {
+        "type": "object",
+        "required": [
+          "runId",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ClaimAction"
+          },
+          "leaseSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "runId": {
+            "type": "string"
+          }
+        }
+      },
+      "ClaimResponse": {
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "claim": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TaskClaim"
+              }
+            ]
+          }
+        }
+      },
       "ClaudeMdResponse": {
         "type": "object",
         "description": "Matches Node's `{content, chunks}` response (`claude-md.ts:188`) —\n`chunks` is the tagged-chunk *count*, not the chunk list itself.",
@@ -11794,6 +12389,115 @@
           },
           "userId": {
             "type": "string"
+          }
+        }
+      },
+      "CoordinationCreateEntryBody": {
+        "type": "object",
+        "required": [
+          "runId",
+          "kind",
+          "body",
+          "clientMutationId"
+        ],
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "clientMutationId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {},
+          "recipientRunId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "replyToId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "runId": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CoordinationEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "sequence",
+          "planId",
+          "authorRunId",
+          "kind",
+          "body",
+          "metadata",
+          "clientMutationId",
+          "createdAt"
+        ],
+        "properties": {
+          "authorRunId": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "clientMutationId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "planId": {
+            "type": "string"
+          },
+          "recipientRunId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "replyToId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "taskId": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -14894,6 +15598,36 @@
           "cursor"
         ]
       },
+      "JoinRunBody": {
+        "type": "object",
+        "required": [
+          "handle"
+        ],
+        "properties": {
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "externalKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "handle": {
+            "type": "string"
+          },
+          "metadata": {},
+          "parentRunId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "KnowledgeHealth": {
         "type": "object",
         "description": "The five buckets, in the order the panel renders them.",
@@ -17802,6 +18536,44 @@
           }
         }
       },
+      "TaskClaim": {
+        "type": "object",
+        "required": [
+          "taskId",
+          "planId",
+          "agentRunId",
+          "claimedAt",
+          "leaseExpiresAt",
+          "updatedAt",
+          "expired"
+        ],
+        "properties": {
+          "agentRunId": {
+            "type": "string"
+          },
+          "claimedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expired": {
+            "type": "boolean"
+          },
+          "leaseExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "TaskDetail": {
         "type": "object",
         "description": "A task in the `GET /api/plans/{id}` detail envelope: the raw\n`plan_task` row's fields, plus `acceptanceCriteria` normalised (not the\nraw stored JSON) and the task's linked chunks — matching Node's\n`tasksWithChunks` (`packages/api/src/plans/service.ts:89-94`).",
@@ -18171,6 +18943,46 @@
           },
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "TransitionTaskBody": {
+        "type": "object",
+        "required": [
+          "runId",
+          "status",
+          "clientMutationId"
+        ],
+        "properties": {
+          "clientMutationId": {
+            "type": "string"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "runId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "TransitionTaskResponse": {
+        "type": "object",
+        "required": [
+          "task",
+          "entry"
+        ],
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/CoordinationEntry"
+          },
+          "task": {
+            "$ref": "#/components/schemas/PlanTask"
           }
         }
       },

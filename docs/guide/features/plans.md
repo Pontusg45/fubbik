@@ -62,3 +62,9 @@ When a session completes:
 ## Traceability
 
 The full chain: Requirement → Plan Step → Implementation Session → Chunk. View at `/coverage`.
+
+## Agent Coordination
+
+Each Plan also provides a persistent coordination board for root agents and sub-agents. It adds reconnectable agent runs, expiring task claims, and an append-only journal without creating a second task model. The Plan page shows active agents, claims, and journal updates.
+
+See [Agent Coordination Boards](./agent-coordination.md) for the MCP workflow, lease behavior, and delivery limitations.

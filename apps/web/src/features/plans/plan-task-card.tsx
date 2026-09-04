@@ -3,10 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, GripVertical, Trash2, X } from "lucide-react";
 import { useEffect, useState, type HTMLAttributes } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
+import type { CoordinationClaim } from "./plan-coordination-panel";
 import type { TaskDependency } from "./plan-tasks-section";
 
 export type TaskStatus = "pending" | "in_progress" | "done" | "skipped" | "blocked";
@@ -59,6 +61,8 @@ export interface PlanTaskCardProps {
     dependsOn?: TaskDependency[];
     /** How many other tasks depend on this one — surfaced as a small "↓ N" indicator. */
     dependentCount?: number;
+    claim?: CoordinationClaim;
+    claimantHandle?: string;
     /** Drag handle attributes from useSortable; when present, a grip icon is rendered. */
     dragHandleProps?: HTMLAttributes<HTMLDivElement>;
 }
@@ -70,6 +74,8 @@ export function PlanTaskCard({
     allTasks = [],
     dependsOn = [],
     dependentCount = 0,
+    claim,
+    claimantHandle,
     dragHandleProps
 }: PlanTaskCardProps) {
     const [expanded, setExpanded] = useState(false);
@@ -206,6 +212,15 @@ export function PlanTaskCard({
                 </div>
 
                 {/* Dependency indicators */}
+                {claim && (
+                    <Badge
+                        size="sm"
+                        variant={claim.expired ? "warning" : "info"}
+                        title={`Lease ${claim.expired ? "expired" : `expires ${claim.leaseExpiresAt}`}`}
+                    >
+                        {claim.expired ? "Expired" : (claimantHandle ?? claim.agentRunId)}
+                    </Badge>
+                )}
                 {(dependsOn.length > 0 || dependentCount > 0) && (
                     <div className="text-muted-foreground mt-0.5 flex shrink-0 items-center gap-1.5 text-[10px]">
                         {dependsOn.length > 0 && <span title={`Waits on ${dependsOn.length} task(s)`}>↑ {dependsOn.length}</span>}

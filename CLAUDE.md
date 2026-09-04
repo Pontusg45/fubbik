@@ -130,6 +130,17 @@ The central unit of work. Each plan holds a description, linked requirements, st
 - Web UI: `/plans` list, `/plans/new` (simple form), `/plans/:id` (sticky header + four sections: description, requirements, analyze, tasks)
 - CLI: `fubbik plan create/list/show/status/add-task/task-done/link-requirement`
 
+### Agent Coordination Boards
+
+Plans are also durable coordination boards for root agents and sub-agents:
+
+- `agent_run` stores reconnectable Plan-scoped identities and parent/child relationships
+- `plan_task_claim` stores exclusive expiring leases over existing `plan_task` rows
+- `coordination_entry` is an append-only journal for notes, questions, progress, decisions, handoffs, and artifacts
+- Rust module: `crates/fubbik-api/src/coordination/` with persistence in `crates/fubbik-db/src/repo/coordination.rs`
+- MCP tools: `join_board`, `read_board`, `claim_task`, `update_board_task`, `write_board_entry`, `ack_board`
+- The board persists communication but does not wake agent processes; agents poll or rely on their host for live delivery
+
 ### Requirements
 
 BDD-style requirements with Given/When/Then steps.

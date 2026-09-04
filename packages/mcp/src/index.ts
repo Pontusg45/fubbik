@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import { contextPlugin } from "./context-tools.js";
+import { coordinationPlugin } from "./coordination-tools.js";
 import { matrixPlugin } from "./matrix-tools.js";
 import { planPlugin } from "./plan-tools.js";
 import { registerPlugin, loadAllPlugins } from "./plugin.js";
@@ -14,6 +15,7 @@ registerPlugin(corePlugin);
 registerPlugin(suggestionPlugin);
 registerPlugin(planPlugin);
 registerPlugin(contextPlugin);
+registerPlugin(coordinationPlugin);
 registerPlugin(taskPlugin);
 registerPlugin(matrixPlugin);
 

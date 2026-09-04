@@ -9,6 +9,7 @@ pub mod comment;
 pub mod connection;
 pub mod connection_relation;
 pub mod context_snapshot;
+pub mod coordination;
 pub mod coverage;
 pub mod document;
 pub mod favorite;

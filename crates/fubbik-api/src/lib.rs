@@ -7,6 +7,7 @@ pub mod connections;
 pub mod context;
 pub mod context_export;
 pub mod context_for_file;
+pub mod coordination;
 pub mod coverage;
 pub mod density;
 pub mod documents;
@@ -72,6 +73,7 @@ pub fn router(state: AppState) -> Router {
         .merge(chunks::routes::router())
         .merge(collections::routes::router())
         .merge(connections::routes::router())
+        .merge(coordination::routes::router())
         .merge(context::routes::router())
         .merge(context_export::routes::router())
         .merge(context_for_file::routes::router())

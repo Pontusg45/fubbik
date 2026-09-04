@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
+import { PlanCoordinationPanel, type CoordinationBoard } from "./plan-coordination-panel";
+
 interface ActivityRow {
     id: string;
     entityType: string;
@@ -37,7 +39,15 @@ function dayKey(iso: string): string {
     return d.toISOString().slice(0, 10);
 }
 
-export function PlanActivitySidebar({ planId }: { planId: string }) {
+export function PlanActivitySidebar({
+    planId,
+    coordination,
+    coordinationLoading = false
+}: {
+    planId: string;
+    coordination?: CoordinationBoard;
+    coordinationLoading?: boolean;
+}) {
     const activityQuery = useQuery({
         queryKey: ["plan-activity", planId],
         queryFn: async () => {
@@ -64,6 +74,7 @@ export function PlanActivitySidebar({ planId }: { planId: string }) {
     return (
         <aside className="hidden w-64 shrink-0 lg:block">
             <div className="sticky top-20 space-y-3">
+                <PlanCoordinationPanel board={coordination} isLoading={coordinationLoading} />
                 <h3 className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">Activity</h3>
                 {activityQuery.isLoading && <p className="text-muted-foreground text-xs">Loading…</p>}
                 {!activityQuery.isLoading && events.length === 0 && <p className="text-muted-foreground text-xs">No activity yet.</p>}

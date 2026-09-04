@@ -42,3 +42,11 @@ Add to your AI tool's MCP settings:
 | `begin_implementation` | Start an implementation session       |
 | `mark_plan_step`       | Update a plan step status             |
 | `sync_claude_md`       | Regenerate CLAUDE.md                  |
+| `join_board`           | Join or reconnect to a Plan board     |
+| `read_board`           | Read task, agent, claim, and journal state |
+| `claim_task`           | Claim, renew, or release a task lease |
+| `update_board_task`    | Transition a claimed task             |
+| `write_board_entry`    | Persist a note or addressed message   |
+| `ack_board`            | Save an agent's journal cursor         |
+
+Coordination messages are durable but do not wake another agent. Callers should poll `read_board` using its `nextSequence` cursor and reuse `clientMutationId` when retrying uncertain writes. See [Agent Coordination Boards](../../features/agent-coordination.md).

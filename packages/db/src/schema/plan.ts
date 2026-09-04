@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, text, timestamp, unique, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
 import { chunk } from "./chunk";
@@ -110,7 +110,7 @@ export const planTask = pgTable(
         /** See plan.metadata — same escape-hatch per task. */
         metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({})
     },
-    table => [index("plan_task_planId_idx").on(table.planId)]
+    table => [index("plan_task_planId_idx").on(table.planId), unique("plan_task_id_plan_id_unique").on(table.id, table.planId)]
 );
 
 export const planTaskChunk = pgTable(

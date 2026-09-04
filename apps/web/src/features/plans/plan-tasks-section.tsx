@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useApiMutation } from "@/hooks/use-api-mutation";
 import { api } from "@/utils/api";
 
+import type { CoordinationClaim, CoordinationRun } from "./plan-coordination-panel";
 import { PlanTaskCard, type Task } from "./plan-task-card";
 
 export interface TaskDependency {
@@ -20,10 +21,12 @@ export interface PlanTasksSectionProps {
     planId: string;
     tasks: Task[];
     dependencies: TaskDependency[];
+    claims?: CoordinationClaim[];
+    runs?: CoordinationRun[];
     onUpdate: () => void;
 }
 
-export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: PlanTasksSectionProps) {
+export function PlanTasksSection({ planId, tasks, dependencies, claims = [], runs = [], onUpdate }: PlanTasksSectionProps) {
     const [adding, setAdding] = useState(false);
     const [draftTitle, setDraftTitle] = useState("");
     const [draftDescription, setDraftDescription] = useState("");
@@ -78,6 +81,8 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
     }
 
     const doneCount = tasks.filter(t => t.status === "done").length;
+    const claimByTask = new Map(claims.map(claim => [claim.taskId, claim]));
+    const runById = new Map(runs.map(run => [run.id, run]));
 
     return (
         <section className="space-y-2">
@@ -152,6 +157,8 @@ export function PlanTasksSection({ planId, tasks, dependencies, onUpdate }: Plan
                                 allTasks={tasks}
                                 dependsOn={dependsOnByTask.get(t.id) ?? []}
                                 dependentCount={(dependentsByTask.get(t.id) ?? []).length}
+                                claim={claimByTask.get(t.id)}
+                                claimantHandle={runById.get(claimByTask.get(t.id)?.agentRunId ?? "")?.handle}
                                 dragHandleProps={dragHandleProps}
                                 onUpdate={onUpdate}
                             />

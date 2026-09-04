@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { PageContainer, PageLoading } from "@/components/ui/page";
 import { PlanActivitySidebar } from "@/features/plans/plan-activity-sidebar";
 import { PlanAnalyzeSection } from "@/features/plans/plan-analyze-section";
+import { usePlanCoordination } from "@/features/plans/plan-coordination-panel";
 import { PlanDescriptionSection } from "@/features/plans/plan-description-section";
 import { PlanDetailHeader } from "@/features/plans/plan-detail-header";
 import { PlanRequirementsSection } from "@/features/plans/plan-requirements-section";
@@ -23,6 +24,7 @@ function PlanDetailPage() {
         queryKey: ["plan-detail", planId],
         queryFn: async () => unwrapEden(await api.api.plans({ id: planId }).get())
     });
+    const coordinationQuery = usePlanCoordination(planId);
 
     // Keyboard shortcuts for the detail page:
     //   `a` opens the add-task input (focuses the page-level "Add task" button)
@@ -81,9 +83,20 @@ function PlanDetailPage() {
                         analyze={detail.analyze ?? { chunk: [], file: [], risk: [], assumption: [], question: [] }}
                         onUpdate={refetch}
                     />
-                    <PlanTasksSection planId={plan.id} tasks={tasks} dependencies={detail.dependencies ?? []} onUpdate={refetch} />
+                    <PlanTasksSection
+                        planId={plan.id}
+                        tasks={tasks}
+                        dependencies={detail.dependencies ?? []}
+                        claims={coordinationQuery.data?.claims}
+                        runs={coordinationQuery.data?.runs}
+                        onUpdate={refetch}
+                    />
                 </div>
-                <PlanActivitySidebar planId={plan.id} />
+                <PlanActivitySidebar
+                    planId={plan.id}
+                    coordination={coordinationQuery.data}
+                    coordinationLoading={coordinationQuery.isLoading}
+                />
             </div>
         </PageContainer>
     );
