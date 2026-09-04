@@ -37,6 +37,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { user } from "../schema/auth";
 import * as schema from "../schema/index";
 import { createContext, trySeed, type ScenarioName, type SeedContext } from "./context";
+import * as agentCoordinationModule from "./modules/agent-coordination";
 import * as chunksModule from "./modules/chunks";
 import * as collectionsModule from "./modules/collections";
 import * as connectionsModule from "./modules/connections";
@@ -90,6 +91,7 @@ const MODULE_REGISTRY: ModuleEntry[] = [
     { name: "use-cases", deps: ["core", "codebases"], scenarios: ["demo", "extended"], ...useCasesModule },
     { name: "requirements", deps: ["core", "codebases", "use-cases", "chunks"], scenarios: ["demo", "extended"], ...requirementsModule },
     { name: "plans", deps: ["core", "codebases", "requirements", "chunks"], scenarios: ["demo", "extended"], ...plansModule },
+    { name: "agent-coordination", deps: ["plans"], scenarios: ["demo", "extended"], ...agentCoordinationModule },
     { name: "documents", deps: ["core", "codebases"], scenarios: ["demo", "extended"], ...documentsModule },
     { name: "vocabulary", deps: ["core", "codebases"], scenarios: ["demo", "extended"], ...vocabularyModule },
     { name: "workspaces", deps: ["core", "codebases"], scenarios: ["demo", "extended"], ...workspacesModule },

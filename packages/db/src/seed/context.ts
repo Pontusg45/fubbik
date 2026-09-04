@@ -34,6 +34,7 @@ export interface SeedContext {
         useCases: Record<string, string>;
         plans: Record<string, string>;
         planTasks: Record<string, string>;
+        agentRuns: Record<string, string>;
         workspaces: Record<string, string>;
         matrices: Record<string, string>;
         matrixDimensions: Record<string, string>;
@@ -65,6 +66,7 @@ export function createContext(params: { db: Database; userId: string; scenario: 
             useCases: {},
             plans: {},
             planTasks: {},
+            agentRuns: {},
             workspaces: {},
             matrices: {},
             matrixDimensions: {},

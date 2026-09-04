@@ -27,6 +27,9 @@ const PROBES: Probe[] = [
     { label: "use_cases", query: "SELECT count(*)::int FROM use_case" },
     { label: "plans", query: "SELECT count(*)::int FROM plan" },
     { label: "plan_tasks", query: "SELECT count(*)::int FROM plan_task" },
+    { label: "agent_runs", query: "SELECT count(*)::int FROM agent_run" },
+    { label: "task_claims", query: "SELECT count(*)::int FROM plan_task_claim" },
+    { label: "coordination entries", query: "SELECT count(*)::int FROM coordination_entry" },
     { label: "workspaces", query: "SELECT count(*)::int FROM workspace" },
     { label: "vocabulary entries", query: "SELECT count(*)::int FROM vocabulary_entry" },
     { label: "chunk_type (catalog)", query: "SELECT count(*)::int FROM chunk_type" },
@@ -47,6 +50,14 @@ const INTEGRITY_PROBES: Probe[] = [
     {
         label: "tasks without parent plan",
         query: "SELECT count(*)::int FROM plan_task pt WHERE NOT EXISTS (SELECT 1 FROM plan p WHERE p.id = pt.plan_id)"
+    },
+    {
+        label: "coordination claims with mismatched references",
+        query: "SELECT count(*)::int FROM plan_task_claim c LEFT JOIN plan_task t ON t.id = c.task_id AND t.plan_id = c.plan_id LEFT JOIN agent_run r ON r.id = c.agent_run_id AND r.plan_id = c.plan_id WHERE t.id IS NULL OR r.id IS NULL"
+    },
+    {
+        label: "coordination entries with mismatched references",
+        query: "SELECT count(*)::int FROM coordination_entry e LEFT JOIN agent_run a ON a.id = e.author_run_id AND a.plan_id = e.plan_id LEFT JOIN agent_run r ON r.id = e.recipient_run_id AND r.plan_id = e.plan_id LEFT JOIN plan_task t ON t.id = e.task_id AND t.plan_id = e.plan_id LEFT JOIN coordination_entry p ON p.id = e.reply_to_id AND p.plan_id = e.plan_id WHERE a.id IS NULL OR (e.recipient_run_id IS NOT NULL AND r.id IS NULL) OR (e.task_id IS NOT NULL AND t.id IS NULL) OR (e.reply_to_id IS NOT NULL AND p.id IS NULL)"
     }
 ];
 
