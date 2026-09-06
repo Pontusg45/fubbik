@@ -151,6 +151,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/clusters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["clusters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/enrich-all": {
         parameters: {
             query?: never;
@@ -3817,6 +3833,11 @@ export interface components {
             updatedAt: string;
             userId: string;
         };
+        ChunkCluster: {
+            members: components["schemas"]["ClusterMember"][];
+            seedId: string;
+            seedTitle: string;
+        };
         ChunkComment: {
             chunkId: string;
             content: string;
@@ -4121,6 +4142,13 @@ export interface components {
         ClaudeMdResponse: {
             chunks: number;
             content: string;
+        };
+        ClusterMember: {
+            id: string;
+            /** Format: double */
+            similarity: number;
+            title: string;
+            type: string;
         };
         /** @description `camelCase` serialisation matches every other wire type in this crate. */
         Collection: {
@@ -7988,6 +8016,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SimilarChunk"][];
+                };
+            };
+        };
+    };
+    clusters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChunkCluster"][];
                 };
             };
         };

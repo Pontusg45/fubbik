@@ -60,6 +60,24 @@ pub struct FederatedSearchResponse {
     pub total: i64,
 }
 
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterMember {
+    pub id: String,
+    pub title: String,
+    #[serde(rename = "type")]
+    pub chunk_type: String,
+    pub similarity: f64,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ChunkCluster {
+    pub seed_id: String,
+    pub seed_title: String,
+    pub members: Vec<ClusterMember>,
+}
+
 /// Body of `POST /api/chunks`, matching Node's route schema
 /// (`packages/api/src/chunks/routes.ts` — the 13-field `t.Object` on the
 /// `/chunks` POST).

@@ -41,6 +41,32 @@ pub struct NeighborRow {
     pub distance: f64,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct ClusterSeed {
+    pub id: String,
+    pub title: String,
+}
+
+pub async fn recent_embedded_seeds(
+    pool: &PgPool,
+    user_id: &str,
+    limit: i64,
+) -> AppResult<Vec<ClusterSeed>> {
+    let rows = sqlx::query_as!(
+        ClusterSeed,
+        r#"SELECT id, title
+           FROM chunk
+           WHERE user_id = $1 AND embedding IS NOT NULL AND archived_at IS NULL
+           ORDER BY updated_at DESC
+           LIMIT $2"#,
+        user_id,
+        limit
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}
+
 /// Renders an embedding as pgvector's text literal form (`[f0,f1,...]`).
 ///
 /// `pub(crate)` rather than private: Task 5's `repo/similarity.rs` imports

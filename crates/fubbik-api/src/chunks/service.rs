@@ -4,8 +4,8 @@ use sqlx::PgPool;
 use std::collections::HashSet;
 
 use super::dto::{
-    ChunkListResponse, ConnectionSuggestion, CreateChunkBody, FederatedChunk,
-    FederatedSearchResponse, UpdateChunkBody,
+    ChunkCluster, ChunkListResponse, ClusterMember, ConnectionSuggestion, CreateChunkBody,
+    FederatedChunk, FederatedSearchResponse, UpdateChunkBody,
 };
 
 pub async fn list(
@@ -88,6 +88,44 @@ pub async fn federated_search(
         })
         .collect();
     Ok(FederatedSearchResponse { chunks, total })
+}
+
+pub async fn clusters(
+    pool: &PgPool,
+    user_id: &str,
+    max_clusters: i64,
+    cluster_size: i64,
+) -> AppResult<Vec<ChunkCluster>> {
+    use fubbik_db::repo::semantic;
+
+    let seeds = semantic::recent_embedded_seeds(pool, user_id, max_clusters).await?;
+    let mut used = HashSet::new();
+    let mut clusters = Vec::new();
+    for seed in seeds {
+        if used.contains(&seed.id) {
+            continue;
+        }
+        let neighbors =
+            semantic::find_neighbors_by_chunk_id(pool, &seed.id, user_id, cluster_size).await?;
+        let members: Vec<ClusterMember> = neighbors
+            .into_iter()
+            .map(|neighbor| ClusterMember {
+                id: neighbor.id,
+                title: neighbor.title,
+                chunk_type: neighbor.chunk_type,
+                similarity: 1.0 - neighbor.distance,
+            })
+            .collect();
+
+        used.insert(seed.id.clone());
+        used.extend(members.iter().map(|member| member.id.clone()));
+        clusters.push(ChunkCluster {
+            seed_id: seed.id,
+            seed_title: seed.title,
+            members,
+        });
+    }
+    Ok(clusters)
 }
 
 /// Node derives `reviewStatus` from `origin` rather than accepting it on

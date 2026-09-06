@@ -13,7 +13,6 @@ const ALLOWED = new Set([
     "utils/api.ts",
     "routes/chunks.new.tsx",
     "routes/requirements_.new.tsx",
-    "routes/browse.clusters.tsx",
     "features/import/steps/preview.tsx",
     "features/import/quick-mode.tsx",
     "features/import/import-dialog.tsx",

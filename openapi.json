@@ -562,6 +562,29 @@
         }
       }
     },
+    "/api/chunks/clusters": {
+      "get": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "clusters",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChunkCluster"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chunks/enrich-all": {
       "post": {
         "tags": [
@@ -11375,6 +11398,28 @@
           }
         }
       },
+      "ChunkCluster": {
+        "type": "object",
+        "required": [
+          "seedId",
+          "seedTitle",
+          "members"
+        ],
+        "properties": {
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClusterMember"
+            }
+          },
+          "seedId": {
+            "type": "string"
+          },
+          "seedTitle": {
+            "type": "string"
+          }
+        }
+      },
       "ChunkComment": {
         "type": "object",
         "required": [
@@ -12043,6 +12088,30 @@
             "minimum": 0
           },
           "content": {
+            "type": "string"
+          }
+        }
+      },
+      "ClusterMember": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "similarity"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "similarity": {
+            "type": "number",
+            "format": "double"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
             "type": "string"
           }
         }

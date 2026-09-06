@@ -5,7 +5,7 @@
  * CI: `pnpm --filter web run check:legacy-api` fails on new `legacyApi` imports
  * outside this allowlist and the files listed below.
  */
-export const NODE_ONLY_API_PREFIXES = ["ai", "chunks/grouped", "chunks/clusters", "chunks/import-docs"] as const;
+export const NODE_ONLY_API_PREFIXES = ["ai", "chunks/grouped", "chunks/import-docs"] as const;
 
 export type NodeOnlyApiPrefix = (typeof NODE_ONLY_API_PREFIXES)[number];
 
@@ -13,7 +13,6 @@ export type NodeOnlyApiPrefix = (typeof NODE_ONLY_API_PREFIXES)[number];
 export const LEGACY_API_CALL_SITES = [
     "routes/chunks.new.tsx",
     "routes/requirements_.new.tsx",
-    "routes/browse.clusters.tsx",
     "features/import/steps/preview.tsx",
     "features/import/quick-mode.tsx",
     "features/import/import-dialog.tsx",

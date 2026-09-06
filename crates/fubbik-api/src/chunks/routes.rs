@@ -227,6 +227,21 @@ pub async fn search_federated(
     ))
 }
 
+#[utoipa::path(get, path = "/api/chunks/clusters",
+    responses((status = 200, body = Vec<super::dto::ChunkCluster>)))]
+pub async fn clusters(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+) -> ApiResult<Json<Vec<super::dto::ChunkCluster>>> {
+    let clusters = service::clusters(&state.pool, &user.id, 10, 8)
+        .await
+        .unwrap_or_else(|error| {
+            tracing::error!(%error, "failed to compute chunk clusters");
+            Vec::new()
+        });
+    Ok(Json(clusters))
+}
+
 /// Probes Ollama and degrades to `[]` when it is down — see
 /// `chunks::ai::check_similar`'s doc comment for why this is the opposite
 /// of `search_semantic`.
@@ -536,6 +551,7 @@ pub fn router() -> Router<AppState> {
         // deep and the ordering is kept explicit.
         .route("/api/chunks/search/semantic", get(search_semantic))
         .route("/api/chunks/search/federated", get(search_federated))
+        .route("/api/chunks/clusters", get(clusters))
         .route("/api/chunks/check-similar", post(check_similar))
         .route("/api/chunks/archived", get(list_archived))
         .route("/api/chunks/bulk-update", post(bulk_update))

@@ -1,8 +1,8 @@
+import type { components } from "@fubbik/client";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
-// `chunks/clusters` has no Rust route yet — see the "chunks" note in `@/utils/api`.
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/browse/clusters")({
@@ -12,14 +12,10 @@ export const Route = createFileRoute("/browse/clusters")({
 function ClustersPage() {
     const { data } = useQuery({
         queryKey: ["chunk-clusters"],
-        queryFn: async () => unwrapEden(await legacyApi.api.chunks.clusters.get())
+        queryFn: async () => unwrapEden(await api.api.chunks.clusters.get())
     });
 
-    const clusters = ((data as any) ?? []) as Array<{
-        seedId: string;
-        seedTitle: string;
-        members: Array<{ id: string; title: string; type: string; similarity: number }>;
-    }>;
+    const clusters: components["schemas"]["ChunkCluster"][] = data ?? [];
 
     return (
         <div className="container mx-auto max-w-6xl px-4 py-8">
