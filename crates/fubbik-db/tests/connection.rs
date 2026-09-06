@@ -7,7 +7,7 @@
 //! parent rows.
 
 use fubbik_core::error::AppError;
-use fubbik_db::repo::{chunk, connection, user};
+use fubbik_db::repo::{chunk, connection, projection, user};
 
 async fn seed(pool: &sqlx::PgPool, email: &str) -> String {
     user::create(pool, email, "U", None).await.unwrap().id
@@ -121,6 +121,41 @@ async fn own_source_and_own_target_succeeds(pool: sqlx::PgPool) {
     assert_eq!(created.weight, 1);
     assert!(created.reviewed_by.is_none());
     assert!(created.reviewed_at.is_none());
+}
+
+#[sqlx::test]
+async fn creating_a_connection_persists_projection_intent(pool: sqlx::PgPool) {
+    let alice = seed(&pool, "projection@b.test").await;
+    let source = a_chunk(&pool, &alice, "Source").await;
+    let target = a_chunk(&pool, &alice, "Target").await;
+
+    let connection_id = fubbik_db::new_id();
+    connection::create(
+        &pool,
+        &connection_id,
+        &alice,
+        &source,
+        &target,
+        "related_to",
+        "human",
+        "approved",
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
+    assert_eq!(projection::pending_count(&pool).await.unwrap(), 1);
+
+    assert!(
+        connection::delete(&pool, &alice, &connection_id)
+            .await
+            .unwrap()
+    );
+    assert_eq!(
+        projection::pending_count(&pool).await.unwrap(),
+        2,
+        "deletion must persist its own projection intent"
+    );
 }
 
 #[sqlx::test]

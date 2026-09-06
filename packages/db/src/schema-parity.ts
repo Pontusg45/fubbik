@@ -24,7 +24,8 @@ export const SCHEMA_DRIFT_ALLOWLIST: readonly SchemaDriftAllowance[] = [
     { issue: "verification exists only in Drizzle", reason: "Better Auth legacy table; Rust auth does not use verification tokens" },
     { issue: "graph_event exists only in Drizzle", reason: "legacy Node graph-event repository pending backend deletion" },
     { issue: "usage_event exists only in Drizzle", reason: "legacy Node usage repository pending backend deletion" },
-    { issue: "user.password_hash exists only in SQL", reason: "Rust-owned password authentication column" }
+    { issue: "user.password_hash exists only in SQL", reason: "Rust-owned password authentication column" },
+    { issue: "projection_outbox exists only in SQL", reason: "Rust-owned durable AGE projection queue" }
 ];
 
 function normalizeType(sqlType: string): string {

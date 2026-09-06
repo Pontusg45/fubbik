@@ -59,6 +59,7 @@ pub async fn create(
     origin: &str,
     review_status: &str,
 ) -> AppResult<Option<Connection>> {
+    let mut tx = pool.begin().await?;
     let row = sqlx::query_as!(
         Connection,
         r#"INSERT INTO chunk_connection (id, source_id, target_id, relation, origin, review_status)
@@ -78,31 +79,24 @@ pub async fn create(
         origin,
         review_status
     )
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await?;
 
-    // Project into AGE *after* the SQL insert has already succeeded,
-    // mirroring Node's ordering (`packages/db/src/repository/connection.ts`
-    // calls `ensureVertex` twice then `createEdge` only once the row
-    // exists). Deliberately NOT rolled back if projection fails: Node's own
-    // projection errors don't undo the insert either, so a stricter Rust
-    // here would silently diverge — the connection would vanish where Node
-    // keeps it. Logged and swallowed instead; the row this function just
-    // created is still returned as a success.
     if let Some(conn) = &row {
-        if let Err(e) = crate::age::ensure_vertex(pool, &conn.source_id).await {
-            tracing::warn!(error = %e, connection_id = %conn.id, chunk_id = %conn.source_id, "failed to project source vertex into AGE graph");
-        }
-        if let Err(e) = crate::age::ensure_vertex(pool, &conn.target_id).await {
-            tracing::warn!(error = %e, connection_id = %conn.id, chunk_id = %conn.target_id, "failed to project target vertex into AGE graph");
-        }
-        if let Err(e) =
-            crate::age::create_edge(pool, &conn.relation, &conn.source_id, &conn.target_id).await
-        {
-            tracing::warn!(error = %e, connection_id = %conn.id, "failed to project connects edge into AGE graph");
-        }
+        crate::repo::projection::enqueue(
+            &mut tx,
+            "connection",
+            &conn.id,
+            "connection.upserted",
+            serde_json::json!({
+                "sourceId": conn.source_id,
+                "targetId": conn.target_id,
+                "relation": conn.relation,
+            }),
+        )
+        .await?;
     }
-
+    tx.commit().await?;
     Ok(row)
 }
 
@@ -147,6 +141,7 @@ pub async fn find_by_id(pool: &PgPool, id: &str) -> AppResult<Option<Connection>
 /// layer, matching Node, which maps both cases to the same 404 `{resource:
 /// "Connection"}`.
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<bool> {
+    let mut tx = pool.begin().await?;
     let deleted = sqlx::query!(
         r#"DELETE FROM chunk_connection c
            WHERE c.id = $1
@@ -158,21 +153,27 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<bool> {
         id,
         user_id
     )
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await?;
 
     let Some(row) = deleted else {
+        tx.rollback().await?;
         return Ok(false);
     };
 
-    // Remove the projected edge after the row is gone, same "log and
-    // swallow, never roll back the SQL write" stance as `create` above.
-    if let Err(e) =
-        crate::age::delete_edge(pool, &row.relation, &row.source_id, &row.target_id).await
-    {
-        tracing::warn!(error = %e, connection_id = %id, "failed to remove projected AGE edge for deleted connection");
-    }
-
+    crate::repo::projection::enqueue(
+        &mut tx,
+        "connection",
+        id,
+        "connection.deleted",
+        serde_json::json!({
+            "sourceId": row.source_id,
+            "targetId": row.target_id,
+            "relation": row.relation,
+        }),
+    )
+    .await?;
+    tx.commit().await?;
     Ok(true)
 }
 

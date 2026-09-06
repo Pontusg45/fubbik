@@ -20,6 +20,7 @@ pub mod knowledge_health;
 pub mod learning_path;
 pub mod notification;
 pub mod plan;
+pub mod projection;
 pub mod proposal;
 pub mod requirement;
 pub mod requirement_dependency;
