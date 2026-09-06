@@ -132,6 +132,27 @@ pub async fn chunk_is_stale(pool: &PgPool, user_id: &str, chunk_id: &str) -> App
     Ok(hit.is_some())
 }
 
+pub async fn stale_chunk_ids(
+    pool: &PgPool,
+    user_id: &str,
+    chunk_ids: &[String],
+) -> AppResult<Vec<String>> {
+    if chunk_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    Ok(sqlx::query_scalar!(
+        r#"SELECT DISTINCT cs.chunk_id AS "chunk_id!"
+           FROM chunk_staleness cs
+           JOIN chunk c ON c.id = cs.chunk_id AND c.user_id = $2
+           WHERE cs.chunk_id = ANY($1)
+             AND cs.dismissed_at IS NULL AND cs.suppress_pair IS NULL"#,
+        chunk_ids,
+        user_id
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
 /// Counts a user's undismissed, unsuppressed staleness flags. Same filters
 /// as [`list`] minus `reason`/`limit` — Node's `getStaleCount` only takes
 /// `spaceId` (`packages/api/src/staleness/routes.ts`'s `/chunks/stale/count`

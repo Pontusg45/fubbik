@@ -73,18 +73,23 @@ pub async fn enrich_chunks(
             .or_default()
             .push(row.tag_name);
     }
+    let stale_ids = staleness::stale_chunk_ids(pool, user_id, &row_ids)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .collect::<HashSet<_>>();
+    let pending_ids = proposal::chunk_ids_with_pending(pool, &row_ids)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .collect::<HashSet<_>>();
 
     let mut out: Vec<ChunkWithMetadata> = Vec::with_capacity(rows.len());
     for row in rows {
         let connection_count = connection_counts.get(&row.id).copied().unwrap_or(0);
         let tags = tags_by_chunk.remove(&row.id).unwrap_or_default();
-        let is_stale = staleness::chunk_is_stale(pool, user_id, &row.id)
-            .await
-            .unwrap_or(false);
-        let has_pending_proposal = proposal::list_for_chunk(pool, &row.id, Some("pending"))
-            .await
-            .map(|p| !p.is_empty())
-            .unwrap_or(false);
+        let is_stale = stale_ids.contains(&row.id);
+        let has_pending_proposal = pending_ids.contains(&row.id);
 
         let alternatives: Option<Vec<String>> = row.alternatives.as_ref().map(|j| j.0.clone());
         let health = compute_health_score(&ChunkHealthInput {
@@ -160,11 +165,24 @@ async fn resolve_feature_overlays(
         return Ok(chunks);
     }
 
+    let chunk_ids = chunks
+        .iter()
+        .map(|meta| meta.chunk.id.clone())
+        .collect::<Vec<_>>();
+    let mut deltas_by_chunk = HashMap::new();
+    for delta in feature::deltas_for_chunks(pool, &chunk_ids, user_id)
+        .await
+        .unwrap_or_default()
+    {
+        deltas_by_chunk
+            .entry(delta.chunk_id.clone())
+            .or_insert_with(Vec::new)
+            .push(delta);
+    }
+
     let mut out = chunks;
     for meta in out.iter_mut() {
-        let deltas = feature::deltas_for_chunk(pool, &meta.chunk.id, user_id)
-            .await
-            .unwrap_or_default();
+        let deltas = deltas_by_chunk.remove(&meta.chunk.id).unwrap_or_default();
 
         // `deltas_for_chunk` returns every feature's delta on this chunk,
         // ordered `priority ASC`; keep only the active ones (Node's

@@ -325,6 +325,20 @@ pub async fn list_for_chunk(
     Ok(rows)
 }
 
+pub async fn chunk_ids_with_pending(pool: &PgPool, chunk_ids: &[String]) -> AppResult<Vec<String>> {
+    if chunk_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    Ok(sqlx::query_scalar!(
+        r#"SELECT DISTINCT chunk_id AS "chunk_id!"
+           FROM chunk_proposal
+           WHERE chunk_id = ANY($1) AND status = 'pending'"#,
+        chunk_ids
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
 /// Bare, unscoped terminal-review-state setter. Returns `None` — not an
 /// error — if `id` doesn't exist, matching the *shape* of every other
 /// `Option`-returning update in this crate.

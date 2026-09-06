@@ -690,6 +690,34 @@ pub async fn deltas_for_chunk(
     Ok(rows)
 }
 
+pub async fn deltas_for_chunks(
+    pool: &PgPool,
+    chunk_ids: &[String],
+    user_id: &str,
+) -> AppResult<Vec<DeltaWithFeature>> {
+    if chunk_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    Ok(sqlx::query_as!(
+        DeltaWithFeature,
+        r#"SELECT d.id, d.chunk_id, d.feature_id,
+                  d.delta AS "delta: Json<serde_json::Value>",
+                  f.name AS feature_name, f.priority AS feature_priority,
+                  f.color AS feature_color, f.status AS feature_status,
+                  d.created_at AS "created_at: UtcTimestamp",
+                  d.updated_at AS "updated_at: UtcTimestamp"
+           FROM chunk_feature_delta d
+           JOIN feature f ON d.feature_id = f.id
+           JOIN chunk c ON c.id = d.chunk_id AND c.user_id = $2
+           WHERE d.chunk_id = ANY($1)
+           ORDER BY d.chunk_id ASC, f.priority ASC, d.id ASC"#,
+        chunk_ids,
+        user_id
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
 /// Every delta belonging to one feature, with its chunk's title. Scoped
 /// through the feature's owner in SQL (Node's `getDeltasForFeature` takes
 /// only a `featureId`). **No `ORDER BY`**, matching Node exactly.
