@@ -260,6 +260,18 @@ pub async fn chunk_neighbors(
     Ok(Json(ai::neighbors(&state.pool, &user.id, &id, k).await?))
 }
 
+#[utoipa::path(get, path = "/api/chunks/{id}/suggestions", params(("id" = String, Path,)),
+    responses((status = 200, body = Vec<super::dto::ConnectionSuggestion>), (status = 404)))]
+pub async fn connection_suggestions(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> ApiResult<Json<Vec<super::dto::ConnectionSuggestion>>> {
+    Ok(Json(
+        service::connection_suggestions(&state.pool, &user.id, &id).await?,
+    ))
+}
+
 #[utoipa::path(get, path = "/api/chunks/{id}/history", params(("id" = String, Path,)),
     responses((status = 200, body = Vec<fubbik_db::repo::chunk_version::ChunkVersion>)))]
 pub async fn chunk_history(
@@ -524,6 +536,7 @@ pub fn router() -> Router<AppState> {
         )
         .route("/api/chunks/{id}/history", get(chunk_history))
         .route("/api/chunks/{id}/neighbors", get(chunk_neighbors))
+        .route("/api/chunks/{id}/suggestions", get(connection_suggestions))
         .route(
             "/api/chunks/{id}/applies-to",
             get(get_applies_to).put(put_applies_to),

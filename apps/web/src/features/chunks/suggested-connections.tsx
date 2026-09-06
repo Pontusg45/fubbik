@@ -1,3 +1,4 @@
+import type { components } from "@fubbik/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Lightbulb, Loader2, Plus } from "lucide-react";
@@ -7,15 +8,9 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
-// `chunks/{id}/suggestions` has no Rust route yet — see the "chunks" note in `@/utils/api`.
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 
-interface Suggestion {
-    id: string;
-    title: string;
-    type: string;
-    reason: string;
-}
+type Suggestion = components["schemas"]["ConnectionSuggestion"];
 
 export function SuggestedConnections({ chunkId }: { chunkId: string }) {
     const [expanded, setExpanded] = useState(false);
@@ -24,9 +19,9 @@ export function SuggestedConnections({ chunkId }: { chunkId: string }) {
     const suggestionsQuery = useQuery<Suggestion[]>({
         queryKey: ["chunk-suggestions", chunkId],
         queryFn: async () => {
-            const { data, error } = await legacyApi.api.chunks({ id: chunkId }).suggestions.get();
+            const { data, error } = await api.api.chunks({ id: chunkId }).suggestions.get();
             if (error) throw new Error("Failed to load suggestions");
-            return data as Suggestion[];
+            return data ?? [];
         },
         enabled: expanded
     });

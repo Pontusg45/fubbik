@@ -1759,6 +1759,42 @@
         }
       }
     },
+    "/api/chunks/{id}/suggestions": {
+      "get": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "connection_suggestions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectionSuggestion"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/codebases/{id}/generate-instructions": {
       "get": {
         "tags": [
@@ -12179,6 +12215,29 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "ConnectionSuggestion": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "type",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
           }
         }
       },

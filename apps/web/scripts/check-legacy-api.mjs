@@ -19,7 +19,6 @@ const ALLOWED = new Set([
     "features/import/import-dialog.tsx",
     "features/chunks/use-chunks-data.ts",
     "features/chunks/lazy-group-list.tsx",
-    "features/chunks/suggested-connections.tsx",
     "features/chunks/ai-section.tsx",
     "features/command-palette/use-command-search.ts"
 ]);

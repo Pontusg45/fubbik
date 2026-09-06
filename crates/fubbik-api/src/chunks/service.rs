@@ -1,8 +1,9 @@
 use fubbik_core::error::{AppError, AppResult};
 use fubbik_db::repo::chunk::{self, Chunk, ChunkPatch, ListParams, NewChunk};
 use sqlx::PgPool;
+use std::collections::HashSet;
 
-use super::dto::{ChunkListResponse, CreateChunkBody, UpdateChunkBody};
+use super::dto::{ChunkListResponse, ConnectionSuggestion, CreateChunkBody, UpdateChunkBody};
 
 pub async fn list(
     pool: &PgPool,
@@ -17,6 +18,48 @@ pub async fn list(
         limit: params.limit,
         offset: params.offset,
     })
+}
+
+pub async fn connection_suggestions(
+    pool: &PgPool,
+    user_id: &str,
+    chunk_id: &str,
+) -> AppResult<Vec<ConnectionSuggestion>> {
+    use fubbik_db::repo::{connection, suggestion};
+
+    let target = get(pool, user_id, chunk_id).await?;
+    let connections = connection::connections_for_chunk(pool, chunk_id, user_id).await?;
+    let mut excluded = HashSet::from([chunk_id.to_owned()]);
+    for connection in connections {
+        excluded.insert(connection.source_id);
+        excluded.insert(connection.target_id);
+    }
+    let excluded: Vec<String> = excluded.into_iter().collect();
+
+    let tag_matches = suggestion::sharing_tags(pool, chunk_id, user_id, &excluded).await?;
+    let title_matches = suggestion::similar_titles(pool, &target.title, user_id, &excluded).await?;
+
+    let mut seen = HashSet::new();
+    let mut suggestions = Vec::with_capacity(5);
+    for candidate in tag_matches.into_iter().chain(title_matches) {
+        if !seen.insert(candidate.id.clone()) {
+            continue;
+        }
+        let reason = candidate.shared_count.map_or_else(
+            || "similar title".to_owned(),
+            |count| format!("shares {count} tag{}", if count > 1 { "s" } else { "" }),
+        );
+        suggestions.push(ConnectionSuggestion {
+            id: candidate.id,
+            title: candidate.title,
+            chunk_type: candidate.chunk_type,
+            reason,
+        });
+        if suggestions.len() == 5 {
+            break;
+        }
+    }
+    Ok(suggestions)
 }
 
 /// Node derives `reviewStatus` from `origin` rather than accepting it on

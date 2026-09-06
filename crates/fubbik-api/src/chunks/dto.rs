@@ -1,5 +1,14 @@
 use fubbik_db::repo::chunk::{Chunk, Enrichment, Sort};
 
+#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+pub struct ConnectionSuggestion {
+    pub id: String,
+    pub title: String,
+    #[serde(rename = "type")]
+    pub chunk_type: String,
+    pub reason: String,
+}
+
 /// Body of `POST /api/chunks`, matching Node's route schema
 /// (`packages/api/src/chunks/routes.ts` — the 13-field `t.Object` on the
 /// `/chunks` POST).

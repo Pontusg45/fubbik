@@ -33,6 +33,7 @@ pub mod similarity;
 pub mod space;
 pub mod staleness;
 pub mod stats;
+pub mod suggestion;
 pub mod tag;
 pub mod tag_type;
 pub mod template;
