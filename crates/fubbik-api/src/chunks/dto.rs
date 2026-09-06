@@ -9,6 +9,57 @@ pub struct ConnectionSuggestion {
     pub reason: String,
 }
 
+#[derive(Debug, serde::Deserialize, utoipa::IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct FederatedSearchQuery {
+    pub search: Option<String>,
+    #[serde(rename = "type")]
+    pub chunk_type: Option<String>,
+    pub tags: Option<String>,
+    pub limit: Option<String>,
+    pub offset: Option<String>,
+    pub sort: Option<Sort>,
+}
+
+impl FederatedSearchQuery {
+    pub fn into_params(self) -> fubbik_db::repo::chunk::ListParams {
+        let limit = self
+            .limit
+            .and_then(|value| value.parse::<i64>().ok())
+            .filter(|value| *value != 0)
+            .unwrap_or(20)
+            .min(50);
+        fubbik_db::repo::chunk::ListParams {
+            chunk_type: self.chunk_type,
+            search: self.search,
+            tags: self
+                .tags
+                .map(|tags| tags.split(',').map(str::to_owned).collect()),
+            sort: self.sort.unwrap_or(Sort::Updated),
+            limit,
+            offset: self
+                .offset
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(0),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct FederatedChunk {
+    #[serde(flatten)]
+    pub chunk: Chunk,
+    pub codebase_name: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct FederatedSearchResponse {
+    pub chunks: Vec<FederatedChunk>,
+    pub total: i64,
+}
+
 /// Body of `POST /api/chunks`, matching Node's route schema
 /// (`packages/api/src/chunks/routes.ts` — the 13-field `t.Object` on the
 /// `/chunks` POST).

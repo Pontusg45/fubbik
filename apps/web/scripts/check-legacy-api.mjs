@@ -19,8 +19,7 @@ const ALLOWED = new Set([
     "features/import/import-dialog.tsx",
     "features/chunks/use-chunks-data.ts",
     "features/chunks/lazy-group-list.tsx",
-    "features/chunks/ai-section.tsx",
-    "features/command-palette/use-command-search.ts"
+    "features/chunks/ai-section.tsx"
 ]);
 
 const USES_LEGACY = /\bimport\b[^;\n]*\blegacyApi\b|\blegacyApi\s*\./;

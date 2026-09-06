@@ -183,6 +183,35 @@ pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<Space>> {
     Ok(rows)
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct ChunkSpaceName {
+    pub chunk_id: String,
+    pub space_name: Option<String>,
+}
+
+/// Resolves the alphabetically first space name for each chunk, which is the
+/// compact cross-space label used by federated search.
+pub async fn names_for_chunks(
+    pool: &PgPool,
+    chunk_ids: &[String],
+) -> AppResult<Vec<ChunkSpaceName>> {
+    if chunk_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let rows = sqlx::query_as!(
+        ChunkSpaceName,
+        r#"SELECT ids.id AS "chunk_id!", MIN(s.name) AS space_name
+           FROM unnest($1::text[]) AS ids(id)
+           LEFT JOIN chunk_space cs ON cs.chunk_id = ids.id
+           LEFT JOIN space s ON s.id = cs.space_id
+           GROUP BY ids.id"#,
+        chunk_ids
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
+}
+
 /// `remote_url` must already be normalized by the caller (see
 /// `spaces::normalize_url::normalize_git_url`) — this does an exact-match
 /// join against `space_code_metadata.remote_url` as stored, matching Node's

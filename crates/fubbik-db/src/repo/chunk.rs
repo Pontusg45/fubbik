@@ -669,6 +669,7 @@ async fn list_with_limit(
     user_id: &str,
     params: &ListParams,
     limit: i64,
+    order_search_by_similarity: bool,
 ) -> AppResult<Vec<Chunk>> {
     let mut qb = sqlx::QueryBuilder::new(
         "SELECT id, title, content, type AS chunk_type, user_id, summary, \
@@ -689,12 +690,18 @@ async fn list_with_limit(
     // serving page 2 of the same `LIMIT`/`OFFSET` walk, silently skipping
     // or duplicating rows across pages. `id` is the primary key, so it is
     // always unique and always present, making the final order total.
-    qb.push(match params.sort {
-        Sort::Newest => " ORDER BY created_at DESC, id ASC",
-        Sort::Oldest => " ORDER BY created_at ASC, id ASC",
-        Sort::Alpha => " ORDER BY title ASC, id ASC",
-        Sort::Updated => " ORDER BY updated_at DESC, id ASC",
-    });
+    if order_search_by_similarity && let Some(search) = &params.search {
+        qb.push(" ORDER BY similarity(title, ")
+            .push_bind(search)
+            .push(") DESC, id ASC");
+    } else {
+        qb.push(match params.sort {
+            Sort::Newest => " ORDER BY created_at DESC, id ASC",
+            Sort::Oldest => " ORDER BY created_at ASC, id ASC",
+            Sort::Alpha => " ORDER BY title ASC, id ASC",
+            Sort::Updated => " ORDER BY updated_at DESC, id ASC",
+        });
+    }
 
     qb.push(" LIMIT ").push_bind(limit);
     qb.push(" OFFSET ").push_bind(params.offset.max(0));
@@ -730,7 +737,18 @@ async fn list_with_limit(
 /// more rows; its doc comment ties it deliberately to the two HTTP routes
 /// above, both of which have their own passing tests pinned to exactly 100.
 pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResult<Vec<Chunk>> {
-    list_with_limit(pool, user_id, params, params.limit.clamp(1, 100)).await
+    list_with_limit(pool, user_id, params, params.limit.clamp(1, 100), false).await
+}
+
+/// Lists the bounded cross-space search view. Unlike the ordinary chunk list,
+/// an active text filter orders by trigram title similarity, matching the
+/// legacy federated endpoint.
+pub async fn list_federated(
+    pool: &PgPool,
+    user_id: &str,
+    params: &ListParams,
+) -> AppResult<Vec<Chunk>> {
+    list_with_limit(pool, user_id, params, params.limit.clamp(1, 50), true).await
 }
 
 /// The same query as [`list`] — same filters, same ordering — but for
@@ -758,7 +776,7 @@ pub async fn list_internal(
     params: &ListParams,
     limit: i64,
 ) -> AppResult<Vec<Chunk>> {
-    list_with_limit(pool, user_id, params, limit.max(1)).await
+    list_with_limit(pool, user_id, params, limit.max(1), false).await
 }
 
 /// Counts the rows [`list`] would return for the same filters, WITHOUT

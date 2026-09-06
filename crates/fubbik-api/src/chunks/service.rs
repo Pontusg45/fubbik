@@ -3,7 +3,10 @@ use fubbik_db::repo::chunk::{self, Chunk, ChunkPatch, ListParams, NewChunk};
 use sqlx::PgPool;
 use std::collections::HashSet;
 
-use super::dto::{ChunkListResponse, ConnectionSuggestion, CreateChunkBody, UpdateChunkBody};
+use super::dto::{
+    ChunkListResponse, ConnectionSuggestion, CreateChunkBody, FederatedChunk,
+    FederatedSearchResponse, UpdateChunkBody,
+};
 
 pub async fn list(
     pool: &PgPool,
@@ -60,6 +63,31 @@ pub async fn connection_suggestions(
         }
     }
     Ok(suggestions)
+}
+
+pub async fn federated_search(
+    pool: &PgPool,
+    user_id: &str,
+    params: ListParams,
+) -> AppResult<FederatedSearchResponse> {
+    use fubbik_db::repo::space;
+
+    let chunks = chunk::list_federated(pool, user_id, &params).await?;
+    let total = chunk::count(pool, user_id, &params).await?;
+    let ids: Vec<String> = chunks.iter().map(|chunk| chunk.id.clone()).collect();
+    let names = space::names_for_chunks(pool, &ids).await?;
+    let names: std::collections::HashMap<String, Option<String>> = names
+        .into_iter()
+        .map(|row| (row.chunk_id, row.space_name))
+        .collect();
+    let chunks = chunks
+        .into_iter()
+        .map(|chunk| FederatedChunk {
+            codebase_name: names.get(&chunk.id).cloned().flatten(),
+            chunk,
+        })
+        .collect();
+    Ok(FederatedSearchResponse { chunks, total })
 }
 
 /// Node derives `reviewStatus` from `origin` rather than accepting it on

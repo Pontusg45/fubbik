@@ -217,6 +217,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/search/federated": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["search_federated"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/search/semantic": {
         parameters: {
             query?: never;
@@ -5257,6 +5273,14 @@ export interface components {
          * @enum {string}
          */
         FeatureStatus: "active" | "inactive" | "archived";
+        FederatedChunk: components["schemas"]["Chunk"] & {
+            codebaseName?: string | null;
+        };
+        FederatedSearchResponse: {
+            chunks: components["schemas"]["FederatedChunk"][];
+            /** Format: int64 */
+            total: number;
+        };
         FieldMapping: {
             headings: string[];
             match: components["schemas"]["MatchMode"];
@@ -8064,6 +8088,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    search_federated: {
+        parameters: {
+            query?: {
+                search?: string | null;
+                type?: string | null;
+                tags?: string | null;
+                limit?: string | null;
+                offset?: string | null;
+                sort?: null | components["schemas"]["Sort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FederatedSearchResponse"];
+                };
             };
         };
     };

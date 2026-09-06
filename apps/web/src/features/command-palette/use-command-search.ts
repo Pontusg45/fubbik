@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import {
@@ -108,9 +108,8 @@ export function useCommandSearch({
         queryFn: async () => {
             if (!debouncedFederatedQuery.trim()) return null;
             try {
-                // No Rust route for `search/federated` yet — stays on legacyApi.
                 return unwrapEden(
-                    await legacyApi.api.chunks.search.federated.get({
+                    await api.api.chunks.search.federated.get({
                         query: { search: debouncedFederatedQuery, limit: "8" }
                     })
                 );

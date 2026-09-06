@@ -10,8 +10,8 @@ use fubbik_db::repo::semantic::SemanticHit;
 
 use super::ai;
 use super::dto::{
-    CheckSimilarBody, ChunkDetail, ChunkListResponse, CreateChunkBody, ListChunksQuery,
-    NeighborsQuery, SemanticSearchQuery, UpdateChunkBody,
+    CheckSimilarBody, ChunkDetail, ChunkListResponse, CreateChunkBody, FederatedSearchQuery,
+    FederatedSearchResponse, ListChunksQuery, NeighborsQuery, SemanticSearchQuery, UpdateChunkBody,
 };
 use super::service;
 use crate::AppState;
@@ -213,6 +213,18 @@ pub async fn search_semantic(
     )
     .await?;
     Ok(Json(hits).into_response())
+}
+
+#[utoipa::path(get, path = "/api/chunks/search/federated", params(FederatedSearchQuery),
+    responses((status = 200, body = FederatedSearchResponse)))]
+pub async fn search_federated(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Query(query): Query<FederatedSearchQuery>,
+) -> ApiResult<Json<FederatedSearchResponse>> {
+    Ok(Json(
+        service::federated_search(&state.pool, &user.id, query.into_params()).await?,
+    ))
 }
 
 /// Probes Ollama and degrades to `[]` when it is down — see
@@ -523,6 +535,7 @@ pub fn router() -> Router<AppState> {
         // regardless, but `archived`, `bulk` and `merge` are one segment
         // deep and the ordering is kept explicit.
         .route("/api/chunks/search/semantic", get(search_semantic))
+        .route("/api/chunks/search/federated", get(search_federated))
         .route("/api/chunks/check-similar", post(check_similar))
         .route("/api/chunks/archived", get(list_archived))
         .route("/api/chunks/bulk-update", post(bulk_update))

@@ -738,6 +738,98 @@
         }
       }
     },
+    "/api/chunks/search/federated": {
+      "get": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "search_federated",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/Sort"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FederatedSearchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chunks/search/semantic": {
       "get": {
         "tags": [
@@ -14687,6 +14779,43 @@
           "inactive",
           "archived"
         ]
+      },
+      "FederatedChunk": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Chunk"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "codebaseName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "FederatedSearchResponse": {
+        "type": "object",
+        "required": [
+          "chunks",
+          "total"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FederatedChunk"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "FieldMapping": {
         "type": "object",
