@@ -54,6 +54,7 @@ import * as tagsModule from "./modules/tags";
 import * as useCasesModule from "./modules/use-cases";
 import * as vocabularyModule from "./modules/vocabulary";
 import * as workspacesModule from "./modules/workspaces";
+import { planModules, type SeedModuleDescriptor } from "./planner";
 import { verifySeed } from "./verify";
 
 config({ path: resolve(import.meta.dirname, "../../../../apps/server/.env") });
@@ -73,10 +74,7 @@ const DEV_USER_ID = "dev-user";
  *   - `seed(ctx)`: do the inserts
  *   - `reset(ctx)` (optional): per-module cleanup, called when --reset includes this module
  */
-interface ModuleEntry {
-    name: string;
-    deps: string[];
-    scenarios: ScenarioName[];
+interface ModuleEntry extends SeedModuleDescriptor {
     seed: (ctx: SeedContext) => Promise<void>;
     reset?: (ctx: SeedContext) => Promise<void>;
 }
@@ -139,29 +137,9 @@ function parseFlags(argv: string[]): CliFlags {
 }
 
 function selectedModules(flags: CliFlags): ModuleEntry[] {
-    let mods = MODULE_REGISTRY.filter(m => m.scenarios.includes(flags.scenario));
-    if (flags.only) {
-        const only = flags.only;
-        mods = mods.filter(m => only.has(m.name));
-    }
-    if (flags.skip) {
-        const skip = flags.skip;
-        mods = mods.filter(m => !skip.has(m.name));
-    }
-
-    // Validate dep ordering: every dep must either be in the selected set or
-    // already in the DB from a previous run. We don't topo-sort here because
-    // MODULE_REGISTRY is already in dependency order.
-    const selected = new Set(mods.map(m => m.name));
-    for (const m of mods) {
-        for (const dep of m.deps) {
-            if (!selected.has(dep) && flags.resetPolicy !== "none") {
-                // dep may or may not be in the DB — warn, not fail. The module
-                // itself will fail loudly if its reads come back empty.
-            }
-        }
-    }
-    return mods;
+    const names = planModules(MODULE_REGISTRY, flags);
+    const byName = new Map(MODULE_REGISTRY.map(module => [module.name, module]));
+    return names.map(name => byName.get(name)!);
 }
 
 // ---------------------------------------------------------------------------

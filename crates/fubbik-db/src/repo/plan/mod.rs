@@ -42,7 +42,7 @@ pub use task::{
     add_task_chunk, add_task_dependency, add_task_link, create_task, delete_task, find_task_by_id,
     list_task_chunks_with_titles, list_task_dependencies, list_task_links, list_tasks,
     mark_task_done_and_unblock, remove_task_chunk, remove_task_dependency, remove_task_link,
-    reorder_tasks, update_task,
+    reorder_tasks, transition_task_in_tx, update_task,
 };
 
 use std::collections::HashMap;

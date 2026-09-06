@@ -32,8 +32,8 @@
 //! in this file; the trigger lives entirely in the test.
 
 use fubbik_core::error::AppResult;
-use sqlx::PgPool;
 use sqlx::types::Json;
+use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::timestamp::UtcTimestamp;
 
@@ -535,34 +535,55 @@ pub async fn remove_task_dependency(
     Ok(res.rows_affected() > 0)
 }
 
-/// The reason this whole file exists as a reviewable unit — divergence #12.
-/// Sets `status = 'done'` on the caller's own task, then, in the **same**
-/// transaction, flips any task that depends on it (`plan_task_dependency.
-/// depends_on_task_id = task_id`) from `'blocked'` to `'pending'`, leaving
-/// dependents in `pending`/`in_progress`/`done`/`skipped` untouched.
-/// Matches the combined semantics of Node's `updateTask(taskId, {status:
-/// "done"})` + `unblockDependentsOf(taskId)` (`tasks.ts:113-122`,
-/// `plan.ts:536-551`), except atomically: a failure between the two
-/// `UPDATE`s here rolls back the whole transaction, so a task can never end
-/// up `done` with a dependent stuck `blocked` — the exact failure mode
-/// Node has no protection against.
+/// The single persistence implementation for plan-task status transitions.
+/// Callers supply the surrounding transaction so task updates can remain
+/// atomic with their own journal or activity writes. A `done` transition
+/// also moves directly dependent `blocked` tasks to `pending`; other status
+/// changes leave dependents untouched.
 ///
-/// Returns the ids of tasks actually flipped `pending`. Returns an empty
-/// vec both when the task isn't the caller's own (the first `UPDATE`'s
-/// `RETURNING` guard matches no row, so the transaction rolls back without
-/// touching anything) and when the task legitimately has no `blocked`
-/// dependents — callers that need to distinguish "not found" from "nothing
-/// to unblock" must already know the task exists (e.g. via a preceding
-/// `update_task`/`find_task_by_id` call), same shape the service layer
-/// uses.
-///
-/// Atomicity is exercised by `tests/plan.rs::
-/// mark_task_done_and_unblock_rolls_back_when_the_unblock_step_fails`,
-/// which calls this function itself (not an internal step) and forces the
-/// second `UPDATE` below to fail via a disposable Postgres trigger the test
-/// installs on its own `#[sqlx::test]` database, then confirms the task is
-/// still not `done` after the rollback. Cross-user guard proven in
-/// `tests/plan.rs::cannot_mark_another_users_task_done`.
+/// Returns `None` when the task is not owned by `user_id`; otherwise returns
+/// the ids of dependents actually unblocked.
+pub async fn transition_task_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    user_id: &str,
+    plan_id: &str,
+    task_id: &str,
+    status: &str,
+) -> AppResult<Option<Vec<String>>> {
+    let updated = sqlx::query_scalar!(
+        r#"UPDATE plan_task SET status = $4, updated_at = now()
+           WHERE id = $1 AND plan_id = $2
+             AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $2 AND p.user_id = $3)
+           RETURNING id"#,
+        task_id,
+        plan_id,
+        user_id,
+        status
+    )
+    .fetch_optional(&mut **tx)
+    .await?;
+    if updated.is_none() {
+        return Ok(None);
+    }
+
+    let unblocked = if status == "done" {
+        sqlx::query_scalar!(
+            r#"UPDATE plan_task SET status = 'pending', updated_at = now()
+               WHERE plan_id = $2 AND status = 'blocked'
+                 AND id IN (SELECT task_id FROM plan_task_dependency WHERE depends_on_task_id = $1)
+               RETURNING id"#,
+            task_id,
+            plan_id
+        )
+        .fetch_all(&mut **tx)
+        .await?
+    } else {
+        vec![]
+    };
+
+    Ok(Some(unblocked))
+}
+
 pub async fn mark_task_done_and_unblock(
     pool: &PgPool,
     user_id: &str,
@@ -571,32 +592,11 @@ pub async fn mark_task_done_and_unblock(
 ) -> AppResult<Vec<String>> {
     let mut tx = pool.begin().await?;
 
-    let updated = sqlx::query_scalar!(
-        r#"UPDATE plan_task SET status = 'done', updated_at = now()
-           WHERE id = $1 AND plan_id = $2
-             AND EXISTS (SELECT 1 FROM plan p WHERE p.id = $2 AND p.user_id = $3)
-           RETURNING id"#,
-        task_id,
-        plan_id,
-        user_id
-    )
-    .fetch_optional(&mut *tx)
-    .await?;
-    if updated.is_none() {
+    let Some(unblocked) = transition_task_in_tx(&mut tx, user_id, plan_id, task_id, "done").await?
+    else {
         tx.rollback().await?;
         return Ok(vec![]);
-    }
-
-    let unblocked = sqlx::query_scalar!(
-        r#"UPDATE plan_task SET status = 'pending', updated_at = now()
-           WHERE plan_id = $2 AND status = 'blocked'
-             AND id IN (SELECT task_id FROM plan_task_dependency WHERE depends_on_task_id = $1)
-           RETURNING id"#,
-        task_id,
-        plan_id
-    )
-    .fetch_all(&mut *tx)
-    .await?;
+    };
 
     tx.commit().await?;
     Ok(unblocked)

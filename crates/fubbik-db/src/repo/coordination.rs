@@ -659,20 +659,9 @@ pub async fn transition_claimed_task(
         ));
     }
 
-    sqlx::query("UPDATE plan_task SET status=$1, updated_at=now() WHERE id=$2 AND plan_id=$3")
-        .bind(status)
-        .bind(task_id)
-        .bind(plan_id)
-        .execute(&mut *tx)
-        .await?;
-    if status == "done" {
-        sqlx::query(
-            "UPDATE plan_task SET status='pending', updated_at=now() WHERE status='blocked' AND id IN (SELECT task_id FROM plan_task_dependency WHERE depends_on_task_id=$1)",
-        )
-        .bind(task_id)
-        .execute(&mut *tx)
-        .await?;
-    }
+    crate::repo::plan::transition_task_in_tx(&mut tx, user_id, plan_id, task_id, status)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Plan task".into()))?;
     let entry_id = crate::new_id();
     let insert = format!(
         "INSERT INTO coordination_entry (id,plan_id,task_id,author_run_id,kind,body,metadata,client_mutation_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING {ENTRY_COLUMNS}"

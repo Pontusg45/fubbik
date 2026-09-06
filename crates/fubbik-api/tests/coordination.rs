@@ -1,71 +1,36 @@
-use axum::body::Body;
-use axum::http::{Request, StatusCode};
-use http_body_util::BodyExt;
-use tower::ServiceExt;
+mod common;
 
-fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
-    fubbik_api::AppState {
-        pool,
-        implicit_dev_session: false,
-        better_auth_secret: "test-secret".into(),
-        ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
-        rate_limiter: Default::default(),
-    }
-}
+use axum::http::{Method, StatusCode};
+use common::{TestApp, TestUser};
 
-async fn signup(app: axum::Router, email: &str) -> String {
-    let res = app
-        .oneshot(
-            Request::post("/api/auth/sign-up/email")
-                .header("content-type", "application/json")
-                .body(Body::from(format!(
-                    r#"{{"email":"{email}","password":"hunter22","name":"Agent"}}"#
-                )))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    res.headers()["set-cookie"]
-        .to_str()
-        .unwrap()
-        .split(';')
-        .next()
-        .unwrap()
-        .to_string()
+async fn signup(app: TestApp, email: &str) -> TestUser {
+    app.signup(email, "Agent").await
 }
 
 async fn send(
-    app: axum::Router,
-    cookie: &str,
+    app: TestApp,
+    user: &TestUser,
     method: &str,
     path: &str,
     body: Option<serde_json::Value>,
 ) -> axum::response::Response {
-    let mut request = Request::builder()
-        .method(method)
-        .uri(path)
-        .header("cookie", cookie);
-    if body.is_some() {
-        request = request.header("content-type", "application/json");
-    }
-    app.oneshot(
-        request
-            .body(body.map_or_else(Body::empty, |v| Body::from(v.to_string())))
-            .unwrap(),
+    app.request(
+        Some(user),
+        method.parse::<Method>().expect("test method must be valid"),
+        path,
+        body,
     )
     .await
-    .unwrap()
 }
 
 async fn json(response: axum::response::Response) -> serde_json::Value {
-    serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap()
+    TestApp::json(response).await
 }
 
-async fn create_plan(app: axum::Router, cookie: &str) -> (String, String) {
+async fn create_plan(app: TestApp, user: &TestUser) -> (String, String) {
     let response = send(
         app.clone(),
-        cookie,
+        user,
         "POST",
         "/api/plans",
         Some(serde_json::json!({ "title": "Coordinate", "tasks": [{ "title": "Research" }] })),
@@ -73,20 +38,15 @@ async fn create_plan(app: axum::Router, cookie: &str) -> (String, String) {
     .await;
     assert_eq!(response.status(), StatusCode::OK);
     let plan_id = json(response).await["id"].as_str().unwrap().to_string();
-    let detail = json(send(app, cookie, "GET", &format!("/api/plans/{plan_id}"), None).await).await;
+    let detail = json(send(app, user, "GET", &format!("/api/plans/{plan_id}"), None).await).await;
     let task_id = detail["tasks"][0]["id"].as_str().unwrap().to_string();
     (plan_id, task_id)
 }
 
-async fn join_run(
-    app: axum::Router,
-    cookie: &str,
-    plan_id: &str,
-    handle: &str,
-) -> serde_json::Value {
+async fn join_run(app: TestApp, user: &TestUser, plan_id: &str, handle: &str) -> serde_json::Value {
     let response = send(
         app,
-        cookie,
+        user,
         "POST",
         &format!("/api/plans/{plan_id}/board/runs"),
         Some(serde_json::json!({
@@ -100,14 +60,14 @@ async fn join_run(
 }
 
 async fn write_entry(
-    app: axum::Router,
-    cookie: &str,
+    app: TestApp,
+    user: &TestUser,
     plan_id: &str,
     body: serde_json::Value,
 ) -> serde_json::Value {
     let response = send(
         app,
-        cookie,
+        user,
         "POST",
         &format!("/api/plans/{plan_id}/board/entries"),
         Some(body),
@@ -119,7 +79,7 @@ async fn write_entry(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn agent_can_join_claim_complete_and_reconnect(pool: sqlx::PgPool) {
-    let app = fubbik_api::router(state(pool));
+    let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "workflow@coord.test").await;
     let (plan_id, task_id) = create_plan(app.clone(), &cookie).await;
     let join_body = serde_json::json!({ "handle": "worker", "externalKey": "thread/worker" });
@@ -192,7 +152,7 @@ async fn agent_can_join_claim_complete_and_reconnect(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn board_is_user_scoped_and_claim_conflicts_are_409(pool: sqlx::PgPool) {
-    let app = fubbik_api::router(state(pool));
+    let app = TestApp::new(pool);
     let alice = signup(app.clone(), "alice@coord.test").await;
     let bob = signup(app.clone(), "bob@coord.test").await;
     let (plan_id, task_id) = create_plan(app.clone(), &alice).await;
@@ -251,7 +211,7 @@ async fn board_is_user_scoped_and_claim_conflicts_are_409(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn direct_messages_pagination_and_acknowledgement_work_over_http(pool: sqlx::PgPool) {
-    let app = fubbik_api::router(state(pool));
+    let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "messages@coord.test").await;
     let (plan_id, _) = create_plan(app.clone(), &cookie).await;
     let root = join_run(app.clone(), &cookie, &plan_id, "root").await;
@@ -378,7 +338,7 @@ async fn direct_messages_pagination_and_acknowledgement_work_over_http(pool: sql
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn journal_writes_are_idempotent_and_reject_mutation_key_reuse(pool: sqlx::PgPool) {
-    let app = fubbik_api::router(state(pool));
+    let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "idempotency@coord.test").await;
     let (plan_id, task_id) = create_plan(app.clone(), &cookie).await;
     let worker = join_run(app.clone(), &cookie, &plan_id, "worker").await;
@@ -428,7 +388,7 @@ async fn journal_writes_are_idempotent_and_reject_mutation_key_reuse(pool: sqlx:
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn only_the_claim_holder_can_renew_release_or_transition_a_task(pool: sqlx::PgPool) {
-    let app = fubbik_api::router(state(pool));
+    let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "leases@coord.test").await;
     let (plan_id, task_id) = create_plan(app.clone(), &cookie).await;
     let holder = join_run(app.clone(), &cookie, &plan_id, "holder").await;
@@ -510,7 +470,7 @@ async fn only_the_claim_holder_can_renew_release_or_transition_a_task(pool: sqlx
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn reconnect_identity_and_parent_links_are_plan_scoped(pool: sqlx::PgPool) {
-    let app = fubbik_api::router(state(pool));
+    let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "identity@coord.test").await;
     let (first_plan, _) = create_plan(app.clone(), &cookie).await;
     let (second_plan, _) = create_plan(app.clone(), &cookie).await;
@@ -573,7 +533,7 @@ async fn reconnect_identity_and_parent_links_are_plan_scoped(pool: sqlx::PgPool)
 async fn completing_a_claimed_prerequisite_unblocks_dependents_and_retries_safely(
     pool: sqlx::PgPool,
 ) {
-    let app = fubbik_api::router(state(pool));
+    let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "dependencies@coord.test").await;
     let (plan_id, prerequisite_id) = create_plan(app.clone(), &cookie).await;
     let dependent_response = send(
@@ -677,7 +637,7 @@ async fn completing_a_claimed_prerequisite_unblocks_dependents_and_retries_safel
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn every_coordination_endpoint_requires_a_session(pool: sqlx::PgPool) {
-    let app = fubbik_api::router(state(pool));
+    let app = TestApp::new(pool);
     let requests = [
         ("GET", "/api/plans/plan/board", None),
         (
@@ -717,7 +677,14 @@ async fn every_coordination_endpoint_requires_a_session(pool: sqlx::PgPool) {
     ];
 
     for (method, path, body) in requests {
-        let response = send(app.clone(), "", method, path, body).await;
+        let response = app
+            .request(
+                None,
+                method.parse::<Method>().expect("test method must be valid"),
+                path,
+                body,
+            )
+            .await;
         assert_eq!(
             response.status(),
             StatusCode::UNAUTHORIZED,
