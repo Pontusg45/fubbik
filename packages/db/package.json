@@ -23,6 +23,7 @@
         "db:generate": "drizzle-kit generate",
         "db:studio": "drizzle-kit studio",
         "db:migrate": "drizzle-kit migrate",
+        "schema:verify": "bun run scripts/verify-schema.ts",
         "db:start": "docker compose -f ../../docker-compose.yml up db -d",
         "db:watch": "docker compose -f ../../docker-compose.yml up db",
         "db:stop": "docker compose -f ../../docker-compose.yml stop db",
