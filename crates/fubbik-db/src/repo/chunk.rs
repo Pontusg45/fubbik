@@ -216,6 +216,37 @@ pub async fn find_by_id(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Opt
     Ok(c)
 }
 
+/// Bulk ownership-scoped lookup preserving the caller's id order.
+pub async fn find_by_ids(pool: &PgPool, user_id: &str, ids: &[String]) -> AppResult<Vec<Chunk>> {
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let chunks = sqlx::query_as!(
+        Chunk,
+        r#"SELECT id, title, content, type AS chunk_type, user_id, summary,
+                  aliases AS "aliases: Json<Vec<String>>",
+                  not_about AS "not_about: Json<Vec<String>>",
+                  scope AS "scope: Json<serde_json::Value>", rationale,
+                  alternatives AS "alternatives: Json<Vec<String>>", consequences,
+                  embedding::text AS "embedding: EmbeddingVec",
+                  embedding_updated_at AS "embedding_updated_at: UtcTimestamp",
+                  origin, review_status, reviewed_by,
+                  reviewed_at AS "reviewed_at: UtcTimestamp",
+                  created_at AS "created_at: UtcTimestamp",
+                  updated_at AS "updated_at: UtcTimestamp",
+                  archived_at AS "archived_at: UtcTimestamp",
+                  document_id, document_order, is_entry_point
+           FROM chunk
+           WHERE id = ANY($1) AND user_id = $2
+           ORDER BY array_position($1, id)"#,
+        ids,
+        user_id
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(chunks)
+}
+
 /// Applies only the fields present in the patch. COALESCE keeps unset
 /// columns untouched, so a partial PATCH cannot silently clear data.
 pub async fn update(

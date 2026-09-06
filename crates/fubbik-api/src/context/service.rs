@@ -11,7 +11,7 @@
 //! documented convention for the same reason: "one chunk failing must not
 //! abort the batch."
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use fubbik_core::error::AppResult;
 use fubbik_core::format::ChunkWithMetadata;
@@ -53,27 +53,35 @@ pub async fn enrich_chunks(
             .collect()
     };
 
-    let mut out: Vec<ChunkWithMetadata> = Vec::with_capacity(unique.len());
+    let rows = chunk::find_by_ids(pool, user_id, &unique)
+        .await
+        .unwrap_or_default();
+    let row_ids = rows.iter().map(|row| row.id.clone()).collect::<Vec<_>>();
+    let connection_counts = connection::count_for_chunks(pool, &row_ids)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|row| (row.chunk_id, row.count))
+        .collect::<HashMap<_, _>>();
+    let mut tags_by_chunk = HashMap::<String, Vec<String>>::new();
+    for row in tag::tags_for_chunks(pool, user_id, &row_ids)
+        .await
+        .unwrap_or_default()
+    {
+        tags_by_chunk
+            .entry(row.chunk_id)
+            .or_default()
+            .push(row.tag_name);
+    }
 
-    for id in &unique {
-        let Ok(Some(row)) = chunk::find_by_id(pool, user_id, id).await else {
-            continue;
-        };
-
-        let connection_count = connection::connections_for_chunk(pool, id, user_id)
-            .await
-            .map(|c| c.len() as i64)
-            .unwrap_or(0);
-        let tags: Vec<String> = tag::tags_for_chunk(pool, user_id, id)
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .map(|t| t.name)
-            .collect();
-        let is_stale = staleness::chunk_is_stale(pool, user_id, id)
+    let mut out: Vec<ChunkWithMetadata> = Vec::with_capacity(rows.len());
+    for row in rows {
+        let connection_count = connection_counts.get(&row.id).copied().unwrap_or(0);
+        let tags = tags_by_chunk.remove(&row.id).unwrap_or_default();
+        let is_stale = staleness::chunk_is_stale(pool, user_id, &row.id)
             .await
             .unwrap_or(false);
-        let has_pending_proposal = proposal::list_for_chunk(pool, id, Some("pending"))
+        let has_pending_proposal = proposal::list_for_chunk(pool, &row.id, Some("pending"))
             .await
             .map(|p| !p.is_empty())
             .unwrap_or(false);
