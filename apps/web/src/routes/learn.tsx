@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/learn")({
@@ -12,8 +12,7 @@ export const Route = createFileRoute("/learn")({
 function LearnPage() {
     const { data } = useQuery({
         queryKey: ["learning-paths"],
-        // learning-paths is a Node-only domain (no Rust route) — must stay on legacyApi.
-        queryFn: async () => unwrapEden(await legacyApi.api["learning-paths"].get())
+        queryFn: async () => unwrapEden(await api.api["learning-paths"].get())
     });
 
     const paths = ((data as any) ?? []) as Array<{

@@ -35,6 +35,8 @@ catalogs:
       version: 3.2.4
 
 overrides:
+  '@prisma/client': npm:empty-npm-package@1.0.0
+  prisma: npm:empty-npm-package@1.0.0
   hono: '>=4.12.4'
   '@hono/node-server': '>=1.19.10'
   kysely: '>=0.28.14'

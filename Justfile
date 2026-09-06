@@ -1,0 +1,134 @@
+set shell := ["zsh", "-cu"]
+
+# List available recipes.
+default:
+    @just --list
+
+# Install workspace dependencies.
+install:
+    pnpm install
+
+# Free dev ports, then start web (3001), Rust API (3000), and the temporary
+# Node legacy API (3002) used only for routes not yet ported to Rust.
+dev:
+    @just kill-dev
+    @just _dev-services
+
+[parallel]
+_dev-services: dev-web dev-rust dev-legacy
+
+# Stop processes on the default dev ports.
+kill-dev:
+    -lsof -ti :3000 | xargs kill -9 2>/dev/null || true
+    -lsof -ti :3001 | xargs kill -9 2>/dev/null || true
+    -lsof -ti :3002 | xargs kill -9 2>/dev/null || true
+
+# Start only the Rust API server (replaces the Node/Bun server).
+dev-server: dev-rust
+
+dev-rust:
+    #!/usr/bin/env zsh
+    set -euo pipefail
+    set -a
+    source apps/server/.env
+    set +a
+    exec cargo run -p fubbik -- serve --port 3000
+
+dev-legacy:
+    #!/usr/bin/env zsh
+    set -euo pipefail
+    set -a
+    source apps/server/.env
+    set +a
+    export PORT=3002
+    exec bun --cwd apps/server run dev
+
+# Start only the web application (waits for the API health check first).
+dev-web:
+    #!/usr/bin/env zsh
+    set -euo pipefail
+    echo "Waiting for API at http://127.0.0.1:3000/api/health ..."
+    for i in {1..120}; do
+      if curl -sf http://127.0.0.1:3000/api/health >/dev/null && curl -sf http://127.0.0.1:3002/api/health >/dev/null; then
+        echo "APIs ready."
+        break
+      fi
+      if (( i == 120 )); then
+        echo "API did not become ready in time." >&2
+        exit 1
+      fi
+      sleep 0.5
+    done
+    exec pnpm run dev:web
+
+# Build all applications and packages.
+build:
+    pnpm run build
+
+# Type-check all applications and packages.
+check-types:
+    pnpm run check-types
+
+# Run the test suite.
+test:
+    pnpm run test
+
+# Lint the workspace.
+lint:
+    pnpm run lint
+
+# Format the workspace.
+format:
+    pnpm run fmt
+
+# Check workspace formatting.
+format-check:
+    pnpm run fmt:check
+
+# Run the full CI pipeline locally.
+ci:
+    pnpm run ci
+
+# Start the development database.
+db-start:
+    pnpm run db:start
+
+# Stop the development database.
+db-stop:
+    pnpm run db:stop
+
+# Stop and remove the development database containers.
+db-down:
+    pnpm run db:down
+
+# Push the current schema to the database.
+db-push:
+    pnpm run db:push
+
+# Generate a database migration.
+db-generate:
+    pnpm run db:generate
+
+# Apply pending database migrations.
+db-migrate:
+    pnpm run db:migrate
+
+# Open Drizzle Studio.
+db-studio:
+    pnpm run db:studio
+
+# Seed the database.
+seed:
+    pnpm run seed
+
+# Start the self-hosted Docker stack.
+docker-up:
+    pnpm run docker:up
+
+# Stop the self-hosted Docker stack.
+docker-down:
+    pnpm run docker:down
+
+# Follow logs from the self-hosted Docker stack.
+docker-logs:
+    pnpm run docker:logs

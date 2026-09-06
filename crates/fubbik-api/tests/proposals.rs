@@ -629,16 +629,9 @@ async fn cross_user_reject_is_404_and_leaves_the_proposal_pending(pool: sqlx::Pg
     );
 }
 
-/// Bulk actions are sequential and fail-fast: the second entry references a
-/// nonexistent proposal, so the whole request 404s — but the first entry's
-/// write (approving `p1`, which mutates both the chunk and the proposal
-/// row) has already committed and is NOT rolled back. Matches Node's
-/// `Effect.forEach(..., { concurrency: 1 })`, which has no transaction
-/// around the loop.
+/// A later invalid action rolls the entire batch back.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
-async fn bulk_action_is_sequential_and_fail_fast_without_rolling_back_earlier_writes(
-    pool: sqlx::PgPool,
-) {
+async fn bulk_action_is_atomic_and_rolls_back_earlier_writes(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-bulk@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Original").await;
@@ -665,11 +658,12 @@ async fn bulk_action_is_sequential_and_fail_fast_without_rolling_back_earlier_wr
         .unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    // p1's approval already committed despite the overall request failing.
+    // Neither the chunk nor p1 changed despite the first action succeeding
+    // before the invalid second action was encountered.
     let chunk = get_chunk(app.clone(), &cookie, &chunk_id).await;
-    assert_eq!(chunk["title"], "Approved via bulk");
+    assert_eq!(chunk["title"], "Original");
     let proposal = json_body(get_proposal(app, &cookie, &p1).await).await;
-    assert_eq!(proposal["status"], "approved");
+    assert_eq!(proposal["status"], "pending");
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]

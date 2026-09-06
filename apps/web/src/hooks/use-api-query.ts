@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 
+import { ApiError } from "@/lib/api-errors";
 import { unwrapEden } from "@/utils/eden";
 
 type QueryKey = readonly unknown[];
@@ -22,13 +23,13 @@ export interface UseApiQueryOptions<TData> extends Omit<UseQueryOptions<TData, E
      */
     queryFn: EdenThunk;
     /**
-     * Fallback value returned if the fetch throws. When set, errors are
-     * swallowed — the query resolves with `fallback` instead of going into
-     * error state. Useful for list pages where an empty array is the
-     * natural "no data" fallback. Omit to let react-query surface errors
-     * the normal way.
+     * Fallback returned only when the HTTP status is explicitly listed in
+     * `fallbackStatuses`. Transport, 5xx, and response-contract failures are
+     * always surfaced through React Query's error state.
      */
     fallback?: TData;
+    /** HTTP statuses for which `fallback` represents an expected absence. */
+    fallbackStatuses?: readonly number[];
 }
 
 /**
@@ -39,17 +40,18 @@ export interface UseApiQueryOptions<TData> extends Omit<UseQueryOptions<TData, E
  *
  * Sane defaults:
  *   - staleTime 60_000 ms (can be overridden)
- *   - swallow errors → fallback when `fallback` is provided
+ *   - expected status → fallback only when explicitly configured
  *
  * Example:
  *   const q = useApiQuery({
  *     queryKey: ["tags"],
  *     queryFn: () => api.api.tags.get(),
  *     fallback: [],
+ *     fallbackStatuses: [404],
  *   });
  */
 export function useApiQuery<TData>(options: UseApiQueryOptions<TData> & { queryKey: QueryKey }) {
-    const { queryFn, fallback, staleTime, ...rest } = options;
+    const { queryFn, fallback, fallbackStatuses = [], staleTime, ...rest } = options;
     return useQuery<TData, Error, TData, QueryKey>({
         ...rest,
         staleTime: staleTime ?? 60_000,
@@ -57,7 +59,7 @@ export function useApiQuery<TData>(options: UseApiQueryOptions<TData> & { queryK
             try {
                 return unwrapEden(await queryFn()) as TData;
             } catch (err) {
-                if (fallback !== undefined) return fallback;
+                if (fallback !== undefined && err instanceof ApiError && fallbackStatuses.includes(err.status)) return fallback;
                 throw err;
             }
         }
@@ -71,13 +73,13 @@ export function useApiQuery<TData>(options: UseApiQueryOptions<TData> & { queryK
  * `query.data ?? []` at each call site creates a new array every render,
  * which invalidates memo/effect dependencies even though the list is still
  * empty. This wrapper shares one empty fallback until real data arrives and
- * also uses it when the request fails unless a caller supplies another
- * fallback.
+ * keeps it as render-time data while requests are pending. HTTP and response
+ * contract failures remain visible through React Query's error state.
  */
 export function useApiListQuery<TItem>(options: UseApiQueryOptions<TItem[]> & { queryKey: QueryKey }) {
     const query = useApiQuery<TItem[]>({
         ...options,
-        fallback: options.fallback ?? (EMPTY_API_LIST as TItem[])
+        fallback: options.fallback
     });
 
     return {

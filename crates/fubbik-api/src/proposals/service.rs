@@ -7,8 +7,8 @@
 
 use fubbik_core::error::{AppError, AppResult};
 use fubbik_db::repo::proposal::{
-    self, ApproveChunkChanges, ChunkProposal, ListProposalsFilter, NewProposal, ProposalWithChunk,
-    ProposedChanges,
+    self, ApproveChunkChanges, BulkReviewAction, BulkReviewItem, ChunkProposal,
+    ListProposalsFilter, NewProposal, ProposalWithChunk, ProposedChanges,
 };
 use sqlx::PgPool;
 
@@ -199,31 +199,30 @@ pub async fn reject_proposal(
         .ok_or_else(|| AppError::NotFound("Proposal".into()))
 }
 
-/// Mirrors Node's `bulkAction`
-/// (`packages/api/src/proposals/service.ts:92-99`): sequential, fail-fast —
-/// the first `approve`/`reject` error aborts the whole request, and any
-/// actions already applied before that point stay applied (no transaction
-/// wraps the loop, matching Node's `Effect.forEach(..., { concurrency: 1 })`
-/// semantics, which does not retroactively undo already-completed effects
-/// in the array just because a later one fails).
+/// Reviews the complete batch atomically. The Rust backend deliberately
+/// improves on Node's partial-commit behavior: a failure rolls every action
+/// in this request back.
 pub async fn bulk_action(
     pool: &PgPool,
     reviewer_id: &str,
     body: BulkActionBody,
 ) -> AppResult<Vec<ChunkProposal>> {
-    let mut results = Vec::with_capacity(body.actions.len());
-    for item in body.actions {
-        let result = match item.action {
-            BulkAction::Approve => {
-                approve_proposal(pool, &item.proposal_id, reviewer_id, item.note).await?
-            }
-            BulkAction::Reject => {
-                reject_proposal(pool, &item.proposal_id, reviewer_id, item.note).await?
-            }
-        };
-        results.push(result);
-    }
-    Ok(results)
+    proposal::review_bulk(
+        pool,
+        reviewer_id,
+        body.actions
+            .into_iter()
+            .map(|item| BulkReviewItem {
+                proposal_id: item.proposal_id,
+                action: match item.action {
+                    BulkAction::Approve => BulkReviewAction::Approve,
+                    BulkAction::Reject => BulkReviewAction::Reject,
+                },
+                note: item.note,
+            })
+            .collect(),
+    )
+    .await
 }
 
 /// Global pending count — see `fubbik_db::repo::proposal::count_pending`'s

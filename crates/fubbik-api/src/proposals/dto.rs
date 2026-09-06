@@ -72,13 +72,8 @@ pub struct BulkActionItem {
     pub note: Option<String>,
 }
 
-/// Body of `POST /proposals/bulk`. Processed sequentially and fails fast on
-/// the first error — matching Node's `Effect.forEach(actions, ..., {
-/// concurrency: 1 })` (`packages/api/src/proposals/service.ts:92-99`), which
-/// short-circuits the whole request on the first `approveProposal`/
-/// `rejectProposal` failure. Writes already committed by earlier entries in
-/// the array are **not** rolled back — there is no transaction around the
-/// loop in Node, and none is added here.
+/// Body of `POST /proposals/bulk`. Rust applies the batch in one transaction;
+/// any invalid or unauthorized item rolls every earlier action back.
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 // Distinct OpenAPI name: `requirements::dto::BulkActionBody` is a different

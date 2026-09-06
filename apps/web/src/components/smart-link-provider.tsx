@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "@tanstack/react-router";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 /* ─── Types ─── */
@@ -209,8 +209,7 @@ export function SmartLinkProvider({ children }: { children: ReactNode }) {
         queryKey: ["smart-link-file-refs"],
         queryFn: async () => {
             try {
-                // file-refs (top-level list) is a Node-only domain (no Rust route) — must stay on legacyApi.
-                const result = unwrapEden(await legacyApi.api["file-refs"].get());
+                const result = unwrapEden(await api.api["file-refs"].get());
                 return (result as any[]) ?? [];
             } catch {
                 return [];

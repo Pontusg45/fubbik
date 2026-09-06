@@ -21,12 +21,13 @@
     },
     "type": "module",
     "scripts": {
-        "dev": "turbo run dev",
+        "dev": "just dev",
+        "dev:rust": "just dev-rust",
         "build": "turbo run build",
         "check-types": "turbo run check-types",
         "dev:native": "turbo run dev --filter=native",
         "dev:web": "turbo run dev --filter=web",
-        "dev:server": "turbo run dev --filter=server",
+        "dev:server": "just dev-rust",
         "db:push": "turbo run db:push --filter=@fubbik/db",
         "db:studio": "turbo run db:studio --filter=@fubbik/db",
         "db:generate": "turbo run db:generate --filter=@fubbik/db",
@@ -38,6 +39,8 @@
         "seed": "turbo run seed --filter=@fubbik/db",
         "scan": "turbo run scan --filter=@fubbik/db",
         "test": "turbo run test",
+        "test:e2e": "turbo run test:e2e",
+        "gen:api": "turbo run gen:api --filter=web",
         "lint": "turbo run lint",
         "lint:fix": "oxlint --fix",
         "fmt": "oxfmt --write .",
@@ -55,7 +58,7 @@
         "service:status": "launchctl list com.fubbik.server 2>/dev/null && echo '--- Logs (last 10 lines) ---' && tail -10 ~/.fubbik/logs/server.log || echo 'Not running'",
         "service:logs": "tail -f ~/.fubbik/logs/server.log",
         "service:errors": "tail -f ~/.fubbik/logs/server.err",
-        "docker:build": "docker build -t pontusg45/fubbik-server:latest -f docker/build/server.Dockerfile . && docker build -t pontusg45/fubbik-web:latest --build-arg VITE_SERVER_URL=http://localhost:3000 -f docker/build/web.Dockerfile .",
+        "docker:build": "docker build -t pontusg45/fubbik-server:latest -f docker/build/server.Dockerfile . && docker build -t pontusg45/fubbik-web:latest --build-arg VITE_API_ORIGIN=http://localhost:3000 --build-arg VITE_SERVER_URL=http://localhost:3000 -f docker/build/web.Dockerfile .",
         "docker:build:server": "docker build -t pontusg45/fubbik-server:latest -f docker/build/server.Dockerfile .",
         "docker:build:web": "docker build -t pontusg45/fubbik-web:latest --build-arg VITE_SERVER_URL=http://localhost:3000 -f docker/build/web.Dockerfile .",
         "docker:push": "docker push pontusg45/fubbik-server:latest && docker push pontusg45/fubbik-web:latest",
@@ -80,30 +83,5 @@
         "turbo": "^2.6.3",
         "typescript": "catalog:"
     },
-    "overrides": {
-        "@prisma/client": "npm:empty-npm-package@1.0.0",
-        "prisma": "npm:empty-npm-package@1.0.0"
-    },
-    "packageManager": "pnpm@10.10.0",
-    "pnpm": {
-        "overrides": {
-            "hono": ">=4.12.4",
-            "@hono/node-server": ">=1.19.10",
-            "kysely": ">=0.28.14",
-            "effect": ">=3.20.0",
-            "flatted": ">=3.4.2",
-            "path-to-regexp": ">=8.4.0",
-            "picomatch": ">=4.0.4",
-            "lodash-es": ">=4.18.0",
-            "lodash": ">=4.18.0",
-            "defu": ">=6.1.5",
-            "vite": ">=7.3.2",
-            "@tanstack/react-router": "1.166.3",
-            "@tanstack/react-router-devtools": "1.166.3",
-            "@tanstack/react-router-with-query": "1.130.17",
-            "@tanstack/react-start": "1.166.3",
-            "@tanstack/router-plugin": "1.166.3",
-            "@tanstack/router-generator": "1.166.2"
-        }
-    }
+    "packageManager": "pnpm@10.10.0"
 }

@@ -6,9 +6,11 @@
         "build": "vite build",
         "serve": "vite preview",
         "dev": "vite dev",
+        "check:legacy-api": "node scripts/check-legacy-api.mjs",
         "check-types": "tsgo -b",
-        "lint": "oxlint src",
+        "lint": "oxlint src && pnpm run check:legacy-api",
         "test": "vitest run --passWithNoTests",
+        "test:e2e": "playwright test",
         "gen:api": "openapi-typescript ../../openapi.json -o src/utils/api-types.ts"
     },
     "dependencies": {

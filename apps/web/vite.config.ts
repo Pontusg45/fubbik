@@ -4,6 +4,8 @@ import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
+const API_PROXY_TARGET = process.env.API_PROXY_TARGET ?? "http://127.0.0.1:3000";
+
 export default defineConfig({
     plugins: [
         tsconfigPaths(),
@@ -18,6 +20,9 @@ export default defineConfig({
         }),
         viteReact()
     ],
+    define: {
+        "import.meta.env.SSR_API_ORIGIN": JSON.stringify(API_PROXY_TARGET)
+    },
     server: {
         port: 3001,
         allowedHosts: ["app.fubbik.test"],
@@ -27,6 +32,16 @@ export default defineConfig({
         },
         watch: {
             ignored: ["**/routeTree.gen.ts"]
+        },
+        proxy: {
+            "/api": {
+                target: API_PROXY_TARGET,
+                changeOrigin: true
+            },
+            "/docs": {
+                target: API_PROXY_TARGET,
+                changeOrigin: true
+            }
         }
     }
 });

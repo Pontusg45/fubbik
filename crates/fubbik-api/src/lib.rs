@@ -1,5 +1,6 @@
 pub mod activity;
 pub mod auth;
+pub mod background;
 pub mod chunks;
 pub mod collections;
 pub mod comments;

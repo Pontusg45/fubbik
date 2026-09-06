@@ -107,7 +107,7 @@ pub async fn update_chunk(
         let ai = state.ai.clone();
         let chunk_id = id.clone();
         let user_id = user.id.clone();
-        tokio::spawn(async move {
+        crate::background::spawn(async move {
             if let Err(err) =
                 crate::enrich::service::enrich_chunk(&pool, &ai, &user_id, &chunk_id).await
             {
@@ -118,7 +118,7 @@ pub async fn update_chunk(
         // Second, independent fire-and-forget: Node fires this alongside
         // `enrichChunk` (`chunk-mutations.ts:213-221`), not chained to it —
         // one failing must not stop the other from running, so this is its
-        // own `tokio::spawn`, not folded into the one above.
+        // own supervised task, not folded into the one above.
         //
         // Diverges from Node on which title is passed. Node passes
         // `body.title ?? "Unknown"` — the *request body's* title, which is
@@ -134,7 +134,7 @@ pub async fn update_chunk(
         let chunk_id = id.clone();
         let user_id = user.id.clone();
         let title = updated.title.clone();
-        tokio::spawn(async move {
+        crate::background::spawn(async move {
             // Node's equivalent call is `.catch(() => {})` — fully silent.
             // Logged here instead, same as this branch's other
             // fire-and-forget error paths (e.g. `enrich_all`'s per-item

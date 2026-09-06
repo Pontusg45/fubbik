@@ -20,6 +20,9 @@ const EMBED_MODEL: &str = "nomic-embed-text";
 /// Node's `isOllamaAvailable` uses a 2s `AbortSignal.timeout`
 /// (`ollama/client.ts:20`).
 const AVAILABILITY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
+const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+const GENERATE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+const EMBED_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 #[derive(Debug, Clone)]
 pub struct OllamaClient {
@@ -43,7 +46,10 @@ impl OllamaClient {
             // Trailing slashes would produce `//api/embeddings`, which
             // Ollama 404s on.
             base_url: base_url.into().trim_end_matches('/').to_string(),
-            http: reqwest::Client::new(),
+            http: reqwest::Client::builder()
+                .connect_timeout(CONNECT_TIMEOUT)
+                .build()
+                .expect("reqwest client configuration is valid"),
         }
     }
 
@@ -81,6 +87,7 @@ impl OllamaClient {
                 "format": "json",
                 "stream": false,
             }))
+            .timeout(GENERATE_TIMEOUT)
             .send()
             .await
             .map_err(|e| AiError::Transport(e.to_string()))?;
@@ -107,6 +114,7 @@ impl OllamaClient {
                 "prompt": prompt,
                 "stream": false,
             }))
+            .timeout(GENERATE_TIMEOUT)
             .send()
             .await
             .map_err(|e| AiError::Transport(e.to_string()))?;
@@ -124,6 +132,7 @@ impl OllamaClient {
             .http
             .post(format!("{}/api/embeddings", self.base_url))
             .json(&serde_json::json!({ "model": EMBED_MODEL, "prompt": text }))
+            .timeout(EMBED_TIMEOUT)
             .send()
             .await
             .map_err(|e| AiError::Transport(e.to_string()))?;

@@ -51,7 +51,7 @@ Fubbik is currently a **proof of concept**. APIs, storage formats, and interface
 First, install the dependencies:
 
 ```bash
-bun install
+pnpm install
 ```
 
 ## Database Setup
@@ -64,13 +64,13 @@ This project uses PostgreSQL with Drizzle ORM.
 3. Apply the schema to your database:
 
 ```bash
-bun run db:push
+pnpm run db:push
 ```
 
 Then, run the development server:
 
 ```bash
-bun run dev
+pnpm run dev
 ```
 
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application. The API is running at
@@ -79,13 +79,33 @@ Open [http://localhost:3001](http://localhost:3001) in your browser to see the w
 
 The server port can be configured via the `PORT` environment variable (default: `3000`).
 
+### Self-hosted backups
+
+The Compose stack keeps PostgreSQL data in the `fubbik_data` volume. Create a
+portable backup before upgrades:
+
+```bash
+docker compose -f docker-compose.selfhost.yml exec -T db pg_dump -U fubbik -d fubbik -Fc > fubbik.backup
+```
+
+Verify that the backup can be restored into a disposable database:
+
+```bash
+docker compose -f docker-compose.selfhost.yml exec -T db createdb -U fubbik fubbik_restore_check
+docker compose -f docker-compose.selfhost.yml exec -T db pg_restore -U fubbik -d fubbik_restore_check --clean --if-exists < fubbik.backup
+docker compose -f docker-compose.selfhost.yml exec -T db dropdb -U fubbik fubbik_restore_check
+```
+
+Run the restore check periodically; a backup that has never been restored is
+not yet a verified backup.
+
 ## Project Structure
 
 ```
 fubbik/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Start)
-│   ├── server/      # Backend API (Elysia)
+│   ├── server/      # Temporary Node API for routes still being ported
 │   └── cli/         # CLI application
 ├── packages/
 │   ├── api/         # API layer (Elysia routes, Eden types)
@@ -93,18 +113,20 @@ fubbik/
 │   ├── config/      # Shared TypeScript config
 │   ├── db/          # Database schema (Drizzle ORM)
 │   └── env/         # Environment validation (Arktype + t3-env)
+├── crates/          # Primary Rust API, database, CLI, and core libraries
 ```
 
 ## Available Scripts
 
-- `bun run dev`: Start all applications in development mode
-- `bun run build`: Build all applications
-- `bun run dev:web`: Start only the web application
-- `bun run dev:server`: Start only the server
-- `bun run check-types`: Type-check all packages (uses `tsgo`)
-- `bun run db:push`: Push schema changes to database
-- `bun run db:studio`: Open database studio UI
-- `bun ci`: Run full CI pipeline (type-check, lint, test, build, format check, sherif)
+- `pnpm run dev`: Start the web app, Rust API, and temporary legacy API
+- `pnpm run build`: Build all applications
+- `pnpm run dev:web`: Start only the web application
+- `pnpm run dev:server`: Start only the Rust server
+- `pnpm run check-types`: Type-check all packages (uses `tsgo`)
+- `pnpm run db:push`: Push schema changes to database
+- `pnpm run db:studio`: Open database studio UI
+- `pnpm run ci`: Run the TypeScript CI pipeline
+- `pnpm run test:e2e`: Run the browser critical-path suite
 
 ---
 

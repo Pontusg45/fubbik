@@ -6,6 +6,18 @@ pub mod timestamp;
 use sqlx::postgres::{PgConnectOptions, PgConnection, PgPoolOptions};
 use sqlx::{Connection, Executor, PgPool, Row};
 use std::str::FromStr;
+use std::time::Duration;
+
+const DATABASE_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+const MIGRATION_TIMEOUT: Duration = Duration::from_secs(120);
+
+fn timeout_error(operation: &str) -> sqlx::Error {
+    std::io::Error::new(
+        std::io::ErrorKind::TimedOut,
+        format!("database {operation} timed out"),
+    )
+    .into()
+}
 
 /// Connects, runs migrations, and installs the AGE per-connection setup.
 pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
@@ -30,14 +42,23 @@ pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
     // migrations on a connection that is discarded right after makes
     // `connect()` immune to this entire class of bug, for any migration,
     // present or future — not just the ones already found.
-    let mut migrate_conn = PgConnection::connect_with(&opts).await?;
-    sqlx::migrate!("./migrations")
-        .run(&mut migrate_conn)
-        .await?;
+    let mut migrate_conn =
+        tokio::time::timeout(DATABASE_CONNECT_TIMEOUT, PgConnection::connect_with(&opts))
+            .await
+            .map_err(|_| timeout_error("connection"))??;
+    tokio::time::timeout(
+        MIGRATION_TIMEOUT,
+        sqlx::migrate!("./migrations").run(&mut migrate_conn),
+    )
+    .await
+    .map_err(|_| timeout_error("migration"))??;
     migrate_conn.close().await?;
 
     let pool = PgPoolOptions::new()
         .max_connections(10)
+        .acquire_timeout(Duration::from_secs(5))
+        .idle_timeout(Duration::from_secs(10 * 60))
+        .max_lifetime(Duration::from_secs(30 * 60))
         .after_connect(|conn, _meta| {
             Box::pin(async move {
                 // AGE is optional. A database without it must still serve

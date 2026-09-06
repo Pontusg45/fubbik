@@ -16704,7 +16704,7 @@
       },
       "ProposalBulkActionBody": {
         "type": "object",
-        "description": "Body of `POST /proposals/bulk`. Processed sequentially and fails fast on\nthe first error — matching Node's `Effect.forEach(actions, ..., {\nconcurrency: 1 })` (`packages/api/src/proposals/service.ts:92-99`), which\nshort-circuits the whole request on the first `approveProposal`/\n`rejectProposal` failure. Writes already committed by earlier entries in\nthe array are **not** rolled back — there is no transaction around the\nloop in Node, and none is added here.",
+        "description": "Body of `POST /proposals/bulk`. Rust applies the batch in one transaction;\nany invalid or unauthorized item rolls every earlier action back.",
         "required": [
           "actions"
         ],

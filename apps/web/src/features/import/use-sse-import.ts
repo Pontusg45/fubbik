@@ -1,5 +1,6 @@
-import { env } from "@fubbik/env/web";
 import { useCallback, useRef, useState } from "react";
+
+import { legacyApiUrl } from "@/lib/api-origin";
 
 import type { ImportFileStatus } from "./types";
 
@@ -22,7 +23,7 @@ export function useSSEImport() {
         abortRef.current = abort;
 
         try {
-            const response = await fetch(`${env.VITE_SERVER_URL}/api/chunks/import-docs/stream`, {
+            const response = await fetch(legacyApiUrl("/api/chunks/import-docs/stream"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",

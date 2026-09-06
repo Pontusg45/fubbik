@@ -1,4 +1,6 @@
 use clap::{CommandFactory, Parser, Subcommand};
+use std::ffi::OsString;
+use std::time::Duration;
 
 #[derive(Parser)]
 #[command(name = "fubbik", version, about = "Local-first knowledge framework")]
@@ -45,6 +47,11 @@ enum Commands {
     Completions { shell: clap_complete::Shell },
     #[command(flatten)]
     Cli(fubbik_cli::Command),
+    /// Dispatch to a `fubbik-*` plugin executable. Must stay last: clap's
+    /// `external_subcommand` cannot live inside a flattened enum without
+    /// stealing built-in names like `serve` and `openapi`.
+    #[command(external_subcommand)]
+    External(Vec<OsString>),
 }
 
 /// The only `NODE_ENV` values Node itself accepts: `packages/env/src/server.ts`
@@ -177,6 +184,7 @@ async fn main() -> anyhow::Result<()> {
             fubbik_db::warn_if_not_icu_collation(&pool).await;
             fubbik_api::staleness::service::spawn_background_scan(pool.clone());
             fubbik_api::graph::sync::spawn_behavior_sync(pool.clone());
+            let shutdown_pool = pool.clone();
             let state = fubbik_api::AppState {
                 pool,
                 implicit_dev_session,
@@ -199,10 +207,26 @@ async fn main() -> anyhow::Result<()> {
                 .allow_methods(tower_http::cors::AllowMethods::mirror_request())
                 .allow_headers(tower_http::cors::AllowHeaders::mirror_request());
 
-            let app = fubbik_api::router(state).layer(cors);
+            let app = fubbik_api::router(state)
+                .layer(cors)
+                .layer(tower_http::catch_panic::CatchPanicLayer::new())
+                .layer(tower_http::trace::TraceLayer::new_for_http())
+                .layer(tower_http::request_id::PropagateRequestIdLayer::x_request_id())
+                .layer(tower_http::request_id::SetRequestIdLayer::x_request_id(
+                    tower_http::request_id::MakeRequestUuid,
+                ));
             let listener = tokio::net::TcpListener::bind((host, port)).await?;
             tracing::info!("fubbik listening on http://{host}:{port}");
-            axum::serve(listener, app).await?;
+            axum::serve(listener, app)
+                .with_graceful_shutdown(shutdown_signal())
+                .await?;
+            fubbik_api::background::shutdown(Duration::from_secs(10)).await;
+            if tokio::time::timeout(Duration::from_secs(5), shutdown_pool.close())
+                .await
+                .is_err()
+            {
+                tracing::warn!("database pool did not close before shutdown deadline");
+            }
             Ok(())
         }
         Commands::Mcp => {
@@ -247,7 +271,38 @@ async fn main() -> anyhow::Result<()> {
             };
             fubbik_cli::run(cmd, &base, output).await
         }
+        Commands::External(args) => {
+            let base = fubbik_cli::config::resolve_base_url(explicit_url.as_deref())?;
+            fubbik_cli::plugin::execute(args, &base, output).await
+        }
     }
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        if let Err(error) = tokio::signal::ctrl_c().await {
+            tracing::error!(%error, "failed to install Ctrl-C handler");
+        }
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut signal) => {
+                signal.recv().await;
+            }
+            Err(error) => tracing::error!(%error, "failed to install SIGTERM handler"),
+        }
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+    tracing::info!("shutdown signal received; draining requests and background tasks");
 }
 
 #[cfg(test)]

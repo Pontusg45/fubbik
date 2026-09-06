@@ -15,12 +15,8 @@ import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
 import { getUser } from "@/functions/get-user";
-// GET needs Node's enriched detail shape (chunk, appliesTo, fileReferences) —
-// Rust's GET /api/chunks/{id} returns only the bare chunk row. The PATCH body
-// here also needs `tags`/`alternatives`, which Rust's UpdateChunkBody doesn't
-// accept yet — see the "chunks" note in `@/utils/api`, so the PATCH stays on
-// `legacyApi`. The GET and the `applies-to`/`file-refs` PUTs are on `api`:
-// Rust now serves the enriched detail shape and takes the same bare
+// Rust serves the enriched detail shape and accepts the extended PATCH body,
+// including tags and alternatives. The related writes take the same bare
 // `{pattern, note}` / `{path, anchor, relation}` arrays Node does. Those two
 // PUTs used to 400 against Rust's `{patterns: string[]}`/`{paths: string[]}`
 // and be swallowed by the `catch { // non-critical }` below, so patterns and

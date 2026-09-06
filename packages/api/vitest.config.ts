@@ -10,6 +10,9 @@ process.env.PORT = "3000";
 
 export default defineConfig({
     test: {
-        environment: "node"
+        environment: "node",
+        // Tokenizer initialization can exceed Vitest's 5s default when the
+        // monorepo test task runs every package concurrently in CI.
+        testTimeout: 15_000
     }
 });

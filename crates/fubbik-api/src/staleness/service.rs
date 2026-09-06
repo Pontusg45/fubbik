@@ -149,11 +149,18 @@ pub fn spawn_background_scan(pool: PgPool) {
         "Staleness scanning enabled"
     );
 
-    tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+    let cancellation = crate::background::cancellation_token();
+    crate::background::spawn(async move {
+        tokio::select! {
+            _ = cancellation.cancelled() => return,
+            _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {}
+        }
         run_scan_once(&pool).await;
         loop {
-            tokio::time::sleep(interval).await;
+            tokio::select! {
+                _ = cancellation.cancelled() => return,
+                _ = tokio::time::sleep(interval) => {}
+            }
             run_scan_once(&pool).await;
         }
     });

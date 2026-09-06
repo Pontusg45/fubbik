@@ -43,6 +43,8 @@ services:
             interval: 5s
             timeout: 3s
             retries: 10
+        restart: unless-stopped
+        stop_grace_period: 30s
 
     server:
         build:
@@ -67,22 +69,47 @@ services:
         depends_on:
             db:
                 condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "bun",
+                    "-e",
+                    "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 20s
+        restart: unless-stopped
+        stop_grace_period: 30s
 
     web:
         build:
             context: .
             dockerfile: docker/build/web.Dockerfile
             args:
-                VITE_SERVER_URL: http://localhost:${FUBBIK_API_PORT:-4717}
+                VITE_API_ORIGIN: http://fubbik-api.invalid
+                VITE_LEGACY_API_ORIGIN: http://fubbik-legacy-api.invalid
+                VITE_SERVER_URL: http://fubbik-legacy-api.invalid
                 VITE_FUBBIK_IMPLICIT_DEV_SESSION: "true"
         image: pontusg45/fubbik-web:latest
         ports:
             - "${FUBBIK_WEB_PORT:-4718}:3001"
         environment:
             PORT: "3001"
-            RUNTIME_SERVER_URL: http://localhost:${FUBBIK_API_PORT:-4717}
+            RUNTIME_API_ORIGIN: http://localhost:${FUBBIK_API_PORT:-4717}
         depends_on:
-            - server
+            server:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3001/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 20s
+        restart: unless-stopped
+        stop_grace_period: 30s
 
 volumes:
     fubbik_data:

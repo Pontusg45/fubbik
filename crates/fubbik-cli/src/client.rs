@@ -116,6 +116,8 @@ impl Client {
             base: base.into(),
             http: reqwest::Client::builder()
                 .cookie_store(true)
+                .connect_timeout(std::time::Duration::from_secs(3))
+                .timeout(std::time::Duration::from_secs(60))
                 .build()
                 .expect("http client builds"),
         }

@@ -12,7 +12,7 @@ const E2E_BETTER_AUTH_SECRET = "e2e-shared-test-secret-must-be-32-chars-or-more-
 // Rust's scratch database — NEVER the live one. See `crates/fubbik-db/src/lib.rs`:
 // `fubbik_db::connect()` runs Rust's migrations on whatever `DATABASE_URL` it
 // is given, so pointing this at the live DB would silently migrate it.
-const RUST_DATABASE_URL = "postgres://postgres:password@localhost:5434/fubbik_rs";
+const RUST_DATABASE_URL = process.env.E2E_DATABASE_URL ?? "postgres://postgres:password@localhost:5434/fubbik_rs";
 
 export default defineConfig({
     testDir: "./e2e",
@@ -28,15 +28,38 @@ export default defineConfig({
             use: { browserName: "chromium" }
         }
     ],
+    // Never attach to developers' existing servers: they may use a live DB,
+    // which would defeat the scratch-database guarantee below.
     webServer: [
+        {
+            // Start Rust first so its migrations have committed before the
+            // Node process touches the shared scratch database.
+            command: "cargo run -p fubbik -- serve",
+            cwd: "../..",
+            port: 3100,
+            reuseExistingServer: false,
+            timeout: 60_000,
+            env: {
+                DATABASE_URL: RUST_DATABASE_URL,
+                BETTER_AUTH_SECRET: E2E_BETTER_AUTH_SECRET,
+                NODE_ENV: "production",
+                HOST: "127.0.0.1",
+                PORT: "3100",
+                CORS_ORIGIN: "http://localhost:3001"
+            }
+        },
         {
             command: "bun run --hot src/index.ts",
             cwd: "../server",
             port: 3000,
-            reuseExistingServer: !process.env.CI,
+            reuseExistingServer: false,
             timeout: 30_000,
             env: {
                 BETTER_AUTH_SECRET: E2E_BETTER_AUTH_SECRET,
+                BETTER_AUTH_URL: "http://localhost:3000",
+                CORS_ORIGIN: "http://localhost:3001",
+                NODE_ENV: "test",
+                PORT: "3000",
                 // Node and Rust must see the SAME `user`/`session` rows for
                 // the cross-server cookie check to mean anything — Rust's
                 // `CurrentUser` extractor looks the session token up in its
@@ -51,29 +74,13 @@ export default defineConfig({
         {
             command: "bun run vite dev",
             port: 3001,
-            reuseExistingServer: !process.env.CI,
+            reuseExistingServer: false,
             timeout: 30_000,
             env: {
-                VITE_FUBBIK_DISABLE_IMPLICIT_DEV_UX: "true"
-            }
-        },
-        {
-            // Rust backend, scratch DB only — see RUST_DATABASE_URL above.
-            // NODE_ENV=production (mirrored from Node's own convention; read
-            // verbatim by crates/fubbik/src/main.rs) disables the
-            // implicit-dev-session fallback so cookie verification is real,
-            // which is the entire point of the critical-path assertion.
-            command: "cargo run -p fubbik -- serve",
-            cwd: "../..",
-            port: 3100,
-            reuseExistingServer: !process.env.CI,
-            timeout: 60_000,
-            env: {
-                DATABASE_URL: RUST_DATABASE_URL,
-                BETTER_AUTH_SECRET: E2E_BETTER_AUTH_SECRET,
-                NODE_ENV: "production",
-                HOST: "127.0.0.1",
-                PORT: "3100"
+                VITE_FUBBIK_DISABLE_IMPLICIT_DEV_UX: "true",
+                VITE_API_ORIGIN: "http://localhost:3100",
+                VITE_LEGACY_API_ORIGIN: "http://localhost:3000",
+                API_PROXY_TARGET: "http://127.0.0.1:3100"
             }
         }
     ]

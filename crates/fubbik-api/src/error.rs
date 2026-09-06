@@ -27,6 +27,9 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let err = self.0;
         let status = match &err {
+            AppError::Database(sqlx::Error::PoolTimedOut | sqlx::Error::PoolClosed) => {
+                StatusCode::SERVICE_UNAVAILABLE
+            }
             AppError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
             AppError::Auth => StatusCode::UNAUTHORIZED,
@@ -109,5 +112,13 @@ mod tests {
             ApiError::from(err).into_response().status(),
             StatusCode::NOT_FOUND
         );
+    }
+
+    #[test]
+    fn exhausted_or_closed_pool_maps_to_503() {
+        for error in [sqlx::Error::PoolTimedOut, sqlx::Error::PoolClosed] {
+            let response = ApiError::from(AppError::Database(error)).into_response();
+            assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        }
     }
 }

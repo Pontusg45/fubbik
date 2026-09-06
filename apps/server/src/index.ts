@@ -16,7 +16,7 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
 
 await awaitImplicitDevUserBootstrap();
 
-new Elysia()
+const server = new Elysia()
     .use(
         swagger({
             path: "/docs",
@@ -63,9 +63,22 @@ new Elysia()
         initStartupTasks();
     });
 
-process.on("SIGTERM", async () => {
-    if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-        await shutdownTracing();
-    }
+let shuttingDown = false;
+async function shutdown(signal: string) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info(`${signal} received; draining server`);
+    await Promise.race([
+        (async () => {
+            await server.stop();
+            if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+                await shutdownTracing();
+            }
+        })(),
+        Bun.sleep(10_000).then(() => logger.warn("Shutdown drain deadline exceeded"))
+    ]);
     process.exit(0);
-});
+}
+
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

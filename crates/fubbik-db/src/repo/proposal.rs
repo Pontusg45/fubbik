@@ -48,8 +48,8 @@
 //! closes).
 
 use fubbik_core::error::AppResult;
-use sqlx::PgPool;
 use sqlx::types::Json;
+use sqlx::{PgConnection, PgPool};
 
 use crate::timestamp::UtcTimestamp;
 
@@ -113,7 +113,7 @@ impl ProposedChanges {
 }
 
 /// `camelCase` serialisation matches every other wire type in this crate.
-#[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ChunkProposal {
     pub id: String,
@@ -382,6 +382,16 @@ pub async fn reject(
     reviewer_id: &str,
     review_note: Option<&str>,
 ) -> AppResult<Option<ChunkProposal>> {
+    let mut conn = pool.acquire().await?;
+    reject_in_transaction(&mut conn, id, reviewer_id, review_note).await
+}
+
+async fn reject_in_transaction(
+    conn: &mut PgConnection,
+    id: &str,
+    reviewer_id: &str,
+    review_note: Option<&str>,
+) -> AppResult<Option<ChunkProposal>> {
     let row = sqlx::query_as!(
         ChunkProposal,
         r#"UPDATE chunk_proposal SET
@@ -396,7 +406,7 @@ pub async fn reject(
         reviewer_id,
         review_note
     )
-    .fetch_optional(pool)
+    .fetch_optional(conn)
     .await?;
     Ok(row)
 }
@@ -451,7 +461,20 @@ pub async fn approve(
     note: Option<&str>,
 ) -> AppResult<Option<ChunkProposal>> {
     let mut tx = pool.begin().await?;
+    let proposal =
+        approve_in_transaction(&mut tx, proposal_id, chunk_id, reviewer_id, changes, note).await?;
+    tx.commit().await?;
+    Ok(proposal)
+}
 
+async fn approve_in_transaction(
+    conn: &mut PgConnection,
+    proposal_id: &str,
+    chunk_id: &str,
+    reviewer_id: &str,
+    changes: ApproveChunkChanges,
+    note: Option<&str>,
+) -> AppResult<Option<ChunkProposal>> {
     // Pre-edit snapshot for chunk_version, scoped by owner in the same
     // breath — a non-owner reviewer_id matches nothing here, and the
     // transaction below is rolled back before any write happens.
@@ -461,10 +484,9 @@ pub async fn approve(
         chunk_id,
         reviewer_id
     )
-    .fetch_optional(&mut *tx)
+    .fetch_optional(&mut *conn)
     .await?;
     let Some(current) = current else {
-        tx.rollback().await?;
         return Ok(None);
     };
 
@@ -484,7 +506,7 @@ pub async fn approve(
         current.rationale,
         current.consequences
     )
-    .execute(&mut *tx)
+    .execute(&mut *conn)
     .await?;
 
     sqlx::query!(
@@ -508,7 +530,7 @@ pub async fn approve(
         changes.alternatives.map(Json) as _,
         changes.scope.map(Json) as _
     )
-    .execute(&mut *tx)
+    .execute(&mut *conn)
     .await?;
 
     if let Some(names) = &changes.tags {
@@ -519,7 +541,7 @@ pub async fn approve(
                 name,
                 reviewer_id
             )
-            .fetch_optional(&mut *tx)
+            .fetch_optional(&mut *conn)
             .await?;
             let tag_id = match existing {
                 Some(id) => id,
@@ -531,7 +553,7 @@ pub async fn approve(
                         name,
                         reviewer_id
                     )
-                    .execute(&mut *tx)
+                    .execute(&mut *conn)
                     .await?;
                     id
                 }
@@ -540,7 +562,7 @@ pub async fn approve(
         }
 
         sqlx::query!("DELETE FROM chunk_tag WHERE chunk_id = $1", chunk_id)
-            .execute(&mut *tx)
+            .execute(&mut *conn)
             .await?;
         if !tag_ids.is_empty() {
             sqlx::query!(
@@ -550,7 +572,7 @@ pub async fn approve(
                 chunk_id,
                 &tag_ids
             )
-            .execute(&mut *tx)
+            .execute(&mut *conn)
             .await?;
         }
     }
@@ -568,11 +590,88 @@ pub async fn approve(
         reviewer_id,
         note
     )
-    .fetch_optional(&mut *tx)
+    .fetch_optional(&mut *conn)
     .await?;
+    Ok(proposal)
+}
+
+pub enum BulkReviewAction {
+    Approve,
+    Reject,
+}
+
+pub struct BulkReviewItem {
+    pub proposal_id: String,
+    pub action: BulkReviewAction,
+    pub note: Option<String>,
+}
+
+/// Reviews a batch under one transaction. Every proposal is locked before
+/// its mutation, and any validation, ownership, or database failure rolls
+/// the complete batch back.
+pub async fn review_bulk(
+    pool: &PgPool,
+    reviewer_id: &str,
+    actions: Vec<BulkReviewItem>,
+) -> AppResult<Vec<ChunkProposal>> {
+    let mut tx = pool.begin().await?;
+    let mut results = Vec::with_capacity(actions.len());
+
+    for item in actions {
+        let found = sqlx::query_as::<_, ChunkProposal>(
+            r#"SELECT id, chunk_id, changes, reason, status, proposed_by,
+                      reviewed_by, reviewed_at, review_note, created_at
+               FROM chunk_proposal WHERE id = $1 FOR UPDATE"#,
+        )
+        .bind(&item.proposal_id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(|| fubbik_core::error::AppError::NotFound("Proposal".into()))?;
+
+        if found.status != "pending" {
+            return Err(fubbik_core::error::AppError::Validation(format!(
+                "Proposal is already {}",
+                found.status
+            )));
+        }
+
+        let reviewed = match item.action {
+            BulkReviewAction::Approve => {
+                let changes = found.changes.0.clone();
+                approve_in_transaction(
+                    &mut tx,
+                    &found.id,
+                    &found.chunk_id,
+                    reviewer_id,
+                    ApproveChunkChanges {
+                        title: changes.title,
+                        content: changes.content,
+                        chunk_type: changes.proposed_type,
+                        rationale: changes.rationale,
+                        consequences: changes.consequences,
+                        alternatives: changes.alternatives,
+                        scope: changes.scope.map(|scope| {
+                            serde_json::to_value(scope)
+                                .expect("HashMap<String, String> serialises infallibly")
+                        }),
+                        tags: changes.tags,
+                    },
+                    item.note.as_deref(),
+                )
+                .await?
+                .ok_or_else(|| fubbik_core::error::AppError::NotFound("chunk".into()))?
+            }
+            BulkReviewAction::Reject => {
+                reject_in_transaction(&mut tx, &found.id, reviewer_id, item.note.as_deref())
+                    .await?
+                    .ok_or_else(|| fubbik_core::error::AppError::NotFound("Proposal".into()))?
+            }
+        };
+        results.push(reviewed);
+    }
 
     tx.commit().await?;
-    Ok(proposal)
+    Ok(results)
 }
 
 /// Global pending count — no `user_id` filter, matching Node's

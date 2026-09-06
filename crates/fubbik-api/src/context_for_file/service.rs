@@ -502,8 +502,12 @@ pub async fn get_context_for_file(
             .map(|c| c.id.clone())
             .collect();
         let pool_clone = pool.clone();
-        tokio::spawn(async move {
-            let _ = connection::increment_connection_weights(&pool_clone, &co_accessed).await;
+        crate::background::spawn(async move {
+            if let Err(error) =
+                connection::increment_connection_weights(&pool_clone, &co_accessed).await
+            {
+                tracing::warn!(%error, "failed to update co-access connection weights");
+            }
         });
     }
 

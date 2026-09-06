@@ -142,14 +142,21 @@ pub fn spawn_behavior_sync(pool: PgPool) {
         "Behavior graph sync enabled"
     );
 
-    tokio::spawn(async move {
+    let cancellation = crate::background::cancellation_token();
+    crate::background::spawn(async move {
         // 40s, matching Node's offset from the staleness scan
         // (`packages/api/src/startup.ts:78`) — the two jobs both touch AGE and
         // staggering them keeps a cold start from contending.
-        tokio::time::sleep(std::time::Duration::from_secs(40)).await;
+        tokio::select! {
+            _ = cancellation.cancelled() => return,
+            _ = tokio::time::sleep(std::time::Duration::from_secs(40)) => {}
+        }
         run_once_logged(&pool).await;
         loop {
-            tokio::time::sleep(interval).await;
+            tokio::select! {
+                _ = cancellation.cancelled() => return,
+                _ = tokio::time::sleep(interval) => {}
+            }
             run_once_logged(&pool).await;
         }
     });

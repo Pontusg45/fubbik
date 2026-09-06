@@ -18,6 +18,13 @@
             "inputs": ["src/**", "tests/**", "**/*.test.*", "*.config.*", "package.json"],
             "outputs": []
         },
+        "test:e2e": {
+            "dependsOn": ["build"],
+            "cache": false
+        },
+        "gen:api": {
+            "cache": false
+        },
         "dev": {
             "cache": false,
             "persistent": true

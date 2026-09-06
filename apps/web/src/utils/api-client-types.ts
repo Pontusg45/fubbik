@@ -17,7 +17,7 @@ type Method = "get" | "post" | "patch" | "put" | "delete";
  * Eden treaty's response envelope, reproduced here so the derived `Client`
  * type matches what call sites already destructure (`const { data, error } =
  * await api.api.chunks.get()`). The runtime shape comes from `request()` in
- * `./api-proxy.future.ts` — this is only the type.
+ * `./openapi-client.ts` — this is only the type.
  */
 export interface EdenLikeResponse<T> {
     data: T | null;
@@ -64,7 +64,7 @@ type RequestBodyOf<Op> = Op extends { requestBody?: infer RB }
  * `api-client-types.test-d.ts`). */
 type MethodFn<Op> = [RequestBodyOf<Op>] extends [undefined]
     ? // No request body on this route (mostly GETs). The runtime
-      // (`request()` in `./api-proxy.future.ts`) reads query params for GET
+      // (`request()` in `./openapi-client.ts`) reads query params for GET
       // off the *first* argument (`body.query`), not the second — every
       // call site in this codebase calls GETs as `.get({ query: {...} })`,
       // never with a second `options` argument. So "no body" still needs to

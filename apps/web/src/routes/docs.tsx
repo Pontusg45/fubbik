@@ -1,10 +1,10 @@
-import { env } from "@fubbik/env/web";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { ExternalLink, Globe, Book } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { DocumentBrowser } from "@/features/documents/document-browser";
 import { getUser } from "@/functions/get-user";
+import { apiUrl } from "@/lib/api-origin";
 
 export const Route = createFileRoute("/docs")({
     component: DocsPage,
@@ -95,7 +95,7 @@ function DocsPage() {
                 <div className="space-y-3">
                     <div className="flex items-center justify-end">
                         <a
-                            href={`${env.VITE_API_URL}/docs`}
+                            href={apiUrl("/docs")}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
@@ -105,7 +105,7 @@ function DocsPage() {
                         </a>
                     </div>
                     <div className="overflow-hidden rounded-lg border" style={{ height: "calc(100vh - 200px)" }}>
-                        <iframe src={`${env.VITE_API_URL}/docs`} className="h-full w-full border-0" title="Fubbik API Documentation" />
+                        <iframe src={apiUrl("/docs")} className="h-full w-full border-0" title="Fubbik API Documentation" />
                     </div>
                 </div>
             )}

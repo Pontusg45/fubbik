@@ -4,7 +4,6 @@ pub mod config;
 pub mod output;
 pub mod plugin;
 
-use std::ffi::OsString;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -249,8 +248,6 @@ pub enum Command {
         #[command(subcommand)]
         command: PluginCommand,
     },
-    #[command(external_subcommand)]
-    External(Vec<OsString>),
 }
 
 pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()> {
@@ -336,6 +333,5 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         Command::Plan { command } => commands::plan::run(&client, command, output).await,
         Command::Task { command } => commands::task::run(&client, command, output).await,
         Command::Plugin { command } => commands::plugin::run(command, output),
-        Command::External(args) => plugin::execute(args, base_url, output).await,
     }
 }

@@ -208,6 +208,7 @@ function WorkspaceRow({
         queryKey: ["workspace-detail", workspace.id],
         queryFn: () => api.api.workspaces({ id: workspace.id }).get(),
         fallback: null,
+        fallbackStatuses: [404],
         enabled: expanded
     });
 

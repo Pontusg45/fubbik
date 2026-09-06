@@ -71,3 +71,31 @@ jobs:
 
             - name: Build
               run: pnpm run build
+
+    e2e:
+        needs: [lint-and-format, typecheck-and-test]
+        runs-on: ubuntu-latest
+        services:
+            postgres:
+                image: pgvector/pgvector:pg18
+                env:
+                    POSTGRES_PASSWORD: postgres
+                    POSTGRES_DB: fubbik_rs
+                    POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-US"
+                options: >-
+                    --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+                ports: ["5432:5432"]
+        env:
+            E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/fubbik_rs
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+            - uses: oven-sh/setup-bun@v2
+            - run: rustup show
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm --filter web exec playwright install --with-deps chromium
+            - run: pnpm run test:e2e

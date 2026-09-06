@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
-# Replace the build-time VITE_SERVER_URL placeholder with the runtime value
-# This allows the same image to work in any environment
-if [ -n "$RUNTIME_SERVER_URL" ]; then
-    echo "Replacing server URL with: $RUNTIME_SERVER_URL"
+# Replace build-time API URL placeholders with the runtime value so one image
+# works in any environment.
+if [ -n "$RUNTIME_API_ORIGIN" ]; then
+    echo "Replacing API origin with: $RUNTIME_API_ORIGIN"
     bun -e "
 const fs = require('fs');
 const path = require('path');
@@ -19,15 +19,21 @@ function walkDir(dir) {
     return files;
 }
 
-const serverUrl = process.env.RUNTIME_SERVER_URL;
+const origin = process.env.RUNTIME_API_ORIGIN.replace(/\\/$/, '');
+const legacy = process.env.RUNTIME_API_ORIGIN;
 const files = walkDir('/app/dist');
 let replaced = 0;
 for (const f of files) {
-    const content = fs.readFileSync(f, 'utf8');
-    if (content.includes('__FUBBIK_SERVER_URL__') || content.includes('http://localhost:3000')) {
-        fs.writeFileSync(f, content
-            .replaceAll('__FUBBIK_SERVER_URL__', serverUrl)
-            .replaceAll('http://localhost:3000', serverUrl));
+    let content = fs.readFileSync(f, 'utf8');
+    let next = content
+        .replaceAll('http://fubbik-api.invalid', origin)
+        .replaceAll('http://fubbik-legacy-api.invalid', legacy)
+        .replaceAll('__FUBBIK_API_ORIGIN__', origin)
+        .replaceAll('__FUBBIK_SERVER_URL__', legacy)
+        .replaceAll('http://localhost:3000', legacy)
+        .replaceAll('http://127.0.0.1:3000', legacy);
+    if (next !== content) {
+        fs.writeFileSync(f, next);
         replaced++;
     }
 }

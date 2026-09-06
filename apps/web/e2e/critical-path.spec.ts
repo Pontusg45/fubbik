@@ -1,13 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
 
 // This suite proves the Rust slice end-to-end along the path a real user
-// takes: sign in through Node (which still owns auth/SSR), then exercise
-// domains that are ported to Rust (dashboard stats/plans/activity) alongside
-// a domain that is NOT yet ported (features, served via `legacyApi` ->
-// Node). Chunk create/edit both route through legacyApi/Node too — Rust's
-// CreateChunkBody/UpdateChunkBody don't accept tags/alternatives/
-// consequences yet — see `apps/web/src/utils/api.ts` for the hybrid
-// client's routing rules.
+// takes: sign in through Node (which still owns Better Auth), then exercise
+// dashboard, chunk, and feature domains through the Rust API. Node and Rust
+// share the scratch database so Rust must also honour Node's session cookie.
 
 const TEST_USER = {
     name: "Critical Path User",
@@ -15,7 +11,7 @@ const TEST_USER = {
     password: "testpassword123"
 };
 
-// Rust's own port — see playwright.config.ts's third `webServer` entry.
+// Rust's own port — see playwright.config.ts's first `webServer` entry.
 // `GET /api/auth/get-session` only exists on Rust (Node's equivalent is
 // `GET /api/me` on :3000), so a 200 here can only mean Rust independently
 // verified the better-auth cookie Node set and looked up the same user.
@@ -61,8 +57,10 @@ test.describe.serial("Critical path (Rust backend)", () => {
     });
 
     test("dashboard renders live Rust-backed data", async ({ page }) => {
+        const rustStats = page.waitForResponse(response => response.url().startsWith(RUST_ORIGIN) && response.url().includes("/api/stats"));
         await signIn(page);
         await waitForHydration(page);
+        expect((await rustStats).status()).toBe(200);
 
         // StatsBar: past the loading skeleton, showing a real (Rust /api/stats)
         // count rather than blank/stuck-loading.
@@ -78,18 +76,8 @@ test.describe.serial("Critical path (Rust backend)", () => {
         await expect(page.getByText("Failed to load active plan")).not.toBeVisible();
 
         // UnifiedFeed: past "Loading…", not the ErrorBoundary fallback. A
-        // brand-new user also has nothing in their feed yet, so — same
-        // reasoning as ActivePlanCard — the real successful state is the
-        // explicit empty prompt.
-        //
-        // NB: `UnifiedFeed`'s proposals query (unified-feed.tsx) currently
-        // calls `api.api.proposals` — the Rust client — instead of
-        // `legacyApi.api.proposals`; "proposals" is one of the domains
-        // documented as unported in `@/utils/api`, so that call 404s and
-        // React Query burns through its retry/backoff before the query
-        // settles. That's a pre-existing bug (out of scope for this task),
-        // not flakiness in this assertion — the generous timeout below is
-        // to tolerate it, not paper over a real hang.
+        // brand-new user also has nothing in their feed yet, so the real,
+        // successful state is the explicit empty prompt.
         await expect(page.getByText("Loading…")).not.toBeVisible({ timeout: 20_000 });
         await expect(page.getByText("Failed to load feed")).not.toBeVisible();
         await expect(page.getByText("Nothing happening yet.")).toBeVisible();
@@ -105,13 +93,8 @@ test.describe.serial("Critical path (Rust backend)", () => {
         const alternativeB = "Option B considered";
         const consequencesText = "Easier onboarding, harder rollback.";
 
-        // Create. POST now goes through legacyApi/Node, not Rust — see the
-        // note in chunks.new.tsx. Rust's CreateChunkBody has no
-        // tags/alternatives/consequences fields, so a request built against
-        // Rust would 200 while silently dropping all three; this test
-        // exercises exactly the fields Rust's DTO is missing, not just
-        // title/content (which Rust does accept and would have let this
-        // pass even before the C1 fix).
+        // Exercise the extended Rust DTO, including fields that used to be
+        // silently dropped during the migration.
         await page.goto("/chunks/new");
         await waitForHydration(page);
         await page.locator("#chunk-title").fill(chunkTitle);
@@ -125,7 +108,12 @@ test.describe.serial("Critical path (Rust backend)", () => {
         await page.locator("#chunk-alternatives").fill(`${alternativeA}, ${alternativeB}`);
         await page.locator("#chunk-consequences").fill(consequencesText);
 
+        const createChunk = page.waitForResponse(
+            response =>
+                response.url().startsWith(RUST_ORIGIN) && response.url().endsWith("/api/chunks") && response.request().method() === "POST"
+        );
         await page.getByRole("button", { name: /Create Chunk/ }).click();
+        expect((await createChunk).status()).toBe(201);
         await page.waitForURL(/\/chunks\/[^/]+$/, { timeout: 15000 });
 
         await expect(page.getByRole("heading", { level: 1, name: chunkTitle })).toBeVisible();
@@ -141,15 +129,18 @@ test.describe.serial("Critical path (Rust backend)", () => {
         await expect(page.getByText(consequencesText)).toBeVisible();
         await page.keyboard.press("Escape");
 
-        // Edit (PATCH goes through legacyApi/Node — see the note in
-        // chunks.$chunkId_.edit.tsx).
+        // Edit through Rust and verify the response before checking the UI.
         const updatedTitle = `${chunkTitle} (edited)`;
         const updatedContent = "Updated content, saved through the edit page.";
         await page.getByRole("link", { name: "Edit" }).click();
         await waitForHydration(page);
         await page.locator("#edit-title").fill(updatedTitle);
         await page.getByPlaceholder("Write your content...").fill(updatedContent);
+        const updateChunk = page.waitForResponse(
+            response => response.url().startsWith(RUST_ORIGIN) && response.request().method() === "PATCH"
+        );
         await page.getByRole("button", { name: "Save Changes" }).click();
+        expect((await updateChunk).status()).toBe(200);
         await page.waitForURL(/\/chunks\/[^/]+$/, { timeout: 15000 });
 
         await expect(page.getByRole("heading", { level: 1, name: updatedTitle })).toBeVisible();
@@ -171,7 +162,7 @@ test.describe.serial("Critical path (Rust backend)", () => {
         await expect(page.getByText(consequencesText)).toBeVisible();
     });
 
-    test("features page (unported domain, routed to Node via legacyApi) shows real content", async ({ page }) => {
+    test("features page shows content round-tripped through Rust", async ({ page }) => {
         await signIn(page);
 
         const featureName = `critical-path-feature-${Date.now()}`;
@@ -181,10 +172,15 @@ test.describe.serial("Critical path (Rust backend)", () => {
 
         await page.getByRole("button", { name: "New Feature" }).click();
         await page.getByLabel("Name").fill(featureName);
+        const createFeature = page.waitForResponse(
+            response =>
+                response.url().startsWith(RUST_ORIGIN) && response.url().endsWith("/api/features") && response.request().method() === "POST"
+        );
         await page.getByRole("button", { name: "Create" }).click();
+        expect((await createFeature).status()).toBe(201);
 
         // Real content, not merely "the page didn't crash": the feature we
-        // just created, round-tripped through Node's own domain and back,
+        // just created, round-tripped through Rust and back,
         // showing its actual name and a real delta count.
         await expect(page.getByText(featureName)).toBeVisible();
         await expect(page.getByText("0 deltas")).toBeVisible();

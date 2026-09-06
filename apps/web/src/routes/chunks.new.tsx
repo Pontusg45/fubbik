@@ -186,9 +186,8 @@ function NewChunk() {
                 .split(",")
                 .map(s => s.trim())
                 .filter(Boolean);
-            // POST needs `tags`/`alternatives`/`consequences`, which Rust's
-            // CreateChunkBody doesn't accept yet — see the "chunks" note in
-            // `@/utils/api`. Same split as the edit page's PATCH.
+            // Rust validates and persists the extended fields along with the
+            // core chunk body.
             const chunk = unwrapEden(
                 await api.api.chunks.post({
                     title,
