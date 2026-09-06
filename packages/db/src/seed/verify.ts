@@ -1,8 +1,7 @@
 /**
- * Post-seed verification: sanity-check the DB against the counters modules
- * recorded, plus a couple of FK-integrity probes. Purely observational — we
- * don't block the seed on failure, just print a clear summary so drift is
- * visible immediately.
+ * Post-seed verification: sanity-check row counts and fail when an integrity
+ * probe finds orphaned or mismatched rows. A successful seed is a verified
+ * seed; callers never need to interpret warning-only output.
  */
 
 import { sql } from "drizzle-orm";
@@ -12,6 +11,17 @@ import type { SeedContext } from "./context";
 interface Probe {
     label: string;
     query: string;
+}
+
+export interface SeedIntegrityResult {
+    label: string;
+    count: number;
+}
+
+export function assertSeedIntegrity(results: readonly SeedIntegrityResult[]): void {
+    const failures = results.filter(result => result.count !== 0);
+    if (failures.length === 0) return;
+    throw new Error(`Seed integrity failed: ${failures.map(result => `${result.label}: ${result.count}`).join(", ")}`);
 }
 
 const PROBES: Probe[] = [
@@ -72,18 +82,19 @@ export async function verifySeed(ctx: SeedContext): Promise<void> {
     }
 
     ctx.log("\n=== integrity probes (should all be 0) ===");
-    let anyBad = false;
+    const integrityResults: SeedIntegrityResult[] = [];
     for (const probe of INTEGRITY_PROBES) {
         const { rows } = await ctx.db.execute(sql.raw(probe.query));
         const count = Number((rows[0] as { count: number } | undefined)?.count ?? 0);
         const ok = count === 0;
-        if (!ok) anyBad = true;
+        integrityResults.push({ label: probe.label, count });
         ctx.log(`  ${ok ? "✓" : "✗"} ${probe.label.padEnd(48)} ${String(count).padStart(5)}`);
     }
 
-    if (anyBad) {
+    if (integrityResults.some(result => result.count !== 0)) {
         ctx.log("\n⚠️  Integrity probes found orphaned rows. This usually means a");
         ctx.log("    module dropped rows whose children in another table are still live.");
         ctx.log("    Fix the reset order in the module registry.");
     }
+    assertSeedIntegrity(integrityResults);
 }

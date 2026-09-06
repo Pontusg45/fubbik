@@ -18,7 +18,6 @@
         "check-types": "tsgo -b",
         "lint": "oxlint src",
         "seed": "bun run src/seed/index.ts",
-        "seed:legacy": "bun run src/seed.ts",
         "scan": "bun run src/scan.ts",
         "db:push": "drizzle-kit push",
         "db:generate": "drizzle-kit generate",
