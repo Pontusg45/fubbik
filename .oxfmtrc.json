@@ -30,6 +30,7 @@
         "**/*.md",
         "tests/fixtures/**",
         "openapi.json",
-        "apps/web/src/utils/api-types.ts"
+        "apps/web/src/utils/api-types.ts",
+        "packages/client/src/api-types.ts"
     ]
 }

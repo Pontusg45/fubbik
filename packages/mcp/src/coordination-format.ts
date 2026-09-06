@@ -1,42 +1,22 @@
-export interface BoardTask {
-    id: string;
-    title: string;
-    status: string;
-    dependsOn: string[];
-}
+import type { components } from "@fubbik/client";
 
-export interface AgentRun {
-    id: string;
-    parentRunId: string | null;
-    handle: string;
-    status: string;
-    lastAckSequence: number;
-}
+type Schemas = components["schemas"];
 
-export interface TaskClaim {
-    taskId: string;
-    agentRunId: string;
-    leaseExpiresAt: string;
-    expired: boolean;
-}
-
-export interface BoardEntry {
-    id: string;
-    sequence: number;
-    taskId: string | null;
-    authorRunId: string;
-    recipientRunId: string | null;
-    kind: string;
-    body: string;
-}
+export type BoardTask = Pick<Schemas["BoardTask"], "id" | "title" | "status" | "dependsOn">;
+export type AgentRun = Pick<Schemas["AgentRun"], "id" | "parentRunId" | "handle" | "status" | "lastAckSequence">;
+export type TaskClaim = Pick<Schemas["TaskClaim"], "taskId" | "agentRunId" | "leaseExpiresAt" | "expired">;
+export type BoardEntry = Pick<
+    Schemas["CoordinationEntry"],
+    "id" | "sequence" | "taskId" | "authorRunId" | "recipientRunId" | "kind" | "body"
+>;
 
 export interface BoardSnapshot {
-    plan: { id: string; title: string; status: string };
+    plan: Pick<Schemas["BoardPlan"], "id" | "title" | "status">;
     tasks: BoardTask[];
     runs: AgentRun[];
     claims: TaskClaim[];
     entries: BoardEntry[];
-    cursor: { nextSequence: number; acknowledgedSequence: number | null; hasMore: boolean };
+    cursor: Pick<Schemas["BoardCursor"], "nextSequence" | "acknowledgedSequence" | "hasMore">;
 }
 
 export function formatBoard(board: BoardSnapshot, runId?: string): string {

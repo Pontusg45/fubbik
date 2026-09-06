@@ -241,6 +241,9 @@ importers:
       '@fubbik/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@fubbik/client':
+        specifier: workspace:*
+        version: link:../../packages/client
       '@fubbik/env':
         specifier: workspace:*
         version: link:../../packages/env
@@ -371,9 +374,6 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 26.1.0
-      openapi-typescript:
-        specifier: ^7.13.0
-        version: 7.13.0(typescript@5.9.3)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -452,6 +452,21 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.3.5)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.31.1)(msw@2.12.10(@types/node@25.3.5)(typescript@5.9.3))(tsx@4.21.0)(yaml@2.8.2)
 
+  packages/client:
+    devDependencies:
+      '@fubbik/config':
+        specifier: workspace:*
+        version: link:../config
+      openapi-typescript:
+        specifier: ^7.13.0
+        version: 7.13.0(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@25.3.5)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.31.1)(msw@2.12.10(@types/node@25.3.5)(typescript@5.9.3))(tsx@4.21.0)(yaml@2.8.2)
+
   packages/config: {}
 
   packages/db:
@@ -512,6 +527,9 @@ importers:
 
   packages/mcp:
     dependencies:
+      '@fubbik/client':
+        specifier: workspace:*
+        version: link:../client
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.27.1(zod@3.25.76)

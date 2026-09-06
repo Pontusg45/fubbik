@@ -1,6 +1,10 @@
+import { createClient } from "@fubbik/client";
+
 export function getServerUrl(): string {
     return process.env["FUBBIK_SERVER_URL"] ?? "http://localhost:3000";
 }
+
+export const api = createClient(getServerUrl(), { credentials: "omit" });
 
 export async function apiFetch(path: string, options?: RequestInit): Promise<unknown> {
     const url = `${getServerUrl()}/api${path}`;

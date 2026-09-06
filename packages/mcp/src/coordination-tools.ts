@@ -1,7 +1,8 @@
+import { unwrapResponse } from "@fubbik/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { apiFetch } from "./api-client.js";
+import { api } from "./api-client.js";
 import { formatBoard, type BoardSnapshot } from "./coordination-format.js";
 import type { McpPlugin } from "./plugin.js";
 
@@ -21,8 +22,7 @@ export function registerCoordinationTools(server: McpServer): void {
             capabilities: z.array(z.string()).optional(),
             metadata: z.record(z.unknown()).optional()
         },
-        async ({ planId, ...body }) =>
-            jsonText(await apiFetch(`/plans/${planId}/board/runs`, { method: "POST", body: JSON.stringify(body) }))
+        async ({ planId, ...body }) => jsonText(unwrapResponse(await api.api.plans({ planId }).board.runs.post(body)))
     );
 
     server.tool(
@@ -35,11 +35,9 @@ export function registerCoordinationTools(server: McpServer): void {
             limit: z.number().int().positive().max(500).optional()
         },
         async ({ planId, runId, afterSequence, limit }) => {
-            const params = new URLSearchParams();
-            if (runId) params.set("runId", runId);
-            if (afterSequence !== undefined) params.set("afterSequence", String(afterSequence));
-            if (limit !== undefined) params.set("limit", String(limit));
-            const board = (await apiFetch(`/plans/${planId}/board?${params}`)) as BoardSnapshot;
+            const board: BoardSnapshot = unwrapResponse(
+                await api.api.plans({ planId }).board.get({ query: { runId, afterSequence, limit } })
+            );
             return { content: [{ type: "text" as const, text: formatBoard(board, runId) }] };
         }
     );
@@ -55,7 +53,7 @@ export function registerCoordinationTools(server: McpServer): void {
             leaseSeconds: z.number().int().min(60).max(3600).optional()
         },
         async ({ planId, taskId, ...body }) =>
-            jsonText(await apiFetch(`/plans/${planId}/board/tasks/${taskId}/claim`, { method: "POST", body: JSON.stringify(body) }))
+            jsonText(unwrapResponse(await api.api.plans({ planId }).board.tasks({ taskId }).claim.post(body)))
     );
 
     server.tool(
@@ -70,7 +68,7 @@ export function registerCoordinationTools(server: McpServer): void {
             clientMutationId: z.string()
         },
         async ({ planId, taskId, ...body }) =>
-            jsonText(await apiFetch(`/plans/${planId}/board/tasks/${taskId}/transition`, { method: "POST", body: JSON.stringify(body) }))
+            jsonText(unwrapResponse(await api.api.plans({ planId }).board.tasks({ taskId }).transition.post(body)))
     );
 
     server.tool(
@@ -87,8 +85,7 @@ export function registerCoordinationTools(server: McpServer): void {
             replyToId: z.string().optional(),
             metadata: z.record(z.unknown()).optional()
         },
-        async ({ planId, ...body }) =>
-            jsonText(await apiFetch(`/plans/${planId}/board/entries`, { method: "POST", body: JSON.stringify(body) }))
+        async ({ planId, ...body }) => jsonText(unwrapResponse(await api.api.plans({ planId }).board.entries.post(body)))
     );
 
     server.tool(
@@ -100,8 +97,7 @@ export function registerCoordinationTools(server: McpServer): void {
             throughSequence: z.number().int().nonnegative(),
             status: z.enum(["active", "finished", "abandoned"]).optional()
         },
-        async ({ planId, runId, ...body }) =>
-            jsonText(await apiFetch(`/plans/${planId}/board/runs/${runId}/ack`, { method: "POST", body: JSON.stringify(body) }))
+        async ({ planId, runId, ...body }) => jsonText(unwrapResponse(await api.api.plans({ planId }).board.runs({ runId }).ack.post(body)))
     );
 }
 

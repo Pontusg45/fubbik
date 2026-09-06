@@ -40,7 +40,7 @@
         "scan": "turbo run scan --filter=@fubbik/db",
         "test": "turbo run test",
         "test:e2e": "turbo run test:e2e",
-        "gen:api": "turbo run gen:api --filter=web",
+        "gen:api": "turbo run gen:api --filter=@fubbik/client",
         "lint": "turbo run lint",
         "lint:fix": "oxlint --fix",
         "fmt": "oxfmt --write .",

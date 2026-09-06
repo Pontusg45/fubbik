@@ -11,7 +11,7 @@ import { createClient } from "./openapi-client";
 // `./legacy-api-routes.ts`). It stays on a separate origin until those
 // routes are ported to Rust.
 
-export const api = createClient(apiOrigin());
+export const api = createClient(apiOrigin(), { credentials: "include" });
 
 const LEGACY_REQUEST_TIMEOUT_MS = 30_000;
 const legacyFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
