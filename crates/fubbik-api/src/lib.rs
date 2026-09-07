@@ -1,4 +1,5 @@
 pub mod activity;
+pub mod ai;
 pub mod auth;
 pub mod background;
 pub mod chunks;
@@ -70,6 +71,7 @@ pub struct AppState {
 pub fn router(state: AppState) -> Router {
     Router::new()
         .merge(activity::routes::router())
+        .merge(ai::routes::router())
         .merge(auth::routes::router())
         .merge(chunks::routes::router())
         .merge(chunks::groups::router())

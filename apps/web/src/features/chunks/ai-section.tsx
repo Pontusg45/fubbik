@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
-import { legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 
 export function AiSection({ chunkId }: { chunkId: string }) {
     const [summary, setSummary] = useState<string | null>(null);
@@ -15,7 +15,7 @@ export function AiSection({ chunkId }: { chunkId: string }) {
 
     const summarizeMutation = useMutation({
         mutationFn: async () => {
-            const { data, error } = await legacyApi.api.ai.summarize.post({ chunkId });
+            const { data, error } = await api.api.ai.summarize.post({ chunkId });
             if (error) throw new Error("Failed to summarize");
             return data as { summary: string };
         },
@@ -29,7 +29,7 @@ export function AiSection({ chunkId }: { chunkId: string }) {
 
     const suggestMutation = useMutation({
         mutationFn: async () => {
-            const { data, error } = await legacyApi.api.ai["suggest-connections"].post({ chunkId });
+            const { data, error } = await api.api.ai["suggest-connections"].post({ chunkId });
             if (error) throw new Error("Failed to suggest connections");
             return data as { id: string; relation: string }[];
         },

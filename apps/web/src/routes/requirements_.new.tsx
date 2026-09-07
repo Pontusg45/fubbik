@@ -13,7 +13,7 @@ import { StepBuilder } from "@/features/requirements/step-builder";
 import { validateSteps, type Keyword, type StepRow, type StepError } from "@/features/requirements/validation";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
-import { api, legacyApi } from "@/utils/api"; // legacyApi still used for `ai["structure-requirement"]` below
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/requirements_/new")({
@@ -64,7 +64,7 @@ function NewRequirement() {
                 description: aiDescription.trim()
             };
             if (spaceId) body.spaceId = spaceId;
-            const result = unwrapEden(await legacyApi.api.ai["structure-requirement"].post(body)) as {
+            const result = unwrapEden(await api.api.ai["structure-requirement"].post(body)) as {
                 steps: Array<{ keyword: Keyword; text: string }>;
             };
             return result;

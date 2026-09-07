@@ -27,6 +27,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ai/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["generate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ai/structure-requirement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["structure_requirement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ai/suggest-connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["suggest_connections"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ai/summarize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["summarize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunk-types": {
         parameters: {
             query?: never;
@@ -3446,6 +3510,16 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        AiConnectionSuggestion: {
+            id: string;
+            relation: string;
+        };
+        AiRequirementStep: {
+            keyword: components["schemas"]["AiStepKeyword"];
+            text: string;
+        };
+        /** @enum {string} */
+        AiStepKeyword: "given" | "when" | "then" | "and";
         /**
          * @description The five fixed analyze-item buckets, always present even when empty —
          *     confirmed against real bytes in `tests/fixtures/node-contract-2c/
@@ -3984,6 +4058,9 @@ export interface components {
             id: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        ChunkIdBody: {
+            chunkId: string;
         };
         /**
          * @description Response envelope for `GET /api/chunks`, matching the Node/Elysia
@@ -5471,9 +5548,18 @@ export interface components {
             value?: string | null;
             values?: string[] | null;
         };
+        GenerateBody: {
+            prompt: string;
+        };
         GenerateInstructionsResponse: {
             content: string;
             format: string;
+        };
+        GeneratedChunk: {
+            content: string;
+            tags: string[];
+            title: string;
+            type: string;
         };
         /**
          * @description A behaviour-matrix rule linked to a file via `behavior_cell_code`,
@@ -6914,6 +7000,17 @@ export interface components {
             type: components["schemas"]["WarningType"];
             word: string;
         };
+        StructureRequirementBody: {
+            description: string;
+            /**
+             * @description `spaceId` is the current web contract. `codebaseId` remains accepted
+             *     so callers of the legacy route do not break during the rename.
+             */
+            spaceId?: string | null;
+        };
+        StructuredRequirement: {
+            steps: components["schemas"]["AiRequirementStep"][];
+        };
         /** @description Body of `POST /api/vocabulary/suggest` (`routes.ts:51-53`). */
         SuggestBody: {
             spaceId: string;
@@ -6922,6 +7019,9 @@ export interface components {
             category: string;
             expects?: string[] | null;
             word: string;
+        };
+        SummaryResponse: {
+            summary: string;
         };
         /**
          * @description Body of `POST /api/chunks/suppress-duplicate`
@@ -7765,6 +7865,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Activity"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    generate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneratedChunk"];
+                };
+            };
+        };
+    };
+    structure_requirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StructureRequirementBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StructuredRequirement"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    suggest_connections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChunkIdBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiConnectionSuggestion"][];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    summarize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChunkIdBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SummaryResponse"];
                 };
             };
             404: {

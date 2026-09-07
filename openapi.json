@@ -82,6 +82,138 @@
         }
       }
     },
+    "/api/ai/generate": {
+      "post": {
+        "tags": [
+          "crate::ai::routes"
+        ],
+        "operationId": "generate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedChunk"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/structure-requirement": {
+      "post": {
+        "tags": [
+          "crate::ai::routes"
+        ],
+        "operationId": "structure_requirement",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StructureRequirementBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StructuredRequirement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/ai/suggest-connections": {
+      "post": {
+        "tags": [
+          "crate::ai::routes"
+        ],
+        "operationId": "suggest_connections",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChunkIdBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AiConnectionSuggestion"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/ai/summarize": {
+      "post": {
+        "tags": [
+          "crate::ai::routes"
+        ],
+        "operationId": "summarize",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChunkIdBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunk-types": {
       "get": {
         "tags": [
@@ -10598,6 +10730,45 @@
           }
         }
       },
+      "AiConnectionSuggestion": {
+        "type": "object",
+        "required": [
+          "id",
+          "relation"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          }
+        }
+      },
+      "AiRequirementStep": {
+        "type": "object",
+        "required": [
+          "keyword",
+          "text"
+        ],
+        "properties": {
+          "keyword": {
+            "$ref": "#/components/schemas/AiStepKeyword"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "AiStepKeyword": {
+        "type": "string",
+        "enum": [
+          "given",
+          "when",
+          "then",
+          "and"
+        ]
+      },
       "AnalyzeGrouped": {
         "type": "object",
         "description": "The five fixed analyze-item buckets, always present even when empty —\nconfirmed against real bytes in `tests/fixtures/node-contract-2c/\nplans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],\nrisk:[],assumption:[],question:[]}`, never an omitted key. Matches\nNode's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which\ninitialises all five keys unconditionally before bucketing.",
@@ -11979,6 +12150,17 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ChunkIdBody": {
+        "type": "object",
+        "required": [
+          "chunkId"
+        ],
+        "properties": {
+          "chunkId": {
+            "type": "string"
           }
         }
       },
@@ -15585,6 +15767,17 @@
           }
         }
       },
+      "GenerateBody": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      },
       "GenerateInstructionsResponse": {
         "type": "object",
         "required": [
@@ -15596,6 +15789,32 @@
             "type": "string"
           },
           "format": {
+            "type": "string"
+          }
+        }
+      },
+      "GeneratedChunk": {
+        "type": "object",
+        "required": [
+          "title",
+          "content",
+          "type",
+          "tags"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
             "type": "string"
           }
         }
@@ -19029,6 +19248,38 @@
           }
         }
       },
+      "StructureRequirementBody": {
+        "type": "object",
+        "required": [
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`spaceId` is the current web contract. `codebaseId` remains accepted\nso callers of the legacy route do not break during the rename."
+          }
+        }
+      },
+      "StructuredRequirement": {
+        "type": "object",
+        "required": [
+          "steps"
+        ],
+        "properties": {
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiRequirementStep"
+            }
+          }
+        }
+      },
       "SuggestBody": {
         "type": "object",
         "description": "Body of `POST /api/vocabulary/suggest` (`routes.ts:51-53`).",
@@ -19061,6 +19312,17 @@
             }
           },
           "word": {
+            "type": "string"
+          }
+        }
+      },
+      "SummaryResponse": {
+        "type": "object",
+        "required": [
+          "summary"
+        ],
+        "properties": {
+          "summary": {
             "type": "string"
           }
         }

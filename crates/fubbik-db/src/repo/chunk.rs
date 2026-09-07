@@ -54,6 +54,15 @@ pub struct Chunk {
     pub is_entry_point: bool,
 }
 
+/// Minimal projection used when an AI prompt needs the caller's chunk
+/// catalogue. Keeping this query here avoids loading content, embeddings,
+/// and the rest of [`Chunk`] only to discard them before prompt assembly.
+#[derive(Debug, Clone, serde::Serialize, sqlx::FromRow)]
+pub struct ChunkTitle {
+    pub id: String,
+    pub title: String,
+}
+
 /// Everything `POST /api/chunks` can set at insert time, matching Node's
 /// `createChunkRepo` call in `chunk-mutations.ts:76-90`.
 ///
@@ -214,6 +223,21 @@ pub async fn find_by_id(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Opt
     .fetch_optional(pool)
     .await?;
     Ok(c)
+}
+
+/// All chunk ids and titles owned by one user, including archived chunks.
+/// The lack of an archive predicate intentionally matches Node's
+/// `getAllChunksMeta(userId)` used by AI connection suggestions.
+pub async fn list_titles(pool: &PgPool, user_id: &str) -> AppResult<Vec<ChunkTitle>> {
+    Ok(sqlx::query_as!(
+        ChunkTitle,
+        r#"SELECT id, title FROM chunk
+           WHERE user_id = $1
+           ORDER BY created_at ASC, id ASC"#,
+        user_id
+    )
+    .fetch_all(pool)
+    .await?)
 }
 
 /// Bulk ownership-scoped lookup preserving the caller's id order.

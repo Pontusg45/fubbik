@@ -17,7 +17,7 @@ import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { getUser } from "@/functions/get-user";
 import { useApiListQuery } from "@/hooks/use-api-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/chunks/new")({
@@ -138,7 +138,7 @@ function NewChunk() {
 
     const generateMutation = useMutation({
         mutationFn: async () => {
-            const { data, error } = await legacyApi.api.ai.generate.post({ prompt: aiPrompt });
+            const { data, error } = await api.api.ai.generate.post({ prompt: aiPrompt });
             if (error) throw new Error("Failed to generate chunk");
             return data as { title: string; content: string; type: string; tags: string[] };
         },

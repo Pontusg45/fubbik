@@ -26,11 +26,15 @@ pub struct TestApp {
 
 impl TestApp {
     pub fn new(pool: sqlx::PgPool) -> Self {
+        Self::with_ai(pool, fubbik_ai::OllamaClient::new("http://127.0.0.1:1"))
+    }
+
+    pub fn with_ai(pool: sqlx::PgPool, ai: fubbik_ai::OllamaClient) -> Self {
         let state = fubbik_api::AppState {
             pool,
             implicit_dev_session: false,
             better_auth_secret: "test-secret".into(),
-            ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
+            ai,
             rate_limiter: Default::default(),
         };
         Self {
