@@ -24,32 +24,27 @@ fn hash_content(content: &str) -> String {
 
 /// Imports (or re-syncs, or no-ops on an unchanged hash) a single markdown
 /// document — matching Node's `importDocument`
-/// (`packages/api/src/documents/service.ts:45-159`), **default
-/// (non-template) path only**.
-///
-/// Node's `importDocument` also accepts an optional `templateId` that
-/// switches to a template-aware import branch
-/// (`packages/api/src/documents/service.ts:63-116`, using `parseDocFile`
-/// from `chunks/parse-docs.ts` and `extractFields` from
-/// `templates/field-extraction.ts`). That branch is **not ported**:
-///
-/// - `POST /api/documents/import` never accepts or forwards a `templateId`
-///   (`packages/api/src/documents/routes.ts:47-64` only reads
-///   `sourcePath`/`content`/`spaceId` off the body) and no other caller in
-///   the codebase (CLI, MCP, tests) invokes `importDocument` with one
-///   either — the branch is dead code from every real entry point.
-/// - It depends on `templates/field-extraction.ts`, already flagged
-///   out of scope for this port's templates slice — see
-///   `fubbik_db::repo::template`'s module doc comment ("the (unported, out
-///   of scope for this slice) match/extraction engine").
-///
-/// Flagged for the human call rather than silently reimplemented.
+/// (`packages/api/src/documents/service.ts:45-159`). This public entry point
+/// keeps the documents API's non-template contract; bulk chunk imports call
+/// [`import_document_with_template`] to opt into the same template branch
+/// used by Node's import wizard.
 pub async fn import_document(
     pool: &PgPool,
     user_id: &str,
     source_path: &str,
     raw_content: &str,
     space_id: Option<&str>,
+) -> AppResult<ImportResult> {
+    import_document_with_template(pool, user_id, source_path, raw_content, space_id, None).await
+}
+
+pub async fn import_document_with_template(
+    pool: &PgPool,
+    user_id: &str,
+    source_path: &str,
+    raw_content: &str,
+    space_id: Option<&str>,
+    template_id: Option<&str>,
 ) -> AppResult<ImportResult> {
     let content_hash = hash_content(raw_content);
 
@@ -78,6 +73,88 @@ pub async fn import_document(
             status: sync.status,
             first_chunk_id,
         });
+    }
+
+    if let Some(template_id) = template_id {
+        let template = fubbik_db::repo::template::list(pool, user_id)
+            .await?
+            .into_iter()
+            .find(|template| template.id == template_id);
+        if let Some(template) = template {
+            let parsed = super::template_import::parse_doc(source_path, raw_content);
+            let mappings = template
+                .field_mappings
+                .as_ref()
+                .map_or(&[][..], |m| m.0.as_slice());
+            let (extracted, remaining_content) =
+                super::template_import::extract_fields(raw_content, mappings);
+            let mut tags = template.tags.unwrap_or_default();
+            tags.extend(parsed.tags);
+            let mut seen = std::collections::HashSet::new();
+            tags.retain(|tag| seen.insert(tag.clone()));
+            let doc_id = fubbik_db::new_id();
+            let doc = document::create(
+                pool,
+                user_id,
+                NewDocument {
+                    id: doc_id.clone(),
+                    title: parsed.title.clone(),
+                    source_path: source_path.to_owned(),
+                    content_hash,
+                    description: None,
+                    space_id: space_id.map(str::to_owned),
+                    split_level: None,
+                },
+            )
+            .await?;
+            let created = fubbik_db::repo::chunk::create(
+                pool,
+                user_id,
+                fubbik_db::repo::chunk::NewChunk {
+                    title: parsed.title,
+                    content: remaining_content,
+                    chunk_type: template.template_type,
+                    rationale: extracted.rationale,
+                    alternatives: extracted.alternatives,
+                    consequences: extracted.consequences,
+                    origin: "ai".into(),
+                    // This path calls the repository directly in Node, so
+                    // `origin = ai` does not run the chunk service's
+                    // origin-to-review-state derivation; the DB default
+                    // remains `approved`.
+                    review_status: "approved".into(),
+                    document_id: Some(doc_id),
+                    document_order: Some(0),
+                },
+            )
+            .await?;
+            if let Some(summary) = extracted.summary {
+                fubbik_db::repo::chunk::update(
+                    pool,
+                    user_id,
+                    &created.id,
+                    fubbik_db::repo::chunk::ChunkPatch {
+                        summary: Some(Some(summary)),
+                        ..Default::default()
+                    },
+                )
+                .await?;
+            }
+            if !tags.is_empty() {
+                let tag_ids = document::resolve_tag_ids(pool, user_id, &tags).await?;
+                tag::set_chunk_tags(pool, user_id, &created.id, &tag_ids).await?;
+            }
+            if let Some(space_id) = space_id {
+                space::set_chunk_spaces(pool, user_id, &created.id, &[space_id.to_owned()]).await?;
+            }
+            return Ok(ImportResult {
+                document: doc,
+                created: 1,
+                updated: 0,
+                status: ImportStatus::Created,
+                first_chunk_id: Some(created.id),
+            });
+        }
     }
 
     let split = split_markdown(raw_content, source_path);

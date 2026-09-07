@@ -1231,6 +1231,95 @@
         }
       }
     },
+    "/api/chunks/import-docs": {
+      "post": {
+        "tags": [
+          "crate::chunks::import_docs"
+        ],
+        "operationId": "import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportDocsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDocsResult"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/chunks/import-docs/preview": {
+      "post": {
+        "tags": [
+          "crate::chunks::import_docs"
+        ],
+        "operationId": "preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportDocsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chunks/import-docs/stream": {
+      "post": {
+        "tags": [
+          "crate::chunks::import_docs"
+        ],
+        "operationId": "stream",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportDocsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Server-sent import progress events"
+          },
+          "429": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/chunks/merge": {
       "post": {
         "tags": [
@@ -15220,6 +15309,50 @@
           }
         }
       },
+      "ExtractedFields": {
+        "type": "object",
+        "properties": {
+          "alternatives": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "consequences": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "ExtractionTarget": {
         "type": "string",
         "description": "The six chunk fields a template's field mappings can populate — a real\n`t.Union` of literals (`packages/api/src/templates/routes.ts:29-36`).",
@@ -16466,6 +16599,83 @@
           }
         }
       },
+      "ImportDocFile": {
+        "type": "object",
+        "required": [
+          "path",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportDocsBody": {
+        "type": "object",
+        "required": [
+          "files",
+          "spaceId"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportDocFile"
+            }
+          },
+          "spaceId": {
+            "type": "string"
+          },
+          "templateOverrides": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ImportDocsResult": {
+        "type": "object",
+        "required": [
+          "created",
+          "skipped",
+          "connections",
+          "errors"
+        ],
+        "properties": {
+          "connections": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportError"
+            }
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ImportDocumentBody": {
         "type": "object",
         "description": "Body of `POST /api/documents/import`\n(`packages/api/src/documents/routes.ts:57-63`). `sourcePath`/`content`\nlength caps (`maxLength: 500`/`200000`) are Elysia-only request\nvalidation Node never re-checks past the transport layer; matching\nthis port's established precedent (see\n`crate::templates::dto::CreateTemplateBody`'s doc comment), they go\nunenforced here — an over-long value is simply stored as-is.\n\nNode's route never accepts or forwards a `templateId`\n(`packages/api/src/documents/service.ts`'s `importDocument` takes one,\nbut no caller — HTTP or otherwise — ever supplies it), so this body has\nno such field either; see `service::import_document`'s doc comment.",
@@ -16485,6 +16695,21 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "ImportError": {
+        "type": "object",
+        "required": [
+          "path",
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
           }
         }
       },
@@ -17085,6 +17310,32 @@
           }
         }
       },
+      "ParsedDoc": {
+        "type": "object",
+        "required": [
+          "title",
+          "type",
+          "tags",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
       "ParsedToken": {
         "type": "object",
         "required": [
@@ -17645,6 +17896,59 @@
           },
           "url": {
             "type": "string"
+          }
+        }
+      },
+      "PreviewFile": {
+        "type": "object",
+        "required": [
+          "path",
+          "title",
+          "parsed"
+        ],
+        "properties": {
+          "parsed": {
+            "$ref": "#/components/schemas/ParsedDoc"
+          },
+          "path": {
+            "type": "string"
+          },
+          "suggestedTemplate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SuggestedTemplate"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "PreviewResult": {
+        "type": "object",
+        "required": [
+          "files",
+          "existingHashes"
+        ],
+        "properties": {
+          "existingHashes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreviewFile"
+            }
           }
         }
       },
@@ -19312,6 +19616,41 @@
             }
           },
           "word": {
+            "type": "string"
+          }
+        }
+      },
+      "SuggestedTemplate": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "score",
+          "type",
+          "tags",
+          "extractedFields"
+        ],
+        "properties": {
+          "extractedFields": {
+            "$ref": "#/components/schemas/ExtractedFields"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "type": {
             "type": "string"
           }
         }

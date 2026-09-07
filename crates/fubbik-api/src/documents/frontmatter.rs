@@ -2,15 +2,9 @@
 //! `tagsFromPath` (`packages/api/src/chunks/parse-docs.ts:60-116`) that
 //! `split_markdown`/`render_markdown` actually consume.
 //!
-//! `packages/api/src/chunks/parse-docs.ts` is otherwise **unported** —
-//! `parseDocFile` (and the templates match/extraction engine it feeds,
-//! `packages/api/src/templates/field-extraction.ts`) back only the
-//! `templateId`-aware branch of `importDocument`, which is unreachable
-//! from any real HTTP caller (see `documents::service::import_document`'s
-//! doc comment) and is explicitly out of scope for this port — see
-//! `fubbik_db::repo::template`'s module doc comment ("the (unported, out
-//! of scope for this slice) match/extraction engine"). `split_markdown`
-//! and `render_markdown` only ever read `frontmatter.title`,
+//! The wider template-aware parser now lives in
+//! `documents::template_import`; this smaller parser remains focused on
+//! what `split_markdown` and `render_markdown` read: `frontmatter.title`,
 //! `frontmatter.tags`, and `frontmatter.description` — never the
 //! nested-object `scope` frontmatter key parse-docs.ts also supports (only
 //! `parseDocFile` reads that). This port therefore does not implement that

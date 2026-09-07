@@ -9,12 +9,7 @@ import { join, relative } from "node:path";
 const ROOT = join(import.meta.dirname, "..");
 const SRC = join(ROOT, "src");
 
-const ALLOWED = new Set([
-    "utils/api.ts",
-    "features/import/steps/preview.tsx",
-    "features/import/quick-mode.tsx",
-    "features/import/import-dialog.tsx"
-]);
+const ALLOWED = new Set();
 
 const USES_LEGACY = /\bimport\b[^;\n]*\blegacyApi\b|\blegacyApi\s*\./;
 

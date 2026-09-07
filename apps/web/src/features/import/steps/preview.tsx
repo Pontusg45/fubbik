@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useApiListQuery } from "@/hooks/use-api-query";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { FileDetailPanel } from "../file-detail-panel";
@@ -79,8 +79,7 @@ export function StepPreview({
             setLoading(true);
             try {
                 const raw = unwrapEden(
-                    // `chunks/import-docs/preview` has no Rust route yet — see the "chunks" note in `@/utils/api`.
-                    await legacyApi.api.chunks["import-docs"].preview.post({
+                    await api.api.chunks["import-docs"].preview.post({
                         files: selectedFiles.map(f => ({ path: f.path, content: f.content })),
                         spaceId
                     })

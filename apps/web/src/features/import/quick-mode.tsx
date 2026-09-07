@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useApiListQuery } from "@/hooks/use-api-query";
-// `chunks/import-docs` has no Rust route yet — see the "chunks" note in `@/utils/api`.
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import type { FileEntry } from "./types";
@@ -111,7 +110,7 @@ export function ImportQuickMode() {
     const importMutation = useMutation({
         mutationFn: async (payload: { files: FileEntry[]; spaceId: string }) => {
             const result = unwrapEden(
-                await legacyApi.api.chunks["import-docs"].post({
+                await api.api.chunks["import-docs"].post({
                     files: payload.files,
                     spaceId: payload.spaceId
                 })

@@ -75,6 +75,7 @@ pub fn router(state: AppState) -> Router {
         .merge(auth::routes::router())
         .merge(chunks::routes::router())
         .merge(chunks::groups::router())
+        .merge(chunks::import_docs::router())
         .merge(collections::routes::router())
         .merge(connections::routes::router())
         .merge(coordination::routes::router())

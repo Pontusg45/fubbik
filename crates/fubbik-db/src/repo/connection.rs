@@ -100,6 +100,51 @@ pub async fn create(
     Ok(row)
 }
 
+/// Import-only idempotent variant. Folder imports may be repeated after
+/// every document is already unchanged, so the same `part_of` edge must be
+/// a no-op rather than a 409.
+pub async fn create_if_not_exists(
+    pool: &PgPool,
+    user_id: &str,
+    source_id: &str,
+    target_id: &str,
+    relation: &str,
+) -> AppResult<bool> {
+    let mut tx = pool.begin().await?;
+    let id = crate::new_id();
+    let inserted = sqlx::query!(
+        r#"INSERT INTO chunk_connection (id, source_id, target_id, relation, origin, review_status)
+           SELECT $1, s.id, t.id, $4, 'import', 'approved'
+           FROM chunk s, chunk t
+           WHERE s.id = $2 AND t.id = $3 AND s.user_id = $5 AND t.user_id = $5
+           ON CONFLICT (source_id, target_id, relation) DO NOTHING
+           RETURNING id"#,
+        id,
+        source_id,
+        target_id,
+        relation,
+        user_id
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+    if inserted.is_some() {
+        crate::repo::projection::enqueue(
+            &mut tx,
+            "connection",
+            &id,
+            "connection.upserted",
+            serde_json::json!({
+                "sourceId": source_id,
+                "targetId": target_id,
+                "relation": relation,
+            }),
+        )
+        .await?;
+    }
+    tx.commit().await?;
+    Ok(inserted.is_some())
+}
+
 /// Unscoped by `user_id` — matches Node's `getConnectionById`, which is a
 /// plain `id` lookup with no ownership filter of its own. The service
 /// layer (`connections::service::delete`) is what turns this into an

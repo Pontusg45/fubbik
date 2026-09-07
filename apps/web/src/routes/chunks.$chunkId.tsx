@@ -17,11 +17,8 @@ import { getUser } from "@/functions/get-user";
 import { useReaderSettings, getReaderClasses } from "@/hooks/use-reader-settings";
 import { useReadingTrail } from "@/hooks/use-reading-trail";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
-// The enriched detail shape (chunk, connections, appliesTo, fileReferences,
-// tags, requirements, healthScore, deltas) is now on Rust, so the two reads
-// below use `api`. The PATCH calls stay on `legacyApi`: Rust's
-// `UpdateChunkBody` has no `tags`/`isEntryPoint`/`reviewStatus` field yet —
-// see the "chunks" note in `@/utils/api`.
+// The enriched detail shape and all chunk mutations use the generated Rust
+// API client.
 import { api } from "@/utils/api";
 import { archiveChunk } from "@/utils/api-helpers";
 

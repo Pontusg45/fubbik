@@ -232,9 +232,6 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.3)
-      '@elysiajs/eden':
-        specifier: ^1.4.8
-        version: 1.4.8(elysia@1.4.27(@sinclair/typebox@0.34.48)(@types/bun@1.3.10)(exact-mirror@0.2.7(@sinclair/typebox@0.34.48))(file-type@21.3.0)(openapi-types@12.1.3)(typescript@5.9.3))
       '@fontsource-variable/inter':
         specifier: ^5.2.5
         version: 5.2.8

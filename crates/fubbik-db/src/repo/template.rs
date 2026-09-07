@@ -1,8 +1,7 @@
 //! Chunk templates (`chunk_template`) back `POST /api/chunks/new`'s template
-//! picker and the (unported, out of scope for this slice) match/extraction
-//! engine in `packages/api/src/templates/{match-engine,field-extraction}.ts`
-//! — only the four CRUD endpoints
-//! (`packages/api/src/templates/routes.ts`) are ported here.
+//! picker and the match/extraction engine used by document imports. The
+//! CRUD persistence lives here; matching and extraction live in
+//! `fubbik_api::documents::template_import`.
 //!
 //! **Built-in templates are seeded by migration and read-only.** Node's
 //! `updateTemplate`/`deleteTemplate` services

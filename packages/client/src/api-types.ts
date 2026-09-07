@@ -313,6 +313,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/import-docs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/import-docs/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/import-docs/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["stream"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/merge": {
         parameters: {
             query?: never;
@@ -5269,6 +5317,15 @@ export interface components {
             title: string;
             type: string;
         };
+        ExtractedFields: {
+            alternatives?: string[] | null;
+            consequences?: string | null;
+            rationale?: string | null;
+            scope?: {
+                [key: string]: string;
+            } | null;
+            summary?: string | null;
+        };
         /**
          * @description The six chunk fields a template's field mappings can populate — a real
          *     `t.Union` of literals (`packages/api/src/templates/routes.ts:29-36`).
@@ -5767,6 +5824,26 @@ export interface components {
             files: components["schemas"]["ImportFileEntry"][];
             spaceId?: string | null;
         };
+        ImportDocFile: {
+            content: string;
+            path: string;
+        };
+        ImportDocsBody: {
+            files: components["schemas"]["ImportDocFile"][];
+            spaceId: string;
+            templateOverrides?: {
+                [key: string]: string | null;
+            } | null;
+        };
+        ImportDocsResult: {
+            /** Format: int32 */
+            connections: number;
+            /** Format: int32 */
+            created: number;
+            errors: components["schemas"]["ImportError"][];
+            /** Format: int32 */
+            skipped: number;
+        };
         /**
          * @description Body of `POST /api/documents/import`
          *     (`packages/api/src/documents/routes.ts:57-63`). `sourcePath`/`content`
@@ -5785,6 +5862,10 @@ export interface components {
             content: string;
             sourcePath: string;
             spaceId?: string | null;
+        };
+        ImportError: {
+            error: string;
+            path: string;
         };
         /**
          * @description One entry of `POST /api/documents/import-dir`'s `files` array
@@ -6044,6 +6125,12 @@ export interface components {
             tokens: components["schemas"]["ParsedToken"][];
             warnings: components["schemas"]["VocabularyWarning"][];
         };
+        ParsedDoc: {
+            content: string;
+            tags: string[];
+            title: string;
+            type: string;
+        };
         ParsedToken: {
             category?: string | null;
             position: components["schemas"]["TextSpan"];
@@ -6270,6 +6357,18 @@ export interface components {
             system: string;
             taskId: string;
             url: string;
+        };
+        PreviewFile: {
+            parsed: components["schemas"]["ParsedDoc"];
+            path: string;
+            suggestedTemplate?: null | components["schemas"]["SuggestedTemplate"];
+            title: string;
+        };
+        PreviewResult: {
+            existingHashes: {
+                [key: string]: string;
+            };
+            files: components["schemas"]["PreviewFile"][];
         };
         /**
          * @description Matches Node's `PrioritySchema` (`t.Union([t.Literal("must"),
@@ -7019,6 +7118,15 @@ export interface components {
             category: string;
             expects?: string[] | null;
             word: string;
+        };
+        SuggestedTemplate: {
+            extractedFields: components["schemas"]["ExtractedFields"];
+            id: string;
+            name: string;
+            /** Format: double */
+            score: number;
+            tags: string[];
+            type: string;
         };
         SummaryResponse: {
             summary: string;
@@ -8441,6 +8549,86 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GroupChunksResponse"];
                 };
+            };
+        };
+    };
+    import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportDocsBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDocsResult"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportDocsBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewResult"];
+                };
+            };
+        };
+    };
+    stream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportDocsBody"];
+            };
+        };
+        responses: {
+            /** @description Server-sent import progress events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

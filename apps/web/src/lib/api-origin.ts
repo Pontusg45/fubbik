@@ -55,11 +55,6 @@ export function legacyApiOrigin(): string {
     return import.meta.env.PROD ? apiOrigin() : LEGACY_SSR_DEFAULT;
 }
 
-export function legacyApiUrl(path: string): string {
-    const normalized = path.startsWith("/") ? path : `/${path}`;
-    return `${legacyApiOrigin()}${normalized}`;
-}
-
 /** Log API wiring once in dev; warn when legacy env vars disagree. */
 export function logApiOriginInDev(): void {
     if (!import.meta.env.DEV || typeof window === "undefined") return;
