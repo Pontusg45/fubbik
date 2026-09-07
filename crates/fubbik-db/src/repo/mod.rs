@@ -1,6 +1,7 @@
 pub mod activity;
 pub mod behavior_matrix;
 pub mod chunk;
+pub mod chunk_group;
 pub mod chunk_meta;
 pub mod chunk_type;
 pub mod chunk_version;

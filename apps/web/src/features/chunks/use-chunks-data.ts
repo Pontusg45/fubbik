@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { ChunkRowChunk } from "@/features/chunks/chunk-row";
 import { getChunkSize } from "@/features/chunks/chunk-size";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 const LIMIT = 20;
@@ -77,8 +77,7 @@ export function useChunksData({
         queryKey: ["chunks-federated", type, q, sort, tags, origin, reviewStatus],
         queryFn: async ({ pageParam = 1 }) => {
             try {
-                // No Rust route for `search/federated` yet — stays on legacyApi.
-                const res = await legacyApi.api.chunks.search.federated.get({
+                const res = await api.api.chunks.search.federated.get({
                     query: {
                         type,
                         search: q,

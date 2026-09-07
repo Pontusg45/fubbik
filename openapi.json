@@ -725,6 +725,380 @@
         }
       }
     },
+    "/api/chunks/grouped": {
+      "get": {
+        "tags": [
+          "crate::chunks::groups"
+        ],
+        "operationId": "grouped",
+        "parameters": [
+          {
+            "name": "groupBy",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tagTypeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "subGroupBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "subTagTypeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "codebaseId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "description": "Preferred post-rename alias used by the current web app.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "workspaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "global",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "tagMode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/TagMode"
+                }
+              ]
+            }
+          },
+          {
+            "name": "origin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "reviewStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupedResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chunks/grouped/{groupName}/chunks": {
+      "get": {
+        "tags": [
+          "crate::chunks::groups"
+        ],
+        "operationId": "group_chunks",
+        "parameters": [
+          {
+            "name": "groupName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupBy",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tagTypeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "codebaseId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "workspaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "global",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "tagMode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/components/schemas/TagMode"
+                }
+              ]
+            }
+          },
+          {
+            "name": "origin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "reviewStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupChunksResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chunks/merge": {
       "post": {
         "tags": [
@@ -12253,6 +12627,48 @@
           }
         }
       },
+      "CompoundGroupCount": {
+        "type": "object",
+        "required": [
+          "groupName",
+          "count",
+          "subGroups"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "groupName": {
+            "type": "string"
+          },
+          "subGroups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupCount"
+            }
+          }
+        }
+      },
+      "CompoundGroupedResponse": {
+        "type": "object",
+        "required": [
+          "groups",
+          "totalGroups"
+        ],
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompoundGroupCount"
+            }
+          },
+          "totalGroups": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "Connection": {
         "type": "object",
         "description": "`chunk_connection` row shape, matching Node's bare-row response for both\n`POST /api/connections` (create) and the implicit shape returned by\n`getConnectionById`/`deleteConnection` in\n`packages/db/src/repository/connection.ts`.",
@@ -15428,6 +15844,70 @@
             }
           }
         }
+      },
+      "GroupChunksResponse": {
+        "type": "object",
+        "required": [
+          "chunks",
+          "total"
+        ],
+        "properties": {
+          "chunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Chunk"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "GroupCount": {
+        "type": "object",
+        "required": [
+          "groupName",
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "groupName": {
+            "type": "string"
+          }
+        }
+      },
+      "GroupedResponse": {
+        "type": "object",
+        "required": [
+          "groups",
+          "totalGroups"
+        ],
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupCount"
+            }
+          },
+          "totalGroups": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "GroupedResult": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GroupedResponse"
+          },
+          {
+            "$ref": "#/components/schemas/CompoundGroupedResponse"
+          }
+        ]
       },
       "HeadingRule": {
         "type": "object",
@@ -18741,6 +19221,13 @@
             ]
           }
         }
+      },
+      "TagMode": {
+        "type": "string",
+        "enum": [
+          "any",
+          "all"
+        ]
       },
       "TagType": {
         "type": "object",

@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { SkeletonList } from "@/components/ui/skeleton-list";
 import { ChunkRow, type ChunkRowChunk } from "@/features/chunks/chunk-row";
 import { usePinnedChunks } from "@/features/chunks/use-pinned-chunks";
-import { api, legacyApi } from "@/utils/api";
+import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 // ---------------------------------------------------------------------------
@@ -77,9 +77,8 @@ export function LazyGroupList({
     const groupsQuery = useQuery({
         queryKey: ["chunks-grouped", queryParam, tagTypeId, subQueryParam, subTagTypeId, spaceId, workspaceId, filters],
         queryFn: async () => {
-            // `chunks/grouped` has no Rust route yet — see the "chunks" note in `@/utils/api`.
             return unwrapEden(
-                await legacyApi.api.chunks.grouped.get({
+                await api.api.chunks.grouped.get({
                     query: {
                         groupBy: queryParam,
                         ...(tagTypeId ? { tagTypeId } : {}),
@@ -252,9 +251,8 @@ function GroupChunksList({
     const chunksQuery = useInfiniteQuery({
         queryKey: ["chunks-group", groupName, groupBy, tagTypeId, spaceId, workspaceId, sort, filters],
         queryFn: async ({ pageParam = 0 }) => {
-            // `chunks/grouped` has no Rust route yet — see the "chunks" note in `@/utils/api`.
             return unwrapEden(
-                await legacyApi.api.chunks.grouped({ groupName }).chunks.get({
+                await api.api.chunks.grouped({ groupName }).chunks.get({
                     query: {
                         groupBy,
                         ...(tagTypeId ? { tagTypeId } : {}),

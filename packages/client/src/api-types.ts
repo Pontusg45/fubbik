@@ -217,6 +217,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/grouped": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["grouped"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/grouped/{groupName}/chunks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["group_chunks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/merge": {
         parameters: {
             query?: never;
@@ -4197,6 +4229,16 @@ export interface components {
         CommentMessage: {
             message: string;
         };
+        CompoundGroupCount: {
+            /** Format: int64 */
+            count: number;
+            groupName: string;
+            subGroups: components["schemas"]["GroupCount"][];
+        };
+        CompoundGroupedResponse: {
+            groups: components["schemas"]["CompoundGroupCount"][];
+            totalGroups: number;
+        };
         /**
          * @description `chunk_connection` row shape, matching Node's bare-row response for both
          *     `POST /api/connections` (create) and the implicit shape returned by
@@ -5510,6 +5552,21 @@ export interface components {
             governsEdges: components["schemas"]["GovernsEdge"][];
             tagTypes: components["schemas"]["TagType"][];
         };
+        GroupChunksResponse: {
+            chunks: components["schemas"]["Chunk"][];
+            /** Format: int64 */
+            total: number;
+        };
+        GroupCount: {
+            /** Format: int64 */
+            count: number;
+            groupName: string;
+        };
+        GroupedResponse: {
+            groups: components["schemas"]["GroupCount"][];
+            totalGroups: number;
+        };
+        GroupedResult: components["schemas"]["GroupedResponse"] | components["schemas"]["CompoundGroupedResponse"];
         HeadingRule: {
             /** Format: int32 */
             level?: number | null;
@@ -6936,6 +6993,8 @@ export interface components {
             tagTypeId?: string | null;
             tagTypeName?: string | null;
         };
+        /** @enum {string} */
+        TagMode: "any" | "all";
         /**
          * @description `camelCase` serialisation matches every other wire type in this crate —
          *     see the note on `chunk::Chunk` for why that's mandatory, not cosmetic.
@@ -8099,6 +8158,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExportContextResponse"];
+                };
+            };
+        };
+    };
+    grouped: {
+        parameters: {
+            query: {
+                groupBy: string;
+                tagTypeId?: string | null;
+                subGroupBy?: string | null;
+                subTagTypeId?: string | null;
+                codebaseId?: string | null;
+                /** @description Preferred post-rename alias used by the current web app. */
+                spaceId?: string | null;
+                workspaceId?: string | null;
+                global?: string | null;
+                type?: string | null;
+                search?: string | null;
+                tags?: string | null;
+                tagMode?: null | components["schemas"]["TagMode"];
+                origin?: string | null;
+                reviewStatus?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupedResult"];
+                };
+            };
+        };
+    };
+    group_chunks: {
+        parameters: {
+            query: {
+                groupBy: string;
+                tagTypeId?: string | null;
+                codebaseId?: string | null;
+                spaceId?: string | null;
+                workspaceId?: string | null;
+                global?: string | null;
+                type?: string | null;
+                search?: string | null;
+                tags?: string | null;
+                tagMode?: null | components["schemas"]["TagMode"];
+                origin?: string | null;
+                reviewStatus?: string | null;
+                sort?: string | null;
+                limit?: string | null;
+                offset?: string | null;
+            };
+            header?: never;
+            path: {
+                groupName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupChunksResponse"];
                 };
             };
         };
