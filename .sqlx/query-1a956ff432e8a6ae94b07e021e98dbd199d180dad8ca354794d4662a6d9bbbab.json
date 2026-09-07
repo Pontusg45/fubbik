@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT u.id, u.email, u.name, u.email_verified, u.image,\n                  u.created_at AS \"created_at: crate::timestamp::UtcTimestamp\",\n                  u.updated_at AS \"updated_at: crate::timestamp::UtcTimestamp\",\n                  u.password_hash\n           FROM session s\n           JOIN \"user\" u ON u.id = s.user_id\n           WHERE s.token = $1 AND s.expires_at > now()",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "email_verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "image",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at: crate::timestamp::UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at: crate::timestamp::UtcTimestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 7,
+        "name": "password_hash",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "1a956ff432e8a6ae94b07e021e98dbd199d180dad8ca354794d4662a6d9bbbab"
+}

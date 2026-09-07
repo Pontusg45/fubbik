@@ -6,6 +6,10 @@ pub struct User {
     pub id: String,
     pub email: String,
     pub name: String,
+    pub email_verified: bool,
+    pub image: Option<String>,
+    pub created_at: crate::timestamp::UtcTimestamp,
+    pub updated_at: crate::timestamp::UtcTimestamp,
     #[serde(skip)]
     pub password_hash: Option<String>,
 }
@@ -21,7 +25,10 @@ pub async fn create(
         User,
         r#"INSERT INTO "user" (id, email, name, password_hash, email_verified)
            VALUES ($1, $2, $3, $4, true)
-           RETURNING id, email, name, password_hash"#,
+           RETURNING id, email, name, email_verified, image,
+                     created_at AS "created_at: crate::timestamp::UtcTimestamp",
+                     updated_at AS "updated_at: crate::timestamp::UtcTimestamp",
+                     password_hash"#,
         id,
         email,
         name,
@@ -35,7 +42,10 @@ pub async fn create(
 pub async fn find_by_email(pool: &PgPool, email: &str) -> AppResult<Option<User>> {
     let user = sqlx::query_as!(
         User,
-        r#"SELECT id, email, name, password_hash FROM "user" WHERE email = $1"#,
+        r#"SELECT id, email, name, email_verified, image,
+                  created_at AS "created_at: crate::timestamp::UtcTimestamp",
+                  updated_at AS "updated_at: crate::timestamp::UtcTimestamp",
+                  password_hash FROM "user" WHERE email = $1"#,
         email
     )
     .fetch_optional(pool)
@@ -46,12 +56,49 @@ pub async fn find_by_email(pool: &PgPool, email: &str) -> AppResult<Option<User>
 pub async fn find_by_id(pool: &PgPool, id: &str) -> AppResult<Option<User>> {
     let user = sqlx::query_as!(
         User,
-        r#"SELECT id, email, name, password_hash FROM "user" WHERE id = $1"#,
+        r#"SELECT id, email, name, email_verified, image,
+                  created_at AS "created_at: crate::timestamp::UtcTimestamp",
+                  updated_at AS "updated_at: crate::timestamp::UtcTimestamp",
+                  password_hash FROM "user" WHERE id = $1"#,
         id
     )
     .fetch_optional(pool)
     .await?;
     Ok(user)
+}
+
+pub async fn credential_password(pool: &PgPool, user_id: &str) -> AppResult<Option<String>> {
+    Ok(sqlx::query_scalar::<_, Option<String>>(
+        "SELECT password FROM account WHERE user_id = $1 AND provider_id = 'credential' LIMIT 1",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await?
+    .flatten())
+}
+
+pub async fn upgrade_credential_password(
+    pool: &PgPool,
+    user_id: &str,
+    hash: &str,
+) -> AppResult<()> {
+    let mut tx = pool.begin().await?;
+    sqlx::query!(
+        "UPDATE \"user\" SET password_hash = $2, updated_at = now() WHERE id = $1",
+        user_id,
+        hash
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query(
+        "UPDATE account SET password = NULL, updated_at = now() \
+         WHERE user_id = $1 AND provider_id = 'credential'",
+    )
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(())
 }
 
 /// Fixed id for the Better Auth `user` row backing the implicit dev

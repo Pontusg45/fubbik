@@ -40,9 +40,10 @@ describe("compareSchemas", () => {
 
     it("allows only explicitly documented migration differences", () => {
         expect(() =>
-            assertSchemaParity(["legacy exists only in Drizzle"], [
-                { issue: "legacy exists only in Drizzle", reason: "removed after cutover" }
-            ])
+            assertSchemaParity(
+                ["legacy exists only in Drizzle"],
+                [{ issue: "legacy exists only in Drizzle", reason: "removed after cutover" }]
+            )
         ).not.toThrow();
         expect(() => assertSchemaParity(["new drift"], [])).toThrow("new drift");
     });

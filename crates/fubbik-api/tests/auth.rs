@@ -1,6 +1,6 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use fubbik_api::auth::session::{COOKIE_NAME, DEV_EMAIL};
+use fubbik_api::auth::session::COOKIE_NAME;
 use fubbik_db::repo::user;
 use http_body_util::BodyExt;
 use tower::ServiceExt;
@@ -210,12 +210,14 @@ async fn get_session_with_valid_cookie_returns_current_user(pool: sqlx::PgPool) 
     assert_eq!(res.status(), StatusCode::OK);
 
     let json = json_body(res).await;
-    assert_eq!(json["email"], "session@b.test");
-    assert_eq!(json["name"], "Sess");
+    assert_eq!(json["user"]["email"], "session@b.test");
+    assert_eq!(json["user"]["name"], "Sess");
+    assert_eq!(json["session"]["userId"], json["user"]["id"]);
+    assert!(json["session"]["expiresAt"].is_string());
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
-async fn get_session_without_cookie_is_unauthorized(pool: sqlx::PgPool) {
+async fn get_session_without_cookie_returns_null_like_better_auth(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool));
 
     let res = app
@@ -226,11 +228,12 @@ async fn get_session_without_cookie_is_unauthorized(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::Value::Null);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
-async fn get_session_with_garbage_cookie_is_unauthorized_not_500(pool: sqlx::PgPool) {
+async fn get_session_with_garbage_cookie_returns_null_not_500(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool));
 
     let res = app
@@ -242,11 +245,12 @@ async fn get_session_with_garbage_cookie_is_unauthorized_not_500(pool: sqlx::PgP
         )
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(json_body(res).await, serde_json::Value::Null);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
-async fn get_session_falls_back_to_dev_user_when_no_cookie(pool: sqlx::PgPool) {
+async fn get_session_does_not_turn_implicit_dev_access_into_a_browser_session(pool: sqlx::PgPool) {
     // Seeded via the canonical bootstrap, not `user::create`: the fallback
     // now enforces the fixed `id = "dev-user"` invariant (matching Node's
     // `IMPLICIT_DEV_USER_ID`), so a same-email row under an arbitrary id —
@@ -256,7 +260,7 @@ async fn get_session_falls_back_to_dev_user_when_no_cookie(pool: sqlx::PgPool) {
     // `onConflictDoNothing({ target: user.id })` has for the same reason.
     user::ensure_implicit_dev_user(&pool).await.unwrap();
 
-    let app = fubbik_api::router(state_dev(pool));
+    let app = fubbik_api::router(state_dev(pool.clone()));
     let res = app
         .oneshot(
             Request::get("/api/auth/get-session")
@@ -267,18 +271,14 @@ async fn get_session_falls_back_to_dev_user_when_no_cookie(pool: sqlx::PgPool) {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
-    let json = json_body(res).await;
-    assert_eq!(json["email"], DEV_EMAIL);
+    assert_eq!(json_body(res).await, serde_json::Value::Null);
 }
 
-/// Was `..._401s_when_dev_user_missing`: on an unseeded database the
-/// fallback used to 401 rather than create its own user row. That was the
-/// exact bug `user::ensure_implicit_dev_user` fixes — see
-/// `dev_user_bootstrap.rs` for the dedicated regression coverage — so this
-/// pre-existing test's expected status flips from 401 to 200 along with it.
+/// The credential-session endpoint stays null for implicit dev access. API
+/// extractors bootstrap that user lazily; polling from the browser must not.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
-async fn get_session_dev_fallback_creates_dev_user_when_missing(pool: sqlx::PgPool) {
-    let app = fubbik_api::router(state_dev(pool));
+async fn get_session_without_cookie_does_not_create_the_implicit_dev_user(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state_dev(pool.clone()));
     let res = app
         .oneshot(
             Request::get("/api/auth/get-session")
@@ -289,8 +289,86 @@ async fn get_session_dev_fallback_creates_dev_user_when_missing(pool: sqlx::PgPo
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
-    let json = json_body(res).await;
-    assert_eq!(json["email"], DEV_EMAIL);
+    assert_eq!(json_body(res).await, serde_json::Value::Null);
+    assert!(user::find_by_id(&pool, "dev-user").await.unwrap().is_none());
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn signup_and_signin_return_better_auth_compatible_envelopes(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    let signup = app
+        .clone()
+        .oneshot(
+            Request::post("/api/auth/sign-up/email")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"email":"shape@b.test","password":"hunter22","name":"Shape"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let signup_json = json_body(signup).await;
+    assert!(signup_json["token"].is_string());
+    assert_eq!(signup_json["user"]["email"], "shape@b.test");
+
+    let signin = app
+        .oneshot(
+            Request::post("/api/auth/sign-in/email")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"email":"shape@b.test","password":"hunter22"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let signin_json = json_body(signin).await;
+    assert_eq!(signin_json["redirect"], false);
+    assert!(signin_json["token"].is_string());
+    assert_eq!(signin_json["user"]["email"], "shape@b.test");
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn signin_accepts_a_better_auth_scrypt_hash_and_upgrades_it(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let user = user::create(&pool, "legacy@b.test", "Legacy", None)
+        .await
+        .unwrap();
+    let account_id = fubbik_db::new_id();
+    sqlx::query(
+        r#"INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
+           VALUES ($1, $2, 'credential', $2, $3, now(), now())"#,
+    )
+    .bind(account_id)
+    .bind(&user.id)
+    .bind("00112233445566778899aabbccddeeff:c3b39f3eda79a45635ff935ee89c8c242531c4d6c6b5fe6bc27a369e3e1e16527bc69395cf710c41dcab0029263692fd327e358e9dc6bcdc7367f97f93ca44a0")
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let response = app
+        .oneshot(
+            Request::post("/api/auth/sign-in/email")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"email":"legacy@b.test","password":"legacy-password"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let upgraded = user::find_by_id(&pool, &user.id).await.unwrap().unwrap();
+    assert!(upgraded.password_hash.unwrap().starts_with("$argon2id$"));
+    let legacy: Option<String> = sqlx::query_scalar(
+        "SELECT password FROM account WHERE user_id = $1 AND provider_id = 'credential'",
+    )
+    .bind(&user.id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(legacy, None, "the weaker legacy hash should be removed");
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
@@ -345,9 +423,10 @@ async fn signed_out_session_cookie_is_not_replayable(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    assert_eq!(reuse.status(), StatusCode::OK);
     assert_eq!(
-        reuse.status(),
-        StatusCode::UNAUTHORIZED,
+        json_body(reuse).await,
+        serde_json::Value::Null,
         "signed-out session token must not be replayable"
     );
 }

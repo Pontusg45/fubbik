@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT chunk_id AS \"chunk_id!\"\n           FROM chunk_proposal\n           WHERE chunk_id = ANY($1) AND status = 'pending'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_id!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d62cd35ff4804d4f584b4ba0988097357149557457e3520af8f70ece3caac671"
+}

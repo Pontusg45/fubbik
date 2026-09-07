@@ -13,13 +13,16 @@ hmac = "0.12"
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.10"
+scrypt = "0.11"
 sqlx.workspace = true
+subtle = "2"
 thiserror.workspace = true
 time = "0.3"
 tokio.workspace = true
 tokio-stream.workspace = true
 tokio-util = { version = "0.7", features = ["rt"] }
 tracing.workspace = true
+unicode-normalization = "0.1"
 utoipa = { version = "5", features = ["axum_extras", "chrono"] }
 fubbik-core = { path = "../fubbik-core" }
 fubbik-db = { path = "../fubbik-db" }

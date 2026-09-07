@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT cs.chunk_id AS \"chunk_id!\"\n           FROM chunk_staleness cs\n           JOIN chunk c ON c.id = cs.chunk_id AND c.user_id = $2\n           WHERE cs.chunk_id = ANY($1)\n             AND cs.dismissed_at IS NULL AND cs.suppress_pair IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_id!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ef27160237bf6c19fd1788c34c0980e06f4db669c7bdc94a2c6fe2488a778ae4"
+}

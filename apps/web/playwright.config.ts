@@ -79,7 +79,6 @@ export default defineConfig({
             env: {
                 VITE_FUBBIK_DISABLE_IMPLICIT_DEV_UX: "true",
                 VITE_API_ORIGIN: "http://localhost:3100",
-                VITE_LEGACY_API_ORIGIN: "http://localhost:3000",
                 API_PROXY_TARGET: "http://127.0.0.1:3100"
             }
         }

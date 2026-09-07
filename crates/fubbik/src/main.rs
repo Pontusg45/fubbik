@@ -68,14 +68,10 @@ const VALID_NODE_ENVS: [&str; 3] = ["development", "production", "test"];
 /// `NODE_ENV !== "production" || FUBBIK_IMPLICIT_DEV_SESSION === "true"`.
 /// The explicit flag always wins, even under `NODE_ENV=production`.
 ///
-/// Reads `NODE_ENV` deliberately, not a Rust-native name: neither
-/// `docker-compose.yml` nor `docker-compose.selfhost.yml` builds this binary
-/// yet — both still build `apps/server`, the Node one — but they already set
-/// `NODE_ENV=production` for it (`docker-compose.selfhost.yml` via
-/// `docker/build/server.Dockerfile`'s `ENV NODE_ENV=production`). Reading the
-/// same variable here is what will let those configs keep enforcing auth
-/// once they build the Rust binary instead, rather than silently relaxing it
-/// because this binary looked at a different name. Do not rename this to
+/// Reads `NODE_ENV` deliberately, not a Rust-native name. The Rust container
+/// sets `NODE_ENV=production`, preserving the former server's authentication
+/// behavior and preventing a deployment from silently entering relaxed mode.
+/// Do not rename this to
 /// `FUBBIK_ENV` or similar without also updating every deployment config
 /// that sets `NODE_ENV=production`. (`docker-compose.selfhost.yml` also sets
 /// `FUBBIK_IMPLICIT_DEV_SESSION=true` explicitly today — self-host is

@@ -65,18 +65,11 @@ services:
             OPENAI_API_KEY: ""
             OTEL_EXPORTER_OTLP_ENDPOINT: ""
             PORT: "3000"
-            SEED_DATABASE: ${SEED_DATABASE:-false}
         depends_on:
             db:
                 condition: service_healthy
         healthcheck:
-            test:
-                [
-                    "CMD",
-                    "bun",
-                    "-e",
-                    "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
-                ]
+            test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:3000/api/health"]
             interval: 10s
             timeout: 5s
             retries: 10
@@ -84,14 +77,27 @@ services:
         restart: unless-stopped
         stop_grace_period: 30s
 
+    seed:
+        build:
+            context: .
+            dockerfile: docker/build/seed.Dockerfile
+        environment:
+            DATABASE_URL: postgresql://fubbik:fubbik@db:5432/fubbik
+            SEED_DATABASE: ${SEED_DATABASE:-false}
+        command:
+            - sh
+            - -c
+            - 'if [ "$$SEED_DATABASE" = "true" ]; then exec bun run packages/db/src/seed/index.ts --quiet; fi'
+        depends_on:
+            server:
+                condition: service_healthy
+
     web:
         build:
             context: .
             dockerfile: docker/build/web.Dockerfile
             args:
                 VITE_API_ORIGIN: http://fubbik-api.invalid
-                VITE_LEGACY_API_ORIGIN: http://fubbik-legacy-api.invalid
-                VITE_SERVER_URL: http://fubbik-legacy-api.invalid
                 VITE_FUBBIK_IMPLICIT_DEV_SESSION: "true"
         image: pontusg45/fubbik-web:latest
         ports:
@@ -99,9 +105,10 @@ services:
         environment:
             PORT: "3001"
             RUNTIME_API_ORIGIN: http://localhost:${FUBBIK_API_PORT:-4717}
+            SSR_API_ORIGIN: http://server:3000
         depends_on:
-            server:
-                condition: service_healthy
+            seed:
+                condition: service_completed_successfully
         healthcheck:
             test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3001/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
             interval: 10s

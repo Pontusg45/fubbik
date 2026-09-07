@@ -3,6 +3,7 @@ use argon2::password_hash::{
     PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng,
 };
 use fubbik_core::error::{AppError, AppResult};
+use unicode_normalization::UnicodeNormalization;
 
 pub fn hash_password(plain: &str) -> AppResult<String> {
     let salt = SaltString::generate(&mut OsRng);
@@ -23,9 +24,51 @@ pub fn verify_password(plain: &str, hash: &str) -> bool {
         .is_ok()
 }
 
+/// Better Auth 1.x stores credential hashes as `<hex salt>:<hex key>` and
+/// feeds the textual salt into scrypt. This verifier exists only for the
+/// one-time login bridge; successful callers immediately receive an
+/// Argon2id hash in `user.password_hash`.
+pub fn verify_better_auth_password(plain: &str, hash: &str) -> bool {
+    use subtle::ConstantTimeEq;
+
+    let Some((salt, expected_hex)) = hash.split_once(':') else {
+        return false;
+    };
+    let Some(expected) = decode_hex(expected_hex) else {
+        return false;
+    };
+    if expected.len() != 64 {
+        return false;
+    }
+    let Ok(params) = scrypt::Params::new(14, 16, 1, 64) else {
+        return false;
+    };
+    let normalized: String = plain.nfkc().collect();
+    let mut actual = vec![0u8; 64];
+    if scrypt::scrypt(normalized.as_bytes(), salt.as_bytes(), &params, &mut actual).is_err() {
+        return false;
+    }
+    bool::from(actual.ct_eq(&expected))
+}
+
+fn decode_hex(value: &str) -> Option<Vec<u8>> {
+    if !value.len().is_multiple_of(2) {
+        return None;
+    }
+    value
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            let high = (pair[0] as char).to_digit(16)?;
+            let low = (pair[1] as char).to_digit(16)?;
+            Some(((high << 4) | low) as u8)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{hash_password, verify_password};
+    use super::{hash_password, verify_better_auth_password, verify_password};
 
     #[test]
     fn verifies_correct_password() {
@@ -76,5 +119,12 @@ mod tests {
     #[test]
     fn rejects_empty_hash_without_panicking() {
         assert!(!verify_password("anything", ""));
+    }
+
+    #[test]
+    fn verifies_better_auth_scrypt_fixture() {
+        let hash = "00112233445566778899aabbccddeeff:c3b39f3eda79a45635ff935ee89c8c242531c4d6c6b5fe6bc27a369e3e1e16527bc69395cf710c41dcab0029263692fd327e358e9dc6bcdc7367f97f93ca44a0";
+        assert!(verify_better_auth_password("legacy-password", hash));
+        assert!(!verify_better_auth_password("wrong", hash));
     }
 }

@@ -7,8 +7,8 @@ use chrono::Duration;
 use fubbik_core::error::AppError;
 use fubbik_db::repo::{session, user};
 
-use super::password::{hash_password, verify_password};
-use super::session::COOKIE_NAME;
+use super::password::{hash_password, verify_better_auth_password, verify_password};
+use super::session::{BETTER_AUTH_COOKIE_NAME, BETTER_AUTH_SECURE_COOKIE_NAME, COOKIE_NAME};
 use crate::AppState;
 use crate::error::ApiResult;
 use crate::extract::Json as ReqJson;
@@ -33,10 +33,15 @@ pub struct SignInBody {
 }
 
 #[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserResponse {
     pub id: String,
     pub email: String,
     pub name: String,
+    pub email_verified: bool,
+    pub image: Option<String>,
+    pub created_at: fubbik_db::timestamp::UtcTimestamp,
+    pub updated_at: fubbik_db::timestamp::UtcTimestamp,
 }
 
 impl From<user::User> for UserResponse {
@@ -45,8 +50,37 @@ impl From<user::User> for UserResponse {
             id: u.id,
             email: u.email,
             name: u.name,
+            email_verified: u.email_verified,
+            image: u.image,
+            created_at: u.created_at,
+            updated_at: u.updated_at,
         }
     }
+}
+
+#[derive(serde::Serialize)]
+pub struct SignUpResponse {
+    pub token: String,
+    pub user: UserResponse,
+}
+
+#[derive(serde::Serialize)]
+pub struct SignInResponse {
+    pub redirect: bool,
+    pub token: String,
+    pub url: Option<String>,
+    pub user: UserResponse,
+}
+
+#[derive(serde::Serialize)]
+pub struct SignOutResponse {
+    pub success: bool,
+}
+
+#[derive(serde::Serialize)]
+pub struct SessionResponse {
+    pub session: session::Session,
+    pub user: UserResponse,
 }
 
 fn session_cookie(token: String) -> Cookie<'static> {
@@ -62,7 +96,7 @@ async fn sign_up(
     State(state): State<AppState>,
     jar: CookieJar,
     ReqJson(body): ReqJson<SignUpBody>,
-) -> ApiResult<(CookieJar, Json<UserResponse>)> {
+) -> ApiResult<(CookieJar, Json<SignUpResponse>)> {
     if body.password.len() < 8 {
         return Err(AppError::Validation("password must be at least 8 characters".into()).into());
     }
@@ -88,40 +122,113 @@ async fn sign_up(
     };
     let token = session::create(&state.pool, &u.id, Duration::days(SESSION_TTL_DAYS)).await?;
 
-    Ok((jar.add(session_cookie(token)), Json(u.into())))
+    Ok((
+        jar.add(session_cookie(token.clone())),
+        Json(SignUpResponse {
+            token,
+            user: u.into(),
+        }),
+    ))
 }
 
 async fn sign_in(
     State(state): State<AppState>,
     jar: CookieJar,
     ReqJson(body): ReqJson<SignInBody>,
-) -> ApiResult<(CookieJar, Json<UserResponse>)> {
+) -> ApiResult<(CookieJar, Json<SignInResponse>)> {
     let u = user::find_by_email(&state.pool, &body.email)
         .await?
         .ok_or(AppError::Auth)?;
 
-    let stored = u.password_hash.as_deref().ok_or(AppError::Auth)?;
-    if !verify_password(&body.password, stored) {
+    let valid = if let Some(stored) = u.password_hash.as_deref() {
+        verify_password(&body.password, stored)
+    } else if let Some(legacy) = user::credential_password(&state.pool, &u.id).await? {
+        if verify_better_auth_password(&body.password, &legacy) {
+            let upgraded = hash_password(&body.password)?;
+            user::upgrade_credential_password(&state.pool, &u.id, &upgraded).await?;
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+    if !valid {
         return Err(AppError::Auth.into());
     }
 
     let token = session::create(&state.pool, &u.id, Duration::days(SESSION_TTL_DAYS)).await?;
-    Ok((jar.add(session_cookie(token)), Json(u.into())))
+    Ok((
+        jar.add(session_cookie(token.clone())),
+        Json(SignInResponse {
+            redirect: false,
+            token,
+            url: None,
+            user: u.into(),
+        }),
+    ))
 }
 
-async fn sign_out(State(state): State<AppState>, jar: CookieJar) -> ApiResult<CookieJar> {
-    if let Some(c) = jar.get(COOKIE_NAME) {
-        session::delete(&state.pool, c.value()).await?;
+async fn sign_out(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> ApiResult<(CookieJar, Json<SignOutResponse>)> {
+    let mut jar = jar;
+    for name in [
+        COOKIE_NAME,
+        BETTER_AUTH_COOKIE_NAME,
+        BETTER_AUTH_SECURE_COOKIE_NAME,
+    ] {
+        if let Some(cookie) = jar.get(name) {
+            let raw = if name == COOKIE_NAME {
+                Some(cookie.value().to_owned())
+            } else {
+                super::better_auth_cookie::verify(cookie.value(), &state.better_auth_secret)
+            };
+            if let Some(raw) = raw {
+                session::delete(&state.pool, &raw).await?;
+            }
+        }
+        jar = jar.remove(
+            Cookie::build(name)
+                .path("/")
+                .secure(name == BETTER_AUTH_SECURE_COOKIE_NAME)
+                .build(),
+        );
     }
-    // The removal cookie's path must match the one the cookie was set with
-    // (`/`, from `session_cookie`) or the browser will scope the deletion
-    // to the request path instead and the original cookie will survive.
-    let removal = Cookie::build(COOKIE_NAME).path("/").build();
-    Ok(jar.remove(removal))
+    Ok((jar, Json(SignOutResponse { success: true })))
 }
 
-async fn get_session(current: super::CurrentUser) -> Json<UserResponse> {
-    Json(current.0.into())
+async fn get_session(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> ApiResult<Json<Option<SessionResponse>>> {
+    let mut raw_token = None;
+    for name in [BETTER_AUTH_COOKIE_NAME, BETTER_AUTH_SECURE_COOKIE_NAME] {
+        if let Some(cookie) = jar.get(name)
+            && let Some(raw) =
+                super::better_auth_cookie::verify(cookie.value(), &state.better_auth_secret)
+        {
+            raw_token = Some(raw);
+            break;
+        }
+    }
+    if raw_token.is_none() {
+        raw_token = jar.get(COOKIE_NAME).map(|cookie| cookie.value().to_owned());
+    }
+    let Some(raw_token) = raw_token else {
+        return Ok(Json(None));
+    };
+    let Some(record) = session::find_valid_session(&state.pool, &raw_token).await? else {
+        return Ok(Json(None));
+    };
+    let Some(owner) = user::find_by_id(&state.pool, &record.user_id).await? else {
+        return Ok(Json(None));
+    };
+    Ok(Json(Some(SessionResponse {
+        session: record,
+        user: owner.into(),
+    })))
 }
 
 pub fn router() -> Router<AppState> {

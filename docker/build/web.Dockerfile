@@ -44,12 +44,8 @@ COPY packages/api/ ./packages/api/
 COPY apps/web/ ./apps/web/
 
 ARG VITE_API_ORIGIN=http://fubbik-api.invalid
-ARG VITE_LEGACY_API_ORIGIN=http://fubbik-legacy-api.invalid
-ARG VITE_SERVER_URL=http://fubbik-legacy-api.invalid
 ARG VITE_FUBBIK_IMPLICIT_DEV_SESSION
 ENV VITE_API_ORIGIN=${VITE_API_ORIGIN}
-ENV VITE_LEGACY_API_ORIGIN=${VITE_LEGACY_API_ORIGIN}
-ENV VITE_SERVER_URL=${VITE_SERVER_URL}
 ENV VITE_FUBBIK_IMPLICIT_DEV_SESSION=${VITE_FUBBIK_IMPLICIT_DEV_SESSION}
 
 RUN --mount=type=cache,id=fubbik-turbo,target=/root/.cache/turbo \

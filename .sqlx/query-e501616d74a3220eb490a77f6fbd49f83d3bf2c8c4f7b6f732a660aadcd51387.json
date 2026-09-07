@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, title\n           FROM chunk\n           WHERE user_id = $1 AND embedding IS NOT NULL AND archived_at IS NULL\n           ORDER BY updated_at DESC\n           LIMIT $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "e501616d74a3220eb490a77f6fbd49f83d3bf2c8c4f7b6f732a660aadcd51387"
+}

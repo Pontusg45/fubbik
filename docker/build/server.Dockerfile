@@ -1,80 +1,43 @@
 # syntax=docker/dockerfile:1
-#
-# Server image — dependencies cache separately from sources (pnpm fetch + turbo).
-# Build from monorepo root: docker build -f docker/build/server.Dockerfile .
+# Build from the monorepo root:
+#   docker build -f docker/build/server.Dockerfile .
 
-FROM node:22-slim AS builder
-
-RUN corepack enable && corepack prepare pnpm@10.10.0 --activate
+FROM rust:1.96-bookworm AS builder
 
 WORKDIR /app
 
-ENV CI=1
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-ENV NX_DAEMON=false
-ENV TURBO_TELEMETRY_DISABLED=1
-ENV DOTENV_DISABLE=1
-ENV TURBO_CACHE_DIR=/root/.cache/turbo
+ENV SQLX_OFFLINE=true
+ENV CARGO_BUILD_JOBS=1
 
-# --- Manifests only: invalidates rarely ------------------------------------
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/cli/package.json ./apps/cli/
-COPY apps/server/package.json ./apps/server/
-COPY apps/web/package.json ./apps/web/
-COPY apps/vscode/package.json ./apps/vscode/
-COPY packages/api/package.json ./packages/api/
-COPY packages/auth/package.json ./packages/auth/
-COPY packages/config/package.json ./packages/config/
-COPY packages/db/package.json ./packages/db/
-COPY packages/env/package.json ./packages/env/
-COPY packages/mcp/package.json ./packages/mcp/
+COPY Cargo.toml Cargo.lock ./
+COPY .sqlx/ ./.sqlx/
+COPY crates/ ./crates/
 
-RUN --mount=type=cache,id=fubbik-pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm fetch
+RUN --mount=type=cache,id=fubbik-cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=fubbik-cargo-git,target=/usr/local/cargo/git \
+    --mount=type=cache,id=fubbik-cargo-target,target=/app/target \
+    cargo build --locked --release -p fubbik && \
+    cp /app/target/release/fubbik /tmp/fubbik
 
-# Install before copying sources so this layer caches on lockfile + package.json only.
-RUN --mount=type=cache,id=fubbik-pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --prefer-offline
+FROM debian:bookworm-slim AS runner
 
-# --- Sources ---------------------------------------------------------------
-COPY turbo.json ./
-COPY packages/config/ ./packages/config/
-COPY packages/env/ ./packages/env/
-COPY packages/db/ ./packages/db/
-COPY packages/auth/ ./packages/auth/
-COPY packages/api/ ./packages/api/
-COPY apps/server/ ./apps/server/
-
-RUN --mount=type=cache,id=fubbik-turbo,target=/root/.cache/turbo \
-    pnpm run build --filter=server
-
-RUN --mount=type=cache,id=fubbik-pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm --filter=server deploy --legacy /app/deploy
-
-FROM oven/bun:1.3.10-slim AS runner
+RUN apt-get update && \
+    apt-get install --yes --no-install-recommends ca-certificates curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd --gid 1001 fubbik && \
+    useradd --uid 1001 --gid fubbik --home-dir /app --create-home fubbik
 
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV HOST=0.0.0.0
 ENV PORT=3000
 
-RUN echo "fubbik:x:1001:1001:fubbik:/app:/bin/sh" >> /etc/passwd && \
-    echo "fubbik:x:1001:" >> /etc/group && \
-    mkdir -p /app && chown 1001:1001 /app
-
-COPY --from=builder --chown=fubbik:fubbik /app/deploy/node_modules ./node_modules
-COPY --from=builder --chown=fubbik:fubbik /app/apps/server/dist ./dist
-COPY --from=builder --chown=fubbik:fubbik /app/apps/server/package.json ./package.json
-COPY --from=builder --chown=fubbik:fubbik /app/apps/server/entrypoint.sh ./entrypoint.sh
-
-COPY --from=builder --chown=fubbik:fubbik /app/packages/db/src ./packages/db/src
-COPY --from=builder --chown=fubbik:fubbik /app/packages/db/package.json ./packages/db/package.json
-COPY --from=builder --chown=fubbik:fubbik /app/packages/db/drizzle.config.ts ./packages/db/drizzle.config.ts
-COPY --from=builder --chown=fubbik:fubbik /app/packages/env/src ./packages/env/src
-COPY --from=builder --chown=fubbik:fubbik /app/packages/env/package.json ./packages/env/package.json
+COPY --from=builder --chown=fubbik:fubbik /tmp/fubbik /usr/local/bin/fubbik
 
 EXPOSE 3000
 
 USER fubbik
 
-ENTRYPOINT ["sh", "entrypoint.sh"]
+ENTRYPOINT ["fubbik"]
+CMD ["serve"]

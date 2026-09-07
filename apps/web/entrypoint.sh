@@ -20,18 +20,15 @@ function walkDir(dir) {
 }
 
 const origin = process.env.RUNTIME_API_ORIGIN.replace(/\\/$/, '');
-const legacy = process.env.RUNTIME_API_ORIGIN;
 const files = walkDir('/app/dist');
 let replaced = 0;
 for (const f of files) {
     let content = fs.readFileSync(f, 'utf8');
     let next = content
         .replaceAll('http://fubbik-api.invalid', origin)
-        .replaceAll('http://fubbik-legacy-api.invalid', legacy)
         .replaceAll('__FUBBIK_API_ORIGIN__', origin)
-        .replaceAll('__FUBBIK_SERVER_URL__', legacy)
-        .replaceAll('http://localhost:3000', legacy)
-        .replaceAll('http://127.0.0.1:3000', legacy);
+        .replaceAll('http://localhost:3000', origin)
+        .replaceAll('http://127.0.0.1:3000', origin);
     if (next !== content) {
         fs.writeFileSync(f, next);
         replaced++;

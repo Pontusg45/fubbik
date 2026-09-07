@@ -8,20 +8,18 @@ default:
 install:
     pnpm install
 
-# Free dev ports, then start web (3001), Rust API (3000), and the temporary
-# Node legacy API (3002) used only for routes not yet ported to Rust.
+# Free dev ports, then start web (3001) and the Rust API (3000).
 dev:
     @just kill-dev
     @just _dev-services
 
 [parallel]
-_dev-services: dev-web dev-rust dev-legacy
+_dev-services: dev-web dev-rust
 
 # Stop processes on the default dev ports.
 kill-dev:
     -lsof -ti :3000 | xargs kill -9 2>/dev/null || true
     -lsof -ti :3001 | xargs kill -9 2>/dev/null || true
-    -lsof -ti :3002 | xargs kill -9 2>/dev/null || true
 
 # Start only the Rust API server (replaces the Node/Bun server).
 dev-server: dev-rust
@@ -34,23 +32,14 @@ dev-rust:
     set +a
     exec cargo run -p fubbik -- serve --port 3000
 
-dev-legacy:
-    #!/usr/bin/env zsh
-    set -euo pipefail
-    set -a
-    source apps/server/.env
-    set +a
-    export PORT=3002
-    exec bun --cwd apps/server run dev
-
 # Start only the web application (waits for the API health check first).
 dev-web:
     #!/usr/bin/env zsh
     set -euo pipefail
     echo "Waiting for API at http://127.0.0.1:3000/api/health ..."
     for i in {1..120}; do
-      if curl -sf http://127.0.0.1:3000/api/health >/dev/null && curl -sf http://127.0.0.1:3002/api/health >/dev/null; then
-        echo "APIs ready."
+      if curl -sf http://127.0.0.1:3000/api/health >/dev/null; then
+        echo "API ready."
         break
       fi
       if (( i == 120 )); then

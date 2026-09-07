@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ids.id AS \"chunk_id!\", MIN(s.name) AS space_name\n           FROM unnest($1::text[]) AS ids(id)\n           LEFT JOIN chunk_space cs ON cs.chunk_id = ids.id\n           LEFT JOIN space s ON s.id = cs.space_id\n           GROUP BY ids.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chunk_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "space_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "018b87339347dd3b6f8aec107a6a4477966ebbf8249be501a7e903105679ed7a"
+}

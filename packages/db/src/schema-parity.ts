@@ -20,7 +20,6 @@ export interface SchemaDriftAllowance {
 }
 
 export const SCHEMA_DRIFT_ALLOWLIST: readonly SchemaDriftAllowance[] = [
-    { issue: "account exists only in Drizzle", reason: "Better Auth legacy table; Rust auth stores password_hash on user" },
     { issue: "verification exists only in Drizzle", reason: "Better Auth legacy table; Rust auth does not use verification tokens" },
     { issue: "graph_event exists only in Drizzle", reason: "legacy Node graph-event repository pending backend deletion" },
     { issue: "usage_event exists only in Drizzle", reason: "legacy Node usage repository pending backend deletion" },

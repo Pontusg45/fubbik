@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_connection (id, source_id, target_id, relation, origin, review_status)\n           SELECT $1, s.id, t.id, $4, 'import', 'approved'\n           FROM chunk s, chunk t\n           WHERE s.id = $2 AND t.id = $3 AND s.user_id = $5 AND t.user_id = $5\n           ON CONFLICT (source_id, target_id, relation) DO NOTHING\n           RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5ae27689a29050d1fe673a92185ba87dbef13dfeebcf42c6383ad1f67b9eb225"
+}

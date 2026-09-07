@@ -6,9 +6,7 @@ export const env = createEnv({
     client: {
         /** Preferred single API origin. Leave unset in local dev for same-origin `/api` via the Vite proxy. */
         VITE_API_ORIGIN: type("string.url | undefined"),
-        /** Temporary Node API origin for routes not yet implemented by the Rust server. */
-        VITE_LEGACY_API_ORIGIN: type("string.url | undefined"),
-        /** @deprecated Use `VITE_API_ORIGIN`. Kept for auth client backward compatibility. */
+        /** @deprecated Use `VITE_API_ORIGIN`. */
         VITE_SERVER_URL: type("string.url | undefined"),
         /** @deprecated Use `VITE_API_ORIGIN`. */
         VITE_API_URL: type("string.url | undefined"),
@@ -18,9 +16,6 @@ export const env = createEnv({
     runtimeEnv: {
         VITE_API_ORIGIN:
             (import.meta as any).env?.VITE_API_ORIGIN ?? (typeof process !== "undefined" ? process.env.VITE_API_ORIGIN : undefined),
-        VITE_LEGACY_API_ORIGIN:
-            (import.meta as any).env?.VITE_LEGACY_API_ORIGIN ??
-            (typeof process !== "undefined" ? process.env.VITE_LEGACY_API_ORIGIN : undefined),
         VITE_SERVER_URL:
             (import.meta as any).env?.VITE_SERVER_URL ?? (typeof process !== "undefined" ? process.env.VITE_SERVER_URL : undefined),
         VITE_API_URL: (import.meta as any).env?.VITE_API_URL ?? (typeof process !== "undefined" ? process.env.VITE_API_URL : undefined),

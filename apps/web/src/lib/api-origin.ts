@@ -2,10 +2,8 @@ import { env } from "@fubbik/env/web";
 
 /** Default API port when `just dev` runs the Rust server. */
 const DEV_API_PORT = 3000;
-const DEV_LEGACY_API_PORT = 3002;
 
 const SSR_DEFAULT = `http://127.0.0.1:${DEV_API_PORT}`;
-const LEGACY_SSR_DEFAULT = `http://localhost:${DEV_LEGACY_API_PORT}`;
 
 /**
  * Resolved API origin for HTTP clients.
@@ -15,13 +13,18 @@ const LEGACY_SSR_DEFAULT = `http://localhost:${DEV_LEGACY_API_PORT}`;
  * - **SSR / server-side fetch:** absolute URL (`SSR_API_ORIGIN`, configured origin, or loopback default).
  */
 export function apiOrigin(): string {
+    if (typeof window === "undefined") {
+        const ssr =
+            (typeof process !== "undefined" ? process.env.SSR_API_ORIGIN : undefined) ??
+            (import.meta as ImportMeta & { env?: { SSR_API_ORIGIN?: string } }).env?.SSR_API_ORIGIN;
+        if (ssr) return ssr.replace(/\/$/, "");
+    }
+
     const configured = (env.VITE_API_ORIGIN ?? env.VITE_API_URL ?? env.VITE_SERVER_URL)?.replace(/\/$/, "");
     if (configured) return configured;
 
     if (typeof window !== "undefined") return "";
-
-    const ssr = (import.meta as ImportMeta & { env?: { SSR_API_ORIGIN?: string } }).env?.SSR_API_ORIGIN;
-    return (ssr ?? SSR_DEFAULT).replace(/\/$/, "");
+    return SSR_DEFAULT;
 }
 
 /** Absolute base for clients that require a full URL. */
@@ -39,23 +42,7 @@ export function apiUrl(path: string): string {
     return origin ? `${origin}${normalized}` : normalized;
 }
 
-/**
- * Origin for the shrinking set of routes still served by the Node backend.
- * Production defaults to the public API origin because the current container
- * serves Node; local development uses the dedicated legacy server on 3002.
- */
-export function legacyApiOrigin(): string {
-    const configured = env.VITE_LEGACY_API_ORIGIN?.replace(/\/$/, "");
-    if (configured) return configured;
-
-    if (typeof window !== "undefined") {
-        return import.meta.env.DEV ? `http://localhost:${DEV_LEGACY_API_PORT}` : window.location.origin;
-    }
-
-    return import.meta.env.PROD ? apiOrigin() : LEGACY_SSR_DEFAULT;
-}
-
-/** Log API wiring once in dev; warn when legacy env vars disagree. */
+/** Log API wiring once in dev; warn when deprecated env vars disagree. */
 export function logApiOriginInDev(): void {
     if (!import.meta.env.DEV || typeof window === "undefined") return;
 
@@ -70,6 +57,4 @@ export function logApiOriginInDev(): void {
             "[fubbik] VITE_SERVER_URL and VITE_API_URL differ — prefer a single VITE_API_ORIGIN or leave all unset for same-origin /api"
         );
     }
-
-    console.info(`[fubbik] Legacy API → ${legacyApiOrigin()}`);
 }

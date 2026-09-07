@@ -56,18 +56,14 @@ pnpm install
 
 ## Database Setup
 
-This project uses PostgreSQL with Drizzle ORM.
+This project uses PostgreSQL. The Rust server applies its embedded SQLx
+migrations automatically at startup; Drizzle remains available for schema
+tooling and sample-data seeding.
 
 1. Make sure you have a PostgreSQL database set up.
 2. Update your `apps/server/.env` file with your PostgreSQL connection details.
 
-3. Apply the schema to your database:
-
-```bash
-pnpm run db:push
-```
-
-Then, run the development server:
+3. Run the development server (it applies pending migrations automatically):
 
 ```bash
 pnpm run dev
@@ -78,6 +74,18 @@ Open [http://localhost:3001](http://localhost:3001) in your browser to see the w
 [http://localhost:3000/docs](http://localhost:3000/docs).
 
 The server port can be configured via the `PORT` environment variable (default: `3000`).
+
+### Self-hosting
+
+Start the Rust API, web UI, and PostgreSQL stack with:
+
+```bash
+docker compose -f docker-compose.selfhost.yml up -d
+```
+
+For a first-run demo dataset, set `SEED_DATABASE=true`. Seeding runs as a
+one-shot tool after the Rust server has applied migrations; Node/Bun is not
+present in the API runtime image.
 
 ### Self-hosted backups
 
@@ -105,11 +113,11 @@ not yet a verified backup.
 fubbik/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Start)
-│   ├── server/      # Temporary Node API for routes still being ported
+│   ├── server/      # Retained TypeScript reference implementation
 │   └── cli/         # CLI application
 ├── packages/
-│   ├── api/         # API layer (Elysia routes, Eden types)
-│   ├── auth/        # Authentication (Better Auth + Drizzle adapter)
+│   ├── api/         # Retained Elysia reference API and shared fixtures
+│   ├── auth/        # Better Auth compatibility reference
 │   ├── config/      # Shared TypeScript config
 │   ├── db/          # Database schema (Drizzle ORM)
 │   └── env/         # Environment validation (Arktype + t3-env)
@@ -118,7 +126,7 @@ fubbik/
 
 ## Available Scripts
 
-- `pnpm run dev`: Start the web app, Rust API, and temporary legacy API
+- `pnpm run dev`: Start the web app and Rust API
 - `pnpm run build`: Build all applications
 - `pnpm run dev:web`: Start only the web application
 - `pnpm run dev:server`: Start only the Rust server

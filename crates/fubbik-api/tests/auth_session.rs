@@ -73,6 +73,22 @@ async fn get_with_cookie(app: &axum::Router, path: &str, cookie: &str) -> axum::
         .unwrap()
 }
 
+async fn post_with_cookie(
+    app: &axum::Router,
+    path: &str,
+    cookie: &str,
+) -> axum::response::Response {
+    app.clone()
+        .oneshot(
+            Request::post(path)
+                .header("cookie", cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+}
+
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_better_auth_cookie_authenticates(pool: PgPool) {
     let user_id = seed_user(&pool, "a@b.test").await;
@@ -176,5 +192,54 @@ async fn a_better_auth_cookie_resolves_the_owning_user(pool: PgPool) {
     .await;
     assert_eq!(res.status(), StatusCode::OK);
     let json = json_body(res).await;
-    assert_eq!(json["email"], "owner@b.test");
+    assert_eq!(json["user"]["email"], "owner@b.test");
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn sign_out_revokes_and_clears_both_better_auth_cookie_variants(pool: PgPool) {
+    let user_id = seed_user(&pool, "signout@b.test").await;
+    seed_session(&pool, &user_id, TOKEN).await;
+    seed_session(&pool, &user_id, TOKEN2).await;
+    let app = test_app_with_secret(pool, SECRET).await;
+
+    let ordinary = post_with_cookie(
+        &app,
+        "/api/auth/sign-out",
+        &format!("better-auth.session_token={TOKEN}.{SIG}"),
+    )
+    .await;
+    assert_eq!(ordinary.status(), StatusCode::OK);
+    let ordinary_headers = ordinary.headers().get_all("set-cookie");
+    assert!(ordinary_headers.iter().any(|value| {
+        value.to_str().is_ok_and(|value| {
+            value.starts_with("better-auth.session_token=") && value.contains("Max-Age=0")
+        })
+    }));
+    assert_eq!(json_body(ordinary).await["success"], true);
+
+    let secure = post_with_cookie(
+        &app,
+        "/api/auth/sign-out",
+        &format!("__Secure-better-auth.session_token={TOKEN2}.{SIG2}"),
+    )
+    .await;
+    assert_eq!(secure.status(), StatusCode::OK);
+    let secure_headers = secure.headers().get_all("set-cookie");
+    assert!(secure_headers.iter().any(|value| {
+        value.to_str().is_ok_and(|value| {
+            value.starts_with("__Secure-better-auth.session_token=")
+                && value.contains("Max-Age=0")
+                && value.contains("Secure")
+        })
+    }));
+    assert_eq!(json_body(secure).await["success"], true);
+
+    for cookie in [
+        format!("better-auth.session_token={TOKEN}.{SIG}"),
+        format!("__Secure-better-auth.session_token={TOKEN2}.{SIG2}"),
+    ] {
+        let replay = get_with_cookie(&app, "/api/auth/get-session", &cookie).await;
+        assert_eq!(replay.status(), StatusCode::OK);
+        assert_eq!(json_body(replay).await, serde_json::Value::Null);
+    }
 }
