@@ -17,9 +17,12 @@ pub async fn run(client: &Client, command: ContextCommand, mode: OutputMode) -> 
             for_path,
         } => {
             let (settings, _) = config::load()?;
+            let space = client
+                .resolve_space(space.as_deref().or(settings.space.as_deref()))
+                .await?;
             let value = client
                 .export_context(
-                    space.as_deref().or(settings.space.as_deref()),
+                    space.as_deref(),
                     checked_budget(max_tokens.unwrap_or(settings.context.max_tokens))?,
                     &format,
                     for_path.as_deref(),
@@ -34,10 +37,13 @@ pub async fn run(client: &Client, command: ContextCommand, mode: OutputMode) -> 
             format,
         } => {
             let (settings, _) = config::load()?;
+            let space = client
+                .resolve_space(space.as_deref().or(settings.space.as_deref()))
+                .await?;
             let value = client
                 .context_for_file(
                     &path.to_string_lossy(),
-                    space.as_deref().or(settings.space.as_deref()),
+                    space.as_deref(),
                     checked_budget(max_tokens.unwrap_or(settings.context.max_tokens))?,
                     &format,
                 )
@@ -51,9 +57,12 @@ pub async fn run(client: &Client, command: ContextCommand, mode: OutputMode) -> 
             output: path,
         } => {
             let (settings, _) = config::load()?;
+            let space = client
+                .resolve_space(space.as_deref().or(settings.space.as_deref()))
+                .await?;
             let response = client
                 .claude_md(
-                    space.as_deref().or(settings.space.as_deref()),
+                    space.as_deref(),
                     tag.as_deref().or(Some(settings.claude_md.tag.as_str())),
                     checked_budget(max_tokens.unwrap_or(settings.claude_md.max_tokens))?,
                 )
@@ -79,9 +88,12 @@ pub async fn sync(
 ) -> Result<()> {
     let (settings, _) = config::load()?;
     let path = output_path.unwrap_or(&settings.claude_md.output);
+    let space = client
+        .resolve_space(space.or(settings.space.as_deref()))
+        .await?;
     let response = client
         .claude_md(
-            space.or(settings.space.as_deref()),
+            space.as_deref(),
             tag.or(Some(settings.claude_md.tag.as_str())),
             checked_budget(max_tokens.unwrap_or(settings.claude_md.max_tokens))?,
         )

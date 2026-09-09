@@ -28,6 +28,15 @@ fn help_lists_serve_and_mcp() {
         stdout.contains("plugin"),
         "missing plugin subcommand:\n{stdout}"
     );
+    for command in [
+        "space", "tag", "link", "unlink", "req", "stats", "enrich", "stale", "status", "docs",
+        "chunk",
+    ] {
+        assert!(
+            stdout.contains(command),
+            "missing {command} subcommand:\n{stdout}"
+        );
+    }
 }
 
 #[test]
@@ -37,6 +46,24 @@ fn nested_command_help_exposes_the_first_management_slice() {
         ("plan", ["list", "show", "create", "status"].as_slice()),
         ("task", ["add", "list", "claim", "done"].as_slice()),
         ("plugin", ["list", "doctor"].as_slice()),
+        ("space", ["list", "add", "remove", "current"].as_slice()),
+        ("tag", ["list", "add", "rename", "remove"].as_slice()),
+        (
+            "req",
+            ["list", "add", "status", "export", "verify"].as_slice(),
+        ),
+        ("stale", ["list", "dismiss"].as_slice()),
+        (
+            "docs",
+            ["list", "show", "import", "sync", "render"].as_slice(),
+        ),
+        (
+            "chunk",
+            [
+                "add", "get", "cat", "update", "remove", "list", "search", "link", "unlink",
+            ]
+            .as_slice(),
+        ),
     ] {
         let out = Command::new(env!("CARGO_BIN_EXE_fubbik"))
             .args([group, "--help"])
@@ -50,6 +77,29 @@ fn nested_command_help_exposes_the_first_management_slice() {
                 "{group} help missing {command}:\n{stdout}"
             );
         }
+    }
+}
+
+#[test]
+fn space_scoped_commands_keep_the_codebase_option_alias() {
+    for args in [
+        &["context", "export", "--help"][..],
+        &["plan", "list", "--help"],
+        &["req", "list", "--help"],
+        &["docs", "import", "--help"],
+        &["chunk", "add", "--help"],
+    ] {
+        let out = Command::new(env!("CARGO_BIN_EXE_fubbik"))
+            .args(args)
+            .output()
+            .expect("binary runs");
+        assert!(out.status.success(), "{} failed", args.join(" "));
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert!(
+            stdout.contains("--codebase"),
+            "{} help missing --codebase alias:\n{stdout}",
+            args.join(" ")
+        );
     }
 }
 

@@ -84,6 +84,25 @@ Open [http://localhost:3001](http://localhost:3001) in your browser to see the w
 
 The server port can be configured via the `PORT` environment variable (default: `3000`).
 
+### Rust CLI
+
+The `fubbik` binary now covers the primary server-backed workflows directly:
+
+```bash
+fubbik add "Architecture note" --content "..."
+fubbik space list
+fubbik tag list
+fubbik link <source-id> <target-id> --relation supports
+fubbik req list --status failing
+fubbik docs import README.md
+fubbik enrich --all
+fubbik stale list
+fubbik stats
+```
+
+These workflows support the global `--json` and `--quiet` output modes. The
+compatibility aliases `codebase`, `tags`, and `requirements` are also accepted.
+
 ### Self-hosting
 
 Start the Rust API, web UI, and PostgreSQL stack with:
@@ -123,7 +142,7 @@ fubbik/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Start)
 │   ├── server/      # Retired TypeScript reference (outside active workspace)
-│   └── cli/         # Legacy workflows not yet available in the Rust CLI
+│   └── cli/         # Reference for remaining local discovery workflows
 ├── packages/
 │   ├── api/         # Retired Elysia reference (outside active workspace)
 │   ├── auth/        # Retired Better Auth reference (outside active workspace)

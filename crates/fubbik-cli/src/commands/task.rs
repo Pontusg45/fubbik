@@ -12,6 +12,7 @@ pub async fn run(client: &Client, command: TaskCommand, mode: OutputMode) -> Res
             description,
             space,
         } => {
+            let space = client.resolve_space(space.as_deref()).await?;
             let plan = client
                 .create_quick_task(&title, description.as_deref(), space.as_deref())
                 .await?;

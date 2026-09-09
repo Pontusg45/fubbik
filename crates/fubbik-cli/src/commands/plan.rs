@@ -9,6 +9,7 @@ use crate::output::{self, OutputMode};
 pub async fn run(client: &Client, command: PlanCommand, mode: OutputMode) -> Result<()> {
     match command {
         PlanCommand::List { status, space } => {
+            let space = client.resolve_space(space.as_deref()).await?;
             let plans = client
                 .list_plans(status.as_deref(), space.as_deref())
                 .await?;
@@ -45,6 +46,7 @@ pub async fn run(client: &Client, command: PlanCommand, mode: OutputMode) -> Res
             description,
             space,
         } => {
+            let space = client.resolve_space(space.as_deref()).await?;
             let plan = client
                 .create_plan(&title, description.as_deref(), space.as_deref(), &[])
                 .await?;

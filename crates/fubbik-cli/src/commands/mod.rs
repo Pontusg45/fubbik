@@ -1,15 +1,24 @@
 pub mod add;
 pub mod config;
+pub mod connection;
 pub mod context;
 pub mod delete;
+pub mod docs;
+pub mod enrich;
 pub mod get;
 pub mod health;
 pub mod input;
 pub mod list;
 pub mod plan;
 pub mod plugin;
+pub mod requirement;
 pub mod review;
 pub mod search;
+pub mod space;
+pub mod stale;
+pub mod stats;
+pub mod status;
+pub mod tag;
 pub mod task;
 pub mod update;
 

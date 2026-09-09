@@ -304,7 +304,24 @@ async fn shutdown_signal() {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_cors_origins, resolve_implicit_dev_session};
+    use clap::CommandFactory;
+
+    use super::{Cli, parse_cors_origins, resolve_implicit_dev_session};
+
+    #[test]
+    fn rust_cli_exposes_the_server_backed_parity_commands() {
+        let command = Cli::command();
+        let names: Vec<_> = command
+            .get_subcommands()
+            .map(|subcommand| subcommand.get_name())
+            .collect();
+        for expected in [
+            "space", "tag", "link", "unlink", "req", "stats", "enrich", "stale", "status", "docs",
+            "chunk",
+        ] {
+            assert!(names.contains(&expected), "missing `{expected}` command");
+        }
+    }
 
     #[test]
     fn cors_accepts_a_comma_separated_origin_list() {
