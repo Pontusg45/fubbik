@@ -7,7 +7,7 @@
 //! target database — the same pattern `tests/age_queries.rs` already uses.
 
 use fubbik_db::age;
-use fubbik_db::repo::{chunk, connection, user};
+use fubbik_db::repo::{chunk, connection, projection, user};
 
 async fn seed_user(pool: &sqlx::PgPool, email: &str) -> String {
     user::create(pool, email, "U", None).await.unwrap().id
@@ -54,6 +54,11 @@ async fn creating_a_connection_projects_an_edge(pool: sqlx::PgPool) {
     .unwrap()
     .expect("both endpoints belong to the caller, so the insert must succeed");
 
+    assert_eq!(projection::pending_count(&pool).await.unwrap(), 1);
+    let projected = projection::process_batch(&pool, 10).await.unwrap();
+    assert_eq!(projected.completed, 1);
+    assert_eq!(projected.failed, 0);
+
     let ids = age::get_neighborhood(&pool, &a, 1).await.unwrap();
     assert!(
         ids.contains(&b),
@@ -89,6 +94,9 @@ async fn deleting_a_connection_removes_the_edge(pool: sqlx::PgPool) {
     .await
     .unwrap()
     .expect("both endpoints belong to the caller, so the insert must succeed");
+    let projected = projection::process_batch(&pool, 10).await.unwrap();
+    assert_eq!(projected.completed, 1);
+    assert_eq!(projected.failed, 0);
     assert_eq!(age::count_edges_between(&pool, &a, &b).await.unwrap(), 1);
 
     let deleted = connection::delete(&pool, &alice, &id).await.unwrap();
@@ -96,6 +104,9 @@ async fn deleting_a_connection_removes_the_edge(pool: sqlx::PgPool) {
         deleted,
         "the caller owns both endpoints, so delete must succeed"
     );
+    let projected = projection::process_batch(&pool, 10).await.unwrap();
+    assert_eq!(projected.completed, 1);
+    assert_eq!(projected.failed, 0);
 
     let ids = age::get_neighborhood(&pool, &a, 1).await.unwrap();
     assert!(

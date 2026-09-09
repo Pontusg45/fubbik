@@ -62,6 +62,23 @@ check-types:
 test:
     pnpm run test
 
+# Start the canonical PostgreSQL 18 + vector + AGE Rust test adapter.
+rust-test-db-start:
+    ./scripts/rust-test-db.sh start
+
+# Stop and remove the canonical Rust test database.
+rust-test-db-stop:
+    ./scripts/rust-test-db.sh stop
+
+# Run the complete Rust suite against the canonical database adapter.
+rust-test:
+    #!/usr/bin/env zsh
+    set -euo pipefail
+    ./scripts/rust-test-db.sh start >/dev/null
+    database_url="$(./scripts/rust-test-db.sh url)"
+    trap './scripts/rust-test-db.sh stop' EXIT
+    SQLX_OFFLINE=true DATABASE_URL="$database_url" cargo test --workspace
+
 # Lint the workspace.
 lint:
     pnpm run lint
@@ -89,18 +106,6 @@ db-stop:
 # Stop and remove the development database containers.
 db-down:
     pnpm run db:down
-
-# Push the current schema to the database.
-db-push:
-    pnpm run db:push
-
-# Generate a database migration.
-db-generate:
-    pnpm run db:generate
-
-# Apply pending database migrations.
-db-migrate:
-    pnpm run db:migrate
 
 # Open Drizzle Studio.
 db-studio:

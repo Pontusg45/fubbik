@@ -10,6 +10,32 @@ pub fn esc_cypher(value: &str) -> String {
     value.replace('\\', r"\\").replace('\'', r"\'")
 }
 
+fn validate_identifier(value: &str, kind: &str) -> Result<(), sqlx::Error> {
+    let mut chars = value.chars();
+    let valid_start = chars
+        .next()
+        .is_some_and(|character| character == '_' || character.is_ascii_alphabetic());
+    if valid_start && chars.all(|character| character == '_' || character.is_ascii_alphanumeric()) {
+        Ok(())
+    } else {
+        Err(sqlx::Error::Protocol(format!(
+            "invalid AGE {kind} identifier: {value:?}"
+        )))
+    }
+}
+
+/// Chooses a dollar-quote delimiter absent from the query. Unlike a fixed
+/// `$$` delimiter, arbitrary user values cannot terminate this SQL literal.
+fn dollar_quote(value: &str) -> String {
+    for suffix in 0_u32.. {
+        let delimiter = format!("$fubbik_{suffix}$");
+        if !value.contains(&delimiter) {
+            return format!("{delimiter}{value}{delimiter}");
+        }
+    }
+    unreachable!("u32 delimiter space cannot be exhausted by an in-memory query")
+}
+
 /// Reports whether the AGE extension is installed and the catalog readable.
 pub async fn is_available(pool: &PgPool) -> bool {
     sqlx::query("SELECT 1 FROM ag_catalog.ag_graph LIMIT 0")
@@ -55,33 +81,6 @@ pub async fn cypher_columns(
 /// The `::varchar` cast is essential: sqlx has no decoder for `agtype`, so
 /// the value must be stringified by Postgres before it crosses the wire.
 ///
-/// # Safety
-///
-/// `query` is interpolated directly into a `$$`-dollar-quoted SQL statement
-/// via `format!` — it is NOT parameterized. `esc_cypher` escapes backslashes
-/// and single quotes for Cypher string-literal safety, but does NOT escape
-/// `$$`, so a value containing that substring terminates the dollar-quoted
-/// block early.
-///
-/// **Impact, measured rather than assumed: the query fails to parse. It is
-/// not exploitable as SQL injection.** Every caller embeds user input inside
-/// a Cypher string literal (`{id: '<escaped>'}`), and `esc_cypher` escapes
-/// every `'`, so the fragment preceding an injected `$$` always ends inside
-/// an unterminated literal. Postgres rejects the statement at parse time —
-/// reproduced as `ERROR: unterminated quoted string at or near "'x"` —
-/// before anything executes. That failure surfaces as a real `sqlx::Error`
-/// out of [`run_primed`]'s `?` and propagates out of [`cypher_in_graph`] —
-/// it is NOT swallowed into `Ok(vec![])` here. Callers that need the sweep
-/// to survive one bad value tolerate it themselves (e.g.
-/// `fubbik-api/src/graph/sync.rs`'s per-rule `match` around `sync_rule`).
-/// Statement chaining is independently impossible: [`run_primed`] uses
-/// `sqlx::query(..).fetch_all(..)`, i.e. the extended protocol.
-///
-/// The unescaped `$$` is still worth fixing, because that reasoning holds
-/// only while every caller keeps its input inside a quoted Cypher literal.
-/// A future caller interpolating user input *outside* one would turn this
-/// into a genuine injection. Inherited from the TypeScript original
-/// (`packages/db/src/age/client.ts`) and not addressed by this helper.
 async fn cypher_in_graph(
     pool: &PgPool,
     graph: &str,
@@ -90,6 +89,7 @@ async fn cypher_in_graph(
     if !is_available(pool).await {
         return Ok(Vec::new());
     }
+    validate_identifier(graph, "graph")?;
 
     // `::varchar`, NOT `::text`. Verified against AGE 1.7.0: the explicit
     // text cast routes through agtype_value_to_text, which rejects vertex,
@@ -97,21 +97,18 @@ async fn cypher_in_graph(
     // varchar coercion uses the type's output representation and handles
     // every shape. `agtype_out(v)` also produces the right string but
     // returns pseudo-type cstring, which sqlx cannot decode.
-    let sql = format!("SELECT v::varchar AS v FROM cypher('{graph}', $$ {query} $$) AS (v agtype)");
+    let query = dollar_quote(query);
+    let sql = format!("SELECT v::varchar AS v FROM cypher('{graph}', {query}) AS (v agtype)");
 
     let rows = run_primed(pool, &sql).await?;
 
-    Ok(rows
-        .into_iter()
-        .filter_map(|row| {
-            let raw: String = row.try_get("v").ok()?;
-            let parsed = parse_agtype(&raw);
-            if parsed.is_none() {
-                tracing::warn!(raw = %raw, "age::cypher: failed to parse agtype row, dropping it");
-            }
-            parsed
+    rows.into_iter()
+        .map(|row| {
+            let raw: String = row.try_get("v")?;
+            parse_agtype(&raw)
+                .ok_or_else(|| sqlx::Error::Protocol(format!("failed to parse AGE value: {raw}")))
         })
-        .collect())
+        .collect()
 }
 
 /// Multi-column sibling of [`cypher_in_graph`], for queries that `RETURN`
@@ -130,6 +127,10 @@ async fn cypher_multi(
         return Ok(Vec::new());
     }
 
+    validate_identifier(graph, "graph")?;
+    for column in columns {
+        validate_identifier(column, "column")?;
+    }
     let select_list = columns
         .iter()
         .map(|c| format!("{c}::varchar AS {c}"))
@@ -140,24 +141,25 @@ async fn cypher_multi(
         .map(|c| format!("{c} agtype"))
         .collect::<Vec<_>>()
         .join(", ");
-    let sql =
-        format!("SELECT {select_list} FROM cypher('{graph}', $$ {query} $$) AS ({column_defs})");
+    let query = dollar_quote(query);
+    let sql = format!("SELECT {select_list} FROM cypher('{graph}', {query}) AS ({column_defs})");
 
     let rows = run_primed(pool, &sql).await?;
 
-    Ok(rows
-        .into_iter()
+    rows.into_iter()
         .map(|row| {
             columns
                 .iter()
-                .filter_map(|c| {
-                    let raw: String = row.try_get(*c).ok()?;
-                    let parsed = parse_agtype(&raw)?;
-                    Some((c.to_string(), parsed))
+                .map(|column| {
+                    let raw: String = row.try_get(*column)?;
+                    let parsed = parse_agtype(&raw).ok_or_else(|| {
+                        sqlx::Error::Protocol(format!("failed to parse AGE column {column}: {raw}"))
+                    })?;
+                    Ok((column.to_string(), parsed))
                 })
-                .collect()
+                .collect::<Result<HashMap<_, _>, sqlx::Error>>()
         })
-        .collect())
+        .collect()
 }
 
 /// Shared connection-priming plumbing for both [`cypher_in_graph`] and
@@ -1053,7 +1055,23 @@ pub async fn list_governs_edges(pool: &PgPool) -> AppResult<Vec<GovernsEdge>> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_agtype;
+    use super::{dollar_quote, parse_agtype, validate_identifier};
+
+    #[test]
+    fn dollar_quote_chooses_a_delimiter_absent_from_the_query() {
+        assert_eq!(dollar_quote("RETURN 1"), "$fubbik_0$RETURN 1$fubbik_0$");
+        assert_eq!(
+            dollar_quote("RETURN '$fubbik_0$'"),
+            "$fubbik_1$RETURN '$fubbik_0$'$fubbik_1$"
+        );
+    }
+
+    #[test]
+    fn age_identifiers_reject_sql_syntax() {
+        assert!(validate_identifier("knowledge_2", "graph").is_ok());
+        assert!(validate_identifier("knowledge'); DROP TABLE plan; --", "graph").is_err());
+        assert!(validate_identifier("two columns", "column").is_err());
+    }
 
     #[test]
     fn strips_vertex_suffix() {

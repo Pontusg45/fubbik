@@ -3,8 +3,14 @@
     "private": true,
     "workspaces": {
         "packages": [
-            "apps/*",
-            "packages/*"
+            "apps/cli",
+            "apps/vscode",
+            "apps/web",
+            "packages/client",
+            "packages/config",
+            "packages/db",
+            "packages/env",
+            "packages/mcp"
         ],
         "catalog": {
             "dotenv": "^17.2.2",
@@ -28,10 +34,7 @@
         "dev:native": "turbo run dev --filter=native",
         "dev:web": "turbo run dev --filter=web",
         "dev:server": "just dev-rust",
-        "db:push": "turbo run db:push --filter=@fubbik/db",
         "db:studio": "turbo run db:studio --filter=@fubbik/db",
-        "db:generate": "turbo run db:generate --filter=@fubbik/db",
-        "db:migrate": "turbo run db:migrate --filter=@fubbik/db",
         "db:start": "turbo run db:start --filter=@fubbik/db",
         "db:watch": "turbo run db:watch --filter=@fubbik/db",
         "db:stop": "turbo run db:stop --filter=@fubbik/db",
@@ -68,7 +71,7 @@
         "docker:logs": "docker compose -f docker-compose.selfhost.yml logs -f",
         "docker:logs:server": "docker compose -f docker-compose.selfhost.yml logs -f server",
         "docker:clean": "docker compose -f docker-compose.selfhost.yml down -v",
-        "age:setup": "turbo run age:setup --filter=@fubbik/db"
+        "age:setup": "echo 'AGE setup is owned by Rust SQLx migrations'"
     },
     "devDependencies": {
         "@fubbik/config": "workspace:*",

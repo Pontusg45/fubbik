@@ -359,7 +359,9 @@ async fn behavior_sync_projects_rules_for_every_user_and_is_idempotent(pool: sql
 /// ordered after the bad one would never be projected — forever, on every
 /// tick. This proves the sweep instead skips the bad rule and keeps going.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
-async fn behavior_sync_skips_a_rule_that_fails_and_still_projects_the_rest(pool: sqlx::PgPool) {
+async fn behavior_sync_accepts_titles_containing_the_old_dollar_quote_delimiter(
+    pool: sqlx::PgPool,
+) {
     if !fubbik_db::age::is_available(&pool).await {
         eprintln!("AGE unavailable in this database — skipping");
         return;
@@ -398,10 +400,10 @@ async fn behavior_sync_skips_a_rule_that_fails_and_still_projects_the_rest(pool:
     .await;
     let rule_b_id = json_body(rule_b).await["id"].as_str().unwrap().to_string();
 
-    // `sync_once` walks rules ordered by `r.id ASC`. Work out which of the
-    // two ids sorts first and give THAT one the poisoned title, so the
-    // failure lands ahead of the rule whose survival we're asserting.
-    let (poisoned_id, poisoned_title, survivor_id, survivor_title) = if rule_a_id < rule_b_id {
+    // `sync_once` walks rules ordered by `r.id ASC`. Put the old fixed
+    // dollar-quote delimiter in the first title so this remains a regression
+    // test for both safe interpolation and continuation through the batch.
+    let (delimiter_id, delimiter_title, other_id, other_title) = if rule_a_id < rule_b_id {
         (
             rule_a_id,
             "broken$$title",
@@ -421,8 +423,8 @@ async fn behavior_sync_skips_a_rule_that_fails_and_still_projects_the_rest(pool:
         app.clone(),
         &cookie,
         "PATCH",
-        &format!("/api/matrices/{matrix_id}/rules/{poisoned_id}"),
-        serde_json::json!({ "title": poisoned_title }),
+        &format!("/api/matrices/{matrix_id}/rules/{delimiter_id}"),
+        serde_json::json!({ "title": delimiter_title }),
     )
     .await;
     assert_eq!(patch.status(), StatusCode::OK);
@@ -431,16 +433,16 @@ async fn behavior_sync_skips_a_rule_that_fails_and_still_projects_the_rest(pool:
         app.clone(),
         &cookie,
         "PATCH",
-        &format!("/api/matrices/{matrix_id}/rules/{survivor_id}"),
-        serde_json::json!({ "title": survivor_title }),
+        &format!("/api/matrices/{matrix_id}/rules/{other_id}"),
+        serde_json::json!({ "title": other_title }),
     )
     .await;
     assert_eq!(patch.status(), StatusCode::OK);
 
     let synced = fubbik_api::graph::sync::sync_once(&pool).await.unwrap();
     assert_eq!(
-        synced, 1,
-        "only the un-poisoned rule counts as successfully synced"
+        synced, 2,
+        "a title containing the old delimiter must no longer break graph sync"
     );
 
     let vertices = fubbik_db::age::list_behavior_rule_vertices(&pool)
@@ -448,12 +450,12 @@ async fn behavior_sync_skips_a_rule_that_fails_and_still_projects_the_rest(pool:
         .unwrap();
     let titles: Vec<&str> = vertices.iter().map(|v| v.title.as_str()).collect();
     assert!(
-        titles.contains(&survivor_title),
-        "the rule after the poisoned one in id order must still be projected, got {titles:?}"
+        titles.contains(&other_title),
+        "the rule after the delimiter-bearing one must still be projected, got {titles:?}"
     );
     assert!(
-        !titles.iter().any(|t| t.contains("broken")),
-        "the poisoned rule must not have produced a vertex"
+        titles.contains(&delimiter_title),
+        "the delimiter-bearing title must be stored literally"
     );
 }
 

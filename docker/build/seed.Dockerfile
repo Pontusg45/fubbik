@@ -14,11 +14,9 @@ ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/cli/package.json ./apps/cli/
-COPY apps/server/package.json ./apps/server/
 COPY apps/web/package.json ./apps/web/
 COPY apps/vscode/package.json ./apps/vscode/
-COPY packages/api/package.json ./packages/api/
-COPY packages/auth/package.json ./packages/auth/
+COPY packages/client/package.json ./packages/client/
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/env/package.json ./packages/env/

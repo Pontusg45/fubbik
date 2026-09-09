@@ -93,6 +93,35 @@ pub struct TaskClaim {
     pub expired: bool,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct BoardPlan {
+    pub id: String,
+    pub title: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct BoardTask {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub order: i32,
+    pub depends_on: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BoardSnapshot {
+    pub plan: BoardPlan,
+    pub tasks: Vec<BoardTask>,
+    pub runs: Vec<AgentRun>,
+    pub claims: Vec<TaskClaim>,
+    pub entries: Vec<CoordinationEntry>,
+    pub next_sequence: i64,
+    pub acknowledged_sequence: Option<i64>,
+    pub has_more: bool,
+}
+
 const RUN_COLUMNS: &str = "id, plan_id, parent_run_id, handle, external_key, status, capabilities, metadata, last_ack_sequence, last_heartbeat_at, created_at, updated_at";
 const RUN_COLUMNS_QUALIFIED: &str = "r.id, r.plan_id, r.parent_run_id, r.handle, r.external_key, r.status, r.capabilities, r.metadata, r.last_ack_sequence, r.last_heartbeat_at, r.created_at, r.updated_at";
 const ENTRY_COLUMNS: &str = "id, sequence, plan_id, task_id, author_run_id, recipient_run_id, reply_to_id, kind, body, metadata, client_mutation_id, created_at";
@@ -107,6 +136,126 @@ async fn own_plan(pool: &PgPool, user_id: &str, plan_id: &str) -> AppResult<()> 
     found
         .map(|_| ())
         .ok_or_else(|| AppError::NotFound("Plan".into()))
+}
+
+/// Reads the complete visible board from one repeatable-read transaction.
+/// Ownership, direct-message visibility, task enrichment, and cursor
+/// semantics stay behind this interface so callers cannot assemble a board
+/// from different database moments.
+pub async fn read_board(
+    pool: &PgPool,
+    user_id: &str,
+    plan_id: &str,
+    run_id: Option<&str>,
+    after_sequence: i64,
+    limit: i64,
+) -> AppResult<BoardSnapshot> {
+    if after_sequence < 0 {
+        return Err(AppError::Validation(
+            "afterSequence cannot be negative".into(),
+        ));
+    }
+    if limit <= 0 {
+        return Err(AppError::Validation("limit must be positive".into()));
+    }
+    let limit = limit.min(500);
+
+    let mut tx = pool.begin().await?;
+    sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        .execute(&mut *tx)
+        .await?;
+    let plan = sqlx::query_as::<_, BoardPlan>(
+        "SELECT id, title, status FROM plan WHERE id = $1 AND user_id = $2",
+    )
+    .bind(plan_id)
+    .bind(user_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Plan".into()))?;
+
+    let run = match run_id {
+        Some(id) => {
+            let sql = format!("SELECT {RUN_COLUMNS} FROM agent_run WHERE id = $1 AND plan_id = $2");
+            Some(
+                sqlx::query_as::<_, AgentRun>(&sql)
+                    .bind(id)
+                    .bind(plan_id)
+                    .fetch_optional(&mut *tx)
+                    .await?
+                    .ok_or_else(|| AppError::NotFound("Agent run".into()))?,
+            )
+        }
+        None => None,
+    };
+    let tasks = sqlx::query_as::<_, BoardTask>(
+        r#"SELECT t.id, t.title, t.description, t.status, t."order",
+                  COALESCE(
+                    array_agg(d.depends_on_task_id ORDER BY d.created_at, d.id)
+                      FILTER (WHERE d.depends_on_task_id IS NOT NULL),
+                    ARRAY[]::text[]
+                  ) AS depends_on
+           FROM plan_task t
+           LEFT JOIN plan_task_dependency d ON d.task_id = t.id
+           WHERE t.plan_id = $1
+           GROUP BY t.id, t.title, t.description, t.status, t."order"
+           ORDER BY t."order" ASC, t.id ASC"#,
+    )
+    .bind(plan_id)
+    .fetch_all(&mut *tx)
+    .await?;
+    let runs_sql = format!(
+        "SELECT {RUN_COLUMNS} FROM agent_run WHERE plan_id = $1 ORDER BY created_at ASC, id ASC"
+    );
+    let runs = sqlx::query_as::<_, AgentRun>(&runs_sql)
+        .bind(plan_id)
+        .fetch_all(&mut *tx)
+        .await?;
+    let claims = sqlx::query_as::<_, TaskClaim>(
+        "SELECT task_id, plan_id, agent_run_id, claimed_at, lease_expires_at, updated_at, lease_expires_at <= now() AS expired FROM plan_task_claim WHERE plan_id = $1 ORDER BY task_id",
+    )
+    .bind(plan_id)
+    .fetch_all(&mut *tx)
+    .await?;
+    let entries_sql = format!(
+        "SELECT {ENTRY_COLUMNS} FROM coordination_entry WHERE plan_id = $1 AND sequence > $2 AND ($3::text IS NULL OR recipient_run_id IS NULL OR author_run_id = $3 OR recipient_run_id = $3) ORDER BY sequence ASC LIMIT $4"
+    );
+    let mut entries = sqlx::query_as::<_, CoordinationEntry>(&entries_sql)
+        .bind(plan_id)
+        .bind(after_sequence)
+        .bind(run_id)
+        .bind(limit + 1)
+        .fetch_all(&mut *tx)
+        .await?;
+    let has_more = entries.len() > limit as usize;
+    if has_more {
+        entries.truncate(limit as usize);
+    }
+    let global_max = sqlx::query_scalar::<_, i64>(
+        "SELECT COALESCE(MAX(sequence), 0) FROM coordination_entry WHERE plan_id = $1",
+    )
+    .bind(plan_id)
+    .fetch_one(&mut *tx)
+    .await?;
+    tx.commit().await?;
+
+    let next_sequence = if has_more {
+        entries
+            .last()
+            .map(|entry| entry.sequence)
+            .unwrap_or(after_sequence)
+    } else {
+        global_max.max(after_sequence)
+    };
+    Ok(BoardSnapshot {
+        plan,
+        tasks,
+        runs,
+        claims,
+        entries,
+        next_sequence,
+        acknowledged_sequence: run.map(|value| value.last_ack_sequence),
+        has_more,
+    })
 }
 
 pub async fn find_run(

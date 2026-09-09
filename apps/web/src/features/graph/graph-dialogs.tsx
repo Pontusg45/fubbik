@@ -1,4 +1,4 @@
-import { CONNECTION_RELATIONS as RELATION_TYPES } from "@fubbik/api/enums";
+import { CONNECTION_RELATIONS as RELATION_TYPES } from "@fubbik/client";
 import type { UseMutationResult } from "@tanstack/react-query";
 
 import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@/components/ui/dialog";

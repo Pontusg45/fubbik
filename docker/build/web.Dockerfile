@@ -18,11 +18,9 @@ ENV TURBO_CACHE_DIR=/root/.cache/turbo
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/cli/package.json ./apps/cli/
-COPY apps/server/package.json ./apps/server/
 COPY apps/web/package.json ./apps/web/
 COPY apps/vscode/package.json ./apps/vscode/
-COPY packages/api/package.json ./packages/api/
-COPY packages/auth/package.json ./packages/auth/
+COPY packages/client/package.json ./packages/client/
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/env/package.json ./packages/env/
@@ -36,11 +34,9 @@ RUN --mount=type=cache,id=fubbik-pnpm-store,target=/root/.local/share/pnpm/store
     pnpm install --frozen-lockfile --prefer-offline
 
 COPY turbo.json ./
+COPY packages/client/ ./packages/client/
 COPY packages/config/ ./packages/config/
 COPY packages/env/ ./packages/env/
-COPY packages/db/ ./packages/db/
-COPY packages/auth/ ./packages/auth/
-COPY packages/api/ ./packages/api/
 COPY apps/web/ ./apps/web/
 
 ARG VITE_API_ORIGIN=http://fubbik-api.invalid

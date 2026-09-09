@@ -1,25 +1,6 @@
-import type { components } from "@fubbik/client";
+import type { CoordinationBoard } from "@fubbik/client";
 
-type Schemas = components["schemas"];
-
-export type BoardTask = Pick<Schemas["BoardTask"], "id" | "title" | "status" | "dependsOn">;
-export type AgentRun = Pick<Schemas["AgentRun"], "id" | "parentRunId" | "handle" | "status" | "lastAckSequence">;
-export type TaskClaim = Pick<Schemas["TaskClaim"], "taskId" | "agentRunId" | "leaseExpiresAt" | "expired">;
-export type BoardEntry = Pick<
-    Schemas["CoordinationEntry"],
-    "id" | "sequence" | "taskId" | "authorRunId" | "recipientRunId" | "kind" | "body"
->;
-
-export interface BoardSnapshot {
-    plan: Pick<Schemas["BoardPlan"], "id" | "title" | "status">;
-    tasks: BoardTask[];
-    runs: AgentRun[];
-    claims: TaskClaim[];
-    entries: BoardEntry[];
-    cursor: Pick<Schemas["BoardCursor"], "nextSequence" | "acknowledgedSequence" | "hasMore">;
-}
-
-export function formatBoard(board: BoardSnapshot, runId?: string): string {
+export function formatBoard(board: CoordinationBoard, runId?: string): string {
     const runById = new Map(board.runs.map(run => [run.id, run]));
     const claimByTask = new Map(board.claims.map(claim => [claim.taskId, claim]));
     const lines = [`# ${board.plan.title}`, `Plan: ${board.plan.id} (${board.plan.status})`, "", "## Tasks"];

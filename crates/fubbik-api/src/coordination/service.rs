@@ -1,5 +1,5 @@
-use fubbik_core::error::{AppError, AppResult};
-use fubbik_db::repo::{coordination, plan};
+use fubbik_core::error::AppResult;
+use fubbik_db::repo::coordination;
 use sqlx::PgPool;
 
 use super::dto::{
@@ -35,59 +35,20 @@ pub async fn board(
     plan_id: &str,
     query: BoardQuery,
 ) -> AppResult<BoardSnapshot> {
-    let after = query.after_sequence.unwrap_or(0);
-    if after < 0 {
-        return Err(AppError::Validation(
-            "afterSequence cannot be negative".into(),
-        ));
-    }
-    let limit = query.limit.unwrap_or(100);
-    if limit <= 0 {
-        return Err(AppError::Validation("limit must be positive".into()));
-    }
-    let limit = limit.min(500);
-    let found = plan::find_by_id(pool, user_id, plan_id)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Plan".into()))?;
-    let run = match query.run_id.as_deref() {
-        Some(id) => Some(
-            coordination::find_run(pool, user_id, plan_id, id)
-                .await?
-                .ok_or_else(|| AppError::NotFound("Agent run".into()))?,
-        ),
-        None => None,
-    };
-    let tasks = plan::list_tasks(pool, user_id, plan_id).await?;
-    let dependencies = plan::list_task_dependencies(pool, user_id, plan_id).await?;
-    let runs = coordination::list_runs(pool, user_id, plan_id).await?;
-    let claims = coordination::list_claims(pool, user_id, plan_id).await?;
-    let mut entries = coordination::list_entries_after(
+    let board = coordination::read_board(
         pool,
         user_id,
         plan_id,
         query.run_id.as_deref(),
-        after,
-        limit + 1,
+        query.after_sequence.unwrap_or(0),
+        query.limit.unwrap_or(100),
     )
     .await?;
-    let has_more = entries.len() > limit as usize;
-    if has_more {
-        entries.truncate(limit as usize);
-    }
-    let global_max = coordination::max_sequence(pool, user_id, plan_id).await?;
-    let next_sequence = if has_more {
-        entries.last().map(|e| e.sequence).unwrap_or(after)
-    } else {
-        global_max.max(after)
-    };
-    let tasks = tasks
+    let tasks = board
+        .tasks
         .into_iter()
         .map(|task| BoardTask {
-            depends_on: dependencies
-                .iter()
-                .filter(|d| d.task_id == task.id)
-                .map(|d| d.depends_on_task_id.clone())
-                .collect(),
+            depends_on: task.depends_on,
             id: task.id,
             title: task.title,
             description: task.description,
@@ -97,18 +58,18 @@ pub async fn board(
         .collect();
     Ok(BoardSnapshot {
         plan: BoardPlan {
-            id: found.id,
-            title: found.title,
-            status: found.status,
+            id: board.plan.id,
+            title: board.plan.title,
+            status: board.plan.status,
         },
         tasks,
-        runs,
-        claims,
-        entries,
+        runs: board.runs,
+        claims: board.claims,
+        entries: board.entries,
         cursor: BoardCursor {
-            next_sequence,
-            acknowledged_sequence: run.map(|r| r.last_ack_sequence),
-            has_more,
+            next_sequence: board.next_sequence,
+            acknowledged_sequence: board.acknowledged_sequence,
+            has_more: board.has_more,
         },
     })
 }

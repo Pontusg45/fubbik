@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 
-import { DEFAULT_THRESHOLDS } from "@fubbik/api/chunk-size";
+import { DEFAULT_THRESHOLDS } from "@fubbik/client";
 
 import type { DiscoveredChunk } from "./types";
 

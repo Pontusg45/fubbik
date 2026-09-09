@@ -119,7 +119,7 @@ function extractConventions(markdown: string): Convention[] {
         conventions.push({
             title: "Database uses drizzle ORM with postgres",
             content:
-                "Database schema defined with drizzle ORM. Uses pgvector extension for embeddings and pg_trgm for fuzzy text search. Schema push via pnpm db:push. Studio via pnpm db:studio.",
+                "Database schema is owned by forward-only Rust SQLx migrations. PostgreSQL uses pgvector, pg_trgm, and Apache AGE. Use pnpm db:studio only for read-only inspection.",
             tags: ["convention", "database", "drizzle"],
             appliesTo: ["packages/db/src/**/*.ts"]
         });

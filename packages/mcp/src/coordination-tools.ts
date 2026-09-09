@@ -1,9 +1,9 @@
-import { unwrapResponse } from "@fubbik/client";
+import { type CoordinationBoard, unwrapResponse } from "@fubbik/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { api } from "./api-client.js";
-import { formatBoard, type BoardSnapshot } from "./coordination-format.js";
+import { formatBoard } from "./coordination-format.js";
 import type { McpPlugin } from "./plugin.js";
 
 function jsonText(value: unknown) {
@@ -35,7 +35,7 @@ export function registerCoordinationTools(server: McpServer): void {
             limit: z.number().int().positive().max(500).optional()
         },
         async ({ planId, runId, afterSequence, limit }) => {
-            const board: BoardSnapshot = unwrapResponse(
+            const board: CoordinationBoard = unwrapResponse(
                 await api.api.plans({ planId }).board.get({ query: { runId, afterSequence, limit } })
             );
             return { content: [{ type: "text" as const, text: formatBoard(board, runId) }] };

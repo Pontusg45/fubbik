@@ -5,7 +5,7 @@
 - Node.js v22+
 - Bun runtime
 - pnpm package manager
-- PostgreSQL 18+ with pgvector extension
+- Docker (the test adapter supplies PostgreSQL 18, pgvector, AGE, and ICU)
 - (Optional) Ollama for AI features
 
 ## Setup
@@ -13,7 +13,7 @@
 1. Clone the repo
 2. `pnpm install`
 3. Copy `apps/server/.env.example` to `apps/server/.env` and fill in values
-4. `pnpm db:push` — create database tables
+4. `just rust-test-db-start` — start the canonical database; the Rust server applies migrations
 5. `pnpm dev` — starts web (port 3001) + API (port 3000)
 
 ## Project Structure
@@ -22,13 +22,14 @@
 fubbik/
 ├── apps/
 │   ├── web/         # Frontend (TanStack Start + React)
-│   ├── server/      # API server (Elysia)
-│   ├── cli/         # CLI (Commander.js)
+│   ├── server/      # Retired TypeScript reference
+│   ├── cli/         # Legacy TypeScript CLI workflows
 │   └── vscode/      # VS Code extension
 ├── packages/
-│   ├── api/         # API routes + services (Elysia + Effect)
-│   ├── auth/        # Authentication (Better Auth)
-│   ├── db/          # Database schema + repositories (Drizzle ORM)
+│   ├── api/         # Retired Elysia reference
+│   ├── auth/        # Retired Better Auth reference
+│   ├── client/      # Generated OpenAPI client and wire contracts
+│   ├── db/          # Typed seed adapter and legacy schema reference
 │   ├── env/         # Environment validation
 │   ├── mcp/         # MCP server for AI agents
 │   └── config/      # Shared TypeScript config
@@ -36,37 +37,40 @@ fubbik/
 
 ## Architecture
 
-Backend follows **Repository -> Service -> Route**:
+The active Rust backend follows **repository → service → route** under
+`crates/fubbik-db` and `crates/fubbik-api`. SQLx migrations are the sole schema
+authority. The old TypeScript backend directories remain as historical porting
+references but are excluded from the workspace and CI.
 
-- **Repository** (`packages/db/src/repository/`): Pure data access, returns `Effect<T, DatabaseError>`
-- **Service** (`packages/api/src/*/service.ts`): Business logic, composes Effects
-- **Route** (`packages/api/src/*/routes.ts`): HTTP layer, `requireSession(ctx).pipe(...)`
+- **Repository** (`crates/fubbik-db/src/repo/`): tenant-scoped PostgreSQL behavior
+- **Service** (`crates/fubbik-api/src/*/service.rs`): domain orchestration
+- **Route** (`crates/fubbik-api/src/*/routes.rs`): Axum HTTP interface
 
 ## Adding a New Feature
 
 ### 1. Database schema
 
-Create `packages/db/src/schema/your-feature.ts`, export from `schema/index.ts`.
+Add a forward-only SQLx migration under `crates/fubbik-db/migrations/`.
 
 ### 2. Repository
 
-Create `packages/db/src/repository/your-feature.ts`, export from `repository/index.ts`.
+Create `crates/fubbik-db/src/repo/your_feature.rs` and export it from `repo/mod.rs`.
 
 ### 3. Service
 
-Create `packages/api/src/your-feature/service.ts`.
+Create `crates/fubbik-api/src/your_feature/service.rs`.
 
 ### 4. Routes
 
-Create `packages/api/src/your-feature/routes.ts`, register in `packages/api/src/index.ts`.
+Create `crates/fubbik-api/src/your_feature/routes.rs` and register its router.
 
 ### 5. Web UI
 
 Create route at `apps/web/src/routes/your-feature.tsx`.
 
-### 6. Push schema
+### 6. Verify
 
-Run `pnpm db:push`.
+Run the focused test, then `just rust-test`.
 
 ## Common Commands
 
@@ -77,8 +81,8 @@ Run `pnpm db:push`.
 | `pnpm test`            | Run tests               |
 | `pnpm run check-types` | Type-check all packages |
 | `pnpm ci`              | Full CI pipeline        |
-| `pnpm db:push`         | Push schema changes     |
 | `pnpm db:studio`       | Open Drizzle Studio     |
+| `just rust-test`       | Full Rust suite on PG18 + AGE |
 | `pnpm kill:all`        | Free ports 3000 + 3001  |
 | `pnpm service:start`   | Start via launchd       |
 
@@ -88,5 +92,5 @@ Run `pnpm db:push`.
 - Formatting: `pnpm fmt`
 - Linting: `pnpm lint`
 - All database PKs use `text` type (UUID as text)
-- Effect for typed error handling in repositories/services
-- Elysia `t.Object()` for route validation
+- SQLx migrations are forward-only and schema-qualified
+- Axum extractors validate the HTTP interface

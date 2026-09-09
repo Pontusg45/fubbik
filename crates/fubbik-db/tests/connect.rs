@@ -76,6 +76,34 @@ async fn check_connect_against(scratch_url: &str) -> Result<(), String> {
         ));
     }
 
+    // Application relations must never inherit AGE's `ag_catalog` schema.
+    // This is an observable migration contract: every runtime query resolves
+    // these names through the default public search path.
+    for relation in [
+        "agent_run",
+        "plan_task_claim",
+        "coordination_entry",
+        "projection_outbox",
+        "account",
+    ] {
+        let schema: Option<String> = sqlx::query_scalar(
+            "SELECT n.nspname \
+             FROM pg_class c \
+             JOIN pg_namespace n ON n.oid = c.relnamespace \
+             WHERE c.relname = $1 AND c.relkind IN ('r', 'p')",
+        )
+        .bind(relation)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| format!("look up schema for `{relation}`: {e}"))?
+        .flatten();
+        if schema.as_deref() != Some("public") {
+            return Err(format!(
+                "migration-created relation `{relation}` must be in public, found {schema:?}"
+            ));
+        }
+    }
+
     // The regression that mattered: `after_connect` must not leave a
     // mutated `search_path` on a connection handed back to the pool.
     // Queried on `pool` itself — the actual pool `connect()` returned,
@@ -182,9 +210,9 @@ async fn check_connect_against_legacy_drizzle_database(scratch_url: &str) -> Res
         .fetch_one(&pool)
         .await
         .map_err(|e| format!("read adopted SQLx migration history: {e}"))?;
-    if migration_count != 7 {
+    if migration_count != 8 {
         return Err(format!(
-            "expected all 7 SQLx migrations after adoption, found {migration_count}"
+            "expected all 8 SQLx migrations after adoption, found {migration_count}"
         ));
     }
 
@@ -220,7 +248,7 @@ async fn check_connect_against_legacy_drizzle_database(scratch_url: &str) -> Res
         .fetch_one(&restarted)
         .await
         .map_err(|e| format!("read migration history after restart: {e}"))?;
-    if restarted_count != 7 {
+    if restarted_count != 8 {
         return Err(format!(
             "expected 7 migrations after adoption restart, found {restarted_count}"
         ));

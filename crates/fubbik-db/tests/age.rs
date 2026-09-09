@@ -1,4 +1,13 @@
 use fubbik_db::age;
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn unavailable_profile_degrades_without_error(pool: sqlx::PgPool) {
+    if std::env::var("FUBBIK_EXPECT_NO_AGE").as_deref() != Ok("1") {
+        return;
+    }
+    assert!(!age::is_available(&pool).await);
+    assert!(age::cypher(&pool, "RETURN 1").await.unwrap().is_empty());
+}
 use sqlx::postgres::PgPoolOptions;
 
 #[test]

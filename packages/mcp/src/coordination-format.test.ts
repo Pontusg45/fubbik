@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { formatBoard, type BoardSnapshot } from "./coordination-format.js";
+import type { CoordinationBoard } from "@fubbik/client";
+
+import { formatBoard } from "./coordination-format.js";
 
 test("formats full identifiers, claims, direct messages, and pagination", () => {
-    const board: BoardSnapshot = {
+    const board: CoordinationBoard = {
         plan: { id: "plan-full-id", title: "Ship", status: "in_progress" },
         tasks: [{ id: "task-full-id", title: "Research", status: "in_progress", dependsOn: [] }],
         runs: [
@@ -20,7 +22,8 @@ test("formats full identifiers, claims, direct messages, and pagination", () => 
                 authorRunId: "child-full-id",
                 recipientRunId: "root-full-id",
                 kind: "handoff",
-                body: "Done"
+                body: "Done",
+                createdAt: "2026-09-04T11:59:00.000Z"
             }
         ],
         cursor: { nextSequence: 42, acknowledgedSequence: 1, hasMore: true }

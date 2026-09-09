@@ -56,9 +56,10 @@ pnpm install
 
 ## Database Setup
 
-This project uses PostgreSQL. The Rust server applies its embedded SQLx
-migrations automatically at startup; Drizzle remains available for schema
-tooling and sample-data seeding.
+This project uses PostgreSQL. The Rust server and its embedded SQLx migrations
+are the schema authority. Drizzle is retained only as a typed sample-data seed
+adapter and for read-only Studio inspection; do not generate or apply schema
+changes through Drizzle.
 
 When upgrading an existing database from the former Node/Drizzle server,
 startup recognizes Drizzle's migration history, repairs the known five-table
@@ -121,13 +122,14 @@ not yet a verified backup.
 fubbik/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Start)
-│   ├── server/      # Retained TypeScript reference implementation
-│   └── cli/         # CLI application
+│   ├── server/      # Retired TypeScript reference (outside active workspace)
+│   └── cli/         # Legacy workflows not yet available in the Rust CLI
 ├── packages/
-│   ├── api/         # Retained Elysia reference API and shared fixtures
-│   ├── auth/        # Better Auth compatibility reference
+│   ├── api/         # Retired Elysia reference (outside active workspace)
+│   ├── auth/        # Retired Better Auth reference (outside active workspace)
+│   ├── client/      # Generated Rust OpenAPI client and shared wire contracts
 │   ├── config/      # Shared TypeScript config
-│   ├── db/          # Database schema (Drizzle ORM)
+│   ├── db/          # Typed seed adapter and legacy schema reference
 │   └── env/         # Environment validation (Arktype + t3-env)
 ├── crates/          # Primary Rust API, database, CLI, and core libraries
 ```
@@ -139,8 +141,8 @@ fubbik/
 - `pnpm run dev:web`: Start only the web application
 - `pnpm run dev:server`: Start only the Rust server
 - `pnpm run check-types`: Type-check all packages (uses `tsgo`)
-- `pnpm run db:push`: Push schema changes to database
 - `pnpm run db:studio`: Open database studio UI
+- `just rust-test`: Run Rust tests with the canonical PG18/vector/AGE adapter
 - `pnpm run ci`: Run the TypeScript CI pipeline
 - `pnpm run test:e2e`: Run the browser critical-path suite
 

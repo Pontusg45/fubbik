@@ -6,6 +6,8 @@ import { PlanCoordinationPanel, type CoordinationBoard } from "./plan-coordinati
 describe("PlanCoordinationPanel", () => {
     it("shows agent identity, addressed journal entries, and pagination", () => {
         const board: CoordinationBoard = {
+            plan: { id: "plan-id", title: "Ship", status: "in_progress" },
+            tasks: [{ id: "task-id", title: "Research", status: "done", dependsOn: [] }],
             runs: [
                 { id: "root-id", parentRunId: null, handle: "root", status: "active" },
                 { id: "child-id", parentRunId: "root-id", handle: "researcher", status: "finished" }

@@ -12,18 +12,6 @@
             "ignoreDependencies": ["@tanstack/router-plugin", "@fontsource-variable/inter", "@tanstack/react-router-with-query"],
             "ignore": ["src/components/ui/**"]
         },
-        "apps/server": {
-            "entry": ["src/**/*.ts"],
-            "project": ["src/**/*.ts"],
-            "ignoreDependencies": ["better-auth"]
-        },
-        "packages/api": {
-            "project": ["src/**/*.ts"],
-            "ignoreDependencies": ["@fubbik/db", "@fubbik/env"]
-        },
-        "packages/auth": {
-            "project": ["src/**/*.ts"]
-        },
         "packages/db": {
             "project": ["src/**/*.ts"]
         },

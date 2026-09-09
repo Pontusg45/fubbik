@@ -2,6 +2,14 @@ use sqlx::{Connection, PgConnection};
 
 pub(crate) static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
+const REQUIRED_PUBLIC_RELATIONS: [&str; 5] = [
+    "agent_run",
+    "plan_task_claim",
+    "coordination_entry",
+    "projection_outbox",
+    "account",
+];
+
 /// Tables created by migration 0001. A pre-SQLx database is only eligible
 /// for Drizzle baseline adoption when every one is present; checking the
 /// complete signature prevents a partial or stale schema from being marked
@@ -153,6 +161,51 @@ fn configuration_error(message: impl Into<String>) -> sqlx::Error {
     sqlx::Error::Configuration(Box::new(std::io::Error::new(
         std::io::ErrorKind::InvalidData,
         message.into(),
+    )))
+}
+
+/// Verifies the schema-placement contract expected by every application
+/// query. This deliberately runs after all migrations so a broken migration
+/// fails startup at the migration seam rather than much later in a feature.
+pub(crate) async fn validate_public_schema(conn: &mut PgConnection) -> Result<(), sqlx::Error> {
+    let required: Vec<String> = REQUIRED_PUBLIC_RELATIONS
+        .iter()
+        .map(|name| (*name).to_owned())
+        .collect();
+    let missing: Vec<String> = sqlx::query_scalar(
+        "SELECT required.name \
+         FROM unnest($1::text[]) AS required(name) \
+         LEFT JOIN information_schema.tables actual \
+           ON actual.table_schema = 'public' AND actual.table_name = required.name \
+         WHERE actual.table_name IS NULL \
+         ORDER BY required.name",
+    )
+    .bind(&required)
+    .fetch_all(&mut *conn)
+    .await?;
+    if missing.is_empty() {
+        return Ok(());
+    }
+
+    let misplaced: Vec<String> = sqlx::query_scalar(
+        "SELECT format('%s.%s', actual.table_schema, actual.table_name) \
+         FROM information_schema.tables actual \
+         WHERE actual.table_name = ANY($1::text[]) \
+           AND actual.table_schema <> 'public' \
+         ORDER BY actual.table_schema, actual.table_name",
+    )
+    .bind(&missing)
+    .fetch_all(&mut *conn)
+    .await?;
+    Err(configuration_error(format!(
+        "database migration schema contract failed; missing from public: {}; \
+         same-named relations outside public: {}",
+        missing.join(", "),
+        if misplaced.is_empty() {
+            "none".to_owned()
+        } else {
+            misplaced.join(", ")
+        }
     )))
 }
 

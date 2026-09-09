@@ -17,7 +17,8 @@
 
 import type { db as dbInstance } from "../index";
 
-export type Database = typeof dbInstance;
+/** Database behavior shared by the root Drizzle adapter and transactions. */
+export type Database = Pick<typeof dbInstance, "select" | "insert" | "update" | "delete" | "execute">;
 
 export interface SeedContext {
     db: Database;

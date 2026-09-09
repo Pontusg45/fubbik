@@ -4,13 +4,19 @@
  * seed; callers never need to interpret warning-only output.
  */
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 import type { SeedContext } from "./context";
 
 interface Probe {
     label: string;
     query: string;
+}
+
+interface ExpectedProbe {
+    label: string;
+    expected: (ctx: SeedContext) => number | undefined;
+    query: (ctx: SeedContext) => SQL;
 }
 
 export interface SeedIntegrityResult {
@@ -71,6 +77,79 @@ const INTEGRITY_PROBES: Probe[] = [
     }
 ];
 
+const EXPECTED_PROBES: ExpectedProbe[] = [
+    {
+        label: "user chunks",
+        expected: ctx => ctx.counters["chunks"],
+        query: ctx => sql`SELECT count(*)::int FROM chunk WHERE user_id = ${ctx.userId}`
+    },
+    {
+        label: "user spaces",
+        expected: ctx => ctx.counters["codebases"],
+        query: ctx => sql`SELECT count(*)::int FROM space WHERE user_id = ${ctx.userId}`
+    },
+    {
+        label: "user tags",
+        expected: ctx => ctx.counters["tags"],
+        query: ctx => sql`SELECT count(*)::int FROM tag WHERE user_id = ${ctx.userId}`
+    },
+    {
+        label: "user documents",
+        expected: ctx => ctx.counters["documents"],
+        query: ctx => sql`SELECT count(*)::int FROM document WHERE user_id = ${ctx.userId}`
+    },
+    {
+        label: "user requirements",
+        expected: ctx => ctx.counters["requirements"],
+        query: ctx => sql`SELECT count(*)::int FROM requirement WHERE user_id = ${ctx.userId}`
+    },
+    {
+        label: "user plans",
+        expected: ctx => ctx.counters["plans"],
+        query: ctx => sql`SELECT count(*)::int FROM plan WHERE user_id = ${ctx.userId}`
+    },
+    {
+        label: "user plan tasks",
+        expected: ctx => ctx.counters["plan_tasks"],
+        query: ctx => sql`SELECT count(*)::int FROM plan_task t JOIN plan p ON p.id = t.plan_id WHERE p.user_id = ${ctx.userId}`
+    },
+    {
+        label: "user agent runs",
+        expected: ctx => ctx.counters["agent_runs"],
+        query: ctx => sql`SELECT count(*)::int FROM agent_run r JOIN plan p ON p.id = r.plan_id WHERE p.user_id = ${ctx.userId}`
+    },
+    {
+        label: "user task claims",
+        expected: ctx => ctx.counters["task_claims"],
+        query: ctx => sql`SELECT count(*)::int FROM plan_task_claim c JOIN plan p ON p.id = c.plan_id WHERE p.user_id = ${ctx.userId}`
+    },
+    {
+        label: "user coordination entries",
+        expected: ctx => ctx.counters["coordination_entries"],
+        query: ctx => sql`SELECT count(*)::int FROM coordination_entry e JOIN plan p ON p.id = e.plan_id WHERE p.user_id = ${ctx.userId}`
+    },
+    {
+        label: "user workspaces",
+        expected: ctx => ctx.counters["workspaces"],
+        query: ctx => sql`SELECT count(*)::int FROM workspace WHERE user_id = ${ctx.userId}`
+    },
+    {
+        label: "user collections",
+        expected: ctx => ctx.counters["collections"],
+        query: ctx => sql`SELECT count(*)::int FROM collection WHERE user_id = ${ctx.userId}`
+    },
+    {
+        label: "user behavior matrices",
+        expected: ctx => ctx.counters["behavior_matrices"],
+        query: ctx => sql`SELECT count(*)::int FROM behavior_matrix WHERE user_id = ${ctx.userId}`
+    },
+    {
+        label: "user vocabulary entries",
+        expected: ctx => ctx.counters["vocabulary"],
+        query: ctx => sql`SELECT count(*)::int FROM vocabulary_entry WHERE user_id = ${ctx.userId}`
+    }
+];
+
 export async function verifySeed(ctx: SeedContext): Promise<void> {
     ctx.log("\n=== verification ===");
 
@@ -79,6 +158,21 @@ export async function verifySeed(ctx: SeedContext): Promise<void> {
         const { rows } = await ctx.db.execute(sql.raw(probe.query));
         const count = Number((rows[0] as { count: number } | undefined)?.count ?? 0);
         ctx.log(`  ${probe.label.padEnd(width)}  ${String(count).padStart(5)}`);
+    }
+
+    ctx.log("\n=== scenario manifest ===");
+    const manifestFailures: string[] = [];
+    for (const probe of EXPECTED_PROBES) {
+        const expected = probe.expected(ctx);
+        if (expected === undefined) continue;
+        const { rows } = await ctx.db.execute(probe.query(ctx));
+        const actual = Number((rows[0] as { count: number } | undefined)?.count ?? 0);
+        const ok = actual === expected;
+        ctx.log(`  ${ok ? "✓" : "✗"} ${probe.label}: ${actual}/${expected}`);
+        if (!ok) manifestFailures.push(`${probe.label}: expected ${expected}, found ${actual}`);
+    }
+    if (manifestFailures.length > 0) {
+        throw new Error(`Seed scenario manifest failed: ${manifestFailures.join(", ")}`);
     }
 
     ctx.log("\n=== integrity probes (should all be 0) ===");

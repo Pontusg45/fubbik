@@ -158,10 +158,10 @@ async function resetForUser(ctx: SeedContext, mods: ModuleEntry[]): Promise<void
 // Main
 // ---------------------------------------------------------------------------
 
-async function ensureUser(userId: string) {
-    const [existing] = await db.select().from(user).where(eq(user.id, userId));
+async function ensureUser(seedDb: SeedContext["db"], userId: string) {
+    const [existing] = await seedDb.select().from(user).where(eq(user.id, userId));
     if (!existing) {
-        await db.insert(user).values({
+        await seedDb.insert(user).values({
             id: userId,
             name: "Dev User",
             email: "dev@localhost",
@@ -172,30 +172,32 @@ async function ensureUser(userId: string) {
 
 async function main() {
     const flags = parseFlags(process.argv.slice(2));
-    const ctx = createContext({ db, userId: DEV_USER_ID, scenario: flags.scenario, quiet: flags.quiet });
-
-    ctx.log(
+    const log = flags.quiet ? () => {} : (message: string) => console.log(message);
+    log(
         `\nfubbik seed — scenario=${flags.scenario}${flags.only ? `, only=${[...flags.only].join(",")}` : ""}${flags.skip ? `, skip=${[...flags.skip].join(",")}` : ""}`
     );
-    ctx.log("─".repeat(60));
-
-    await ensureUser(DEV_USER_ID);
+    log("─".repeat(60));
 
     const mods = selectedModules(flags);
-    ctx.log(`  → ${mods.length} module(s) selected`);
+    log(`  → ${mods.length} module(s) selected`);
 
-    if (flags.resetPolicy === "auto") {
-        ctx.log("\n=== reset (reverse order) ===");
-        await resetForUser(ctx, mods);
-    }
+    await db.transaction(async transaction => {
+        const ctx = createContext({ db: transaction, userId: DEV_USER_ID, scenario: flags.scenario, quiet: flags.quiet });
+        await ensureUser(ctx.db, DEV_USER_ID);
 
-    ctx.log("\n=== seed ===");
-    for (const m of mods) {
-        await trySeed(m.name, () => m.seed(ctx), ctx);
-    }
+        if (flags.resetPolicy === "auto") {
+            ctx.log("\n=== reset (reverse order) ===");
+            await resetForUser(ctx, mods);
+        }
 
-    await verifySeed(ctx);
-    ctx.log("\n✅ seed complete\n");
+        ctx.log("\n=== seed ===");
+        for (const m of mods) {
+            await trySeed(m.name, () => m.seed(ctx), ctx);
+        }
+
+        await verifySeed(ctx);
+    });
+    log("\n✅ seed complete\n");
 }
 
 main().catch(err => {

@@ -1,7 +1,7 @@
-import { DEFAULT_THRESHOLDS, type ChunkSizeThresholds } from "@fubbik/api/chunk-size";
+import { DEFAULT_THRESHOLDS, type ChunkSizeThresholds } from "@fubbik/client";
 
-export type { ChunkSizeThresholds } from "@fubbik/api/chunk-size";
-export { DEFAULT_THRESHOLDS } from "@fubbik/api/chunk-size";
+export type { ChunkSizeThresholds } from "@fubbik/client";
+export { DEFAULT_THRESHOLDS } from "@fubbik/client";
 
 export type ChunkSizeLevel = "good" | "moderate" | "warning" | "critical";
 

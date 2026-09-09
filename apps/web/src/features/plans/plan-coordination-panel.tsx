@@ -1,3 +1,4 @@
+import type { CoordinationBoard } from "@fubbik/client";
 import { useQuery } from "@tanstack/react-query";
 import { Bot, MessageSquareText, Users } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -6,43 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
-export interface CoordinationRun {
-    id: string;
-    parentRunId: string | null;
-    handle: string;
-    status: string;
-}
-
-export interface CoordinationClaim {
-    taskId: string;
-    agentRunId: string;
-    leaseExpiresAt: string;
-    expired: boolean;
-}
-
-export interface CoordinationEntry {
-    id: string;
-    sequence: number;
-    taskId: string | null;
-    authorRunId: string;
-    recipientRunId: string | null;
-    kind: string;
-    body: string;
-    createdAt: string;
-}
-
-export interface CoordinationBoard {
-    runs: CoordinationRun[];
-    claims: CoordinationClaim[];
-    entries: CoordinationEntry[];
-    cursor: { nextSequence: number; hasMore: boolean };
-}
+export type { CoordinationBoard, CoordinationClaim, CoordinationRun } from "@fubbik/client";
 
 export function usePlanCoordination(planId: string) {
     const [visible, setVisible] = useState(() => typeof document === "undefined" || document.visibilityState === "visible");
     const query = useQuery({
         queryKey: ["plan-coordination", planId],
-        queryFn: async () => unwrapEden(await api.api.plans({ planId }).board.get()) as CoordinationBoard,
+        queryFn: async () => unwrapEden(await api.api.plans({ planId }).board.get()),
         refetchInterval: visible ? 5_000 : false,
         staleTime: 2_000
     });

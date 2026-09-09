@@ -54,6 +54,7 @@ pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
     )
     .await
     .map_err(|_| timeout_error("migration"))??;
+    migration::validate_public_schema(&mut migrate_conn).await?;
     migrate_conn.close().await?;
 
     let pool = PgPoolOptions::new()

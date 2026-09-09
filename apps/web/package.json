@@ -20,7 +20,6 @@
         "@dnd-kit/sortable": "^10.0.0",
         "@dnd-kit/utilities": "^3.2.2",
         "@fontsource-variable/inter": "^5.2.5",
-        "@fubbik/api": "workspace:*",
         "@fubbik/client": "workspace:*",
         "@fubbik/env": "workspace:*",
         "@shikijs/rehype": "^4.0.2",
