@@ -1,5 +1,6 @@
 pub mod age;
 pub mod embedding;
+mod migration;
 pub mod repo;
 pub mod timestamp;
 
@@ -46,9 +47,10 @@ pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
         tokio::time::timeout(DATABASE_CONNECT_TIMEOUT, PgConnection::connect_with(&opts))
             .await
             .map_err(|_| timeout_error("connection"))??;
+    migration::adopt_legacy_drizzle_baseline(&mut migrate_conn).await?;
     tokio::time::timeout(
         MIGRATION_TIMEOUT,
-        sqlx::migrate!("./migrations").run(&mut migrate_conn),
+        migration::MIGRATOR.run(&mut migrate_conn),
     )
     .await
     .map_err(|_| timeout_error("migration"))??;

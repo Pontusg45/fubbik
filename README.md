@@ -60,6 +60,14 @@ This project uses PostgreSQL. The Rust server applies its embedded SQLx
 migrations automatically at startup; Drizzle remains available for schema
 tooling and sample-data seeding.
 
+When upgrading an existing database from the former Node/Drizzle server,
+startup recognizes Drizzle's migration history, repairs the known five-table
+behavior-matrix omission in that migration set, and adopts the resulting
+verified 58-table schema as SQLx migration 1 before applying later migrations.
+This preserves existing data. Any other missing table—or a schema without
+recognized Drizzle bookkeeping—fails without changing migration history; back
+up and finish the legacy migrations before retrying.
+
 1. Make sure you have a PostgreSQL database set up.
 2. Update your `apps/server/.env` file with your PostgreSQL connection details.
 

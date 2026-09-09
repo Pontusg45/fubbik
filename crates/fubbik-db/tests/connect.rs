@@ -118,6 +118,162 @@ async fn check_connect_against(scratch_url: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Builds the database shape the retired Node runtime leaves behind: the
+/// application baseline and Drizzle's bookkeeping table exist, but SQLx has
+/// never recorded a migration. `connect()` must adopt that proven baseline,
+/// preserve its rows, and apply every later Rust migration.
+async fn check_connect_against_legacy_drizzle_database(scratch_url: &str) -> Result<(), String> {
+    let legacy_pool = PgPoolOptions::new()
+        .max_connections(1)
+        .connect(scratch_url)
+        .await
+        .map_err(|e| format!("connect to legacy scratch database: {e}"))?;
+
+    sqlx::raw_sql("CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS pg_trgm;")
+        .execute(&legacy_pool)
+        .await
+        .map_err(|e| format!("install extensions required by Drizzle: {e}"))?;
+    for migration in [
+        include_str!("../../../packages/db/src/migrations/0000_baseline.sql"),
+        include_str!("../../../packages/db/src/migrations/0001_seed_builtin_catalogs.sql"),
+        include_str!("../../../packages/db/src/migrations/0003_connection_weight.sql"),
+        include_str!("../../../packages/db/src/migrations/0004_codebase_to_space.sql"),
+    ] {
+        sqlx::raw_sql(migration)
+            .execute(&legacy_pool)
+            .await
+            .map_err(|e| format!("apply checked-in Drizzle migration: {e}"))?;
+    }
+    // PostgreSQL rejects multiple CREATE INDEX CONCURRENTLY statements sent
+    // as one implicit transaction, so execute this migration statement by
+    // statement as Drizzle's migration runner does.
+    for statement in
+        include_str!("../../../packages/db/src/migrations/0002_graph_indexes.sql").split(';')
+    {
+        if !statement.trim().is_empty() {
+            sqlx::query(statement)
+                .execute(&legacy_pool)
+                .await
+                .map_err(|e| format!("apply Drizzle graph-index migration: {e}"))?;
+        }
+    }
+    sqlx::raw_sql(
+        r#"CREATE SCHEMA drizzle;
+           CREATE TABLE drizzle.__drizzle_migrations (
+               id serial PRIMARY KEY,
+               hash text NOT NULL,
+               created_at bigint
+           );
+           INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
+           VALUES ('legacy-baseline', 1);
+           INSERT INTO "user" (id, name, email)
+           VALUES ('legacy-user', 'Legacy User', 'legacy@example.test');"#,
+    )
+    .execute(&legacy_pool)
+    .await
+    .map_err(|e| format!("install Drizzle marker and legacy row: {e}"))?;
+    legacy_pool.close().await;
+
+    let pool = fubbik_db::connect(scratch_url)
+        .await
+        .map_err(|e| format!("connect() did not adopt the Drizzle baseline: {e}"))?;
+
+    let migration_count: i64 = sqlx::query_scalar("SELECT count(*) FROM _sqlx_migrations")
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| format!("read adopted SQLx migration history: {e}"))?;
+    if migration_count != 7 {
+        return Err(format!(
+            "expected all 7 SQLx migrations after adoption, found {migration_count}"
+        ));
+    }
+
+    let legacy_name: String =
+        sqlx::query_scalar(r#"SELECT name FROM "user" WHERE id = 'legacy-user'"#)
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| format!("legacy user was not preserved: {e}"))?;
+    if legacy_name != "Legacy User" {
+        return Err(format!(
+            "legacy user changed during migration: {legacy_name:?}"
+        ));
+    }
+
+    let coordination_table_exists: bool =
+        sqlx::query_scalar("SELECT to_regclass('public.agent_run') IS NOT NULL")
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| format!("check post-baseline migration table: {e}"))?;
+    if !coordination_table_exists {
+        return Err("migration 0005 was not applied after baseline adoption".into());
+    }
+
+    pool.close().await;
+
+    // A second startup proves the adopted checksum is the exact checksum
+    // SQLx expects for migration 0001, not merely a row that let the first
+    // run skip the baseline.
+    let restarted = fubbik_db::connect(scratch_url)
+        .await
+        .map_err(|e| format!("connect() failed after Drizzle adoption restart: {e}"))?;
+    let restarted_count: i64 = sqlx::query_scalar("SELECT count(*) FROM _sqlx_migrations")
+        .fetch_one(&restarted)
+        .await
+        .map_err(|e| format!("read migration history after restart: {e}"))?;
+    if restarted_count != 7 {
+        return Err(format!(
+            "expected 7 migrations after adoption restart, found {restarted_count}"
+        ));
+    }
+    restarted.close().await;
+    Ok(())
+}
+
+async fn check_connect_rejects_incomplete_drizzle_database(
+    scratch_url: &str,
+) -> Result<(), String> {
+    let legacy_pool = PgPoolOptions::new()
+        .max_connections(1)
+        .connect(scratch_url)
+        .await
+        .map_err(|e| format!("connect to incomplete scratch database: {e}"))?;
+    sqlx::raw_sql(
+        r#"CREATE SCHEMA drizzle;
+           CREATE TABLE drizzle.__drizzle_migrations (id serial PRIMARY KEY);
+           CREATE TABLE chunk (id text PRIMARY KEY);"#,
+    )
+    .execute(&legacy_pool)
+    .await
+    .map_err(|e| format!("install incomplete Drizzle schema: {e}"))?;
+    legacy_pool.close().await;
+
+    let error = fubbik_db::connect(scratch_url)
+        .await
+        .expect_err("an incomplete Drizzle schema must not be adopted");
+    let message = error.to_string();
+    if !message.contains("not compatible with the Rust baseline")
+        || !message.contains("No SQLx migration history was written")
+    {
+        return Err(format!("unexpected adoption error: {message}"));
+    }
+
+    let verification_pool = PgPoolOptions::new()
+        .max_connections(1)
+        .connect(scratch_url)
+        .await
+        .map_err(|e| format!("reconnect after refused adoption: {e}"))?;
+    let sqlx_history_exists: bool =
+        sqlx::query_scalar("SELECT to_regclass('public._sqlx_migrations') IS NOT NULL")
+            .fetch_one(&verification_pool)
+            .await
+            .map_err(|e| format!("check refused adoption bookkeeping: {e}"))?;
+    if sqlx_history_exists {
+        return Err("refused adoption must not create SQLx migration history".into());
+    }
+    verification_pool.close().await;
+    Ok(())
+}
+
 #[tokio::test]
 async fn connect_installs_hook_runs_migrations_and_is_restart_safe() {
     let database_url = std::env::var("DATABASE_URL")
@@ -159,4 +315,74 @@ async fn connect_installs_hook_runs_migrations_and_is_restart_safe() {
         .expect("drop scratch database");
 
     result.expect("connect() checks");
+}
+
+#[tokio::test]
+async fn connect_adopts_a_legacy_drizzle_database_and_preserves_data() {
+    let database_url = std::env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set to run this test against a real Postgres cluster");
+    let admin_url = url_for_database(&database_url, "postgres");
+    let admin_pool = PgPoolOptions::new()
+        .max_connections(2)
+        .connect(&admin_url)
+        .await
+        .expect("connect to the postgres maintenance database");
+
+    let db_name = format!("fubbik_drizzle_adoption_test_{}", fubbik_db::new_id());
+    sqlx::query(&format!(r#"CREATE DATABASE "{db_name}""#))
+        .execute(&admin_pool)
+        .await
+        .expect("create scratch database");
+
+    let scratch_url = url_for_database(&database_url, &db_name);
+    let result = check_connect_against_legacy_drizzle_database(&scratch_url).await;
+
+    let _ = sqlx::query(
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+         WHERE datname = $1 AND pid <> pg_backend_pid()",
+    )
+    .bind(&db_name)
+    .execute(&admin_pool)
+    .await;
+    sqlx::query(&format!(r#"DROP DATABASE IF EXISTS "{db_name}""#))
+        .execute(&admin_pool)
+        .await
+        .expect("drop scratch database");
+
+    result.expect("legacy Drizzle adoption checks");
+}
+
+#[tokio::test]
+async fn connect_refuses_to_adopt_an_incomplete_drizzle_database() {
+    let database_url = std::env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set to run this test against a real Postgres cluster");
+    let admin_url = url_for_database(&database_url, "postgres");
+    let admin_pool = PgPoolOptions::new()
+        .max_connections(2)
+        .connect(&admin_url)
+        .await
+        .expect("connect to the postgres maintenance database");
+
+    let db_name = format!("fubbik_drizzle_refusal_test_{}", fubbik_db::new_id());
+    sqlx::query(&format!(r#"CREATE DATABASE "{db_name}""#))
+        .execute(&admin_pool)
+        .await
+        .expect("create scratch database");
+
+    let scratch_url = url_for_database(&database_url, &db_name);
+    let result = check_connect_rejects_incomplete_drizzle_database(&scratch_url).await;
+
+    let _ = sqlx::query(
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+         WHERE datname = $1 AND pid <> pg_backend_pid()",
+    )
+    .bind(&db_name)
+    .execute(&admin_pool)
+    .await;
+    sqlx::query(&format!(r#"DROP DATABASE IF EXISTS "{db_name}""#))
+        .execute(&admin_pool)
+        .await
+        .expect("drop scratch database");
+
+    result.expect("incomplete Drizzle refusal checks");
 }
