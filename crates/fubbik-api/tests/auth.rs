@@ -79,6 +79,52 @@ async fn signup_then_signin_sets_cookie(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn credential_cookie_uses_production_security_attributes(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+
+    let response = app
+        .oneshot(
+            Request::post("/api/auth/sign-up/email")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"email":"secure@b.test","password":"hunter22","name":"Secure"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let cookie = response.headers()["set-cookie"].to_str().unwrap();
+    assert!(cookie.contains("HttpOnly"));
+    assert!(cookie.contains("Secure"));
+    assert!(cookie.contains("SameSite=None"));
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn credential_cookie_allows_plain_http_in_implicit_dev_mode(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state_dev(pool));
+
+    let response = app
+        .oneshot(
+            Request::post("/api/auth/sign-up/email")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"email":"local@b.test","password":"hunter22","name":"Local"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let cookie = response.headers()["set-cookie"].to_str().unwrap();
+    assert!(cookie.contains("HttpOnly"));
+    assert!(!cookie.contains("Secure"));
+    assert!(cookie.contains("SameSite=Lax"));
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn wrong_password_is_unauthorized(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool));
     app.clone()

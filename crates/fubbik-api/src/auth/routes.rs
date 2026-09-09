@@ -140,11 +140,16 @@ pub struct SessionResponse {
     pub user: UserResponse,
 }
 
-fn session_cookie(token: String) -> Cookie<'static> {
+fn session_cookie(token: String, relaxed_http_auth: bool) -> Cookie<'static> {
     Cookie::build((COOKIE_NAME, token))
         .path("/")
         .http_only(true)
-        .same_site(SameSite::Lax)
+        .secure(!relaxed_http_auth)
+        .same_site(if relaxed_http_auth {
+            SameSite::Lax
+        } else {
+            SameSite::None
+        })
         .max_age(time::Duration::days(SESSION_TTL_DAYS))
         .build()
 }
@@ -185,7 +190,7 @@ async fn sign_up(
     let token = session::create(&state.pool, &u.id, Duration::days(SESSION_TTL_DAYS)).await?;
 
     Ok((
-        jar.add(session_cookie(token.clone())),
+        jar.add(session_cookie(token.clone(), state.implicit_dev_session)),
         Json(SignUpResponse {
             token,
             user: u.into(),
@@ -225,7 +230,7 @@ async fn sign_in(
 
     let token = session::create(&state.pool, &u.id, Duration::days(SESSION_TTL_DAYS)).await?;
     Ok((
-        jar.add(session_cookie(token.clone())),
+        jar.add(session_cookie(token.clone(), state.implicit_dev_session)),
         Json(SignInResponse {
             redirect: false,
             token,
@@ -258,7 +263,15 @@ async fn sign_out(
         jar = jar.remove(
             Cookie::build(name)
                 .path("/")
-                .secure(name == BETTER_AUTH_SECURE_COOKIE_NAME)
+                .secure(
+                    name == BETTER_AUTH_SECURE_COOKIE_NAME
+                        || (name == COOKIE_NAME && !state.implicit_dev_session),
+                )
+                .same_site(if state.implicit_dev_session {
+                    SameSite::Lax
+                } else {
+                    SameSite::None
+                })
                 .build(),
         );
     }
