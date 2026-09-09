@@ -18,6 +18,63 @@ use crate::extract::Json as ReqJson;
 /// never drift apart — see `session_cookie` and both `session::create`
 /// call sites below.
 const SESSION_TTL_DAYS: i64 = 30;
+const MIN_PASSWORD_LENGTH: usize = 8;
+const MAX_PASSWORD_LENGTH: usize = 128;
+
+/// Matches the practical ASCII email shape Better Auth validates with Zod.
+/// Keeping this check at the HTTP boundary prevents malformed identities
+/// from reaching the database while avoiding a second email-validation
+/// policy in the repository layer, which is also used by fixtures and the
+/// implicit development user.
+fn is_valid_email(email: &str) -> bool {
+    if !email.is_ascii() || email.starts_with('.') || email.contains("..") {
+        return false;
+    }
+
+    let Some((local, domain)) = email.split_once('@') else {
+        return false;
+    };
+    if local.is_empty() || domain.contains('@') {
+        return false;
+    }
+    if !local
+        .bytes()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'\'' | b'+' | b'-' | b'.'))
+        || !local
+            .as_bytes()
+            .last()
+            .is_some_and(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'+' | b'-'))
+    {
+        return false;
+    }
+
+    let mut labels = domain.split('.').peekable();
+    let mut label_count = 0;
+    while let Some(label) = labels.next() {
+        label_count += 1;
+        let is_last = labels.peek().is_none();
+        if label.is_empty()
+            || !label.as_bytes()[0].is_ascii_alphanumeric()
+            || if is_last {
+                label.len() < 2 || !label.bytes().all(|c| c.is_ascii_alphabetic())
+            } else {
+                !label
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || c == b'-')
+            }
+        {
+            return false;
+        }
+    }
+    label_count >= 2
+}
+
+/// JavaScript's `string.length` counts UTF-16 code units. Better Auth's
+/// password limits therefore do too; reproducing that definition avoids
+/// accepting a value here that the retired server would reject.
+fn password_length(password: &str) -> usize {
+    password.encode_utf16().count()
+}
 
 #[derive(serde::Deserialize)]
 pub struct SignUpBody {
@@ -97,13 +154,18 @@ async fn sign_up(
     jar: CookieJar,
     ReqJson(body): ReqJson<SignUpBody>,
 ) -> ApiResult<(CookieJar, Json<SignUpResponse>)> {
-    if body.password.len() < 8 {
+    if !is_valid_email(&body.email) {
+        return Err(AppError::Validation("invalid email".into()).into());
+    }
+    let password_length = password_length(&body.password);
+    if password_length < MIN_PASSWORD_LENGTH {
         return Err(AppError::Validation("password must be at least 8 characters".into()).into());
     }
-    if user::find_by_email(&state.pool, &body.email)
-        .await?
-        .is_some()
-    {
+    if password_length > MAX_PASSWORD_LENGTH {
+        return Err(AppError::Validation("password must be at most 128 characters".into()).into());
+    }
+    let email = body.email.to_ascii_lowercase();
+    if user::find_by_email(&state.pool, &email).await?.is_some() {
         return Err(AppError::Conflict("email already registered".into()).into());
     }
 
@@ -113,7 +175,7 @@ async fn sign_up(
     // both pass the check and race into the INSERT. Map that specific
     // failure back to the same clean 409 instead of letting it surface as
     // a generic 500.
-    let u = match user::create(&state.pool, &body.email, &body.name, Some(&hash)).await {
+    let u = match user::create(&state.pool, &email, &body.name, Some(&hash)).await {
         Ok(u) => u,
         Err(AppError::Database(sqlx::Error::Database(db_err))) if db_err.is_unique_violation() => {
             return Err(AppError::Conflict("email already registered".into()).into());
@@ -136,7 +198,11 @@ async fn sign_in(
     jar: CookieJar,
     ReqJson(body): ReqJson<SignInBody>,
 ) -> ApiResult<(CookieJar, Json<SignInResponse>)> {
-    let u = user::find_by_email(&state.pool, &body.email)
+    if !is_valid_email(&body.email) {
+        return Err(AppError::Validation("invalid email".into()).into());
+    }
+    let email = body.email.to_ascii_lowercase();
+    let u = user::find_by_email(&state.pool, &email)
         .await?
         .ok_or(AppError::Auth)?;
 

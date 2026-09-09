@@ -136,6 +136,144 @@ async fn duplicate_signup_is_conflict(pool: sqlx::PgPool) {
     assert_eq!(second.status(), StatusCode::CONFLICT);
 }
 
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn signup_normalizes_email_and_signin_is_case_insensitive(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+
+    let signup = app
+        .clone()
+        .oneshot(
+            Request::post("/api/auth/sign-up/email")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"email":"Alice@Example.TEST","password":"hunter22","name":"Alice"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(signup.status(), StatusCode::OK);
+    assert_eq!(
+        json_body(signup).await["user"]["email"],
+        "alice@example.test"
+    );
+
+    let stored_email: String =
+        sqlx::query_scalar(r#"SELECT email FROM "user" WHERE email = 'alice@example.test'"#)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(stored_email, "alice@example.test");
+
+    let signin = app
+        .oneshot(
+            Request::post("/api/auth/sign-in/email")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"email":"ALICE@EXAMPLE.TEST","password":"hunter22"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(signin.status(), StatusCode::OK);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn signup_rejects_invalid_email_without_creating_a_user(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+
+    let response = app
+        .oneshot(
+            Request::post("/api/auth/sign-up/email")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"email":"not-an-email","password":"hunter22","name":"Invalid"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    let count: i64 = sqlx::query_scalar(r#"SELECT count(*) FROM "user""#)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn signin_rejects_invalid_email_as_bad_request(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+
+    let response = app
+        .oneshot(
+            Request::post("/api/auth/sign-in/email")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"email":"not-an-email","password":"hunter22"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn signup_rejects_passwords_over_better_auths_128_character_limit(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let password = "x".repeat(129);
+    let body = serde_json::json!({
+        "email": "long-password@b.test",
+        "password": password,
+        "name": "Long"
+    });
+
+    let response = app
+        .oneshot(
+            Request::post("/api/auth/sign-up/email")
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert!(
+        user::find_by_email(&pool, "long-password@b.test")
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn signup_measures_unicode_passwords_like_javascript(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool));
+    // 40 emoji are 80 UTF-16 code units (JavaScript's string.length), but
+    // 160 UTF-8 bytes. Better Auth accepts this; a Rust byte-length check
+    // would incorrectly reject it as over the 128-character limit.
+    let password = "🦀".repeat(40);
+    let body = serde_json::json!({
+        "email": "unicode-password@b.test",
+        "password": password,
+        "name": "Unicode"
+    });
+
+    let response = app
+        .oneshot(
+            Request::post("/api/auth/sign-up/email")
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
 /// Fires two sign-ups for the same brand-new email concurrently, racing
 /// past the `find_by_email` pre-check into the `user_email_unique`
 /// constraint. Whichever request loses the race must still come back as a
