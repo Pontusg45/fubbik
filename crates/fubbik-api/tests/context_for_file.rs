@@ -75,9 +75,18 @@ async fn file_ref_match_outranks_applies_to_match(pool: sqlx::PgPool) {
     .unwrap();
 
     let ai = unreachable_ai();
-    let result = get_context_for_file(&pool, &ai, &user_id, "src/nested/foo.rs", None, None)
-        .await
-        .unwrap();
+    let background = Default::default();
+    let result = get_context_for_file(
+        &pool,
+        &ai,
+        &background,
+        &user_id,
+        "src/nested/foo.rs",
+        None,
+        None,
+    )
+    .await
+    .unwrap();
 
     let file_ref_result = result
         .chunks
@@ -160,9 +169,18 @@ async fn each_result_carries_its_match_reason(pool: sqlx::PgPool) {
     .unwrap();
 
     let ai = unreachable_ai();
-    let result = get_context_for_file(&pool, &ai, &user_id, "src/nested/a.rs", None, None)
-        .await
-        .unwrap();
+    let background = Default::default();
+    let result = get_context_for_file(
+        &pool,
+        &ai,
+        &background,
+        &user_id,
+        "src/nested/a.rs",
+        None,
+        None,
+    )
+    .await
+    .unwrap();
 
     let by_id = |id: &str| result.chunks.iter().find(|c| c.id == id).unwrap();
 
@@ -466,9 +484,18 @@ async fn applies_to_strategy_considers_more_than_100_qualifying_chunks(pool: sql
     .unwrap();
 
     let ai = unreachable_ai();
-    let result = get_context_for_file(&pool, &ai, &user_id, "wide/nested/foo.rs", None, None)
-        .await
-        .unwrap();
+    let background = Default::default();
+    let result = get_context_for_file(
+        &pool,
+        &ai,
+        &background,
+        &user_id,
+        "wide/nested/foo.rs",
+        None,
+        None,
+    )
+    .await
+    .unwrap();
 
     let found = result.chunks.iter().find(|c| c.id == target.id);
     assert!(
@@ -607,6 +634,7 @@ fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
         better_auth_secret: "test-secret".into(),
         ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
         rate_limiter: Default::default(),
+        background: Default::default(),
     }
 }
 

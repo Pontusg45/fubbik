@@ -178,9 +178,13 @@ async fn main() -> anyhow::Result<()> {
 
             let pool = fubbik_db::connect(&database_url).await?;
             fubbik_db::warn_if_not_icu_collation(&pool).await;
-            fubbik_api::staleness::service::spawn_background_scan(pool.clone());
-            fubbik_api::graph::sync::spawn_behavior_sync(pool.clone());
-            fubbik_api::graph::projection::spawn_projection_worker(pool.clone());
+            let background = fubbik_api::background::BackgroundRuntime::new();
+            fubbik_api::staleness::service::spawn_background_scan(pool.clone(), background.clone());
+            fubbik_api::graph::sync::spawn_behavior_sync(pool.clone(), background.clone());
+            fubbik_api::graph::projection::spawn_projection_worker(
+                pool.clone(),
+                background.clone(),
+            );
             let shutdown_pool = pool.clone();
             let state = fubbik_api::AppState {
                 pool,
@@ -188,6 +192,7 @@ async fn main() -> anyhow::Result<()> {
                 better_auth_secret,
                 ai: fubbik_ai::OllamaClient::from_env(),
                 rate_limiter: Default::default(),
+                background: background.clone(),
             };
 
             let cors_origin_env =
@@ -217,7 +222,7 @@ async fn main() -> anyhow::Result<()> {
             axum::serve(listener, app)
                 .with_graceful_shutdown(shutdown_signal())
                 .await?;
-            fubbik_api::background::shutdown(Duration::from_secs(10)).await;
+            background.shutdown(Duration::from_secs(10)).await;
             if tokio::time::timeout(Duration::from_secs(5), shutdown_pool.close())
                 .await
                 .is_err()

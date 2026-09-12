@@ -426,9 +426,17 @@ async fn resolve_for_files_matches_file_refs_and_applies_to_globs(pool: sqlx::Pg
 
     let paths = vec!["src/foo.rs".to_string(), "src/nested/bar.rs".to_string()];
     let ai = fubbik_ai::OllamaClient::new("http://127.0.0.1:1");
-    let ids = fubbik_api::context::resolvers::resolve_for_files(&pool, &ai, &user_id, &paths, None)
-        .await
-        .unwrap();
+    let background = Default::default();
+    let ids = fubbik_api::context::resolvers::resolve_for_files(
+        &pool,
+        &ai,
+        &background,
+        &user_id,
+        &paths,
+        None,
+    )
+    .await
+    .unwrap();
 
     assert!(
         ids.contains(&file_ref_chunk.id),
@@ -505,6 +513,7 @@ fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
         better_auth_secret: "test-secret".into(),
         ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
         rate_limiter: Default::default(),
+        background: Default::default(),
     }
 }
 

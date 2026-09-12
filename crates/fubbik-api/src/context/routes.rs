@@ -105,6 +105,7 @@ pub async fn for_files(
     let ids = resolve_for_files(
         &state.pool,
         &state.ai,
+        &state.background,
         &user.id,
         &paths,
         query.space_id.as_deref(),

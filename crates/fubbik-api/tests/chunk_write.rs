@@ -20,6 +20,7 @@ fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
         better_auth_secret: "test-secret".into(),
         ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
         rate_limiter: Default::default(),
+        background: Default::default(),
     }
 }
 
@@ -97,6 +98,96 @@ async fn create(
     body: serde_json::Value,
 ) -> axum::response::Response {
     send(app, cookie, "POST", "/api/chunks", body).await
+}
+
+async fn reject_chunk_tag_inserts(pool: &sqlx::PgPool) {
+    sqlx::query(
+        r#"CREATE FUNCTION reject_chunk_tag_insert() RETURNS trigger
+           LANGUAGE plpgsql AS $$
+           BEGIN
+             RAISE EXCEPTION 'forced chunk-tag failure';
+           END
+           $$"#,
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        r#"CREATE TRIGGER reject_chunk_tag_insert
+           BEFORE INSERT ON chunk_tag
+           FOR EACH ROW EXECUTE FUNCTION reject_chunk_tag_insert()"#,
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn create_rolls_back_chunk_and_new_tags_when_linking_fails(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "rollback-create@b.test", "Alice").await;
+    reject_chunk_tag_inserts(&pool).await;
+
+    let response = create(
+        app,
+        &cookie,
+        serde_json::json!({ "title": "must roll back", "tags": ["also-rolls-back"] }),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+    let chunk_count: i64 = sqlx::query_scalar("SELECT count(*) FROM chunk WHERE title = $1")
+        .bind("must roll back")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let tag_count: i64 = sqlx::query_scalar("SELECT count(*) FROM tag WHERE name = $1")
+        .bind("also-rolls-back")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(chunk_count, 0, "the aggregate root must roll back");
+    assert_eq!(tag_count, 0, "new aggregate metadata must roll back");
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn update_rolls_back_row_history_and_tags_when_linking_fails(pool: sqlx::PgPool) {
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "rollback-update@b.test", "Alice").await;
+    let id = json_body(
+        create(
+            app.clone(),
+            &cookie,
+            serde_json::json!({ "title": "original", "tags": ["original-tag"] }),
+        )
+        .await,
+    )
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    reject_chunk_tag_inserts(&pool).await;
+
+    let response = send(
+        app.clone(),
+        &cookie,
+        "PATCH",
+        &format!("/api/chunks/{id}"),
+        serde_json::json!({ "title": "changed", "tags": ["new-tag"] }),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+    let body = detail(app, &cookie, &id).await;
+    assert_eq!(body["chunk"]["title"], "original");
+    assert_eq!(body["tags"][0]["name"], "original-tag");
+    let history_count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM chunk_version WHERE chunk_id = $1")
+            .bind(&id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(history_count, 0, "the pre-update snapshot must roll back");
 }
 
 /// Every field `POST /api/chunks` documents actually lands.

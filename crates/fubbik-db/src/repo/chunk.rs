@@ -1,6 +1,6 @@
 use fubbik_core::error::AppResult;
-use sqlx::PgPool;
 use sqlx::types::Json;
+use sqlx::{PgConnection, PgPool};
 
 use crate::embedding::EmbeddingVec;
 use crate::timestamp::UtcTimestamp;
@@ -156,6 +156,16 @@ pub struct ChunkPatch {
 }
 
 pub async fn create(pool: &PgPool, user_id: &str, new: NewChunk) -> AppResult<Chunk> {
+    let mut connection = pool.acquire().await?;
+    create_in(&mut connection, user_id, new).await
+}
+
+/// Transaction-aware form used by aggregate writers.
+pub async fn create_in(
+    connection: &mut PgConnection,
+    user_id: &str,
+    new: NewChunk,
+) -> AppResult<Chunk> {
     let id = crate::new_id();
     let c = sqlx::query_as!(
         Chunk,
@@ -193,12 +203,22 @@ pub async fn create(pool: &PgPool, user_id: &str, new: NewChunk) -> AppResult<Ch
         new.document_id,
         new.document_order
     )
-    .fetch_one(pool)
+    .fetch_one(&mut *connection)
     .await?;
     Ok(c)
 }
 
 pub async fn find_by_id(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Option<Chunk>> {
+    let mut connection = pool.acquire().await?;
+    find_by_id_in(&mut connection, user_id, id).await
+}
+
+/// Transaction-aware lookup used by aggregate writers.
+pub async fn find_by_id_in(
+    connection: &mut PgConnection,
+    user_id: &str,
+    id: &str,
+) -> AppResult<Option<Chunk>> {
     let c = sqlx::query_as!(
         Chunk,
         r#"SELECT id, title, content, type AS chunk_type, user_id, summary,
@@ -220,9 +240,27 @@ pub async fn find_by_id(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Opt
         id,
         user_id
     )
-    .fetch_optional(pool)
+    .fetch_optional(&mut *connection)
     .await?;
     Ok(c)
+}
+
+/// Locks an owned chunk until the surrounding transaction completes.
+/// Serializing versioned mutations prevents two updates from choosing the
+/// same next history version.
+pub async fn lock_for_update_in(
+    connection: &mut PgConnection,
+    user_id: &str,
+    id: &str,
+) -> AppResult<bool> {
+    Ok(sqlx::query_scalar::<_, String>(
+        "SELECT id FROM chunk WHERE id = $1 AND user_id = $2 FOR UPDATE",
+    )
+    .bind(id)
+    .bind(user_id)
+    .fetch_optional(&mut *connection)
+    .await?
+    .is_some())
 }
 
 /// All chunk ids and titles owned by one user, including archived chunks.
@@ -275,6 +313,17 @@ pub async fn find_by_ids(pool: &PgPool, user_id: &str, ids: &[String]) -> AppRes
 /// columns untouched, so a partial PATCH cannot silently clear data.
 pub async fn update(
     pool: &PgPool,
+    user_id: &str,
+    id: &str,
+    patch: ChunkPatch,
+) -> AppResult<Option<Chunk>> {
+    let mut connection = pool.acquire().await?;
+    update_in(&mut connection, user_id, id, patch).await
+}
+
+/// Transaction-aware form used by aggregate writers.
+pub async fn update_in(
+    connection: &mut PgConnection,
     user_id: &str,
     id: &str,
     patch: ChunkPatch,
@@ -339,7 +388,7 @@ pub async fn update(
         patch.is_entry_point,
         patch.document_order
     )
-    .fetch_optional(pool)
+    .fetch_optional(&mut *connection)
     .await?;
     Ok(c)
 }

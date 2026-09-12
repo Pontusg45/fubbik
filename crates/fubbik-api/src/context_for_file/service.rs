@@ -131,6 +131,7 @@ fn strategy_bonus(reason: MatchReason) -> f64 {
 pub async fn get_context_for_file(
     pool: &PgPool,
     ai: &fubbik_ai::OllamaClient,
+    background: &crate::background::BackgroundRuntime,
     user_id: &str,
     file_path: &str,
     space_id: Option<&str>,
@@ -502,7 +503,7 @@ pub async fn get_context_for_file(
             .map(|c| c.id.clone())
             .collect();
         let pool_clone = pool.clone();
-        crate::background::spawn(async move {
+        background.spawn(async move {
             if let Err(error) =
                 connection::increment_connection_weights(&pool_clone, &co_accessed).await
             {

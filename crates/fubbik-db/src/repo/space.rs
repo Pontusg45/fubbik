@@ -1,6 +1,6 @@
 use fubbik_core::error::AppResult;
-use sqlx::PgPool;
 use sqlx::types::Json;
+use sqlx::{PgConnection, PgPool};
 
 use crate::timestamp::UtcTimestamp;
 
@@ -583,13 +583,26 @@ pub async fn set_chunk_spaces(
 ) -> AppResult<u64> {
     let mut tx = pool.begin().await?;
 
+    let inserted = set_chunk_spaces_in(&mut tx, user_id, chunk_id, space_ids).await?;
+
+    tx.commit().await?;
+    Ok(inserted)
+}
+
+/// Transaction-aware form used by chunk aggregate writers.
+pub async fn set_chunk_spaces_in(
+    connection: &mut PgConnection,
+    user_id: &str,
+    chunk_id: &str,
+    space_ids: &[String],
+) -> AppResult<u64> {
     sqlx::query!(
         "DELETE FROM chunk_space WHERE chunk_id = $1 \
            AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2)",
         chunk_id,
         user_id
     )
-    .execute(&mut *tx)
+    .execute(&mut *connection)
     .await?;
 
     let inserted = if space_ids.is_empty() {
@@ -608,12 +621,11 @@ pub async fn set_chunk_spaces(
             chunk_id,
             space_ids
         )
-        .execute(&mut *tx)
+        .execute(&mut *connection)
         .await?
         .rows_affected()
     };
 
-    tx.commit().await?;
     Ok(inserted)
 }
 

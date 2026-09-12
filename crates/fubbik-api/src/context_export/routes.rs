@@ -59,6 +59,7 @@ pub async fn export_context_route(
     let result = export_context(
         &state.pool,
         &state.ai,
+        &state.background,
         &user.id,
         ExportContextParams {
             space_id: query.space_id.as_deref(),

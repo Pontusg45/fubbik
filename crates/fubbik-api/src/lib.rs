@@ -52,6 +52,7 @@ use sqlx::PgPool;
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
+    pub background: background::BackgroundRuntime,
     pub implicit_dev_session: bool,
     /// `BETTER_AUTH_SECRET`, resolved once at startup — never read from the
     /// environment per request. Used to verify the HMAC signature on

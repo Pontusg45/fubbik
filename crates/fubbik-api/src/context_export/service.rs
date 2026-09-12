@@ -94,6 +94,7 @@ pub enum ExportContextResponse {
 pub async fn export_context(
     pool: &PgPool,
     ai: &fubbik_ai::OllamaClient,
+    background: &crate::background::BackgroundRuntime,
     user_id: &str,
     params: ExportContextParams<'_>,
 ) -> AppResult<ExportContextResponse> {
@@ -139,8 +140,15 @@ pub async fn export_context(
     let mut enriched = enrich_chunks(pool, user_id, &chunk_ids).await?;
 
     if let Some(for_path) = params.for_path {
-        let file_ids =
-            resolve_for_files(pool, ai, user_id, &[for_path.to_string()], params.space_id).await?;
+        let file_ids = resolve_for_files(
+            pool,
+            ai,
+            background,
+            user_id,
+            &[for_path.to_string()],
+            params.space_id,
+        )
+        .await?;
         let file_id_set: HashSet<String> = file_ids.into_iter().collect();
         for item in enriched.iter_mut() {
             if file_id_set.contains(&item.chunk.id) {

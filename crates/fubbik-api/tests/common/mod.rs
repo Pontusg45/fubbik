@@ -36,6 +36,7 @@ impl TestApp {
             better_auth_secret: "test-secret".into(),
             ai,
             rate_limiter: Default::default(),
+            background: Default::default(),
         };
         Self {
             router: fubbik_api::router(state),

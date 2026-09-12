@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 
-pub fn spawn_projection_worker(pool: PgPool) {
-    let cancellation = crate::background::cancellation_token();
-    crate::background::spawn(async move {
+pub fn spawn_projection_worker(pool: PgPool, background: crate::background::BackgroundRuntime) {
+    let cancellation = background.cancellation_token();
+    background.spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(5));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {

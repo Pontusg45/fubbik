@@ -99,6 +99,7 @@ async fn resolve_ids(
         return resolve_for_files(
             &state.pool,
             &state.ai,
+            &state.background,
             user_id,
             paths,
             body.space_id.as_deref(),

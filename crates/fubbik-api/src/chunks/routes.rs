@@ -107,7 +107,7 @@ pub async fn update_chunk(
         let ai = state.ai.clone();
         let chunk_id = id.clone();
         let user_id = user.id.clone();
-        crate::background::spawn(async move {
+        state.background.spawn(async move {
             if let Err(err) =
                 crate::enrich::service::enrich_chunk(&pool, &ai, &user_id, &chunk_id).await
             {
@@ -134,7 +134,7 @@ pub async fn update_chunk(
         let chunk_id = id.clone();
         let user_id = user.id.clone();
         let title = updated.title.clone();
-        crate::background::spawn(async move {
+        state.background.spawn(async move {
             // Node's equivalent call is `.catch(() => {})` — fully silent.
             // Logged here instead, same as this branch's other
             // fire-and-forget error paths (e.g. `enrich_all`'s per-item

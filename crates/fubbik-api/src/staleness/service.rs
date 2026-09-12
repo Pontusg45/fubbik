@@ -135,7 +135,7 @@ async fn run_scan_once(pool: &PgPool) {
 /// (`crates/fubbik/src/main.rs`'s `Commands::Serve` arm) invokes this once,
 /// explicitly, the same place Node's `initStartupTasks()` is invoked from
 /// `apps/server`'s boot path.
-pub fn spawn_background_scan(pool: PgPool) {
+pub fn spawn_background_scan(pool: PgPool, background: crate::background::BackgroundRuntime) {
     let Some(interval) = resolve_scan_interval(
         std::env::var("STALENESS_SCAN_INTERVAL_HOURS")
             .ok()
@@ -149,8 +149,8 @@ pub fn spawn_background_scan(pool: PgPool) {
         "Staleness scanning enabled"
     );
 
-    let cancellation = crate::background::cancellation_token();
-    crate::background::spawn(async move {
+    let cancellation = background.cancellation_token();
+    background.spawn(async move {
         tokio::select! {
             _ = cancellation.cancelled() => return,
             _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {}

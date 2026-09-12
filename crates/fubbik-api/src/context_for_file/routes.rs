@@ -84,6 +84,7 @@ pub async fn for_file(
         let file_context = get_context_for_file(
             &state.pool,
             &state.ai,
+            &state.background,
             &user.id,
             &query.path,
             query.space_id.as_deref(),
@@ -98,6 +99,7 @@ pub async fn for_file(
     let ids = resolve_for_files(
         &state.pool,
         &state.ai,
+        &state.background,
         &user.id,
         &paths,
         query.space_id.as_deref(),

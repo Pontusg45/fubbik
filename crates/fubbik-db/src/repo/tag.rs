@@ -1,5 +1,5 @@
 use fubbik_core::error::{AppError, AppResult};
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 
 use crate::timestamp::UtcTimestamp;
 
@@ -96,6 +96,16 @@ pub async fn create(
 ///
 /// Name matching is exact, including case — same as Node.
 pub async fn find_or_create(pool: &PgPool, user_id: &str, name: &str) -> AppResult<Tag> {
+    let mut connection = pool.acquire().await?;
+    find_or_create_in(&mut connection, user_id, name).await
+}
+
+/// Transaction-aware form used by chunk aggregate writers.
+pub async fn find_or_create_in(
+    connection: &mut PgConnection,
+    user_id: &str,
+    name: &str,
+) -> AppResult<Tag> {
     if let Some(existing) = sqlx::query_as!(
         Tag,
         r#"SELECT id, name, tag_type_id, user_id,
@@ -106,7 +116,7 @@ pub async fn find_or_create(pool: &PgPool, user_id: &str, name: &str) -> AppResu
         name,
         user_id
     )
-    .fetch_optional(pool)
+    .fetch_optional(&mut *connection)
     .await?
     {
         return Ok(existing);
@@ -126,7 +136,7 @@ pub async fn find_or_create(pool: &PgPool, user_id: &str, name: &str) -> AppResu
         name,
         user_id
     )
-    .fetch_optional(pool)
+    .fetch_optional(&mut *connection)
     .await?;
 
     match inserted {
@@ -143,7 +153,7 @@ pub async fn find_or_create(pool: &PgPool, user_id: &str, name: &str) -> AppResu
             name,
             user_id
         )
-        .fetch_one(pool)
+        .fetch_one(&mut *connection)
         .await?),
     }
 }
@@ -367,13 +377,26 @@ pub async fn set_chunk_tags(
 ) -> AppResult<u64> {
     let mut tx = pool.begin().await?;
 
+    let inserted = set_chunk_tags_in(&mut tx, user_id, chunk_id, tag_ids).await?;
+
+    tx.commit().await?;
+    Ok(inserted)
+}
+
+/// Transaction-aware form used by chunk aggregate writers.
+pub async fn set_chunk_tags_in(
+    connection: &mut PgConnection,
+    user_id: &str,
+    chunk_id: &str,
+    tag_ids: &[String],
+) -> AppResult<u64> {
     sqlx::query!(
         "DELETE FROM chunk_tag WHERE chunk_id = $1 \
            AND EXISTS (SELECT 1 FROM chunk c WHERE c.id = $1 AND c.user_id = $2)",
         chunk_id,
         user_id
     )
-    .execute(&mut *tx)
+    .execute(&mut *connection)
     .await?;
 
     let inserted = if tag_ids.is_empty() {
@@ -392,12 +415,11 @@ pub async fn set_chunk_tags(
             chunk_id,
             tag_ids
         )
-        .execute(&mut *tx)
+        .execute(&mut *connection)
         .await?
         .rows_affected()
     };
 
-    tx.commit().await?;
     Ok(inserted)
 }
 

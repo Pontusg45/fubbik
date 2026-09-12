@@ -128,7 +128,7 @@ async fn sync_rule(pool: &PgPool, rule: &RuleRow, links: &[CodeLinkRow]) -> AppR
 }
 
 /// Spawns the recurring sweep. Called once, from `Commands::Serve`.
-pub fn spawn_behavior_sync(pool: PgPool) {
+pub fn spawn_behavior_sync(pool: PgPool, background: crate::background::BackgroundRuntime) {
     let Some(interval) = resolve_sync_interval(
         std::env::var("BEHAVIOR_GRAPH_SYNC_INTERVAL_HOURS")
             .ok()
@@ -142,8 +142,8 @@ pub fn spawn_behavior_sync(pool: PgPool) {
         "Behavior graph sync enabled"
     );
 
-    let cancellation = crate::background::cancellation_token();
-    crate::background::spawn(async move {
+    let cancellation = background.cancellation_token();
+    background.spawn(async move {
         // 40s, matching Node's offset from the staleness scan
         // (`packages/api/src/startup.ts:78`) — the two jobs both touch AGE and
         // staggering them keeps a cold start from contending.

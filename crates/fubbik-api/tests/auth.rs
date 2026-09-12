@@ -12,6 +12,7 @@ fn state(pool: sqlx::PgPool) -> fubbik_api::AppState {
         better_auth_secret: "test-secret".into(),
         ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
         rate_limiter: Default::default(),
+        background: Default::default(),
     }
 }
 
@@ -22,6 +23,7 @@ fn state_dev(pool: sqlx::PgPool) -> fubbik_api::AppState {
         better_auth_secret: "test-secret".into(),
         ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
         rate_limiter: Default::default(),
+        background: Default::default(),
     }
 }
 

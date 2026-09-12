@@ -222,6 +222,7 @@ pub async fn resolve_for_concept(
 pub async fn resolve_for_files(
     pool: &PgPool,
     ai: &fubbik_ai::OllamaClient,
+    background: &crate::background::BackgroundRuntime,
     user_id: &str,
     paths: &[String],
     space_id: Option<&str>,
@@ -234,6 +235,7 @@ pub async fn resolve_for_files(
     for (idx, path) in paths.iter().enumerate() {
         let pool = pool.clone();
         let ai = ai.clone();
+        let background = background.clone();
         let user_id = user_id.to_string();
         let path = path.clone();
         let space_id = space_id.map(str::to_string);
@@ -243,6 +245,7 @@ pub async fn resolve_for_files(
             let result = crate::context_for_file::service::get_context_for_file(
                 &pool,
                 &ai,
+                &background,
                 &user_id,
                 &path,
                 space_id.as_deref(),

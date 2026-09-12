@@ -1,6 +1,6 @@
 use fubbik_core::error::{AppError, AppResult};
 use fubbik_db::repo::chunk::{self, Chunk, ChunkPatch, ListParams, NewChunk};
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use std::collections::HashSet;
 
 use super::dto::{
@@ -247,8 +247,9 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateChunkBody) -> AppR
     let origin = body.origin.unwrap_or_else(|| "human".into());
     let review_status = review_status_for_origin(&origin).to_string();
 
-    let created = chunk::create(
-        pool,
+    let mut tx = pool.begin().await?;
+    let created = chunk::create_in(
+        &mut tx,
         user_id,
         NewChunk {
             title: title.to_string(),
@@ -282,7 +283,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateChunkBody) -> AppR
     // a scope is `PATCH`'s job, where it does land.
     let _ = &body.scope;
 
-    apply_tags_and_spaces(pool, user_id, &created.id, body.tags, body.space_ids).await?;
+    apply_tags_and_spaces(&mut tx, user_id, &created.id, body.tags, body.space_ids).await?;
 
     if let Some(tag) = body.update_tag.as_deref() {
         // Node records the create under version 0 with empty title/content
@@ -291,9 +292,10 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateChunkBody) -> AppR
         // which carries the same `update_tag` but real content; an empty
         // marker in the history list is worse than useless to the UI, which
         // renders title and content per version.
-        fubbik_db::repo::chunk_version::snapshot(pool, &created, Some(tag)).await?;
+        fubbik_db::repo::chunk_version::snapshot_in(&mut tx, &created, Some(tag)).await?;
     }
 
+    tx.commit().await?;
     Ok(created)
 }
 
@@ -311,7 +313,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateChunkBody) -> AppR
 /// single-row upserts against one pool, and running them in order removes
 /// any chance of two concurrent inserts racing for the same new name.
 async fn apply_tags_and_spaces(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     user_id: &str,
     chunk_id: &str,
     tags: Option<Vec<String>>,
@@ -321,15 +323,17 @@ async fn apply_tags_and_spaces(
         let mut tag_ids = Vec::with_capacity(names.len());
         for name in &names {
             tag_ids.push(
-                fubbik_db::repo::tag::find_or_create(pool, user_id, name)
+                fubbik_db::repo::tag::find_or_create_in(&mut *connection, user_id, name)
                     .await?
                     .id,
             );
         }
-        fubbik_db::repo::tag::set_chunk_tags(pool, user_id, chunk_id, &tag_ids).await?;
+        fubbik_db::repo::tag::set_chunk_tags_in(&mut *connection, user_id, chunk_id, &tag_ids)
+            .await?;
     }
     if let Some(ids) = space_ids {
-        fubbik_db::repo::space::set_chunk_spaces(pool, user_id, chunk_id, &ids).await?;
+        fubbik_db::repo::space::set_chunk_spaces_in(&mut *connection, user_id, chunk_id, &ids)
+            .await?;
     }
     Ok(())
 }
@@ -415,8 +419,15 @@ pub async fn update(
     }
     check_tags_and_spaces(body.tags.as_deref(), body.space_ids.as_deref())?;
 
-    let current = get(pool, user_id, id).await?;
-    fubbik_db::repo::chunk_version::snapshot(pool, &current, body.update_tag.as_deref()).await?;
+    let mut tx = pool.begin().await?;
+    if !chunk::lock_for_update_in(&mut tx, user_id, id).await? {
+        return Err(AppError::NotFound("chunk".into()));
+    }
+    let current = chunk::find_by_id_in(&mut tx, user_id, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("chunk".into()))?;
+    fubbik_db::repo::chunk_version::snapshot_in(&mut tx, &current, body.update_tag.as_deref())
+        .await?;
 
     // Node stamps the reviewer whenever `reviewStatus` is present, even if
     // the value is unchanged (`chunk-mutations.ts:175-178`) — the stamp
@@ -429,8 +440,8 @@ pub async fn update(
         None => (None, None),
     };
 
-    let updated = chunk::update(
-        pool,
+    let updated = chunk::update_in(
+        &mut tx,
         user_id,
         id,
         ChunkPatch {
@@ -458,8 +469,9 @@ pub async fn update(
     .await?
     .ok_or_else(|| AppError::NotFound("chunk".into()))?;
 
-    apply_tags_and_spaces(pool, user_id, id, body.tags, body.space_ids).await?;
+    apply_tags_and_spaces(&mut tx, user_id, id, body.tags, body.space_ids).await?;
 
+    tx.commit().await?;
     Ok(updated)
 }
 

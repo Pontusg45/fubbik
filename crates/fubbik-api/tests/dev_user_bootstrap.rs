@@ -17,6 +17,7 @@ async fn test_app_with_implicit_dev(pool: PgPool) -> axum::Router {
         better_auth_secret: "test-secret".into(),
         ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
         rate_limiter: Default::default(),
+        background: Default::default(),
     })
 }
 

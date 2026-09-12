@@ -1,5 +1,5 @@
 use fubbik_core::error::AppResult;
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 
 use sqlx::types::Json;
 
@@ -63,6 +63,16 @@ pub struct ChunkVersion {
 /// column-missing-from-the-projection bug the applies-to/file-refs
 /// sub-resources had.
 pub async fn snapshot(pool: &PgPool, current: &Chunk, update_tag: Option<&str>) -> AppResult<()> {
+    let mut connection = pool.acquire().await?;
+    snapshot_in(&mut connection, current, update_tag).await
+}
+
+/// Transaction-aware form used by chunk aggregate writers.
+pub async fn snapshot_in(
+    connection: &mut PgConnection,
+    current: &Chunk,
+    update_tag: Option<&str>,
+) -> AppResult<()> {
     let id = crate::new_id();
     sqlx::query!(
         r#"INSERT INTO chunk_version
@@ -83,7 +93,7 @@ pub async fn snapshot(pool: &PgPool, current: &Chunk, update_tag: Option<&str>) 
         Some(Json(&current.scope.0)) as _,
         update_tag
     )
-    .execute(pool)
+    .execute(&mut *connection)
     .await?;
     Ok(())
 }

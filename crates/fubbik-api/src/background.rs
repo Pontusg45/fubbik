@@ -1,44 +1,85 @@
-//! Supervision for non-request work started by API handlers and schedulers.
+//! Supervision for non-request work started by one API server instance.
 
 use std::future::Future;
-use std::sync::LazyLock;
 use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 
-struct BackgroundRuntime {
+/// Owns the cancellation boundary and task set for one server instance.
+///
+/// Clones refer to the same underlying cancellation token and tracker. A new
+/// value creates an independent runtime, which keeps tests and multiple server
+/// instances from cancelling one another.
+#[derive(Clone, Debug)]
+pub struct BackgroundRuntime {
     cancellation: CancellationToken,
     tracker: TaskTracker,
 }
 
-static RUNTIME: LazyLock<BackgroundRuntime> = LazyLock::new(|| BackgroundRuntime {
-    cancellation: CancellationToken::new(),
-    tracker: TaskTracker::new(),
-});
+impl BackgroundRuntime {
+    pub fn new() -> Self {
+        Self {
+            cancellation: CancellationToken::new(),
+            tracker: TaskTracker::new(),
+        }
+    }
 
-pub fn cancellation_token() -> CancellationToken {
-    RUNTIME.cancellation.clone()
-}
+    pub fn cancellation_token(&self) -> CancellationToken {
+        self.cancellation.clone()
+    }
 
-pub fn spawn<F>(future: F)
-where
-    F: Future<Output = ()> + Send + 'static,
-{
-    drop(RUNTIME.tracker.spawn(future));
-}
-
-/// Stops recurring jobs and gives in-flight work a bounded drain window.
-pub async fn shutdown(timeout: Duration) {
-    RUNTIME.cancellation.cancel();
-    RUNTIME.tracker.close();
-    if tokio::time::timeout(timeout, RUNTIME.tracker.wait())
-        .await
-        .is_err()
+    pub fn spawn<F>(&self, future: F)
+    where
+        F: Future<Output = ()> + Send + 'static,
     {
-        tracing::warn!(
-            ?timeout,
-            "background tasks did not drain before shutdown deadline"
-        );
+        drop(self.tracker.spawn(future));
+    }
+
+    /// Stops recurring jobs and gives in-flight work a bounded drain window.
+    pub async fn shutdown(&self, timeout: Duration) {
+        self.cancellation.cancel();
+        self.tracker.close();
+        if tokio::time::timeout(timeout, self.tracker.wait())
+            .await
+            .is_err()
+        {
+            tracing::warn!(
+                ?timeout,
+                "background tasks did not drain before shutdown deadline"
+            );
+        }
+    }
+}
+
+impl Default for BackgroundRuntime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::BackgroundRuntime;
+
+    #[tokio::test]
+    async fn shutdown_is_scoped_to_one_runtime() {
+        let first = BackgroundRuntime::new();
+        let second = BackgroundRuntime::new();
+        let first_token = first.cancellation_token();
+        let second_token = second.cancellation_token();
+
+        first.spawn({
+            let token = first_token.clone();
+            async move { token.cancelled().await }
+        });
+
+        first.shutdown(Duration::from_secs(1)).await;
+
+        assert!(first_token.is_cancelled());
+        assert!(!second_token.is_cancelled());
+        second.shutdown(Duration::from_secs(1)).await;
     }
 }
