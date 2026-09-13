@@ -1,6 +1,7 @@
 pub mod dto;
 pub mod routes;
 pub mod service;
+pub mod source_docs;
 
 mod frontmatter;
 mod render_markdown;

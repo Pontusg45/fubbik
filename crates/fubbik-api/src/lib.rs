@@ -85,6 +85,7 @@ pub fn router(state: AppState) -> Router {
         .merge(context_for_file::routes::router())
         .merge(coverage::routes::router())
         .merge(documents::routes::router())
+        .merge(documents::source_docs::router())
         .merge(enrich::routes::router())
         .merge(comments::routes::router())
         .merge(favorites::routes::router())

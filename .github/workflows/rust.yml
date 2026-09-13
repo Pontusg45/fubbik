@@ -30,6 +30,17 @@ jobs:
             - run: cargo fmt --check
             - run: cargo clippy --all-targets -- -D warnings
             - run: cargo test --workspace
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: "22"
+            - uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: "17"
+            - name: Test source documentation extractors
+              run: |
+                  npm install --prefix "$RUNNER_TEMP/source-doc-tools" --ignore-scripts --no-audit --no-fund jsdoc@4.0.5 typedoc@0.28.20 typescript@6.0.3
+                  PATH="$RUNNER_TEMP/source-doc-tools/node_modules/.bin:$PATH" node --test crates/fubbik-cli/tests/source-docs.test.mjs
             - name: Prove operation without Apache AGE
               run: |
                   ./scripts/rust-test-db.sh stop

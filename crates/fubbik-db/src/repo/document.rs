@@ -168,6 +168,15 @@ pub struct NewDocument {
 }
 
 pub async fn create(pool: &PgPool, user_id: &str, new: NewDocument) -> AppResult<Document> {
+    let mut connection = pool.acquire().await?;
+    create_in(&mut connection, user_id, new).await
+}
+
+pub async fn create_in(
+    connection: &mut sqlx::PgConnection,
+    user_id: &str,
+    new: NewDocument,
+) -> AppResult<Document> {
     let row = sqlx::query_as!(
         Document,
         r#"INSERT INTO document (id, title, source_path, content_hash, description, space_id, user_id, split_level)
@@ -184,7 +193,7 @@ pub async fn create(pool: &PgPool, user_id: &str, new: NewDocument) -> AppResult
         user_id,
         new.split_level
     )
-    .fetch_one(pool)
+    .fetch_one(&mut *connection)
     .await?;
     Ok(row)
 }

@@ -224,6 +224,20 @@ pub enum StaleCommand {
 
 #[derive(Subcommand)]
 pub enum DocsCommand {
+    /// Extract source comments, or import a versioned source manifest JSON
+    Extract {
+        /// Project root with --language; otherwise a manifest JSON file
+        path: PathBuf,
+        #[arg(long, value_parser = ["javascript", "typescript", "java"])]
+        language: Option<String>,
+        #[arg(long, requires = "language")]
+        project: Option<String>,
+        #[arg(short, long)]
+        space: Option<String>,
+        /// Print the validated manifest without contacting the API
+        #[arg(long)]
+        preview: bool,
+    },
     /// List imported documents
     List {
         #[arg(short, long, visible_alias = "codebase")]

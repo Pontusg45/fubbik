@@ -1,0 +1,5 @@
+{
+    "entryPoints": ["example.ts"],
+    "tsconfig": "tsconfig.json",
+    "excludePrivate": true
+}

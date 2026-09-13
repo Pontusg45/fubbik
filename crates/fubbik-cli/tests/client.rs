@@ -1,6 +1,37 @@
 use fubbik_cli::client::Client;
 
 #[tokio::test]
+async fn source_documentation_posts_a_versioned_manifest_to_the_import_endpoint() {
+    let server = wiremock::MockServer::start().await;
+    let manifest = fubbik_core::source_docs::SourceManifest {
+        version: 1,
+        project: "example".into(),
+        language: fubbik_core::source_docs::SourceLanguage::Java,
+        extractor: "fixture".into(),
+        complete: false,
+        diagnostics: vec![],
+        symbols: vec![],
+    };
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/documents/import-source"))
+        .and(wiremock::matchers::body_json(
+            serde_json::json!({"spaceId":"space-1","manifest":manifest}),
+        ))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({"documentId":"doc-1","created":0})),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    let result = Client::new(server.uri())
+        .import_source_docs("space-1", &manifest)
+        .await
+        .unwrap();
+    assert_eq!(result["documentId"], "doc-1");
+}
+
+#[tokio::test]
 async fn space_list_uses_the_active_rust_api() {
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))

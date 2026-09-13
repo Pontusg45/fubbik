@@ -8,6 +8,24 @@ use crate::output::{self, OutputMode};
 
 pub async fn run(client: &Client, command: DocsCommand, mode: OutputMode) -> Result<()> {
     match command {
+        DocsCommand::Extract {
+            path,
+            language,
+            project,
+            space,
+            preview,
+        } => {
+            super::source_docs::run(
+                client,
+                &path,
+                language.as_deref(),
+                project.as_deref(),
+                space.as_deref(),
+                preview,
+                mode,
+            )
+            .await
+        }
         DocsCommand::List { space } => {
             let space = client.resolve_space(space.as_deref()).await?;
             let documents = client.list_documents(space.as_deref()).await?;
@@ -53,6 +71,11 @@ pub async fn run(client: &Client, command: DocsCommand, mode: OutputMode) -> Res
             let source = document["sourcePath"]
                 .as_str()
                 .ok_or_else(|| anyhow::anyhow!("document has no source path"))?;
+            if source.starts_with("source-docs://") {
+                bail!(
+                    "source documentation must be refreshed with `fubbik docs extract` using the same project, language and space"
+                );
+            }
             let content = std::fs::read_to_string(source)
                 .with_context(|| format!("could not read {source}"))?;
             render_mutation(

@@ -31,6 +31,7 @@ pub mod semantic;
 pub mod session;
 pub mod settings;
 pub mod similarity;
+pub mod source_docs;
 pub mod space;
 pub mod staleness;
 pub mod stats;

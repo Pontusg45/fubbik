@@ -812,10 +812,12 @@ dependencies = [
  "anyhow",
  "clap",
  "comfy-table",
+ "fubbik-core",
  "owo-colors",
  "reqwest",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "wiremock",
 ]

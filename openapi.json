@@ -3540,6 +3540,42 @@
         }
       }
     },
+    "/api/documents/import-source": {
+      "post": {
+        "tags": [
+          "crate::documents::source_docs"
+        ],
+        "operationId": "import_source",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportSourceDocs"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/documents/search": {
       "get": {
         "tags": [
@@ -16729,6 +16765,51 @@
           }
         }
       },
+      "ImportReport": {
+        "type": "object",
+        "required": [
+          "documentId",
+          "created",
+          "updated",
+          "unchanged",
+          "missing",
+          "conflicts",
+          "diagnostics"
+        ],
+        "properties": {
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "documentId": {
+            "type": "string"
+          },
+          "missing": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unchanged": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "updated": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "ImportResult": {
         "type": "object",
         "description": "Shape of `POST /api/documents/import` and each element of\n`POST /api/documents/import-dir`'s response array, matching Node's\n`importDocument` return object exactly\n(`packages/api/src/documents/service.ts:45-158`).",
@@ -16760,6 +16841,22 @@
             "format": "int32"
           }
         }
+      },
+      "ImportSourceDocs": {
+        "type": "object",
+        "required": [
+          "spaceId",
+          "manifest"
+        ],
+        "properties": {
+          "manifest": {
+            "$ref": "#/components/schemas/SourceManifest"
+          },
+          "spaceId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "ImportStatus": {
         "type": "string",
@@ -19263,6 +19360,102 @@
           "alpha",
           "updated"
         ]
+      },
+      "SourceLanguage": {
+        "type": "string",
+        "enum": [
+          "javascript",
+          "typescript",
+          "java"
+        ]
+      },
+      "SourceManifest": {
+        "type": "object",
+        "required": [
+          "version",
+          "project",
+          "language",
+          "extractor",
+          "complete",
+          "symbols"
+        ],
+        "properties": {
+          "complete": {
+            "type": "boolean",
+            "description": "Only complete scans may mark previously imported symbols missing."
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extractor": {
+            "type": "string"
+          },
+          "language": {
+            "$ref": "#/components/schemas/SourceLanguage"
+          },
+          "project": {
+            "type": "string",
+            "description": "Stable name for this extraction scope; use a different name for subsets."
+          },
+          "symbols": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceSymbol"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "SourceSymbol": {
+        "type": "object",
+        "required": [
+          "key",
+          "title",
+          "signature",
+          "documentation",
+          "path",
+          "line"
+        ],
+        "properties": {
+          "documentation": {
+            "type": "string",
+            "description": "Markdown containing description, parameters, returns, throws and examples."
+          },
+          "key": {
+            "type": "string",
+            "description": "Qualified symbol name, including parameter types for Java overloads."
+          },
+          "line": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "path": {
+            "type": "string",
+            "description": "Repository-relative path using forward slashes."
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "signature": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "Space": {
         "type": "object",

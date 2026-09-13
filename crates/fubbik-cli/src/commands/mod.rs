@@ -14,6 +14,7 @@ pub mod plugin;
 pub mod requirement;
 pub mod review;
 pub mod search;
+pub mod source_docs;
 pub mod space;
 pub mod stale;
 pub mod stats;

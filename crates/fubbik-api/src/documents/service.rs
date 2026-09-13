@@ -46,6 +46,11 @@ pub async fn import_document_with_template(
     space_id: Option<&str>,
     template_id: Option<&str>,
 ) -> AppResult<ImportResult> {
+    if source_path.starts_with("source-docs://") {
+        return Err(AppError::Validation(
+            "source documentation requires import-source".into(),
+        ));
+    }
     let content_hash = hash_content(raw_content);
 
     if let Some(existing) =
@@ -242,6 +247,12 @@ pub async fn sync_document(
         .await?
         .ok_or_else(|| AppError::NotFound("document".to_string()))?;
 
+    if doc.source_path.starts_with("source-docs://") {
+        return Err(AppError::Validation(
+            "source documentation requires import-source".into(),
+        ));
+    }
+
     let content_hash = hash_content(raw_content);
     if doc.content_hash == content_hash {
         return Ok(SyncResult {
@@ -357,7 +368,10 @@ pub async fn render_document(
         .await?
         .ok_or_else(|| AppError::NotFound("document".to_string()))?;
 
-    let chunks = document::document_chunks(pool, user_id, document_id).await?;
+    let mut chunks = document::document_chunks(pool, user_id, document_id).await?;
+    if doc.source_path.starts_with("source-docs://") {
+        chunks.retain(|chunk| chunk.archived_at.is_none());
+    }
     if chunks.is_empty() {
         let markdown = format!("# {}\n", doc.title);
         return Ok(RenderResult {
@@ -414,7 +428,10 @@ pub async fn get_document(
     let doc = document::find_by_id(pool, user_id, document_id)
         .await?
         .ok_or_else(|| AppError::NotFound("document".to_string()))?;
-    let chunks = document::document_chunks(pool, user_id, document_id).await?;
+    let mut chunks = document::document_chunks(pool, user_id, document_id).await?;
+    if doc.source_path.starts_with("source-docs://") {
+        chunks.retain(|chunk| chunk.archived_at.is_none());
+    }
     Ok(super::dto::DocumentDetail::new(doc, chunks))
 }
 

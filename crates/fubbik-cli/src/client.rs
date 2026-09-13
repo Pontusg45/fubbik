@@ -677,6 +677,19 @@ impl Client {
         .await
     }
 
+    pub async fn import_source_docs(
+        &self,
+        space_id: &str,
+        manifest: &fubbik_core::source_docs::SourceManifest,
+    ) -> Result<serde_json::Value> {
+        self.send_json(
+            reqwest::Method::POST,
+            "/api/documents/import-source",
+            serde_json::json!({ "spaceId": space_id, "manifest": manifest }),
+        )
+        .await
+    }
+
     pub async fn sync_document(
         &self,
         id: &str,

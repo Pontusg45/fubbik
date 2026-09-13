@@ -1127,6 +1127,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/import-source": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["import_source"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents/search": {
         parameters: {
             query?: never;
@@ -5875,6 +5891,15 @@ export interface components {
             content: string;
             sourcePath: string;
         };
+        ImportReport: {
+            conflicts: string[];
+            created: number;
+            diagnostics: string[];
+            documentId: string;
+            missing: number;
+            unchanged: number;
+            updated: number;
+        };
         /**
          * @description Shape of `POST /api/documents/import` and each element of
          *     `POST /api/documents/import-dir`'s response array, matching Node's
@@ -5889,6 +5914,10 @@ export interface components {
             status: components["schemas"]["ImportStatus"];
             /** Format: int32 */
             updated: number;
+        };
+        ImportSourceDocs: {
+            manifest: components["schemas"]["SourceManifest"];
+            spaceId: string;
         };
         /**
          * @description `"unchanged" | "created" | "synced"` — the three literal values
@@ -6952,6 +6981,33 @@ export interface components {
         };
         /** @enum {string} */
         Sort: "newest" | "oldest" | "alpha" | "updated";
+        /** @enum {string} */
+        SourceLanguage: "javascript" | "typescript" | "java";
+        SourceManifest: {
+            /** @description Only complete scans may mark previously imported symbols missing. */
+            complete: boolean;
+            diagnostics?: string[];
+            extractor: string;
+            language: components["schemas"]["SourceLanguage"];
+            /** @description Stable name for this extraction scope; use a different name for subsets. */
+            project: string;
+            symbols: components["schemas"]["SourceSymbol"][];
+            /** Format: int32 */
+            version: number;
+        };
+        SourceSymbol: {
+            /** @description Markdown containing description, parameters, returns, throws and examples. */
+            documentation: string;
+            /** @description Qualified symbol name, including parameter types for Java overloads. */
+            key: string;
+            /** Format: int32 */
+            line: number;
+            /** @description Repository-relative path using forward slashes. */
+            path: string;
+            references?: string[];
+            signature: string;
+            title: string;
+        };
         /**
          * @description Bare `space` row shape — what `GET /api/spaces` (list), `POST /api/spaces`
          *     (create), `PATCH /api/spaces/{id}` (update), and `GET /api/spaces/detect`
@@ -10136,6 +10192,41 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ImportResult"][];
                 };
+            };
+        };
+    };
+    import_source: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportSourceDocs"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportReport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

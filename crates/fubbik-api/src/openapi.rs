@@ -106,6 +106,7 @@ use utoipa::OpenApi;
         crate::documents::routes::search_documents,
         crate::documents::routes::get_document,
         crate::documents::routes::import_document,
+        crate::documents::source_docs::import_source,
         crate::documents::routes::import_documents_dir,
         crate::documents::routes::sync_document,
         crate::documents::routes::render_document,

@@ -5,6 +5,8 @@ version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+fubbik-core = { path = "../fubbik-core" }
+tempfile = "3"
 clap.workspace = true
 comfy-table = "7"
 owo-colors = "4"

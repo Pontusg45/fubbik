@@ -8,6 +8,8 @@ description: Importing markdown as structured, browsable documents
 
 # Document Import
 
+For JSDoc, TypeScript and Javadoc comments, see [source comment documentation](source-comments.md).
+
 Import markdown files as documents that preserve the file's structure and can be browsed as pages:
 
 ```bash
