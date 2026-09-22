@@ -1,0 +1,14 @@
+{
+    "extends": "../../packages/config/tsconfig.base.json",
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "types": ["bun"],
+        "noEmit": true,
+        "exactOptionalPropertyTypes": true,
+        "noUncheckedIndexedAccess": true,
+        "noImplicitOverride": true
+    },
+    "include": ["e2e/**/*.ts", "playwright.config.ts", "playwright.components.config.ts"],
+    "exclude": ["e2e/components/fixture"]
+}

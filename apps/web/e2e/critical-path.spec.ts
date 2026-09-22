@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "./support/test";
 
 // This suite proves the Rust slice end-to-end along the path a real user
 // takes: sign in through Node (which still owns Better Auth), then exercise
@@ -17,30 +17,9 @@ const TEST_USER = {
 // verified the better-auth cookie Node set and looked up the same user.
 const RUST_ORIGIN = "http://localhost:3100";
 
-async function waitForHydration(page: Page) {
-    await page.waitForLoadState("networkidle");
-}
-
-async function signIn(page: Page) {
-    await page.goto("/login");
-    await waitForHydration(page);
-    await page.getByRole("button", { name: "Already have an account? Sign In" }).click();
-    await page.getByLabel("Email").fill(TEST_USER.email);
-    await page.getByLabel("Password").fill(TEST_USER.password);
-    await page.locator("form").getByRole("button", { name: "Sign In" }).click();
-    await page.waitForURL("**/dashboard", { timeout: 15000 });
-}
-
 test.describe.serial("Critical path (Rust backend)", () => {
-    test("sign up through Node, and Rust honours the session it issued", async ({ page }) => {
-        await page.goto("/login");
-        await waitForHydration(page);
-
-        await page.getByLabel("Name").fill(TEST_USER.name);
-        await page.getByLabel("Email").fill(TEST_USER.email);
-        await page.getByLabel("Password").fill(TEST_USER.password);
-        await page.getByRole("button", { name: "Sign Up" }).click();
-        await page.waitForURL("**/dashboard", { timeout: 15000 });
+    test("sign up through Node, and Rust honours the session it issued", async ({ page, screens }) => {
+        await screens.auth.signUp(TEST_USER);
 
         // The whole point of this slice: Node issued the session cookie
         // above, and now we hand it to Rust directly. If Rust can't verify
@@ -56,10 +35,10 @@ test.describe.serial("Critical path (Rust backend)", () => {
         expect(response.body.name).toBe(TEST_USER.name);
     });
 
-    test("dashboard renders live Rust-backed data", async ({ page }) => {
+    test("dashboard renders live Rust-backed data", async ({ page, screens }) => {
         const rustStats = page.waitForResponse(response => response.url().startsWith(RUST_ORIGIN) && response.url().includes("/api/stats"));
-        await signIn(page);
-        await waitForHydration(page);
+        await screens.auth.signIn(TEST_USER);
+        await page.waitForLoadState("networkidle");
         expect((await rustStats).status()).toBe(200);
 
         // StatsBar: past the loading skeleton, showing a real (Rust /api/stats)
@@ -83,8 +62,8 @@ test.describe.serial("Critical path (Rust backend)", () => {
         await expect(page.getByText("Nothing happening yet.")).toBeVisible();
     });
 
-    test("create and edit a chunk, and it persists across a reload", async ({ page }) => {
-        await signIn(page);
+    test("create and edit a chunk, and it persists across a reload", async ({ page, screens }) => {
+        await screens.auth.signIn(TEST_USER);
 
         const chunkTitle = `Critical path chunk ${Date.now()}`;
         const chunkContent = "Original content from the critical-path e2e test.";
@@ -95,24 +74,16 @@ test.describe.serial("Critical path (Rust backend)", () => {
 
         // Exercise the extended Rust DTO, including fields that used to be
         // silently dropped during the migration.
-        await page.goto("/chunks/new");
-        await waitForHydration(page);
-        await page.locator("#chunk-title").fill(chunkTitle);
-        await page.getByPlaceholder("Write your content...").fill(chunkContent);
-
-        await page.locator("#chunk-tags").fill(tagName);
-        await page.locator("#chunk-tags").press("Enter");
-        await expect(page.getByText(tagName, { exact: true })).toBeVisible();
-
-        await page.getByRole("button", { name: "Decision Context" }).click();
-        await page.locator("#chunk-alternatives").fill(`${alternativeA}, ${alternativeB}`);
-        await page.locator("#chunk-consequences").fill(consequencesText);
+        await screens.chunks.openNew();
+        await screens.chunks.form.fill({ title: chunkTitle, content: chunkContent });
+        await screens.chunks.addTag(tagName);
+        await screens.chunks.setDecisionContext({ alternatives: [alternativeA, alternativeB], consequences: consequencesText });
 
         const createChunk = page.waitForResponse(
             response =>
                 response.url().startsWith(RUST_ORIGIN) && response.url().endsWith("/api/chunks") && response.request().method() === "POST"
         );
-        await page.getByRole("button", { name: /Create Chunk/ }).click();
+        await screens.chunks.create();
         expect((await createChunk).status()).toBe(201);
         await page.waitForURL(/\/chunks\/[^/]+$/, { timeout: 15000 });
 
@@ -133,13 +104,12 @@ test.describe.serial("Critical path (Rust backend)", () => {
         const updatedTitle = `${chunkTitle} (edited)`;
         const updatedContent = "Updated content, saved through the edit page.";
         await page.getByRole("link", { name: "Edit" }).click();
-        await waitForHydration(page);
-        await page.locator("#edit-title").fill(updatedTitle);
-        await page.getByPlaceholder("Write your content...").fill(updatedContent);
+        await page.waitForLoadState("networkidle");
+        await screens.chunks.form.fill({ title: updatedTitle, content: updatedContent });
         const updateChunk = page.waitForResponse(
             response => response.url().startsWith(RUST_ORIGIN) && response.request().method() === "PATCH"
         );
-        await page.getByRole("button", { name: "Save Changes" }).click();
+        await screens.chunks.save();
         expect((await updateChunk).status()).toBe(200);
         await page.waitForURL(/\/chunks\/[^/]+$/, { timeout: 15000 });
 
@@ -150,7 +120,7 @@ test.describe.serial("Critical path (Rust backend)", () => {
         // and decision-context fields must come back from the server, not
         // just React Query's cache.
         await page.reload();
-        await waitForHydration(page);
+        await page.waitForLoadState("networkidle");
         await expect(page.getByRole("heading", { level: 1, name: updatedTitle })).toBeVisible();
         await expect(page.getByText(updatedContent)).toBeVisible();
         await expect(page.getByText(tagName, { exact: true })).toBeVisible();
@@ -162,21 +132,21 @@ test.describe.serial("Critical path (Rust backend)", () => {
         await expect(page.getByText(consequencesText)).toBeVisible();
     });
 
-    test("features page shows content round-tripped through Rust", async ({ page }) => {
-        await signIn(page);
+    test("features page shows content round-tripped through Rust", async ({ page, screens }) => {
+        await screens.auth.signIn(TEST_USER);
 
         const featureName = `critical-path-feature-${Date.now()}`;
 
         await page.goto("/features");
-        await waitForHydration(page);
+        await page.waitForLoadState("networkidle");
 
-        await page.getByRole("button", { name: "New Feature" }).click();
-        await page.getByLabel("Name").fill(featureName);
+        await screens.feature.open();
+        await screens.feature.form.fill({ name: featureName });
         const createFeature = page.waitForResponse(
             response =>
                 response.url().startsWith(RUST_ORIGIN) && response.url().endsWith("/api/features") && response.request().method() === "POST"
         );
-        await page.getByRole("button", { name: "Create" }).click();
+        await screens.feature.submit();
         expect((await createFeature).status()).toBe(201);
 
         // Real content, not merely "the page didn't crash": the feature we

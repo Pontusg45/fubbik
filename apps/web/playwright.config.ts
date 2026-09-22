@@ -16,6 +16,7 @@ const RUST_DATABASE_URL = process.env.E2E_DATABASE_URL ?? "postgres://postgres:p
 
 export default defineConfig({
     testDir: "./e2e",
+    testIgnore: ["**/components/**", "**/type-tests/**"],
     fullyParallel: false,
     retries: process.env.CI ? 2 : 0,
     use: {

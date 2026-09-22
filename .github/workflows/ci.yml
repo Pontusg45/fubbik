@@ -54,6 +54,27 @@ jobs:
             - name: Test
               run: pnpm test
 
+    component-tests:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm --filter web exec playwright install --with-deps chromium
+            - run: pnpm --filter web run check-types:e2e
+            - run: pnpm --filter web run test:components
+            - uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: component-test-report
+                  path: apps/web/playwright-report/components/
+                  retention-days: 14
+
     build:
         needs: [lint-and-format, typecheck-and-test]
         runs-on: ubuntu-latest

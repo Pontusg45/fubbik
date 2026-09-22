@@ -7,11 +7,13 @@
         "serve": "vite preview",
         "dev": "vite dev",
         "check:legacy-api": "node scripts/check-legacy-api.mjs",
-        "check-types": "tsgo -b",
-        "lint": "oxlint src && pnpm run check:legacy-api",
+        "check-types": "tsgo -b && pnpm run check-types:e2e",
+        "lint": "oxlint src e2e playwright.config.ts playwright.components.config.ts && pnpm run check:legacy-api",
         "test": "vitest run --passWithNoTests",
         "test:e2e": "playwright test",
-        "gen:api": "openapi-typescript ../../openapi.json -o src/utils/api-types.ts"
+        "gen:api": "openapi-typescript ../../openapi.json -o src/utils/api-types.ts",
+        "check-types:e2e": "tsgo --project tsconfig.e2e.json && tsgo --project e2e/components/fixture/tsconfig.json",
+        "test:components": "playwright test --config playwright.components.config.ts"
     },
     "dependencies": {
         "@base-ui/react": "^1.2.0",

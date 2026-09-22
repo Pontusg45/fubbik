@@ -1,7 +1,7 @@
 {
     "extends": "../../packages/config/tsconfig.base.json",
     "include": ["**/*.ts", "**/*.tsx"],
-    "exclude": ["e2e", "playwright.config.ts"],
+    "exclude": ["e2e", "playwright.config.ts", "playwright.components.config.ts"],
     "compilerOptions": {
         "target": "ES2022",
         "jsx": "react-jsx",

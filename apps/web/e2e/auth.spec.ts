@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "./support/test";
 
 const TEST_USER = {
     name: "Test User",
@@ -6,43 +6,17 @@ const TEST_USER = {
     password: "testpassword123"
 };
 
-async function waitForHydration(page: Page) {
-    // networkidle waits for all scripts to load and execute, ensuring React
-    // has hydrated and attached event handlers to the SSR-rendered form
-    await page.waitForLoadState("networkidle");
-}
-
-async function signIn(page: Page) {
-    await page.goto("/login");
-    await waitForHydration(page);
-    await page.getByRole("button", { name: "Already have an account? Sign In" }).click();
-    await page.getByLabel("Email").fill(TEST_USER.email);
-    await page.getByLabel("Password").fill(TEST_USER.password);
-    await page.locator("form").getByRole("button", { name: "Sign In" }).click();
-    await page.waitForURL("**/dashboard", { timeout: 15000 });
-}
-
 test.describe.serial("Auth flow", () => {
-    test("sign up creates account and redirects to dashboard", async ({ page }) => {
-        await page.goto("/login");
-        await waitForHydration(page);
+    test("sign up creates account and redirects to dashboard", async ({ page, screens }) => {
+        await screens.auth.signUp(TEST_USER);
 
-        await page.getByLabel("Name").fill(TEST_USER.name);
-        await page.getByLabel("Email").fill(TEST_USER.email);
-        await page.getByLabel("Password").fill(TEST_USER.password);
-        await page.getByRole("button", { name: "Sign Up" }).click();
-
-        await page.waitForURL("**/dashboard", { timeout: 15000 });
         await expect(page.getByRole("button", { name: TEST_USER.name })).toBeVisible();
     });
 
-    test("sign out returns to home", async ({ page }) => {
-        await signIn(page);
+    test("sign out returns to home", async ({ page, screens }) => {
+        await screens.auth.signIn(TEST_USER);
 
-        await page.getByRole("button", { name: TEST_USER.name }).click();
-        await page.getByRole("menuitem", { name: "Sign Out" }).click();
-
-        await page.waitForURL("/");
+        await screens.auth.signOut(TEST_USER.name);
         // The landing page header is hidden entirely (see __root.tsx `isLanding`),
         // so there is no "Sign In" link to assert against here — that string
         // doesn't exist anywhere in routes/index.tsx. Assert instead that the
@@ -52,13 +26,13 @@ test.describe.serial("Auth flow", () => {
         await expect(page.getByRole("button", { name: TEST_USER.name })).not.toBeVisible();
     });
 
-    test("sign in with existing account works", async ({ page }) => {
-        await signIn(page);
+    test("sign in with existing account works", async ({ page, screens }) => {
+        await screens.auth.signIn(TEST_USER);
         await expect(page.getByRole("button", { name: TEST_USER.name })).toBeVisible();
     });
 
-    test("authenticated API returns real user", async ({ page }) => {
-        await signIn(page);
+    test("authenticated API returns real user", async ({ page, screens }) => {
+        await screens.auth.signIn(TEST_USER);
 
         // Use the browser context (which has the session cookie) to call the API
         const response = await page.evaluate(async () => {
