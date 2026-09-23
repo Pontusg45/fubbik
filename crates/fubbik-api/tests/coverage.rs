@@ -203,6 +203,7 @@ fn sorted_titles(value: &serde_json::Value) -> Vec<String> {
 /// mentions `matrix` (`packages/api/src/coverage/service.ts:40-44`).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn default_response_omits_the_matrix_key_entirely(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cov-default@b.test", "Alice").await;
 
@@ -211,7 +212,9 @@ async fn default_response_omits_the_matrix_key_entirely(pool: sqlx::PgPool) {
     link_chunks(app.clone(), &cookie, &r, &[&c]).await;
 
     let body = coverage(app.clone(), &cookie, "").await;
+    // When
     let obj = body.as_object().unwrap();
+    // Then
     assert!(
         !obj.contains_key("matrix"),
         "default response must not carry a matrix key at all, got {body}"
@@ -229,6 +232,7 @@ async fn default_response_omits_the_matrix_key_entirely(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detail_true_adds_the_matrix_key(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cov-detail@b.test", "Alice").await;
 
@@ -238,7 +242,9 @@ async fn detail_true_adds_the_matrix_key(pool: sqlx::PgPool) {
     link_chunks(app.clone(), &cookie, &r, &[&c]).await;
 
     let body = coverage(app.clone(), &cookie, "?detail=true").await;
+    // When
     let matrix = body["matrix"].as_array().expect("matrix must be present");
+    // Then
     assert_eq!(matrix.len(), 1, "one (chunk, requirement) pair");
     assert_eq!(matrix[0]["chunkId"].as_str().unwrap(), c);
     assert_eq!(matrix[0]["chunkTitle"].as_str().unwrap(), "Auth");
@@ -263,6 +269,7 @@ async fn detail_true_adds_the_matrix_key(pool: sqlx::PgPool) {
 /// `?detail=1` and add the matrix, which Node does not.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn only_the_literal_string_true_selects_the_detail_shape(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cov-literal@b.test", "Alice").await;
     create_chunk(app.clone(), &cookie, "Auth").await;
@@ -274,7 +281,9 @@ async fn only_the_literal_string_true_selects_the_detail_shape(pool: sqlx::PgPoo
         "?detail=yes",
         "?detail=",
     ] {
+        // When
         let body = coverage(app.clone(), &cookie, q).await;
+        // Then
         assert!(
             !body.as_object().unwrap().contains_key("matrix"),
             "`{q}` must take the default branch, got {body}"
@@ -291,6 +300,7 @@ async fn only_the_literal_string_true_selects_the_detail_shape(pool: sqlx::PgPoo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn stats_partition_and_percentage(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cov-stats@b.test", "Alice").await;
 
@@ -304,7 +314,9 @@ async fn stats_partition_and_percentage(pool: sqlx::PgPool) {
     link_chunks(app.clone(), &cookie, &r1, &[&a, &b]).await;
     link_chunks(app.clone(), &cookie, &r2, &[&a]).await;
 
+    // When
     let body = coverage(app.clone(), &cookie, "").await;
+    // Then
     assert_eq!(sorted_titles(&body["covered"]), vec!["A", "B"]);
     assert_eq!(sorted_titles(&body["uncovered"]), vec!["C", "D"]);
     assert_eq!(
@@ -349,10 +361,13 @@ async fn stats_partition_and_percentage(pool: sqlx::PgPool) {
 /// see the guard's doc comment.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn percentage_is_zero_when_there_are_no_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cov-empty@b.test", "Alice").await;
 
+    // When
     let body = coverage(app.clone(), &cookie, "").await;
+    // Then
     assert_eq!(
         body["stats"],
         serde_json::json!({"total": 0, "covered": 0, "uncovered": 0, "percentage": 0})
@@ -366,6 +381,7 @@ async fn percentage_is_zero_when_there_are_no_chunks(pool: sqlx::PgPool) {
 /// truncation and not rounding of the ratio.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn percentage_rounds_to_the_nearest_whole_number(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cov-round@b.test", "Alice").await;
 
@@ -375,7 +391,9 @@ async fn percentage_rounds_to_the_nearest_whole_number(pool: sqlx::PgPool) {
     let r = create_requirement(app.clone(), &cookie, "R", None).await;
     link_chunks(app.clone(), &cookie, &r, &[&a]).await;
 
+    // When
     let body = coverage(app.clone(), &cookie, "").await;
+    // Then
     assert_eq!(body["stats"]["percentage"], 33, "1/3 rounds down");
 
     let b = create_chunk(app.clone(), &cookie, "D").await;
@@ -402,6 +420,7 @@ async fn percentage_rounds_to_the_nearest_whole_number(pool: sqlx::PgPool) {
 /// the parameter to `spaceId` would pass.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn filters_on_codebase_id_and_ignores_space_id(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-cov-space@b.test", "Alice").await;
 
@@ -417,7 +436,9 @@ async fn filters_on_codebase_id_and_ignores_space_id(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let filtered = coverage(app.clone(), &cookie, &format!("?codebaseId={backend}")).await;
+    // Then
     assert_eq!(sorted_titles(&filtered["uncovered"]), vec!["API notes"]);
     assert_eq!(filtered["stats"]["total"], 1);
 
@@ -435,12 +456,15 @@ async fn filters_on_codebase_id_and_ignores_space_id(pool: sqlx::PgPool) {
 /// nothing.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn blank_codebase_id_means_unfiltered(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cov-blank@b.test", "Alice").await;
     create_chunk(app.clone(), &cookie, "A").await;
     create_chunk(app.clone(), &cookie, "B").await;
 
+    // When
     let body = coverage(app.clone(), &cookie, "?codebaseId=").await;
+    // Then
     assert_eq!(body["stats"]["total"], 2);
 
     let detailed = coverage(app.clone(), &cookie, "?codebaseId=&detail=true").await;
@@ -458,6 +482,7 @@ async fn blank_codebase_id_means_unfiltered(pool: sqlx::PgPool) {
 /// in isolation.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn coverage_never_reports_another_users_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "alice-cov-scope@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-cov-scope@b.test", "Bob").await;
@@ -467,7 +492,9 @@ async fn coverage_never_reports_another_users_chunks(pool: sqlx::PgPool) {
     link_chunks(app.clone(), &alice, &ar, &[&ac]).await;
     create_chunk(app.clone(), &bob, "Bob chunk").await;
 
+    // When
     let bobs = coverage(app.clone(), &bob, "?detail=true").await;
+    // Then
     assert_eq!(sorted_titles(&bobs["uncovered"]), vec!["Bob chunk"]);
     assert_eq!(bobs["covered"], serde_json::json!([]));
     assert_eq!(
@@ -484,16 +511,19 @@ async fn coverage_never_reports_another_users_chunks(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn both_endpoints_require_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     for uri in [
         "/api/requirements/coverage",
         "/api/requirements/traceability",
     ] {
+        // When
         let res = app
             .clone()
             .oneshot(Request::get(uri).body(Body::empty()).unwrap())
             .await
             .unwrap();
+        // Then
         assert_eq!(
             res.status(),
             StatusCode::UNAUTHORIZED,
@@ -507,6 +537,7 @@ async fn both_endpoints_require_a_session(pool: sqlx::PgPool) {
 /// would 404 (no requirement with id `coverage`) instead of 200.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn static_paths_win_over_the_requirement_id_route(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cov-routing@b.test", "Alice").await;
 
@@ -514,7 +545,9 @@ async fn static_paths_win_over_the_requirement_id_route(pool: sqlx::PgPool) {
         "/api/requirements/coverage",
         "/api/requirements/traceability",
     ] {
+        // When
         let res = get(app.clone(), &cookie, uri).await;
+        // Then
         assert_eq!(
             res.status(),
             StatusCode::OK,
@@ -533,6 +566,7 @@ async fn static_paths_win_over_the_requirement_id_route(pool: sqlx::PgPool) {
 /// so "absent" and "empty" are not interchangeable.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn traceability_returns_a_bare_array_with_empty_plan_steps_and_sessions(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-trace@b.test", "Alice").await;
 
@@ -540,7 +574,9 @@ async fn traceability_returns_a_bare_array_with_empty_plan_steps_and_sessions(po
     let r = create_requirement(app.clone(), &cookie, "Login works", None).await;
     link_chunks(app.clone(), &cookie, &r, &[&c]).await;
 
+    // When
     let res = get(app.clone(), &cookie, "/api/requirements/traceability").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
 
@@ -562,6 +598,7 @@ async fn traceability_returns_a_bare_array_with_empty_plan_steps_and_sessions(po
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn traceability_filters_on_codebase_id(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-trace-space@b.test", "Alice").await;
 
@@ -569,6 +606,7 @@ async fn traceability_filters_on_codebase_id(pool: sqlx::PgPool) {
     create_requirement(app.clone(), &cookie, "Backend req", Some(&backend)).await;
     create_requirement(app.clone(), &cookie, "Global req", None).await;
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
@@ -577,6 +615,7 @@ async fn traceability_filters_on_codebase_id(pool: sqlx::PgPool) {
     .await;
     let body = json_body(res).await;
     let rows = body.as_array().unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["title"], "Backend req");
 
@@ -586,6 +625,7 @@ async fn traceability_filters_on_codebase_id(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn traceability_never_reports_another_users_requirements(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "alice-trace-scope@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-trace-scope@b.test", "Bob").await;
@@ -593,9 +633,11 @@ async fn traceability_never_reports_another_users_requirements(pool: sqlx::PgPoo
     create_requirement(app.clone(), &alice, "Alice requirement", None).await;
     create_requirement(app.clone(), &bob, "Bob requirement", None).await;
 
+    // When
     let res = get(app.clone(), &bob, "/api/requirements/traceability").await;
     let body = json_body(res).await;
     let rows = body.as_array().unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["title"], "Bob requirement");
 }

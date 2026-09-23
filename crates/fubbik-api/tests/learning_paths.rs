@@ -94,12 +94,14 @@ async fn a_chunk(app: axum::Router, cookie: &str, title: &str) -> String {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn learning_paths_round_trip_and_preserve_order(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let a = a_chunk(app.clone(), &cookie, "A").await;
     let b = a_chunk(app.clone(), &cookie, "B").await;
     let c = a_chunk(app.clone(), &cookie, "C").await;
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -112,6 +114,7 @@ async fn learning_paths_round_trip_and_preserve_order(pool: sqlx::PgPool) {
         }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let created = json_body(res).await;
     assert_eq!(created["title"], "Getting started", "title is trimmed");
@@ -167,6 +170,7 @@ async fn learning_paths_round_trip_and_preserve_order(pool: sqlx::PgPool) {
 /// distinction is what a naive "is the list non-empty?" check destroys.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn an_empty_chunk_list_clears_the_path_but_an_absent_one_does_not(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let a = a_chunk(app.clone(), &cookie, "A").await;
@@ -187,6 +191,7 @@ async fn an_empty_chunk_list_clears_the_path_but_an_absent_one_does_not(pool: sq
         .to_string();
     let path = format!("/api/learning-paths/{id}");
 
+    // When
     // Absent — untouched.
     let out = json_body(
         send(
@@ -199,6 +204,7 @@ async fn an_empty_chunk_list_clears_the_path_but_an_absent_one_does_not(pool: sq
         .await,
     )
     .await;
+    // Then
     assert_eq!(
         out["chunkIds"].as_array().unwrap().len(),
         1,
@@ -229,6 +235,7 @@ async fn an_empty_chunk_list_clears_the_path_but_an_absent_one_does_not(pool: sq
 /// exist. Both directions rejected here, on create and on update.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_path_cannot_contain_chunks_the_caller_does_not_own(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
@@ -240,6 +247,7 @@ async fn a_path_cannot_contain_chunks_the_caller_does_not_own(pool: sqlx::PgPool
         ("a nonexistent chunk", serde_json::json!(["no-such-chunk"])),
         ("one good and one foreign", serde_json::json!([hers, his])),
     ] {
+        // When
         let res = send(
             app.clone(),
             &alice,
@@ -248,6 +256,7 @@ async fn a_path_cannot_contain_chunks_the_caller_does_not_own(pool: sqlx::PgPool
             serde_json::json!({ "title": "P", "chunkIds": ids }),
         )
         .await;
+        // Then
         assert_eq!(
             res.status(),
             StatusCode::BAD_REQUEST,
@@ -293,6 +302,7 @@ async fn a_path_cannot_contain_chunks_the_caller_does_not_own(pool: sqlx::PgPool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn learning_paths_are_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
@@ -311,8 +321,10 @@ async fn learning_paths_are_user_scoped(pool: sqlx::PgPool) {
         .as_str()
         .unwrap()
         .to_string();
+    // When
     let path = format!("/api/learning-paths/{id}");
 
+    // Then
     assert!(
         json_body(get(app.clone(), &bob, "/api/learning-paths").await)
             .await
@@ -338,8 +350,10 @@ async fn learning_paths_are_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_blank_title_is_rejected(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
+    // When
     let res = send(
         app,
         &cookie,
@@ -348,5 +362,6 @@ async fn a_blank_title_is_rejected(pool: sqlx::PgPool) {
         serde_json::json!({ "title": "   ", "chunkIds": [] }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }

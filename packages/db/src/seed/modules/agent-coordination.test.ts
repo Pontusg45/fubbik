@@ -12,8 +12,10 @@ const taskIds = {
 
 describe("agent coordination seed fixtures", () => {
     it("builds a coherent multi-agent board with representative coordination data", () => {
+        // Given
         let nextId = 0;
         const now = new Date("2026-09-04T12:00:00.000Z");
+        // When
         const fixtures = buildAgentCoordinationFixtures({
             planId: "plan-vocab",
             taskIds,
@@ -21,6 +23,7 @@ describe("agent coordination seed fixtures", () => {
             id: () => `seed-id-${++nextId}`
         });
 
+        // Then
         expect(fixtures.runs.map(run => [run.handle, run.status])).toEqual([
             ["coordinator", "active"],
             ["ui-implementer", "active"],

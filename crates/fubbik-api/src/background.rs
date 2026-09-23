@@ -66,6 +66,7 @@ mod tests {
 
     #[tokio::test]
     async fn shutdown_is_scoped_to_one_runtime() {
+        // Given
         let first = BackgroundRuntime::new();
         let second = BackgroundRuntime::new();
         let first_token = first.cancellation_token();
@@ -76,8 +77,10 @@ mod tests {
             async move { token.cancelled().await }
         });
 
+        // When
         first.shutdown(Duration::from_secs(1)).await;
 
+        // Then
         assert!(first_token.is_cancelled());
         assert!(!second_token.is_cancelled());
         second.shutdown(Duration::from_secs(1)).await;

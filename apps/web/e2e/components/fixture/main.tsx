@@ -12,6 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
 
 import "./style.css";
+import { FieldFixtures } from "./fields";
+import { OverlayFixtures } from "./overlays";
 
 const types = [
     { label: "Note", value: "note" },
@@ -120,6 +122,8 @@ function Fixture() {
                     ))}
                 </TableBody>
             </Table>
+            <OverlayFixtures />
+            <FieldFixtures />
         </main>
     );
 }

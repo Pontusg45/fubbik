@@ -182,8 +182,11 @@ mod tests {
     /// their shared parent. Summing children would report 2.
     #[test]
     fn subtree_counts_are_distinct_not_summed() {
+        // Given the inline inputs and test fixtures.
+        // When
         let tree = build(&[p("src/a", "c1", "file_ref"), p("src/b", "c1", "file_ref")]).tree;
         let src = &tree.children[0];
+        // Then
         assert_eq!(src.name, "src");
         assert_eq!(
             src.chunk_count, 1,
@@ -201,6 +204,8 @@ mod tests {
     /// view distinguishes a glob match from an explicit reference.
     #[test]
     fn one_chunk_two_sources_at_one_path_is_kept_twice() {
+        // Given the inline inputs and test fixtures.
+        // When
         let tree = build(&[
             p("src/lib.rs", "c1", "applies_to"),
             p("src/lib.rs", "c1", "file_ref"),
@@ -209,6 +214,7 @@ mod tests {
         ])
         .tree;
         let leaf = &tree.children[0].children[0];
+        // Then
         assert_eq!(leaf.chunks.len(), 2, "two sources, two entries");
         assert_eq!(
             leaf.chunk_count, 1,
@@ -219,6 +225,8 @@ mod tests {
 
     #[test]
     fn children_are_sorted_by_count_then_name() {
+        // Given the inline inputs and test fixtures.
+        // When
         let tree = build(&[
             p("zzz", "c1", "file_ref"),
             p("aaa", "c2", "file_ref"),
@@ -227,6 +235,7 @@ mod tests {
         ])
         .tree;
         let names: Vec<&str> = tree.children.iter().map(|c| c.name.as_str()).collect();
+        // Then
         assert_eq!(
             names,
             ["mmm", "aaa", "zzz"],
@@ -236,11 +245,14 @@ mod tests {
 
     #[test]
     fn totals_count_distinct_chunks_and_every_pairing() {
+        // Given the inline inputs and test fixtures.
+        // When
         let out = build(&[
             p("a", "c1", "file_ref"),
             p("b", "c1", "applies_to"),
             p("c", "c2", "file_ref"),
         ]);
+        // Then
         assert_eq!(out.totals.chunks_covered, 2, "distinct chunks");
         assert_eq!(
             out.totals.paths_tracked, 3,
@@ -250,7 +262,10 @@ mod tests {
 
     #[test]
     fn an_empty_input_yields_a_bare_root() {
+        // Given the inline inputs and test fixtures.
+        // When
         let out = build(&[]);
+        // Then
         assert_eq!(out.tree.name, "(root)");
         assert!(out.tree.children.is_empty());
         assert_eq!(out.totals.chunks_covered, 0);

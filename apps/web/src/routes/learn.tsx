@@ -1,13 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/learn")({
-    component: LearnPage
+    component: LearningPathsRoute
 });
+
+function LearningPathsRoute() {
+    const pathname = useRouterState({ select: state => state.location.pathname });
+    return pathname === "/learn" || pathname === "/learn/" ? <LearnPage /> : <Outlet />;
+}
 
 function LearnPage() {
     const { data } = useQuery({

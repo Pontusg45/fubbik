@@ -71,15 +71,18 @@ fn json(v: serde_json::Value) -> serde_json::Value {
 
 #[sqlx::test]
 async fn list_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     a_feature(&pool, &alice, "alice-feature", 1).await;
     a_feature(&pool, &bob, "bob-feature", 1).await;
 
+    // When
     let rows = feature::list(&pool, &alice, &ListParams::default())
         .await
         .unwrap();
     let names: Vec<&str> = rows.iter().map(|f| f.name.as_str()).collect();
+    // Then
     assert_eq!(names, vec!["alice-feature"]);
 
     // Bob's own row must still be intact and visible from his side — a
@@ -98,15 +101,18 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
 /// so the claim is verified rather than assumed.
 #[sqlx::test]
 async fn list_orders_by_priority_which_cannot_tie(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     a_feature(&pool, &alice, "third", 30).await;
     a_feature(&pool, &alice, "first", 10).await;
     a_feature(&pool, &alice, "second", 20).await;
 
+    // When
     let rows = feature::list(&pool, &alice, &ListParams::default())
         .await
         .unwrap();
     let names: Vec<&str> = rows.iter().map(|f| f.name.as_str()).collect();
+    // Then
     assert_eq!(names, vec!["first", "second", "third"]);
 
     let dupe = fubbik_db::new_id();
@@ -120,6 +126,7 @@ async fn list_orders_by_priority_which_cannot_tie(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_counts_deltas_per_feature(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let f = a_feature(&pool, &alice, "f", 1).await;
     let empty = a_feature(&pool, &alice, "empty", 2).await;
@@ -139,9 +146,11 @@ async fn list_counts_deltas_per_feature(pool: sqlx::PgPool) {
         .expect("own chunk + own feature");
     }
 
+    // When
     let rows = feature::list(&pool, &alice, &ListParams::default())
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.iter().find(|r| r.id == f).unwrap().delta_count, 2);
     assert_eq!(rows.iter().find(|r| r.id == empty).unwrap().delta_count, 0);
 }
@@ -151,6 +160,7 @@ async fn list_counts_deltas_per_feature(pool: sqlx::PgPool) {
 /// linked to some *other* space are hidden.
 #[sqlx::test]
 async fn list_space_filter_keeps_unlinked_features_global(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let s1 = a_space(&pool, &alice, "s1").await;
     let s2 = a_space(&pool, &alice, "s2").await;
@@ -168,6 +178,7 @@ async fn list_space_filter_keeps_unlinked_features_global(pool: sqlx::PgPool) {
         rows.into_iter().map(|f| f.name).collect()
     };
 
+    // When
     let under_s1 = feature::list(
         &pool,
         &alice,
@@ -178,6 +189,7 @@ async fn list_space_filter_keeps_unlinked_features_global(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(names(under_s1), vec!["in-s1", "global"]);
 
     // An empty string is "no filter", not "match the empty space id".
@@ -196,6 +208,7 @@ async fn list_space_filter_keeps_unlinked_features_global(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_status_and_search_filters(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let archived = a_feature(&pool, &alice, "Dark Mode", 1).await;
     a_feature(&pool, &alice, "light mode", 2).await;
@@ -211,6 +224,7 @@ async fn list_status_and_search_filters(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let by_status = feature::list(
         &pool,
         &alice,
@@ -221,6 +235,7 @@ async fn list_status_and_search_filters(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(by_status.len(), 1);
     assert_eq!(by_status[0].name, "Dark Mode");
 
@@ -258,10 +273,13 @@ async fn list_status_and_search_filters(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn find_update_and_delete_are_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
+    // When
     let bobs = a_feature(&pool, &bob, "bobs-feature", 1).await;
 
+    // Then
     assert!(
         feature::find_by_id(&pool, &bobs, &alice)
             .await
@@ -301,11 +319,14 @@ async fn find_update_and_delete_are_user_scoped(pool: sqlx::PgPool) {
 /// `description`/`color` are tri-state; an explicit `Some(None)` clears.
 #[sqlx::test]
 async fn update_tri_state_clears_and_empty_patch_is_a_no_op(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let id = fubbik_db::new_id();
+    // When
     let created = feature::create(&pool, &id, &alice, "f", Some("desc"), 1, Some("#fff"))
         .await
         .unwrap();
+    // Then
     assert_eq!(created.description.as_deref(), Some("desc"));
 
     let cleared = feature::update(
@@ -336,12 +357,15 @@ async fn update_tri_state_clears_and_empty_patch_is_a_no_op(pool: sqlx::PgPool) 
 
 #[sqlx::test]
 async fn name_conflict_excludes_self_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let a1 = a_feature(&pool, &alice, "shared-name", 1).await;
     let a2 = a_feature(&pool, &alice, "other", 2).await;
+    // When
     a_feature(&pool, &bob, "shared-name", 1).await;
 
+    // Then
     // Renaming a2 to a1's name conflicts.
     assert!(
         feature::name_conflict(&pool, &a2, &alice, "shared-name")
@@ -364,8 +388,11 @@ async fn name_conflict_excludes_self_and_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn max_priority_is_user_scoped_and_zero_when_empty(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
+    // When the operation is evaluated by the assertion.
+    // Then
     assert_eq!(feature::max_priority(&pool, &alice).await.unwrap(), 0);
 
     a_feature(&pool, &bob, "bobs", 99).await;
@@ -389,12 +416,15 @@ async fn max_priority_is_user_scoped_and_zero_when_empty(pool: sqlx::PgPool) {
 /// priority)` index mid-statement. This is a real Node bug, kept.
 #[sqlx::test]
 async fn shift_priorities_up_hits_nodes_unique_violation_on_a_contiguous_run(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     a_feature(&pool, &alice, "p1", 1).await;
     a_feature(&pool, &alice, "p2", 2).await;
     a_feature(&pool, &alice, "p3", 3).await;
 
+    // When
     let err = feature::shift_priorities_up(&pool, &alice, 1).await;
+    // Then
     assert!(
         err.is_err(),
         "reproducing Node: shifting 1,2,3 up collides with itself"
@@ -415,6 +445,7 @@ async fn shift_priorities_up_hits_nodes_unique_violation_on_a_contiguous_run(poo
 /// exercises.
 #[sqlx::test]
 async fn shift_priorities_up_succeeds_on_a_sparse_run(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     a_feature(&pool, &alice, "p10", 10).await;
@@ -425,9 +456,11 @@ async fn shift_priorities_up_succeeds_on_a_sparse_run(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let rows = feature::list(&pool, &alice, &ListParams::default())
         .await
         .unwrap();
+    // Then
     assert_eq!(
         rows.iter().map(|r| r.priority).collect::<Vec<_>>(),
         vec![11, 21]
@@ -445,6 +478,7 @@ async fn shift_priorities_up_succeeds_on_a_sparse_run(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn set_spaces_replaces_wholesale_and_refuses_foreign_spaces(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let f = a_feature(&pool, &alice, "f", 1).await;
@@ -455,9 +489,11 @@ async fn set_spaces_replaces_wholesale_and_refuses_foreign_spaces(pool: sqlx::Pg
     feature::set_spaces(&pool, &f, &alice, &[mine.clone(), bobs_space.clone()])
         .await
         .unwrap();
+    // When
     let linked = feature::spaces_for_feature(&pool, &f, &alice)
         .await
         .unwrap();
+    // Then
     assert_eq!(
         linked.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
         vec![mine.as_str()],
@@ -488,6 +524,7 @@ async fn set_spaces_replaces_wholesale_and_refuses_foreign_spaces(pool: sqlx::Pg
 
 #[sqlx::test]
 async fn set_spaces_cannot_wipe_another_users_associations(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let bobs_feature = a_feature(&pool, &bob, "bobs", 1).await;
@@ -507,22 +544,27 @@ async fn set_spaces_cannot_wipe_another_users_associations(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let still = feature::spaces_for_feature(&pool, &bobs_feature, &bob)
         .await
         .unwrap();
+    // Then
     assert_eq!(still.len(), 1, "Bob's association must survive");
 }
 
 #[sqlx::test]
 async fn spaces_for_feature_is_scoped_through_the_feature_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let bobs_feature = a_feature(&pool, &bob, "bobs", 1).await;
     let bobs_space = a_space(&pool, &bob, "bobs-space").await;
+    // When
     feature::set_spaces(&pool, &bobs_feature, &bob, &[bobs_space])
         .await
         .unwrap();
 
+    // Then
     assert!(
         feature::spaces_for_feature(&pool, &bobs_feature, &alice)
             .await
@@ -538,10 +580,13 @@ async fn spaces_for_feature_is_scoped_through_the_feature_owner(pool: sqlx::PgPo
 
 #[sqlx::test]
 async fn active_features_round_trip_and_replace(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let f1 = a_feature(&pool, &alice, "f1", 1).await;
+    // When
     let f2 = a_feature(&pool, &alice, "f2", 2).await;
 
+    // Then
     assert!(
         feature::active_feature_ids(&pool, &alice)
             .await
@@ -581,15 +626,18 @@ async fn active_features_round_trip_and_replace(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn set_active_features_drops_foreign_ids_in_sql(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let mine = a_feature(&pool, &alice, "mine", 1).await;
     let bobs = a_feature(&pool, &bob, "bobs", 1).await;
 
+    // When
     feature::set_active_features(&pool, &alice, &[mine.clone(), bobs.clone()])
         .await
         .unwrap();
 
+    // Then
     assert_eq!(
         feature::active_feature_ids(&pool, &alice).await.unwrap(),
         vec![mine],
@@ -610,14 +658,17 @@ async fn set_active_features_drops_foreign_ids_in_sql(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn upsert_delta_requires_owning_both_the_chunk_and_the_feature(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "alices").await;
     let bobs_chunk = a_chunk(&pool, &bob, "bobs").await;
     let alices_feature = a_feature(&pool, &alice, "alices", 1).await;
     let bobs_feature = a_feature(&pool, &bob, "bobs", 1).await;
+    // When
     let d = json(serde_json::json!({"title": "overlay"}));
 
+    // Then
     // Alice's feature, Bob's chunk.
     assert!(
         feature::upsert_delta(
@@ -680,10 +731,12 @@ async fn upsert_delta_requires_owning_both_the_chunk_and_the_feature(pool: sqlx:
 /// write leaves `title` gone.
 #[sqlx::test]
 async fn delta_is_sparse_and_replaced_wholesale(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let c = a_chunk(&pool, &alice, "c").await;
     let f = a_feature(&pool, &alice, "f", 1).await;
 
+    // When
     let first = feature::upsert_delta(
         &pool,
         &fubbik_db::new_id(),
@@ -695,6 +748,7 @@ async fn delta_is_sparse_and_replaced_wholesale(pool: sqlx::PgPool) {
     .await
     .unwrap()
     .unwrap();
+    // Then
     assert_eq!(
         first
             .delta
@@ -743,6 +797,7 @@ async fn delta_is_sparse_and_replaced_wholesale(pool: sqlx::PgPool) {
 /// precedence is genuinely exercised: reverse the ordering and this fails.
 #[sqlx::test]
 async fn deltas_for_chunk_orders_ascending_so_highest_priority_wins(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let c = a_chunk(&pool, &alice, "base title").await;
     let low = a_feature(&pool, &alice, "low", 1).await;
@@ -773,7 +828,9 @@ async fn deltas_for_chunk_orders_ascending_so_highest_priority_wins(pool: sqlx::
     .unwrap()
     .unwrap();
 
+    // When
     let rows = feature::deltas_for_chunk(&pool, &c, &alice).await.unwrap();
+    // Then
     assert_eq!(
         rows.iter().map(|r| r.feature_priority).collect::<Vec<_>>(),
         vec![1, 9],
@@ -804,6 +861,7 @@ async fn deltas_for_chunk_orders_ascending_so_highest_priority_wins(pool: sqlx::
 /// tiebreaker, so the two deltas are inserted directly.
 #[sqlx::test]
 async fn deltas_for_chunk_breaks_priority_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let c = a_chunk(&pool, &alice, "c").await;
@@ -825,7 +883,9 @@ async fn deltas_for_chunk_breaks_priority_ties_by_id(pool: sqlx::PgPool) {
         .unwrap();
     }
 
+    // When
     let rows = feature::deltas_for_chunk(&pool, &c, &alice).await.unwrap();
+    // Then
     assert_eq!(
         rows.iter().map(|r| r.feature_priority).collect::<Vec<_>>(),
         vec![1, 1],
@@ -842,10 +902,12 @@ async fn deltas_for_chunk_breaks_priority_ties_by_id(pool: sqlx::PgPool) {
 /// the session there.
 #[sqlx::test]
 async fn deltas_for_chunk_is_scoped_to_the_chunk_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let bobs_chunk = a_chunk(&pool, &bob, "bobs secret").await;
     let bobs_feature = a_feature(&pool, &bob, "bobs", 1).await;
+    // When
     feature::upsert_delta(
         &pool,
         &fubbik_db::new_id(),
@@ -858,6 +920,7 @@ async fn deltas_for_chunk_is_scoped_to_the_chunk_owner(pool: sqlx::PgPool) {
     .unwrap()
     .unwrap();
 
+    // Then
     assert!(
         feature::deltas_for_chunk(&pool, &bobs_chunk, &alice)
             .await
@@ -876,6 +939,7 @@ async fn deltas_for_chunk_is_scoped_to_the_chunk_owner(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn deltas_for_feature_is_scoped_and_carries_the_chunk_title(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let c = a_chunk(&pool, &alice, "Chunk Title").await;
@@ -892,9 +956,11 @@ async fn deltas_for_feature_is_scoped_and_carries_the_chunk_title(pool: sqlx::Pg
     .unwrap()
     .unwrap();
 
+    // When
     let mine = feature::deltas_for_feature(&pool, &f, &alice)
         .await
         .unwrap();
+    // Then
     assert_eq!(mine.len(), 1);
     assert_eq!(mine[0].chunk_title, "Chunk Title");
 
@@ -909,10 +975,12 @@ async fn deltas_for_feature_is_scoped_and_carries_the_chunk_title(pool: sqlx::Pg
 
 #[sqlx::test]
 async fn delete_delta_is_scoped_through_the_feature_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let c = a_chunk(&pool, &bob, "bobs").await;
     let f = a_feature(&pool, &bob, "bobs", 1).await;
+    // When
     feature::upsert_delta(
         &pool,
         &fubbik_db::new_id(),
@@ -925,6 +993,7 @@ async fn delete_delta_is_scoped_through_the_feature_owner(pool: sqlx::PgPool) {
     .unwrap()
     .unwrap();
 
+    // Then
     assert!(
         feature::delete_delta(&pool, &c, &f, &alice)
             .await
@@ -961,6 +1030,7 @@ async fn delete_delta_is_scoped_through_the_feature_owner(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn merge_applies_deltas_snapshots_versions_and_marks_merged(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let c1 = a_chunk(&pool, &alice, "original one").await;
     let c2 = a_chunk(&pool, &alice, "original two").await;
@@ -986,9 +1056,11 @@ async fn merge_applies_deltas_snapshots_versions_and_marks_merged(pool: sqlx::Pg
         .into_iter()
         .map(|d| (d.chunk_id, d.delta.0))
         .collect();
+    // When
     let affected = feature::merge_feature_deltas(&pool, &f, &alice, &pairs)
         .await
         .unwrap();
+    // Then
     assert_eq!(affected.len(), 2);
 
     // Base chunks rewritten, and only the fields the delta named.
@@ -1041,6 +1113,7 @@ async fn merge_applies_deltas_snapshots_versions_and_marks_merged(pool: sqlx::Pg
 /// NULL.)
 #[sqlx::test]
 async fn merge_is_atomic_under_forced_failure(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let good = a_chunk(&pool, &alice, "untouched title").await;
     let poison = a_chunk(&pool, &alice, "poison title").await;
@@ -1066,7 +1139,9 @@ async fn merge_is_atomic_under_forced_failure(pool: sqlx::PgPool) {
         ),
         (poison.clone(), serde_json::json!({"title": null})),
     ];
+    // When
     let result = feature::merge_feature_deltas(&pool, &f, &alice, &pairs).await;
+    // Then
     assert!(result.is_err(), "the NOT NULL violation must propagate");
 
     // NOTHING may have been written.
@@ -1109,15 +1184,18 @@ async fn merge_is_atomic_under_forced_failure(pool: sqlx::PgPool) {
 /// victim's chunk is left alone.
 #[sqlx::test]
 async fn merge_skips_chunks_the_caller_does_not_own(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let bobs_chunk = a_chunk(&pool, &bob, "bobs title").await;
     let f = a_feature(&pool, &alice, "f", 1).await;
 
     let pairs = vec![(bobs_chunk.clone(), serde_json::json!({"title": "hijacked"}))];
+    // When
     let affected = feature::merge_feature_deltas(&pool, &f, &alice, &pairs)
         .await
         .unwrap();
+    // Then
     assert!(affected.is_empty());
 
     let untouched = chunk::find_by_id(&pool, &bob, &bobs_chunk)
@@ -1137,6 +1215,7 @@ async fn merge_skips_chunks_the_caller_does_not_own(pool: sqlx::PgPool) {
 /// deltas, when aimed at their id.
 #[sqlx::test]
 async fn merge_is_user_scoped_on_the_feature_side(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let bobs_chunk = a_chunk(&pool, &bob, "bobs").await;
@@ -1157,10 +1236,12 @@ async fn merge_is_user_scoped_on_the_feature_side(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let still = feature::find_by_id(&pool, &bobs_feature, &bob)
         .await
         .unwrap()
         .unwrap();
+    // Then
     assert_eq!(still.status, "inactive", "Bob's feature must not be merged");
     assert_eq!(
         feature::deltas_for_feature(&pool, &bobs_feature, &bob)

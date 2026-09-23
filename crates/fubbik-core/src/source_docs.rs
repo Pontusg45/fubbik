@@ -163,10 +163,13 @@ mod tests {
 
     #[test]
     fn accepts_distinct_overloads_but_rejects_duplicate_identity() {
+        // Given
         let mut m = manifest();
         let mut overload = m.symbols[0].clone();
         overload.key = "example.Service#find(int)".into();
+        // When
         m.symbols.push(overload);
+        // Then
         assert!(m.validate().is_ok());
         m.symbols.push(m.symbols[0].clone());
         assert!(m.validate().is_err());
@@ -174,9 +177,12 @@ mod tests {
 
     #[test]
     fn rejects_unsafe_paths_and_unknown_versions() {
+        // Given
         let mut m = manifest();
         for path in ["../secret", "/etc/passwd", "C:\\source.java"] {
+            // When
             m.symbols[0].path = path.into();
+            // Then
             assert!(m.validate().is_err());
         }
         m = manifest();

@@ -172,6 +172,9 @@ mod tests {
 
     #[test]
     fn default_is_24_hours_when_unset() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             resolve_scan_interval(None),
             Some(std::time::Duration::from_secs(24 * 3600))
@@ -180,16 +183,25 @@ mod tests {
 
     #[test]
     fn zero_disables_scanning() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(resolve_scan_interval(Some("0")), None);
     }
 
     #[test]
     fn negative_disables_scanning() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(resolve_scan_interval(Some("-5")), None);
     }
 
     #[test]
     fn positive_value_is_honoured() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             resolve_scan_interval(Some("6")),
             Some(std::time::Duration::from_secs(6 * 3600))
@@ -198,6 +210,9 @@ mod tests {
 
     #[test]
     fn unparseable_value_falls_back_to_the_24_hour_default() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             resolve_scan_interval(Some("garbage")),
             Some(std::time::Duration::from_secs(24 * 3600))

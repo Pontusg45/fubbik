@@ -70,10 +70,13 @@ async fn a_cell(pool: &sqlx::PgPool, uid: &str, name: &str) -> (String, String, 
 
 #[sqlx::test]
 async fn matrix_crud_round_trips_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
+    // When
     let id = a_matrix(&pool, &alice, "Invariants").await;
 
+    // Then
     assert!(
         bm::find_by_id(&pool, &id, &alice).await.unwrap().is_some(),
         "the owner must see it — otherwise the assertions below pass for the wrong reason"
@@ -111,9 +114,11 @@ async fn matrix_crud_round_trips_and_is_user_scoped(pool: sqlx::PgPool) {
 /// against a two-state implementation.
 #[sqlx::test]
 async fn matrix_description_is_tri_state(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let id = a_matrix(&pool, &uid, "M").await;
 
+    // When
     bm::update(
         &pool,
         &id,
@@ -125,6 +130,7 @@ async fn matrix_description_is_tri_state(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(
         bm::find_by_id(&pool, &id, &uid)
             .await
@@ -182,6 +188,7 @@ async fn matrix_description_is_tri_state(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn create_rejects_a_space_the_caller_does_not_own(pool: sqlx::PgPool) {
+    // Given
     use fubbik_db::repo::space;
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
@@ -199,6 +206,7 @@ async fn create_rejects_a_space_the_caller_does_not_own(pool: sqlx::PgPool) {
     .unwrap()
     .id;
 
+    // When
     let created = bm::create(
         &pool,
         &alice,
@@ -211,6 +219,7 @@ async fn create_rejects_a_space_the_caller_does_not_own(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(
         created.is_none(),
         "a foreign spaceId must insert nothing, not a dangling matrix"
@@ -219,6 +228,7 @@ async fn create_rejects_a_space_the_caller_does_not_own(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_filters_by_space_and_layer_and_is_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     a_matrix(&pool, &alice, "A").await;
@@ -236,7 +246,9 @@ async fn list_filters_by_space_and_layer_and_is_scoped(pool: sqlx::PgPool) {
     .unwrap();
     a_matrix(&pool, &bob, "Bobs").await;
 
+    // When
     let all = bm::list(&pool, &alice, None, None).await.unwrap();
+    // Then
     assert_eq!(all.len(), 2, "Bob's matrix must not appear");
     assert_eq!(all[0].name, "A", "ordered by name");
 
@@ -254,6 +266,7 @@ async fn list_filters_by_space_and_layer_and_is_scoped(pool: sqlx::PgPool) {
 /// `order` is assigned `max + 1` inside the INSERT, so three adds land 0,1,2.
 #[sqlx::test]
 async fn dimensions_and_rules_get_sequential_order(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let m = a_matrix(&pool, &uid, "M").await;
 
@@ -268,7 +281,9 @@ async fn dimensions_and_rules_get_sequential_order(pool: sqlx::PgPool) {
             .unwrap();
     }
 
+    // When
     let dims = bm::dimensions_for_matrix(&pool, &m, &uid).await.unwrap();
+    // Then
     assert_eq!(dims.iter().map(|d| d.order).collect::<Vec<_>>(), [0, 1, 2]);
     assert_eq!(
         dims.iter().map(|d| d.name.as_str()).collect::<Vec<_>>(),
@@ -281,6 +296,7 @@ async fn dimensions_and_rules_get_sequential_order(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn dimension_and_rule_writes_are_scoped_to_the_matrix_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let m = a_matrix(&pool, &alice, "M").await;
@@ -289,12 +305,14 @@ async fn dimension_and_rule_writes_are_scoped_to_the_matrix_owner(pool: sqlx::Pg
         .unwrap()
         .unwrap()
         .id;
+    // When
     let r = bm::create_rule(&pool, &m, &alice, rule("R"))
         .await
         .unwrap()
         .unwrap()
         .id;
 
+    // Then
     assert!(
         bm::create_dimension(&pool, &m, &bob, "Bobs")
             .await
@@ -355,6 +373,7 @@ async fn dimension_and_rule_writes_are_scoped_to_the_matrix_owner(pool: sqlx::Pg
 /// UPDATE is constrained to the matrix, and foreign ids are skipped.
 #[sqlx::test]
 async fn reorder_ignores_ids_from_another_matrix(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let mine = a_matrix(&pool, &uid, "Mine").await;
     let other = a_matrix(&pool, &uid, "Other").await;
@@ -376,10 +395,12 @@ async fn reorder_ignores_ids_from_another_matrix(pool: sqlx::PgPool) {
         .id;
     let foreign_order_before = bm::rules_for_matrix(&pool, &other, &uid).await.unwrap()[0].order;
 
+    // When
     // Reverse mine, and try to sneak the other matrix's rule into the list.
     let affected = bm::reorder_rules(&pool, &mine, &uid, &[b.clone(), foreign.clone(), a.clone()])
         .await
         .unwrap();
+    // Then
     assert_eq!(
         affected, 2,
         "only the two rules that belong to this matrix are renumbered"
@@ -398,6 +419,7 @@ async fn reorder_ignores_ids_from_another_matrix(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn reorder_is_scoped_to_the_matrix_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let m = a_matrix(&pool, &alice, "M").await;
@@ -406,12 +428,14 @@ async fn reorder_is_scoped_to_the_matrix_owner(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap()
         .id;
+    // When
     let b = bm::create_rule(&pool, &m, &alice, rule("b"))
         .await
         .unwrap()
         .unwrap()
         .id;
 
+    // Then
     assert_eq!(
         bm::reorder_rules(&pool, &m, &bob, &[b.clone(), a.clone()])
             .await
@@ -431,6 +455,7 @@ async fn reorder_is_scoped_to_the_matrix_owner(pool: sqlx::PgPool) {
 /// block of SQL, so a mistake in one is a mistake in all six.
 #[sqlx::test]
 async fn rule_patch_is_tri_state_for_every_nullable_field(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let m = a_matrix(&pool, &uid, "M").await;
     let r = bm::create_rule(
@@ -465,7 +490,9 @@ async fn rule_patch_is_tri_state_for_every_nullable_field(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // When
     let kept = bm::find_rule(&pool, &r, &m, &uid).await.unwrap().unwrap();
+    // Then
     assert_eq!(kept.title, "T2");
     for (label, got) in [
         ("description", &kept.description),
@@ -515,6 +542,7 @@ async fn rule_patch_is_tri_state_for_every_nullable_field(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn rule_versions_are_newest_first_and_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let m = a_matrix(&pool, &alice, "M").await;
@@ -545,7 +573,9 @@ async fn rule_versions_are_newest_first_and_scoped(pool: sqlx::PgPool) {
         .expect("the owner can snapshot their own rule");
     }
 
+    // When
     let versions = bm::rule_versions(&pool, &r, &m, &alice).await.unwrap();
+    // Then
     assert_eq!(versions.len(), 2);
     assert_eq!(versions[0].snapshot.0.title, "v2", "newest first");
     assert_eq!(versions[0].changed_by.as_deref(), Some(alice.as_str()));
@@ -585,10 +615,13 @@ async fn rule_versions_are_newest_first_and_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn cell_reads_and_writes_are_scoped_to_the_matrix_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
+    // When
     let (m, r, d, c) = a_cell(&pool, &alice, "M").await;
 
+    // Then
     assert!(
         bm::find_cell_by_id(&pool, &c, &m, &alice)
             .await
@@ -665,10 +698,13 @@ async fn cell_reads_and_writes_are_scoped_to_the_matrix_owner(pool: sqlx::PgPool
 /// `matrix_id` hop is what closes it.
 #[sqlx::test]
 async fn a_cell_id_from_another_matrix_is_rejected(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let (mine, _, _, _) = a_cell(&pool, &uid, "Mine").await;
+    // When
     let (_, _, _, other_cell) = a_cell(&pool, &uid, "Other").await;
 
+    // Then
     assert!(
         bm::find_cell_by_id(&pool, &other_cell, &mine, &uid)
             .await
@@ -689,6 +725,7 @@ async fn a_cell_id_from_another_matrix_is_rejected(pool: sqlx::PgPool) {
 /// dimension from elsewhere is rejected.
 #[sqlx::test]
 async fn create_cell_requires_rule_and_dimension_in_the_same_matrix(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let mine = a_matrix(&pool, &uid, "Mine").await;
     let other = a_matrix(&pool, &uid, "Other").await;
@@ -697,12 +734,14 @@ async fn create_cell_requires_rule_and_dimension_in_the_same_matrix(pool: sqlx::
         .unwrap()
         .unwrap()
         .id;
+    // When
     let foreign_dim = bm::create_dimension(&pool, &other, &uid, "D")
         .await
         .unwrap()
         .unwrap()
         .id;
 
+    // Then
     assert!(
         bm::create_cell(&pool, &my_rule, &foreign_dim, &mine, &uid)
             .await
@@ -716,10 +755,12 @@ async fn create_cell_requires_rule_and_dimension_in_the_same_matrix(pool: sqlx::
 /// cell's — Node checked neither end.
 #[sqlx::test]
 async fn linking_a_requirement_checks_both_ends(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let (m, _, _, c) = a_cell(&pool, &alice, "M").await;
 
+    // When
     let bobs_req = requirement::create(
         &pool,
         &bob,
@@ -739,6 +780,7 @@ async fn linking_a_requirement_checks_both_ends(pool: sqlx::PgPool) {
     .unwrap()
     .id;
 
+    // Then
     assert!(
         bm::link_cell_requirement(&pool, &c, &bobs_req, &m, &alice)
             .await
@@ -791,6 +833,7 @@ async fn linking_a_requirement_checks_both_ends(pool: sqlx::PgPool) {
 /// that crossed two of them would produce a visibly wrong total.
 #[sqlx::test]
 async fn matrix_view_counts_requirements_code_and_tests_per_cell(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let (m, _, _, c) = a_cell(&pool, &uid, "M").await;
 
@@ -836,7 +879,9 @@ async fn matrix_view_counts_requirements_code_and_tests_per_cell(pool: sqlx::PgP
         .unwrap()
         .unwrap();
 
+    // When
     let cells = bm::matrix_view_cells(&pool, &m, &uid).await.unwrap();
+    // Then
     assert_eq!(cells.len(), 1);
     let cell = &cells[0];
     assert_eq!(cell.requirement_count, 1);
@@ -863,10 +908,13 @@ async fn matrix_view_counts_requirements_code_and_tests_per_cell(pool: sqlx::PgP
 
 #[sqlx::test]
 async fn matrix_view_is_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
+    // When
     let (m, _, _, _) = a_cell(&pool, &alice, "M").await;
 
+    // Then
     assert_eq!(
         bm::matrix_view_cells(&pool, &m, &alice)
             .await
@@ -886,6 +934,7 @@ async fn matrix_view_is_scoped(pool: sqlx::PgPool) {
 /// ref-as-suffix-of-path, and a `path::symbol` link.
 #[sqlx::test]
 async fn behaviors_for_path_matches_exact_suffix_and_symbol_refs(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let (m, _, _, c) = a_cell(&pool, &alice, "M").await;
@@ -910,8 +959,10 @@ async fn behaviors_for_path_matches_exact_suffix_and_symbol_refs(pool: sqlx::PgP
     let mut hits = bm::behaviors_for_path(&pool, &alice, "src/deep/thing.rs")
         .await
         .unwrap();
+    // When
     hits.sort_by(|a, b| a.code_ref.cmp(&b.code_ref));
     let refs: Vec<&str> = hits.iter().map(|h| h.code_ref.as_str()).collect();
+    // Then
     assert_eq!(
         refs,
         ["src/deep/thing.rs", "src/deep/thing.rs::run", "thing.rs"],

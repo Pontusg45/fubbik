@@ -1,4 +1,5 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, type Locator } from "@playwright/test";
+import { reportStep } from "../reporting";
 
 import { Button, Checkbox, Radio, Surface, named, type Name } from "./core";
 
@@ -20,7 +21,7 @@ export class Overlay {
         this.trigger = new Button(trigger);
     }
     async open(): Promise<Surface> {
-        return test.step("Open overlay", async () => {
+        return reportStep("Open overlay", this.trigger.root, async () => {
             if (this.resolved && (await this.resolved.isVisible())) return new Surface(this.resolved);
             // Capture only frame/relationship metadata before modal aria-hiding makes role lookup unavailable.
             const handle = await this.trigger.root.elementHandle();

@@ -14,6 +14,7 @@ const expected: SchemaTable[] = [
 
 describe("compareSchemas", () => {
     it("reports missing tables and column mismatches together", () => {
+        // Given
         const actual: SchemaTable[] = [
             {
                 name: "plan",
@@ -26,6 +27,8 @@ describe("compareSchemas", () => {
             { name: "sql_only", columns: [] }
         ];
 
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(compareSchemas(expected, actual)).toEqual([
             "plan.description type: Drizzle=text SQL=jsonb",
             "plan.id nullability: Drizzle=not null SQL=nullable",
@@ -35,10 +38,16 @@ describe("compareSchemas", () => {
     });
 
     it("accepts equivalent schemas regardless of declaration order", () => {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(compareSchemas(expected, [{ name: "plan", columns: [...expected[0]!.columns].reverse() }])).toEqual([]);
     });
 
     it("allows only explicitly documented migration differences", () => {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(() =>
             assertSchemaParity(
                 ["legacy exists only in Drizzle"],

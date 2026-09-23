@@ -47,7 +47,10 @@ mod tests {
 
     #[test]
     fn row_not_found_converts_to_404_not_500() {
+        // Given the inline inputs and test fixtures.
+        // When
         let err: AppError = sqlx::Error::RowNotFound.into();
+        // Then
         assert!(matches!(err, AppError::NotFound(_)));
     }
 }

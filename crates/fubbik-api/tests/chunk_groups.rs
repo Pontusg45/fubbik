@@ -77,13 +77,16 @@ async fn create_scoped_chunk(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn groups_and_pages_chunks_by_type(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let owner = app.signup("groups@example.com", "Owner").await;
     create_chunk(&app, &owner, "First note", "note", &[]).await;
     let second = create_chunk(&app, &owner, "Second note", "note", &[]).await;
     create_chunk(&app, &owner, "Guide", "guide", &[]).await;
 
+    // When
     let response = app.get(&owner, "/api/chunks/grouped?groupBy=type").await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     let body = TestApp::json(response).await;
     assert_eq!(body["totalGroups"], 2);
@@ -116,6 +119,7 @@ async fn groups_and_pages_chunks_by_type(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn compound_tag_groups_are_scoped_and_split_by_origin(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let owner = app.signup("compound-groups@example.com", "Owner").await;
     let outsider = app
@@ -125,12 +129,14 @@ async fn compound_tag_groups_are_scoped_and_split_by_origin(pool: sqlx::PgPool) 
     create_ai_chunk(&app, &owner, "Agent", "guide", &["alpha"]).await;
     create_chunk(&app, &outsider, "Hidden", "note", &["alpha"]).await;
 
+    // When
     let response = app
         .get(
             &owner,
             "/api/chunks/grouped?groupBy=tagtype&subGroupBy=origin",
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     let body = TestApp::json(response).await;
     let groups = body["groups"].as_array().unwrap();
@@ -155,18 +161,21 @@ async fn compound_tag_groups_are_scoped_and_split_by_origin(pool: sqlx::PgPool) 
 async fn space_grouping_includes_global_chunks_and_global_filter_excludes_scoped_chunks(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = TestApp::new(pool);
     let owner = app.signup("space-groups@example.com", "Owner").await;
     let space_id = create_space(&app, &owner, "Platform").await;
     create_scoped_chunk(&app, &owner, "Scoped", &space_id).await;
     create_chunk(&app, &owner, "Global", "note", &[]).await;
 
+    // When
     let response = app
         .get(
             &owner,
             &format!("/api/chunks/grouped?groupBy=type&spaceId={space_id}"),
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(TestApp::json(response).await["groups"][0]["count"], 2);
 
@@ -179,17 +188,20 @@ async fn space_grouping_includes_global_chunks_and_global_filter_excludes_scoped
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn all_tag_mode_requires_every_requested_tag(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let owner = app.signup("tag-filter-groups@example.com", "Owner").await;
     create_chunk(&app, &owner, "Both", "note", &["alpha", "beta"]).await;
     create_chunk(&app, &owner, "One", "note", &["alpha"]).await;
 
+    // When
     let response = app
         .get(
             &owner,
             "/api/chunks/grouped?groupBy=type&tags=alpha,beta&tagMode=all",
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(TestApp::json(response).await["groups"][0]["count"], 1);
 }

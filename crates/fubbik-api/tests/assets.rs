@@ -4,6 +4,7 @@ use tower::ServiceExt;
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unknown_api_path_is_404_not_spa_fallback(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(fubbik_api::AppState {
         pool,
         implicit_dev_session: true,
@@ -13,6 +14,7 @@ async fn unknown_api_path_is_404_not_spa_fallback(pool: sqlx::PgPool) {
         background: Default::default(),
     });
 
+    // When
     let res = app
         .oneshot(
             Request::get("/api/does-not-exist")
@@ -22,6 +24,7 @@ async fn unknown_api_path_is_404_not_spa_fallback(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // Then
     // The SPA fallback must never swallow unmatched API routes — doing so
     // returns HTML to a fetch() caller and produces confusing parse errors.
     assert_eq!(res.status(), StatusCode::NOT_FOUND);

@@ -85,6 +85,9 @@ mod tests {
 
     #[test]
     fn ssh_shorthand_form() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_git_url("git@github.com:acme/fubbik.git"),
             "github.com/acme/fubbik"
@@ -93,6 +96,9 @@ mod tests {
 
     #[test]
     fn ssh_scheme_form() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_git_url("ssh://git@github.com/acme/fubbik.git"),
             "github.com/acme/fubbik"
@@ -101,6 +107,9 @@ mod tests {
 
     #[test]
     fn https_form() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_git_url("https://github.com/acme/fubbik.git"),
             "github.com/acme/fubbik"
@@ -109,6 +118,9 @@ mod tests {
 
     #[test]
     fn https_with_userinfo() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_git_url("https://user@github.com/acme/fubbik.git"),
             "github.com/acme/fubbik"
@@ -117,6 +129,9 @@ mod tests {
 
     #[test]
     fn trailing_slashes_are_stripped() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_git_url("https://github.com/acme/fubbik///"),
             "github.com/acme/fubbik"
@@ -125,6 +140,9 @@ mod tests {
 
     #[test]
     fn already_normalized_is_unchanged() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_git_url("github.com/acme/fubbik"),
             "github.com/acme/fubbik"
@@ -133,6 +151,9 @@ mod tests {
 
     #[test]
     fn trims_surrounding_whitespace() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_git_url("  git@github.com:acme/fubbik.git  "),
             "github.com/acme/fubbik"

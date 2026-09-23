@@ -60,6 +60,9 @@ mod tests {
     /// '\n\n']` — four tokens, not five.
     #[test]
     fn counts_match_o200k_base_for_known_strings() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(estimate_tokens(""), 0);
         assert_eq!(estimate_tokens("hello"), 1);
         assert_eq!(estimate_tokens("hello world"), 2);
@@ -71,8 +74,11 @@ mod tests {
     /// the real encoder has been replaced by a length-based approximation.
     #[test]
     fn is_not_a_character_count() {
+        // Given
         let text = "The quick brown fox jumps over the lazy dog";
+        // When
         let tokens = estimate_tokens(text);
+        // Then
         assert!(tokens > 0);
         assert!(
             tokens < text.chars().count(),
@@ -84,6 +90,9 @@ mod tests {
 
     #[test]
     fn handles_non_ascii_without_panicking() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(estimate_tokens("héllo wörld — ünïcode") > 0);
         assert!(estimate_tokens("日本語のテキスト") > 0);
     }
@@ -102,7 +111,10 @@ mod tests {
     /// as the single special token it would be under Node's default.
     #[test]
     fn special_token_text_is_counted_as_ordinary_text() {
+        // Given the inline inputs and test fixtures.
+        // When
         let n = estimate_tokens("foo <|endoftext|> bar");
+        // Then
         assert_eq!(
             n, 9,
             "expected the literal to split into 9 ordinary BPE tokens, got {n}"

@@ -18,10 +18,13 @@ afterEach(() => {
 
 describe("scanDocs", () => {
     it("finds root README.md", () => {
+        // Given
         writeFileSync(join(tempDir, "README.md"), "# My Project\n\nThis is the readme.");
 
+        // When
         const chunks = scanDocs(tempDir);
 
+        // Then
         expect(chunks).toHaveLength(1);
         const chunk = chunks[0]!;
         expect(chunk.title).toBe("Project README");
@@ -31,12 +34,15 @@ describe("scanDocs", () => {
     });
 
     it("finds markdown files in docs/ directory", () => {
+        // Given
         const docsDir = join(tempDir, "docs");
         mkdirSync(docsDir);
         writeFileSync(join(docsDir, "guide.md"), "# Guide\n\nSome guide content.");
 
+        // When
         const chunks = scanDocs(tempDir);
 
+        // Then
         expect(chunks).toHaveLength(1);
         const chunk = chunks[0]!;
         expect(chunk.title).toBe("Guide");
@@ -46,17 +52,23 @@ describe("scanDocs", () => {
     });
 
     it("returns empty array for project with no docs", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const chunks = scanDocs(tempDir);
+        // Then
         expect(chunks).toHaveLength(0);
     });
 
     it("ignores node_modules", () => {
+        // Given
         const nodeModulesDir = join(tempDir, "node_modules", "some-pkg");
         mkdirSync(nodeModulesDir, { recursive: true });
         writeFileSync(join(nodeModulesDir, "README.md"), "# Package README\n\nContent.");
 
+        // When
         const chunks = scanDocs(tempDir);
 
+        // Then
         expect(chunks).toHaveLength(0);
     });
 });

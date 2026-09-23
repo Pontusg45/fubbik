@@ -79,6 +79,7 @@ async fn write_entry(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn agent_can_join_claim_complete_and_reconnect(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "workflow@coord.test").await;
     let (plan_id, task_id) = create_plan(app.clone(), &cookie).await;
@@ -96,6 +97,7 @@ async fn agent_can_join_claim_complete_and_reconnect(pool: sqlx::PgPool) {
     .await;
     let run_id = joined["id"].as_str().unwrap();
 
+    // When
     let claim = send(
         app.clone(),
         &cookie,
@@ -104,6 +106,7 @@ async fn agent_can_join_claim_complete_and_reconnect(pool: sqlx::PgPool) {
         Some(serde_json::json!({ "runId": run_id, "action": "claim" })),
     )
     .await;
+    // Then
     assert_eq!(claim.status(), StatusCode::OK);
 
     let transition = send(
@@ -152,6 +155,7 @@ async fn agent_can_join_claim_complete_and_reconnect(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn board_is_user_scoped_and_claim_conflicts_are_409(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let alice = signup(app.clone(), "alice@coord.test").await;
     let bob = signup(app.clone(), "bob@coord.test").await;
@@ -179,6 +183,7 @@ async fn board_is_user_scoped_and_claim_conflicts_are_409(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let first = send(
         app.clone(),
         &alice,
@@ -187,6 +192,7 @@ async fn board_is_user_scoped_and_claim_conflicts_are_409(pool: sqlx::PgPool) {
         Some(serde_json::json!({ "runId": a["id"], "action": "claim" })),
     )
     .await;
+    // Then
     assert_eq!(first.status(), StatusCode::OK);
     let second = send(
         app.clone(),
@@ -211,6 +217,7 @@ async fn board_is_user_scoped_and_claim_conflicts_are_409(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn direct_messages_pagination_and_acknowledgement_work_over_http(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "messages@coord.test").await;
     let (plan_id, _) = create_plan(app.clone(), &cookie).await;
@@ -256,6 +263,7 @@ async fn direct_messages_pagination_and_acknowledgement_work_over_http(pool: sql
     )
     .await;
 
+    // When
     let root_board = json(
         send(
             app.clone(),
@@ -270,6 +278,7 @@ async fn direct_messages_pagination_and_acknowledgement_work_over_http(pool: sql
         .await,
     )
     .await;
+    // Then
     assert_eq!(root_board["entries"].as_array().unwrap().len(), 3);
 
     let first_page = json(
@@ -338,6 +347,7 @@ async fn direct_messages_pagination_and_acknowledgement_work_over_http(pool: sql
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn journal_writes_are_idempotent_and_reject_mutation_key_reuse(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "idempotency@coord.test").await;
     let (plan_id, task_id) = create_plan(app.clone(), &cookie).await;
@@ -352,7 +362,9 @@ async fn journal_writes_are_idempotent_and_reject_mutation_key_reuse(pool: sqlx:
     });
 
     let first = write_entry(app.clone(), &cookie, &plan_id, body.clone()).await;
+    // When
     let retry = write_entry(app.clone(), &cookie, &plan_id, body).await;
+    // Then
     assert_eq!(retry["id"], first["id"]);
     assert_eq!(retry["sequence"], first["sequence"]);
 
@@ -388,6 +400,7 @@ async fn journal_writes_are_idempotent_and_reject_mutation_key_reuse(pool: sqlx:
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn only_the_claim_holder_can_renew_release_or_transition_a_task(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "leases@coord.test").await;
     let (plan_id, task_id) = create_plan(app.clone(), &cookie).await;
@@ -395,6 +408,7 @@ async fn only_the_claim_holder_can_renew_release_or_transition_a_task(pool: sqlx
     let other = join_run(app.clone(), &cookie, &plan_id, "other").await;
     let claim_path = format!("/api/plans/{plan_id}/board/tasks/{task_id}/claim");
 
+    // When
     let invalid_lease = send(
         app.clone(),
         &cookie,
@@ -403,6 +417,7 @@ async fn only_the_claim_holder_can_renew_release_or_transition_a_task(pool: sqlx
         Some(serde_json::json!({ "runId": holder["id"], "action": "claim", "leaseSeconds": 10 })),
     )
     .await;
+    // Then
     assert_eq!(invalid_lease.status(), StatusCode::BAD_REQUEST);
 
     let claimed = send(
@@ -470,12 +485,14 @@ async fn only_the_claim_holder_can_renew_release_or_transition_a_task(pool: sqlx
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn reconnect_identity_and_parent_links_are_plan_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "identity@coord.test").await;
     let (first_plan, _) = create_plan(app.clone(), &cookie).await;
     let (second_plan, _) = create_plan(app.clone(), &cookie).await;
     let root = join_run(app.clone(), &cookie, &first_plan, "root").await;
 
+    // When
     let child = send(
         app.clone(),
         &cookie,
@@ -488,6 +505,7 @@ async fn reconnect_identity_and_parent_links_are_plan_scoped(pool: sqlx::PgPool)
         })),
     )
     .await;
+    // Then
     assert_eq!(child.status(), StatusCode::OK);
     assert_eq!(json(child).await["parentRunId"], root["id"]);
 
@@ -533,9 +551,11 @@ async fn reconnect_identity_and_parent_links_are_plan_scoped(pool: sqlx::PgPool)
 async fn completing_a_claimed_prerequisite_unblocks_dependents_and_retries_safely(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = TestApp::new(pool);
     let cookie = signup(app.clone(), "dependencies@coord.test").await;
     let (plan_id, prerequisite_id) = create_plan(app.clone(), &cookie).await;
+    // When
     let dependent_response = send(
         app.clone(),
         &cookie,
@@ -544,6 +564,7 @@ async fn completing_a_claimed_prerequisite_unblocks_dependents_and_retries_safel
         Some(serde_json::json!({ "title": "Implement" })),
     )
     .await;
+    // Then
     assert_eq!(dependent_response.status(), StatusCode::OK);
     let dependent = json(dependent_response).await;
     let dependent_id = dependent["id"].as_str().unwrap();
@@ -637,6 +658,7 @@ async fn completing_a_claimed_prerequisite_unblocks_dependents_and_retries_safel
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn every_coordination_endpoint_requires_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let requests = [
         ("GET", "/api/plans/plan/board", None),
@@ -677,6 +699,7 @@ async fn every_coordination_endpoint_requires_a_session(pool: sqlx::PgPool) {
     ];
 
     for (method, path, body) in requests {
+        // When
         let response = app
             .request(
                 None,
@@ -685,6 +708,7 @@ async fn every_coordination_endpoint_requires_a_session(pool: sqlx::PgPool) {
                 body,
             )
             .await;
+        // Then
         assert_eq!(
             response.status(),
             StatusCode::UNAUTHORIZED,

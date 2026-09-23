@@ -120,12 +120,15 @@ async fn delete_connection(app: axum::Router, cookie: &str, id: &str) -> axum::r
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_then_delete_round_trip(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-conn@b.test", "Alice").await;
     let source = create_chunk(app.clone(), &cookie, "Source").await;
     let target = create_chunk(app.clone(), &cookie, "Target").await;
 
+    // When
     let res = create_connection(app.clone(), &cookie, &source, &target, "related_to").await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::CREATED,
@@ -156,6 +159,7 @@ async fn create_then_delete_round_trip(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn origin_ai_defaults_review_status_to_draft(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-origin@b.test", "Alice").await;
     let source = create_chunk(app.clone(), &cookie, "Source").await;
@@ -167,6 +171,7 @@ async fn origin_ai_defaults_review_status_to_draft(pool: sqlx::PgPool) {
         "relation": "related_to",
         "origin": "ai",
     });
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -178,6 +183,7 @@ async fn origin_ai_defaults_review_status_to_draft(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let created = json_body(res).await;
     assert_eq!(created["origin"], "ai");
@@ -186,22 +192,27 @@ async fn origin_ai_defaults_review_status_to_draft(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cannot_connect_to_self(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-self@b.test", "Alice").await;
     let chunk = create_chunk(app.clone(), &cookie, "Solo").await;
 
+    // When
     let res = create_connection(app.clone(), &cookie, &chunk, &chunk, "related_to").await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn foreign_source_is_rejected(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-fsrc@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-fsrc@b.test", "Bob").await;
     let bobs_chunk = create_chunk(app.clone(), &bob_cookie, "Bob's").await;
     let alices_chunk = create_chunk(app.clone(), &alice_cookie, "Alice's").await;
 
+    // When
     // Alice tries to connect FROM Bob's chunk to her own.
     let res = create_connection(
         app.clone(),
@@ -211,6 +222,7 @@ async fn foreign_source_is_rejected(pool: sqlx::PgPool) {
         "related_to",
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -220,12 +232,14 @@ async fn foreign_source_is_rejected(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn foreign_target_is_rejected(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-ftgt@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-ftgt@b.test", "Bob").await;
     let alices_chunk = create_chunk(app.clone(), &alice_cookie, "Alice's").await;
     let bobs_chunk = create_chunk(app.clone(), &bob_cookie, "Bob's").await;
 
+    // When
     // Alice tries to connect her own chunk TO Bob's.
     let res = create_connection(
         app.clone(),
@@ -235,6 +249,7 @@ async fn foreign_target_is_rejected(pool: sqlx::PgPool) {
         "related_to",
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -244,12 +259,15 @@ async fn foreign_target_is_rejected(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn duplicate_connection_is_conflict_not_500(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-dupe@b.test", "Alice").await;
     let source = create_chunk(app.clone(), &cookie, "Source").await;
     let target = create_chunk(app.clone(), &cookie, "Target").await;
 
+    // When
     let res = create_connection(app.clone(), &cookie, &source, &target, "related_to").await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
 
     let res = create_connection(app.clone(), &cookie, &source, &target, "related_to").await;
@@ -262,11 +280,13 @@ async fn duplicate_connection_is_conflict_not_500(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn invalid_relation_fails_cleanly(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-badrel@b.test", "Alice").await;
     let source = create_chunk(app.clone(), &cookie, "Source").await;
     let target = create_chunk(app.clone(), &cookie, "Target").await;
 
+    // When
     let res = create_connection(
         app.clone(),
         &cookie,
@@ -275,6 +295,7 @@ async fn invalid_relation_fails_cleanly(pool: sqlx::PgPool) {
         "not_a_real_relation",
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::BAD_REQUEST,
@@ -288,6 +309,7 @@ async fn invalid_relation_fails_cleanly(pool: sqlx::PgPool) {
 /// endpoint gets 404 and the connection survives untouched.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_delete_is_404_and_leaves_connection_present(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-del@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-del@b.test", "Bob").await;
@@ -300,8 +322,10 @@ async fn cross_user_delete_is_404_and_leaves_connection_present(pool: sqlx::PgPo
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     // Bob owns neither endpoint.
     let res = delete_connection(app.clone(), &bob_cookie, &id).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,

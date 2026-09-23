@@ -47,6 +47,7 @@ fn title_change(title: &str) -> ProposedChanges {
 
 #[sqlx::test]
 async fn create_then_find_by_id_round_trips_changes_and_reason(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -58,6 +59,7 @@ async fn create_then_find_by_id_round_trips_changes_and_reason(pool: sqlx::PgPoo
         rationale: Some("clarity".into()),
         ..Default::default()
     };
+    // When
     let created = proposal::create(
         &pool,
         NewProposal {
@@ -70,6 +72,7 @@ async fn create_then_find_by_id_round_trips_changes_and_reason(pool: sqlx::PgPoo
     .await
     .unwrap();
 
+    // Then
     assert_eq!(created.chunk_id, chunk_id);
     assert_eq!(created.status, "pending");
     assert_eq!(created.proposed_by, alice);
@@ -92,12 +95,14 @@ async fn create_then_find_by_id_round_trips_changes_and_reason(pool: sqlx::PgPoo
 /// `AppError::NotFound`.
 #[sqlx::test]
 async fn create_against_unknown_chunk_fails_the_foreign_key(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
         .id;
     let changes = title_change("Renamed");
 
+    // When
     let err = proposal::create(
         &pool,
         NewProposal {
@@ -110,6 +115,7 @@ async fn create_against_unknown_chunk_fails_the_foreign_key(pool: sqlx::PgPool) 
     .await
     .unwrap_err();
 
+    // Then
     assert!(
         matches!(err, fubbik_core::error::AppError::Database(_)),
         "an unknown chunk_id must fail the FK, not be pre-checked away as NotFound: {err:?}"
@@ -122,6 +128,7 @@ async fn create_against_unknown_chunk_fails_the_foreign_key(pool: sqlx::PgPool) 
 /// AND the `chunk c INNER JOIN` fields.
 #[sqlx::test]
 async fn list_filters_by_status_and_chunk_id_and_joins_chunk_fields(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -155,6 +162,7 @@ async fn list_filters_by_status_and_chunk_id_and_joins_chunk_fields(pool: sqlx::
         .await
         .unwrap();
 
+    // When
     // Filtered by status=pending: only p1.
     let pending = proposal::list(
         &pool,
@@ -168,6 +176,7 @@ async fn list_filters_by_status_and_chunk_id_and_joins_chunk_fields(pool: sqlx::
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(pending.len(), 1);
     assert_eq!(pending[0].id, p1.id);
     assert_eq!(pending[0].chunk_title, "Chunk A");
@@ -211,6 +220,7 @@ async fn list_filters_by_status_and_chunk_id_and_joins_chunk_fields(pool: sqlx::
 /// `fubbik_db::repo::proposal::list_for_chunk`'s doc comment.
 #[sqlx::test]
 async fn list_for_chunk_status_is_unvalidated_free_text(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -228,9 +238,11 @@ async fn list_for_chunk_status_is_unvalidated_free_text(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let all = proposal::list_for_chunk(&pool, &chunk_id, None)
         .await
         .unwrap();
+    // Then
     assert_eq!(all.len(), 1);
 
     let nonsense = proposal::list_for_chunk(&pool, &chunk_id, Some("totally-bogus"))
@@ -247,6 +259,7 @@ async fn list_for_chunk_status_is_unvalidated_free_text(pool: sqlx::PgPool) {
 /// (`packages/db/src/repository/chunk-proposal.ts:80-100`).
 #[sqlx::test]
 async fn update_status_sets_review_fields(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -268,11 +281,13 @@ async fn update_status_sets_review_fields(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let updated = proposal::update_status(&pool, &created.id, "rejected", &bob, Some("no thanks"))
         .await
         .unwrap()
         .expect("existing proposal must be found and updated");
 
+    // Then
     assert_eq!(updated.status, "rejected");
     assert_eq!(updated.reviewed_by.as_deref(), Some(bob.as_str()));
     assert_eq!(updated.review_note.as_deref(), Some("no thanks"));
@@ -281,13 +296,16 @@ async fn update_status_sets_review_fields(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_status_on_unknown_id_returns_none(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
         .id;
+    // When
     let result = proposal::update_status(&pool, "no-such-proposal", "approved", &alice, None)
         .await
         .unwrap();
+    // Then
     assert!(result.is_none());
 }
 
@@ -296,10 +314,12 @@ async fn update_status_on_unknown_id_returns_none(pool: sqlx::PgPool) {
 /// multiple users' chunks and ignores non-pending ones.
 #[sqlx::test]
 async fn count_pending_counts_across_users_and_ignores_other_statuses(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
         .id;
+    // When
     let bob = user::create(&pool, "c@d.test", "Bob", None)
         .await
         .unwrap()
@@ -307,6 +327,7 @@ async fn count_pending_counts_across_users_and_ignores_other_statuses(pool: sqlx
     let alice_chunk = seed_chunk(&pool, &alice, "Alice's chunk").await;
     let bob_chunk = seed_chunk(&pool, &bob, "Bob's chunk").await;
 
+    // Then
     assert_eq!(proposal::count_pending(&pool).await.unwrap(), 0);
 
     proposal::create(
@@ -347,6 +368,7 @@ async fn count_pending_counts_across_users_and_ignores_other_statuses(pool: sqlx
 /// determine the global queue's order.
 #[sqlx::test]
 async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -376,11 +398,13 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let expected_id_order: Vec<String> =
         sqlx::query_scalar!("SELECT id FROM chunk_proposal ORDER BY id ASC")
             .fetch_all(&pool)
             .await
             .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 20);
 
     let first = proposal::list(
@@ -440,6 +464,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
 /// none — `list_proposals` forwards `user_id` straight into this query).
 #[sqlx::test]
 async fn list_is_scoped_to_the_caller(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -474,6 +499,7 @@ async fn list_is_scoped_to_the_caller(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let alice_view = proposal::list(
         &pool,
         &alice,
@@ -486,6 +512,7 @@ async fn list_is_scoped_to_the_caller(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(alice_view.len(), 1, "Alice must not see Bob's proposal");
     assert_eq!(alice_view[0].chunk_id, alice_chunk);
 
@@ -510,6 +537,7 @@ async fn list_is_scoped_to_the_caller(pool: sqlx::PgPool) {
 /// the still-unscoped `proposal::find_by_id`, tested above.
 #[sqlx::test]
 async fn find_by_id_for_owner_is_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -531,9 +559,11 @@ async fn find_by_id_for_owner_is_scoped(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let bob_view = proposal::find_by_id_for_owner(&pool, &bob, &created.id)
         .await
         .unwrap();
+    // Then
     assert!(
         bob_view.is_none(),
         "Bob must not be able to read Alice's proposal by id"
@@ -554,6 +584,7 @@ async fn find_by_id_for_owner_is_scoped(pool: sqlx::PgPool) {
 /// and leave Alice's proposal `pending`; Alice's own call must succeed.
 #[sqlx::test]
 async fn reject_is_scoped_through_the_parent_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -575,9 +606,11 @@ async fn reject_is_scoped_through_the_parent_chunk(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let bob_attempt = proposal::reject(&pool, &created.id, &bob, None)
         .await
         .unwrap();
+    // Then
     assert!(
         bob_attempt.is_none(),
         "a reviewer who doesn't own the chunk must not be able to reject its proposal"
@@ -610,6 +643,7 @@ async fn reject_is_scoped_through_the_parent_chunk(pool: sqlx::PgPool) {
 /// eight land on the chunk after approve.
 #[sqlx::test]
 async fn approve_applies_every_proposed_changes_field(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -641,6 +675,7 @@ async fn approve_applies_every_proposed_changes_field(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let approved = proposal::approve(
         &pool,
         &created.id,
@@ -661,6 +696,7 @@ async fn approve_applies_every_proposed_changes_field(pool: sqlx::PgPool) {
     .await
     .unwrap()
     .expect("the chunk's owner approving must succeed");
+    // Then
     assert_eq!(approved.status, "approved");
 
     let chunk = chunk::find_by_id(&pool, &alice, &chunk_id)
@@ -708,6 +744,7 @@ async fn approve_applies_every_proposed_changes_field(pool: sqlx::PgPool) {
 /// this test.
 #[sqlx::test]
 async fn approve_is_atomic_a_mid_transaction_failure_rolls_back_everything(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -741,6 +778,7 @@ async fn approve_is_atomic_a_mid_transaction_failure_rolls_back_everything(pool:
     .await
     .unwrap();
 
+    // When
     let result = proposal::approve(
         &pool,
         &created.id,
@@ -759,6 +797,7 @@ async fn approve_is_atomic_a_mid_transaction_failure_rolls_back_everything(pool:
         None,
     )
     .await;
+    // Then
     assert!(
         result.is_err(),
         "the injected failure on chunk_proposal's UPDATE must surface as an error"

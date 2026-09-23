@@ -118,41 +118,53 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 describe("createFeature", () => {
     it("auto-assigns priority when not provided (calls getMaxPriority)", async () => {
+        // Given
         vi.mocked(getMaxPriority).mockReturnValue(Effect.succeed(3));
         vi.mocked(createFeatureRepo).mockReturnValue(Effect.succeed(mockFeature({ priority: 4 })));
 
+        // When
         const result = await Effect.runPromise(createFeature(userId, { name: "My Feature" }));
 
+        // Then
         expect(getMaxPriority).toHaveBeenCalledWith(userId);
         expect(createFeatureRepo).toHaveBeenCalledWith(expect.objectContaining({ priority: 4, name: "My Feature", userId }));
         expect(result).toMatchObject({ priority: 4 });
     });
 
     it("uses provided priority and skips getMaxPriority", async () => {
+        // Given
         vi.mocked(createFeatureRepo).mockReturnValue(Effect.succeed(mockFeature({ priority: 10 })));
 
+        // When
         await Effect.runPromise(createFeature(userId, { name: "My Feature", priority: 10 }));
 
+        // Then
         expect(getMaxPriority).not.toHaveBeenCalled();
         expect(createFeatureRepo).toHaveBeenCalledWith(expect.objectContaining({ priority: 10 }));
     });
 
     it("sets space associations when spaceIds provided", async () => {
+        // Given
         vi.mocked(getMaxPriority).mockReturnValue(Effect.succeed(0));
         vi.mocked(createFeatureRepo).mockReturnValue(Effect.succeed(mockFeature()));
         vi.mocked(setFeatureSpaces).mockReturnValue(Effect.succeed(undefined as any));
 
+        // When
         await Effect.runPromise(createFeature(userId, { name: "My Feature", spaceIds: ["cb-1", "cb-2"] }));
 
+        // Then
         expect(setFeatureSpaces).toHaveBeenCalledWith(expect.any(String), ["cb-1", "cb-2"]);
     });
 
     it("does not call setFeatureSpaces when spaceIds is empty", async () => {
+        // Given
         vi.mocked(getMaxPriority).mockReturnValue(Effect.succeed(0));
         vi.mocked(createFeatureRepo).mockReturnValue(Effect.succeed(mockFeature()));
 
+        // When
         await Effect.runPromise(createFeature(userId, { name: "My Feature", spaceIds: [] }));
 
+        // Then
         expect(setFeatureSpaces).not.toHaveBeenCalled();
     });
 });
@@ -162,36 +174,48 @@ describe("createFeature", () => {
 // ---------------------------------------------------------------------------
 describe("setActiveFeatures", () => {
     it("empty array clears active features without validation", async () => {
+        // Given
         vi.mocked(setActiveFeaturesRepo).mockReturnValue(Effect.succeed(undefined as any));
 
+        // When
         await Effect.runPromise(setActiveFeatures(userId, []));
 
+        // Then
         expect(listFeaturesRepo).not.toHaveBeenCalled();
         expect(setActiveFeaturesRepo).toHaveBeenCalledWith(userId, []);
     });
 
     it("rejects feature IDs that don't belong to the user (ValidationError)", async () => {
+        // Given
         vi.mocked(listFeaturesRepo).mockReturnValue(Effect.succeed([mockFeature({ id: "feature-owned" })]) as any);
 
+        // When the operation is evaluated by the assertion.
+        // Then
         await expect(Effect.runPromise(setActiveFeatures(userId, ["feature-owned", "feature-foreign"]))).rejects.toThrow();
 
         expect(setActiveFeaturesRepo).not.toHaveBeenCalled();
     });
 
     it("accepts valid owned feature IDs", async () => {
+        // Given
         vi.mocked(listFeaturesRepo).mockReturnValue(
             Effect.succeed([mockFeature({ id: "feature-a" }), mockFeature({ id: "feature-b" })]) as any
         );
         vi.mocked(setActiveFeaturesRepo).mockReturnValue(Effect.succeed(undefined as any));
 
+        // When
         await Effect.runPromise(setActiveFeatures(userId, ["feature-a", "feature-b"]));
 
+        // Then
         expect(setActiveFeaturesRepo).toHaveBeenCalledWith(userId, ["feature-a", "feature-b"]);
     });
 
     it("rejects when all provided IDs are foreign", async () => {
+        // Given
         vi.mocked(listFeaturesRepo).mockReturnValue(Effect.succeed([]));
 
+        // When the operation is evaluated by the assertion.
+        // Then
         await expect(Effect.runPromise(setActiveFeatures(userId, ["foreign-1"]))).rejects.toThrow();
     });
 });
@@ -201,12 +225,16 @@ describe("setActiveFeatures", () => {
 // ---------------------------------------------------------------------------
 describe("mergeFeature", () => {
     it("fails with ValidationError if feature is already merged", async () => {
+        // Given
         vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature({ status: "merged" })));
 
+        // When the operation is evaluated by the assertion.
+        // Then
         await expect(Effect.runPromise(mergeFeature(featureId, userId))).rejects.toThrow();
     });
 
     it("merges empty feature (no deltas) — just sets status to merged", async () => {
+        // Given
         vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature({ status: "active" })));
         vi.mocked(getDeltasForFeatureRepo).mockReturnValue(Effect.succeed([]));
         vi.mocked(mergeFeatureDeltas).mockReturnValue(Effect.succeed([] as any));
@@ -215,13 +243,16 @@ describe("mergeFeature", () => {
         const { updateFeature: updateFeatureRepo } = await import("@fubbik/db/repository");
         vi.mocked(updateFeatureRepo).mockReturnValue(Effect.succeed(mockFeature({ status: "merged" })));
 
+        // When
         await Effect.runPromise(mergeFeature(featureId, userId));
 
+        // Then
         expect(mergeFeatureDeltas).not.toHaveBeenCalled();
         expect(updateFeatureRepo).toHaveBeenCalledWith(featureId, userId, { status: "merged" });
     });
 
     it("merges feature with deltas — calls mergeFeatureDeltas", async () => {
+        // Given
         vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature({ status: "active" })));
         vi.mocked(getDeltasForFeatureRepo).mockReturnValue(
             Effect.succeed([
@@ -231,8 +262,10 @@ describe("mergeFeature", () => {
         );
         vi.mocked(mergeFeatureDeltas).mockReturnValue(Effect.succeed(["chunk-1", "chunk-2"]));
 
+        // When
         await Effect.runPromise(mergeFeature(featureId, userId));
 
+        // Then
         expect(mergeFeatureDeltas).toHaveBeenCalledWith(featureId, userId, [
             { chunkId: "chunk-1", delta: { title: "New Title" } },
             { chunkId: "chunk-2", delta: { content: "New Content" } }
@@ -240,8 +273,11 @@ describe("mergeFeature", () => {
     });
 
     it("fails with NotFoundError if feature does not exist", async () => {
+        // Given
         vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(null as any));
 
+        // When the operation is evaluated by the assertion.
+        // Then
         await expect(Effect.runPromise(mergeFeature(featureId, userId))).rejects.toThrow();
     });
 });
@@ -251,16 +287,22 @@ describe("mergeFeature", () => {
 // ---------------------------------------------------------------------------
 describe("deleteFeatureService", () => {
     it("fails with NotFoundError if feature doesn't exist", async () => {
+        // Given
         vi.mocked(deleteFeatureRepo).mockReturnValue(Effect.succeed(null as any));
 
+        // When the operation is evaluated by the assertion.
+        // Then
         await expect(Effect.runPromise(deleteFeatureService(featureId, userId))).rejects.toThrow();
     });
 
     it("succeeds when feature exists", async () => {
+        // Given
         vi.mocked(deleteFeatureRepo).mockReturnValue(Effect.succeed(mockFeature() as any));
 
+        // When
         const result = await Effect.runPromise(deleteFeatureService(featureId, userId));
 
+        // Then
         expect(deleteFeatureRepo).toHaveBeenCalledWith(featureId, userId);
         expect(result).toMatchObject({ id: featureId });
     });
@@ -272,27 +314,37 @@ describe("deleteFeatureService", () => {
 describe("upsertDelta", () => {
     describe("validateDelta (via upsertDelta)", () => {
         it("rejects empty delta", async () => {
+            // Given
             vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
             vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
 
+            // When the operation is evaluated by the assertion.
+            // Then
             await expect(Effect.runPromise(upsertDelta(chunkId, featureId, userId, {}))).rejects.toThrow();
         });
 
         it("rejects invalid fields (tags)", async () => {
+            // Given
             vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
             vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
 
+            // When the operation is evaluated by the assertion.
+            // Then
             await expect(Effect.runPromise(upsertDelta(chunkId, featureId, userId, { tags: ["foo"] } as any))).rejects.toThrow();
         });
 
         it("rejects invalid fields (embedding)", async () => {
+            // Given
             vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
             vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
 
+            // When the operation is evaluated by the assertion.
+            // Then
             await expect(Effect.runPromise(upsertDelta(chunkId, featureId, userId, { embedding: "vec" } as any))).rejects.toThrow();
         });
 
         it("accepts all valid allowed fields", async () => {
+            // Given
             vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
             vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
             vi.mocked(upsertDeltaRepo).mockReturnValue(Effect.succeed({ id: "delta-1" } as any));
@@ -307,25 +359,33 @@ describe("upsertDelta", () => {
                 summary: "Sum"
             };
 
+            // When
             await Effect.runPromise(upsertDelta(chunkId, featureId, userId, validDelta));
 
+            // Then
             expect(upsertDeltaRepo).toHaveBeenCalledWith(expect.objectContaining({ chunkId, featureId, delta: validDelta }));
         });
 
         it("accepts a subset of valid fields", async () => {
+            // Given
             vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
             vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
             vi.mocked(upsertDeltaRepo).mockReturnValue(Effect.succeed({ id: "delta-1" } as any));
 
+            // When
             await Effect.runPromise(upsertDelta(chunkId, featureId, userId, { title: "Just a title" }));
 
+            // Then
             expect(upsertDeltaRepo).toHaveBeenCalledWith(expect.objectContaining({ delta: { title: "Just a title" } }));
         });
     });
 
     it("fails with NotFoundError if feature doesn't exist", async () => {
+        // Given
         vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(null as any));
 
+        // When the operation is evaluated by the assertion.
+        // Then
         await expect(Effect.runPromise(upsertDelta(chunkId, featureId, userId, { title: "X" }))).rejects.toThrow();
 
         expect(getChunkById).not.toHaveBeenCalled();
@@ -333,21 +393,27 @@ describe("upsertDelta", () => {
     });
 
     it("fails with NotFoundError if chunk doesn't exist", async () => {
+        // Given
         vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
         vi.mocked(getChunkById).mockReturnValue(Effect.succeed(null as any));
 
+        // When the operation is evaluated by the assertion.
+        // Then
         await expect(Effect.runPromise(upsertDelta(chunkId, featureId, userId, { title: "X" }))).rejects.toThrow();
 
         expect(upsertDeltaRepo).not.toHaveBeenCalled();
     });
 
     it("succeeds when both feature and chunk exist and delta is valid", async () => {
+        // Given
         vi.mocked(getFeatureById).mockReturnValue(Effect.succeed(mockFeature()));
         vi.mocked(getChunkById).mockReturnValue(Effect.succeed(mockChunk()) as any);
         vi.mocked(upsertDeltaRepo).mockReturnValue(Effect.succeed({ id: "delta-1" } as any));
 
+        // When
         const result = await Effect.runPromise(upsertDelta(chunkId, featureId, userId, { content: "Updated" }));
 
+        // Then
         expect(upsertDeltaRepo).toHaveBeenCalledTimes(1);
         expect(result).toMatchObject({ id: "delta-1" });
     });

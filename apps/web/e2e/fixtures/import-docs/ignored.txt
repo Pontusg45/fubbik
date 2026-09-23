@@ -1,0 +1,1 @@
+Non-Markdown files should not appear in the import preview.

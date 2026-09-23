@@ -49,15 +49,21 @@ mod tests {
 
     #[test]
     fn accepts_a_cookie_signed_by_better_auth() {
+        // Given the inline inputs and test fixtures.
+        // When
         let cookie = format!("{TOKEN}.{SIG}");
+        // Then
         assert_eq!(verify(&cookie, SECRET).as_deref(), Some(TOKEN));
     }
 
     #[test]
     fn rejects_a_tampered_signature() {
+        // Given the inline inputs and test fixtures.
+        // When
         // Flip one character. A verifier tested only on the happy path proves nothing:
         // the previous slice spent three attempts learning that lesson.
         let bad = format!("{TOKEN}.XyhRBnvMlgxzHjKlrRsQqjXwtDV99cAmrGDWxOTAkzU=");
+        // Then
         assert_eq!(
             verify(&bad, SECRET),
             None,
@@ -67,7 +73,10 @@ mod tests {
 
     #[test]
     fn rejects_a_tampered_token() {
+        // Given the inline inputs and test fixtures.
+        // When
         let bad = format!("BbCdEfGhIjKlMnOpQrStUvWxYz012345.{SIG}");
+        // Then
         assert_eq!(
             verify(&bad, SECRET),
             None,
@@ -77,23 +86,32 @@ mod tests {
 
     #[test]
     fn rejects_a_cookie_with_no_signature() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(verify(TOKEN, SECRET), None);
     }
 
     #[test]
     fn accepts_a_cookie_whose_signature_contains_reserved_base64url_characters() {
+        // Given the inline inputs and test fixtures.
+        // When
         // Proves STANDARD (not URL_SAFE) is actually load-bearing: SIG contains neither
         // `+` nor `/`, so it can't distinguish the two engines. This fixture can.
         let cookie = format!("{TOKEN2}.{SIG2}");
+        // Then
         assert_eq!(verify(&cookie, SECRET).as_deref(), Some(TOKEN2));
     }
 
     #[test]
     fn splits_on_the_last_dot_not_the_first() {
+        // Given the inline inputs and test fixtures.
+        // When
         // better-call uses lastIndexOf (context.mjs:44). Tokens are alphanumeric today, so
         // this is unobservable in production — which is exactly why it needs a test: a
         // first-dot split would work until the token alphabet ever changed.
         let cookie = format!("a.b.{SIG}");
+        // Then
         // The signature will not match "a.b", but the SPLIT must still yield "a.b".
         assert_eq!(verify(&cookie, SECRET), None);
         assert_eq!(split_signed(&cookie), Some(("a.b", SIG)));

@@ -5,6 +5,7 @@ import { splitMarkdown } from "./split-markdown";
 
 describe("renderDocument round-trip format", () => {
     it("round-trips frontmatter through split → render → split", () => {
+        // Given
         const md = [
             "---",
             "title: Auth Guide",
@@ -23,7 +24,9 @@ describe("renderDocument round-trip format", () => {
             "Edit config.json."
         ].join("\n");
 
+        // When
         const first = splitMarkdown(md, "docs/auth.md");
+        // Then
         expect(first.title).toBe("Auth Guide");
         expect(first.sections).toHaveLength(2);
 
@@ -45,6 +48,7 @@ describe("renderDocument round-trip format", () => {
     });
 
     it("round-trips decision context", () => {
+        // Given
         const md = [
             "---",
             "title: Decisions",
@@ -63,7 +67,9 @@ describe("renderDocument round-trip format", () => {
             "> **Consequences:** Need refresh tokens."
         ].join("\n");
 
+        // When
         const first = splitMarkdown(md, "test.md");
+        // Then
         expect(first.sections[0]!.rationale).toBe("Stateless auth.");
 
         const rendered = renderMarkdown({

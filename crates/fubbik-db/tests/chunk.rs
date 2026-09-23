@@ -25,8 +25,10 @@ async fn a_chunk(pool: &sqlx::PgPool, uid: &str, title: &str) -> chunk::Chunk {
 
 #[sqlx::test]
 async fn create_read_update_delete(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool).await;
 
+    // When
     let created = chunk::create(
         &pool,
         &uid,
@@ -40,6 +42,7 @@ async fn create_read_update_delete(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(created.title, "Naming conventions");
 
     let patch = chunk::ChunkPatch {
@@ -67,12 +70,14 @@ async fn create_read_update_delete(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn other_users_chunks_are_invisible(pool: sqlx::PgPool) {
+    // Given
     let owner = seed_user(&pool).await;
     let intruder = user::create(&pool, "c@d.test", "Bob", None)
         .await
         .unwrap()
         .id;
 
+    // When
     let c = chunk::create(
         &pool,
         &owner,
@@ -87,6 +92,7 @@ async fn other_users_chunks_are_invisible(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert!(
         chunk::find_by_id(&pool, &intruder, &c.id)
             .await
@@ -104,6 +110,7 @@ async fn other_users_chunks_are_invisible(pool: sqlx::PgPool) {
 /// query outright).
 #[sqlx::test]
 async fn search_titles_never_returns_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob-search-titles@b.test", "Bob", None)
         .await
@@ -112,9 +119,11 @@ async fn search_titles_never_returns_another_users_chunk(pool: sqlx::PgPool) {
 
     a_chunk(&pool, &alice, "The Great Authentication Flow").await;
 
+    // When
     let bobs_view = chunk::search_titles(&pool, &bob, "Authentication", 10)
         .await
         .unwrap();
+    // Then
     assert_eq!(
         bobs_view.len(),
         0,
@@ -134,6 +143,7 @@ async fn search_titles_never_returns_another_users_chunk(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool).await;
 
     for (title, ty) in [("Alpha", "note"), ("Beta", "document"), ("Gamma", "note")] {
@@ -152,6 +162,7 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
         .unwrap();
     }
 
+    // When
     let notes = chunk::list(
         &pool,
         &uid,
@@ -162,6 +173,7 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(notes.len(), 2);
 
     let searched = chunk::list(
@@ -210,6 +222,7 @@ async fn list_filters_sorts_and_paginates(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn search_is_case_insensitive_and_covers_content(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool).await;
     chunk::create(
         &pool,
@@ -225,6 +238,7 @@ async fn search_is_case_insensitive_and_covers_content(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let found = chunk::list(
         &pool,
         &uid,
@@ -235,6 +249,7 @@ async fn search_is_case_insensitive_and_covers_content(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(found.len(), 1);
 }
 
@@ -254,6 +269,7 @@ async fn search_is_case_insensitive_and_covers_content(pool: sqlx::PgPool) {
 /// nothing.
 #[sqlx::test]
 async fn list_breaks_ties_by_id_for_every_sort(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool).await;
 
     for _ in 0..5 {
@@ -283,6 +299,7 @@ async fn list_breaks_ties_by_id_for_every_sort(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     // Ground truth: ask Postgres directly for ascending id order, rather
     // than sorting the ids in Rust — Rust's default string ordering could
     // in principle disagree with the database's collation, and this test
@@ -294,6 +311,7 @@ async fn list_breaks_ties_by_id_for_every_sort(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 5);
 
     for sort in [
@@ -327,6 +345,7 @@ async fn list_breaks_ties_by_id_for_every_sort(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn tags_filter_is_or_semantics(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool).await;
     let tagged_a = a_chunk(&pool, &uid, "Tagged A").await;
     let tagged_b = a_chunk(&pool, &uid, "Tagged B").await;
@@ -355,7 +374,9 @@ async fn tags_filter_is_or_semantics(pool: sqlx::PgPool) {
     let mut ids: Vec<&str> = found.iter().map(|c| c.id.as_str()).collect();
     ids.sort();
     let mut expected = vec![tagged_a.id.as_str(), tagged_b.id.as_str()];
+    // When
     expected.sort();
+    // Then
     assert_eq!(
         ids, expected,
         "tags filter must be OR semantics: either tag name matches"
@@ -371,6 +392,7 @@ async fn tags_filter_is_or_semantics(pool: sqlx::PgPool) {
 /// guessing tag names they also happen to use.
 #[sqlx::test]
 async fn tags_filter_cannot_leak_another_users_chunk_via_a_same_named_tag(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "alice@b.test", "Alice", None)
         .await
         .unwrap()
@@ -391,6 +413,7 @@ async fn tags_filter_cannot_leak_another_users_chunk_via_a_same_named_tag(pool: 
         .await
         .unwrap();
 
+    // When
     let found = chunk::list(
         &pool,
         &alice,
@@ -402,6 +425,7 @@ async fn tags_filter_cannot_leak_another_users_chunk_via_a_same_named_tag(pool: 
     .await
     .unwrap();
     let ids: Vec<&str> = found.iter().map(|c| c.id.as_str()).collect();
+    // Then
     assert_eq!(
         ids,
         vec![alices_chunk.id.as_str()],
@@ -411,6 +435,7 @@ async fn tags_filter_cannot_leak_another_users_chunk_via_a_same_named_tag(pool: 
 
 #[sqlx::test]
 async fn after_filters_by_updated_at_cutoff(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool).await;
     let recent = a_chunk(&pool, &uid, "Recent").await;
     let stale = a_chunk(&pool, &uid, "Stale").await;
@@ -423,6 +448,7 @@ async fn after_filters_by_updated_at_cutoff(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let found = chunk::list(
         &pool,
         &uid,
@@ -433,6 +459,7 @@ async fn after_filters_by_updated_at_cutoff(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(
         found.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(),
         vec![recent.id.as_str()],
@@ -442,6 +469,7 @@ async fn after_filters_by_updated_at_cutoff(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn enrichment_filters_missing_and_complete(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool).await;
     let bare = a_chunk(&pool, &uid, "Bare").await;
     let enriched = a_chunk(&pool, &uid, "Enriched").await;
@@ -457,6 +485,7 @@ async fn enrichment_filters_missing_and_complete(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let missing = chunk::list(
         &pool,
         &uid,
@@ -467,6 +496,7 @@ async fn enrichment_filters_missing_and_complete(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(
         missing.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(),
         vec![bare.id.as_str()]
@@ -492,6 +522,7 @@ async fn enrichment_filters_missing_and_complete(pool: sqlx::PgPool) {
 async fn min_connections_filters_by_total_connection_count_and_zero_means_unfiltered(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let uid = seed_user(&pool).await;
     let hub = a_chunk(&pool, &uid, "Hub").await;
     let leaf1 = a_chunk(&pool, &uid, "Leaf1").await;
@@ -524,6 +555,7 @@ async fn min_connections_filters_by_total_connection_count_and_zero_means_unfilt
     .unwrap();
     let _ = isolated;
 
+    // When
     let at_least_two = chunk::list(
         &pool,
         &uid,
@@ -534,6 +566,7 @@ async fn min_connections_filters_by_total_connection_count_and_zero_means_unfilt
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(
         at_least_two
             .iter()
@@ -572,6 +605,7 @@ async fn min_connections_filters_by_total_connection_count_and_zero_means_unfilt
 async fn space_id_filters_to_the_space_or_global_chunks_and_excludes_other_spaces(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let uid = seed_user(&pool).await;
     let space_a = space::create(
         &pool,
@@ -623,7 +657,9 @@ async fn space_id_filters_to_the_space_or_global_chunks_and_excludes_other_space
     let mut ids: Vec<&str> = scoped.iter().map(|c| c.id.as_str()).collect();
     ids.sort();
     let mut expected = vec![in_a.id.as_str(), global.id.as_str()];
+    // When
     expected.sort();
+    // Then
     assert_eq!(
         ids, expected,
         "must include the space's own chunk and global chunks, exclude space-b's"
@@ -651,6 +687,7 @@ async fn space_id_filters_to_the_space_or_global_chunks_and_excludes_other_space
 /// `[bob's chunk]`, failing this test.
 #[sqlx::test]
 async fn list_with_ids_filter_cannot_leak_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob-ids-filter@b.test", "Bob", None)
         .await
@@ -658,6 +695,7 @@ async fn list_with_ids_filter_cannot_leak_another_users_chunk(pool: sqlx::PgPool
         .id;
     let bobs_chunk = a_chunk(&pool, &bob, "Bob's secret").await;
 
+    // When
     let found = chunk::list(
         &pool,
         &alice,
@@ -668,6 +706,7 @@ async fn list_with_ids_filter_cannot_leak_another_users_chunk(pool: sqlx::PgPool
     )
     .await
     .unwrap();
+    // Then
     assert!(
         found.is_empty(),
         "an id resolved by an ownership-blind source (AGE) must still be excluded by the mandatory user_id predicate"
@@ -685,6 +724,7 @@ async fn list_with_ids_filter_cannot_leak_another_users_chunk(pool: sqlx::PgPool
 /// `visible` into `[alice's chunk, bob's chunk]`, failing this test.
 #[sqlx::test]
 async fn filter_visible_ids_drops_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob-visible-ids@b.test", "Bob", None)
         .await
@@ -693,6 +733,7 @@ async fn filter_visible_ids_drops_another_users_chunk(pool: sqlx::PgPool) {
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
     let bobs_chunk = a_chunk(&pool, &bob, "Bob's").await;
 
+    // When
     let visible = chunk::filter_visible_ids(
         &pool,
         &alice,
@@ -700,6 +741,7 @@ async fn filter_visible_ids_drops_another_users_chunk(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(
         visible,
         vec![alices_chunk.id.clone()],
@@ -713,10 +755,12 @@ async fn filter_visible_ids_drops_another_users_chunk(pool: sqlx::PgPool) {
 /// is the only thing that proves the two halves agree on the format.
 #[sqlx::test]
 async fn update_chunk_enrichment_round_trips_a_vector(pool: sqlx::PgPool) {
+    // Given
     let user = seed_user(&pool).await;
     let seeded = a_chunk(&pool, &user, "T").await;
 
     let vector: Vec<f32> = (0..768).map(|i| i as f32 / 1000.0).collect();
+    // When
     let updated = chunk::update_chunk_enrichment(
         &pool,
         &seeded.id,
@@ -731,6 +775,7 @@ async fn update_chunk_enrichment_round_trips_a_vector(pool: sqlx::PgPool) {
     .unwrap()
     .expect("chunk exists");
 
+    // Then
     assert_eq!(updated.summary.as_deref(), Some("a summary"));
     assert_eq!(
         updated.aliases.0,
@@ -753,6 +798,7 @@ async fn update_chunk_enrichment_round_trips_a_vector(pool: sqlx::PgPool) {
 /// be nulled out here and the corresponding assertion would fail.
 #[sqlx::test]
 async fn update_chunk_enrichment_leaves_absent_fields_untouched(pool: sqlx::PgPool) {
+    // Given
     let user = seed_user(&pool).await;
     let seeded = a_chunk(&pool, &user, "T").await;
 
@@ -774,6 +820,7 @@ async fn update_chunk_enrichment_leaves_absent_fields_untouched(pool: sqlx::PgPo
         .embedding_updated_at
         .expect("writing an embedding must stamp embedding_updated_at");
 
+    // When
     // Sets only `summary`; `aliases`, `not_about` and `embedding` are all
     // `None` here, so this call alone pins those three COALESCEs.
     let after_summary_only = chunk::update_chunk_enrichment(
@@ -790,6 +837,7 @@ async fn update_chunk_enrichment_leaves_absent_fields_untouched(pool: sqlx::PgPo
     .unwrap()
     .expect("chunk exists");
 
+    // Then
     assert_eq!(
         after_summary_only.summary.as_deref(),
         Some("updated summary")
@@ -868,6 +916,8 @@ async fn update_chunk_enrichment_leaves_absent_fields_untouched(pool: sqlx::PgPo
 
 #[sqlx::test]
 async fn update_chunk_enrichment_returns_none_for_a_missing_chunk(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When
     let got = chunk::update_chunk_enrichment(
         &pool,
         "does-not-exist",
@@ -880,5 +930,6 @@ async fn update_chunk_enrichment_returns_none_for_a_missing_chunk(pool: sqlx::Pg
     )
     .await
     .unwrap();
+    // Then
     assert!(got.is_none());
 }

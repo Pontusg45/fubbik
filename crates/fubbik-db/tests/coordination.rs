@@ -47,6 +47,7 @@ async fn run(
 
 #[sqlx::test]
 async fn run_reconnect_and_journal_sync_are_durable(pool: sqlx::PgPool) {
+    // Given
     let (user_id, plan_id, task_id) = board(&pool, "reconnect").await;
     let root = coordination::join_run(
         &pool,
@@ -62,6 +63,7 @@ async fn run_reconnect_and_journal_sync_are_durable(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // When
     let reconnected = coordination::join_run(
         &pool,
         &user_id,
@@ -76,6 +78,7 @@ async fn run_reconnect_and_journal_sync_are_durable(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(root.id, reconnected.id);
 
     let entry = coordination::append_entry(
@@ -107,10 +110,12 @@ async fn run_reconnect_and_journal_sync_are_durable(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn direct_entries_are_private_to_author_and_recipient(pool: sqlx::PgPool) {
+    // Given
     let (user_id, plan_id, _) = board(&pool, "private").await;
     let root = run(&pool, &user_id, &plan_id, "root").await;
     let child = run(&pool, &user_id, &plan_id, "child").await;
     let sibling = run(&pool, &user_id, &plan_id, "sibling").await;
+    // When
     coordination::append_entry(
         &pool,
         &user_id,
@@ -129,6 +134,7 @@ async fn direct_entries_are_private_to_author_and_recipient(pool: sqlx::PgPool) 
     .await
     .unwrap();
 
+    // Then
     assert_eq!(
         coordination::list_entries_after(&pool, &user_id, &plan_id, Some(&root.id), 0, 10)
             .await
@@ -160,6 +166,7 @@ async fn direct_entries_are_private_to_author_and_recipient(pool: sqlx::PgPool) 
 
 #[sqlx::test]
 async fn concurrent_entry_retry_creates_one_row(pool: sqlx::PgPool) {
+    // Given
     let (user_id, plan_id, _) = board(&pool, "entry-retry").await;
     let root = run(&pool, &user_id, &plan_id, "root").await;
     let input = || coordination::NewEntry {
@@ -177,7 +184,9 @@ async fn concurrent_entry_retry_creates_one_row(pool: sqlx::PgPool) {
         coordination::append_entry(&pool, &user_id, &plan_id, input())
     );
     let a = a.unwrap();
+    // When
     let b = b.unwrap();
+    // Then
     assert_eq!(a.id, b.id);
     assert_eq!(
         coordination::list_entries_after(&pool, &user_id, &plan_id, None, 0, 10)
@@ -190,6 +199,7 @@ async fn concurrent_entry_retry_creates_one_row(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn one_agent_wins_a_concurrent_claim_and_expiry_allows_takeover(pool: sqlx::PgPool) {
+    // Given
     let (user_id, plan_id, task_id) = board(&pool, "claim").await;
     let a = run(&pool, &user_id, &plan_id, "a").await;
     let b = run(&pool, &user_id, &plan_id, "b").await;
@@ -203,10 +213,12 @@ async fn one_agent_wins_a_concurrent_claim_and_expiry_allows_takeover(pool: sqlx
     let tb = task_id.clone();
     let ra = a.id.clone();
     let rb = b.id.clone();
+    // When
     let (left, right) = tokio::join!(
         coordination::claim_task(&pa, &ua, &pla, &ta, &ra, 600),
         coordination::claim_task(&pb, &ub, &plb, &tb, &rb, 600)
     );
+    // Then
     assert_ne!(
         left.is_ok(),
         right.is_ok(),
@@ -232,8 +244,11 @@ async fn one_agent_wins_a_concurrent_claim_and_expiry_allows_takeover(pool: sqlx
 
 #[sqlx::test]
 async fn renew_never_acquires_an_absent_or_expired_claim(pool: sqlx::PgPool) {
+    // Given
     let (user_id, plan_id, task_id) = board(&pool, "renew").await;
+    // When
     let worker = run(&pool, &user_id, &plan_id, "worker").await;
+    // Then
     assert!(
         coordination::renew_task(&pool, &user_id, &plan_id, &task_id, &worker.id, 600)
             .await
@@ -261,12 +276,14 @@ async fn renew_never_acquires_an_absent_or_expired_claim(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn terminal_transition_is_atomic_releases_claim_and_is_retry_safe(pool: sqlx::PgPool) {
+    // Given
     let (user_id, plan_id, task_id) = board(&pool, "transition").await;
     let child = run(&pool, &user_id, &plan_id, "worker").await;
     coordination::claim_task(&pool, &user_id, &plan_id, &task_id, &child.id, 600)
         .await
         .unwrap();
 
+    // When
     let first = coordination::transition_claimed_task(
         &pool,
         &user_id,
@@ -279,6 +296,7 @@ async fn terminal_transition_is_atomic_releases_claim_and_is_retry_safe(pool: sq
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(first.0.status, "done");
     assert!(
         coordination::list_claims(&pool, &user_id, &plan_id)
@@ -311,6 +329,7 @@ async fn terminal_transition_is_atomic_releases_claim_and_is_retry_safe(pool: sq
 
 #[sqlx::test]
 async fn concurrent_transition_retry_returns_the_same_result(pool: sqlx::PgPool) {
+    // Given
     let (user_id, plan_id, task_id) = board(&pool, "transition-race").await;
     let child = run(&pool, &user_id, &plan_id, "worker").await;
     coordination::claim_task(&pool, &user_id, &plan_id, &task_id, &child.id, 600)
@@ -331,8 +350,10 @@ async fn concurrent_transition_retry_returns_the_same_result(pool: sqlx::PgPool)
     };
     let (first, retry) = tokio::join!(transition(), transition());
     let first = first.unwrap();
+    // When
     let retry = retry.unwrap();
 
+    // Then
     assert_eq!(first.1.id, retry.1.id);
     assert_eq!(first.0.status, "done");
     assert_eq!(retry.0.status, "done");
@@ -347,6 +368,7 @@ async fn concurrent_transition_retry_returns_the_same_result(pool: sqlx::PgPool)
 
 #[sqlx::test]
 async fn acknowledgements_only_move_forward(pool: sqlx::PgPool) {
+    // Given
     let (user_id, plan_id, _) = board(&pool, "ack").await;
     let root = run(&pool, &user_id, &plan_id, "root").await;
     let entry = coordination::append_entry(
@@ -369,15 +391,18 @@ async fn acknowledgements_only_move_forward(pool: sqlx::PgPool) {
     let advanced = coordination::ack_run(&pool, &user_id, &plan_id, &root.id, entry.sequence, None)
         .await
         .unwrap();
+    // When
     let regressed = coordination::ack_run(&pool, &user_id, &plan_id, &root.id, 0, None)
         .await
         .unwrap();
+    // Then
     assert_eq!(advanced.last_ack_sequence, entry.sequence);
     assert_eq!(regressed.last_ack_sequence, entry.sequence);
 }
 
 #[sqlx::test]
 async fn deleting_a_plan_cascades_a_threaded_board(pool: sqlx::PgPool) {
+    // Given
     let (user_id, plan_id, task_id) = board(&pool, "cascade").await;
     let root = run(&pool, &user_id, &plan_id, "root").await;
     let child = coordination::join_run(
@@ -411,6 +436,7 @@ async fn deleting_a_plan_cascades_a_threaded_board(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // When
     coordination::append_entry(
         &pool,
         &user_id,
@@ -429,6 +455,7 @@ async fn deleting_a_plan_cascades_a_threaded_board(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert!(plan::delete(&pool, &user_id, &plan_id).await.unwrap());
     let rows: i64 = sqlx::query_scalar("SELECT count(*) FROM agent_run WHERE plan_id=$1")
         .bind(&plan_id)

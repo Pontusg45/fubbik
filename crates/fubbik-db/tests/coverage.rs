@@ -130,6 +130,7 @@ fn titles_with_counts(rows: &[coverage::ChunkCoverageRow]) -> Vec<(String, i64)>
 /// present *with* a zero count, not merely that the covered ones are right.
 #[sqlx::test]
 async fn counts_requirements_per_chunk_and_keeps_zero_count_chunks(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
 
     let popular = make_chunk(&pool, &alice, "Popular").await;
@@ -142,10 +143,12 @@ async fn counts_requirements_per_chunk_and_keeps_zero_count_chunks(pool: sqlx::P
     link(&pool, &r2, &popular).await;
     link(&pool, &r1, &single).await;
 
+    // When
     let rows = coverage::get_chunk_coverage(&pool, &alice, None)
         .await
         .unwrap();
 
+    // Then
     assert_eq!(
         titles_with_counts(&rows),
         vec![
@@ -162,6 +165,7 @@ async fn counts_requirements_per_chunk_and_keeps_zero_count_chunks(pool: sqlx::P
 /// that scans the whole `chunk` table by design.
 #[sqlx::test]
 async fn chunk_coverage_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let bob = make_user(&pool, "c@d.test", "Bob").await;
 
@@ -172,9 +176,11 @@ async fn chunk_coverage_is_user_scoped(pool: sqlx::PgPool) {
     let r = make_requirement(&pool, &alice, "R", "passing", None, None).await;
     link(&pool, &r, &alices).await;
 
+    // When
     let bobs_view = coverage::get_chunk_coverage(&pool, &bob, None)
         .await
         .unwrap();
+    // Then
     assert_eq!(
         titles_with_counts(&bobs_view),
         vec![("Bob chunk".to_string(), 0)],
@@ -193,19 +199,23 @@ async fn chunk_coverage_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn chunk_coverage_excludes_archived_chunks(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     make_chunk(&pool, &alice, "Live").await;
     let gone = make_chunk(&pool, &alice, "Archived").await;
     archive(&pool, &gone).await;
 
+    // When
     let rows = coverage::get_chunk_coverage(&pool, &alice, None)
         .await
         .unwrap();
+    // Then
     assert_eq!(titles_with_counts(&rows), vec![("Live".to_string(), 0)]);
 }
 
 #[sqlx::test]
 async fn chunk_coverage_filters_by_codebase_id(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let backend = make_space(&pool, &alice, "backend").await;
     let frontend = make_space(&pool, &alice, "frontend").await;
@@ -216,9 +226,11 @@ async fn chunk_coverage_filters_by_codebase_id(pool: sqlx::PgPool) {
     add_chunk_to_space(&pool, &api, &backend).await;
     add_chunk_to_space(&pool, &ui, &frontend).await;
 
+    // When
     let rows = coverage::get_chunk_coverage(&pool, &alice, Some(&backend))
         .await
         .unwrap();
+    // Then
     assert_eq!(
         titles_with_counts(&rows),
         vec![("API notes".to_string(), 0)],
@@ -238,6 +250,7 @@ async fn chunk_coverage_filters_by_codebase_id(pool: sqlx::PgPool) {
 /// while still passing every other test in this file.
 #[sqlx::test]
 async fn chunk_coverage_space_filter_does_not_inflate_counts(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let backend = make_space(&pool, &alice, "backend").await;
     let shared = make_space(&pool, &alice, "shared").await;
@@ -251,9 +264,11 @@ async fn chunk_coverage_space_filter_does_not_inflate_counts(pool: sqlx::PgPool)
     link(&pool, &r1, &c).await;
     link(&pool, &r2, &c).await;
 
+    // When
     let rows = coverage::get_chunk_coverage(&pool, &alice, Some(&backend))
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1, "one chunk, not one row per space membership");
     assert_eq!(rows[0].requirement_count, 2);
 }
@@ -264,15 +279,18 @@ async fn chunk_coverage_space_filter_does_not_inflate_counts(pool: sqlx::PgPool)
 
 #[sqlx::test]
 async fn coverage_matrix_pairs_chunks_with_requirements(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let c = make_chunk(&pool, &alice, "Auth chunk").await;
     make_chunk(&pool, &alice, "Unlinked chunk").await;
     let r = make_requirement(&pool, &alice, "Login works", "failing", None, None).await;
     link(&pool, &r, &c).await;
 
+    // When
     let rows = coverage::get_chunk_coverage_matrix(&pool, &alice, None)
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1, "only linked pairs appear in the matrix");
     assert_eq!(rows[0].chunk_id, c);
     assert_eq!(rows[0].chunk_title, "Auth chunk");
@@ -288,6 +306,7 @@ async fn coverage_matrix_pairs_chunks_with_requirements(pool: sqlx::PgPool) {
 /// row (Alice's chunk title and requirement title) instead of empty.
 #[sqlx::test]
 async fn coverage_matrix_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let bob = make_user(&pool, "c@d.test", "Bob").await;
 
@@ -295,9 +314,11 @@ async fn coverage_matrix_is_user_scoped(pool: sqlx::PgPool) {
     let r = make_requirement(&pool, &alice, "Alice requirement", "passing", None, None).await;
     link(&pool, &r, &c).await;
 
+    // When
     let bobs_view = coverage::get_chunk_coverage_matrix(&pool, &bob, None)
         .await
         .unwrap();
+    // Then
     assert!(
         bobs_view.is_empty(),
         "another user's chunk/requirement pairs must not appear"
@@ -311,6 +332,7 @@ async fn coverage_matrix_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn coverage_matrix_excludes_archived_and_filters_by_codebase_id(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let backend = make_space(&pool, &alice, "backend").await;
 
@@ -326,9 +348,11 @@ async fn coverage_matrix_excludes_archived_and_filters_by_codebase_id(pool: sqlx
     link(&pool, &r, &elsewhere).await;
     archive(&pool, &gone).await;
 
+    // When
     let rows = coverage::get_chunk_coverage_matrix(&pool, &alice, Some(&backend))
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].chunk_title, "Live");
 }
@@ -342,6 +366,7 @@ async fn coverage_matrix_excludes_archived_and_filters_by_codebase_id(pool: sqlx
 /// requirement titles.
 #[sqlx::test]
 async fn traceability_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let bob = make_user(&pool, "c@d.test", "Bob").await;
 
@@ -356,9 +381,11 @@ async fn traceability_is_user_scoped(pool: sqlx::PgPool) {
     .await;
     make_requirement(&pool, &bob, "Bob requirement", "untested", None, None).await;
 
+    // When
     let bobs_view = coverage::get_traceability_matrix(&pool, &bob, None)
         .await
         .unwrap();
+    // Then
     assert_eq!(bobs_view.len(), 1);
     assert_eq!(bobs_view[0].title, "Bob requirement");
     assert_eq!(bobs_view[0].status, "untested");
@@ -377,6 +404,7 @@ async fn traceability_is_user_scoped(pool: sqlx::PgPool) {
 /// chunks live in that space.
 #[sqlx::test]
 async fn traceability_filters_on_requirement_space_id(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let backend = make_space(&pool, &alice, "backend").await;
     let frontend = make_space(&pool, &alice, "frontend").await;
@@ -405,9 +433,11 @@ async fn traceability_filters_on_requirement_space_id(pool: sqlx::PgPool) {
     add_chunk_to_space(&pool, &c, &backend).await;
     link(&pool, &spaceless, &c).await;
 
+    // When
     let rows = coverage::get_traceability_matrix(&pool, &alice, Some(&backend))
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].title, "Backend req");
 
@@ -423,15 +453,18 @@ async fn traceability_filters_on_requirement_space_id(pool: sqlx::PgPool) {
 /// requirement whose linked chunk is archived still shows up.
 #[sqlx::test]
 async fn traceability_has_no_archived_filter(pool: sqlx::PgPool) {
+    // Given
     let alice = make_user(&pool, "a@b.test", "Alice").await;
     let c = make_chunk(&pool, &alice, "Archived chunk").await;
     let r = make_requirement(&pool, &alice, "Still listed", "passing", None, None).await;
     link(&pool, &r, &c).await;
     archive(&pool, &c).await;
 
+    // When
     let rows = coverage::get_traceability_matrix(&pool, &alice, None)
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].title, "Still listed");
 }

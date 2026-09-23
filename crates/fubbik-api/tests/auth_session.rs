@@ -92,17 +92,20 @@ async fn post_with_cookie(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_better_auth_cookie_authenticates(pool: PgPool) {
+    // Given
     let user_id = seed_user(&pool, "a@b.test").await;
     // The session row holds the RAW token; the cookie carries token.signature.
     seed_session(&pool, &user_id, TOKEN).await;
     let app = test_app_with_secret(pool.clone(), SECRET).await;
 
+    // When
     let res = get_with_cookie(
         &app,
         "/api/chunks",
         &format!("better-auth.session_token={TOKEN}.{SIG}"),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -112,6 +115,7 @@ async fn a_better_auth_cookie_authenticates(pool: PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_better_auth_cookie_with_reserved_base64_chars_authenticates(pool: PgPool) {
+    // Given
     // Regression test for the base64 engine choice at better_auth_cookie.rs:24: unlike
     // SIG above, SIG2's signature contains `+` and `/`, which are outside the URL_SAFE
     // alphabet - only the STANDARD engine decodes it.
@@ -119,12 +123,14 @@ async fn a_better_auth_cookie_with_reserved_base64_chars_authenticates(pool: PgP
     seed_session(&pool, &user_id, TOKEN2).await;
     let app = test_app_with_secret(pool.clone(), SECRET).await;
 
+    // When
     let res = get_with_cookie(
         &app,
         "/api/chunks",
         &format!("better-auth.session_token={TOKEN2}.{SIG2}"),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -135,16 +141,19 @@ async fn a_better_auth_cookie_with_reserved_base64_chars_authenticates(pool: PgP
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_forged_signature_is_rejected_end_to_end(pool: PgPool) {
+    // Given
     let user_id = seed_user(&pool, "a@b.test").await;
     seed_session(&pool, &user_id, TOKEN).await;
     let app = test_app_with_secret(pool.clone(), SECRET).await;
 
+    // When
     let res = get_with_cookie(
         &app,
         "/api/chunks",
         &format!("better-auth.session_token={TOKEN}.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::UNAUTHORIZED,
@@ -154,16 +163,19 @@ async fn a_forged_signature_is_rejected_end_to_end(pool: PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn the_secure_prefixed_cookie_name_is_accepted(pool: PgPool) {
+    // Given
     let user_id = seed_user(&pool, "a@b.test").await;
     seed_session(&pool, &user_id, TOKEN).await;
     let app = test_app_with_secret(pool.clone(), SECRET).await;
 
+    // When
     let res = get_with_cookie(
         &app,
         "/api/chunks",
         &format!("__Secure-better-auth.session_token={TOKEN}.{SIG}"),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -181,16 +193,19 @@ async fn json_body(response: axum::response::Response) -> serde_json::Value {
 /// masking a broken lookup.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_better_auth_cookie_resolves_the_owning_user(pool: PgPool) {
+    // Given
     let user_id = seed_user(&pool, "owner@b.test").await;
     seed_session(&pool, &user_id, TOKEN).await;
     let app = test_app_with_secret(pool.clone(), SECRET).await;
 
+    // When
     let res = get_with_cookie(
         &app,
         "/api/auth/get-session",
         &format!("better-auth.session_token={TOKEN}.{SIG}"),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let json = json_body(res).await;
     assert_eq!(json["user"]["email"], "owner@b.test");
@@ -198,17 +213,20 @@ async fn a_better_auth_cookie_resolves_the_owning_user(pool: PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn sign_out_revokes_and_clears_both_better_auth_cookie_variants(pool: PgPool) {
+    // Given
     let user_id = seed_user(&pool, "signout@b.test").await;
     seed_session(&pool, &user_id, TOKEN).await;
     seed_session(&pool, &user_id, TOKEN2).await;
     let app = test_app_with_secret(pool, SECRET).await;
 
+    // When
     let ordinary = post_with_cookie(
         &app,
         "/api/auth/sign-out",
         &format!("better-auth.session_token={TOKEN}.{SIG}"),
     )
     .await;
+    // Then
     assert_eq!(ordinary.status(), StatusCode::OK);
     let ordinary_headers = ordinary.headers().get_all("set-cookie");
     assert!(ordinary_headers.iter().any(|value| {

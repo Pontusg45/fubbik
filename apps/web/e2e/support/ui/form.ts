@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop -- Form controls share focus and must be filled sequentially. */
-import { test } from "@playwright/test";
+import { reportStep } from "../reporting";
 
 import { fieldValue, validateField, writeField, type FormField } from "./core";
 
@@ -23,7 +23,7 @@ export function defineForm<const Fields extends FormFields>(fields: Fields) {
         for (const key of keys) {
             const field = fields[key];
             if (!field) throw new TypeError(`Missing form binding: ${key}`);
-            await test.step(`Fill field: ${key}`, () => field[writeField](values[key as keyof Values]));
+            await reportStep(`Fill field: ${key}`, field.root, () => field[writeField](values[key as keyof Values]));
         }
     }
     return {

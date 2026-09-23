@@ -63,6 +63,7 @@ async fn create_tag(app: &TestApp, user: &TestUser, name: &str) {
 /// `chunk_connection`).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn counts_are_scoped_per_user(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
 
     let alice = app.signup("alice-stats@b.test", "Alice").await;
@@ -87,7 +88,9 @@ async fn counts_are_scoped_per_user(pool: sqlx::PgPool) {
     create_connection(&app, &bob, &b2, &b3).await;
     create_tag(&app, &bob, "bob-tag-1").await;
 
+    // When
     let res = app.get(&alice, "/api/stats").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         TestApp::json(res).await,
@@ -106,8 +109,11 @@ async fn counts_are_scoped_per_user(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
+    // When
     let res = app.request(None, Method::GET, "/api/stats", None).await;
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
@@ -116,9 +122,12 @@ async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
 /// `tags` — no more, no less.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn response_shape_matches_fixture_field_set(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let alice = app.signup("alice-shape@b.test", "Alice").await;
+    // When
     let res = app.get(&alice, "/api/stats").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = TestApp::json(res).await;
     let obj = body.as_object().unwrap();

@@ -133,16 +133,20 @@ async fn list_activity(app: axum::Router, cookie: &str, query: &str) -> axum::re
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_requires_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
+    // When
     let res = app
         .oneshot(Request::get("/api/activity").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-list@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-list@b.test", "Bob").await;
@@ -170,7 +174,9 @@ async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = list_activity(app.clone(), &alice_cookie, "").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert!(
@@ -201,6 +207,7 @@ async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn entity_type_query_param_filters(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-et@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-et@b.test").await;
@@ -208,7 +215,9 @@ async fn entity_type_query_param_filters(pool: sqlx::PgPool) {
     seed_activity(&pool, &user_id, "chunk", "c1", None, "created", None).await;
     seed_activity(&pool, &user_id, "requirement", "r1", None, "created", None).await;
 
+    // When
     let body = json_body(list_activity(app.clone(), &cookie, "").await).await;
+    // Then
     assert_eq!(body.as_array().unwrap().len(), 2);
 
     let body = json_body(list_activity(app, &cookie, "?entityType=requirement").await).await;
@@ -223,6 +232,7 @@ async fn entity_type_query_param_filters(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn limit_and_offset_query_params_paginate(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-page@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-page@b.test").await;
@@ -231,6 +241,7 @@ async fn limit_and_offset_query_params_paginate(pool: sqlx::PgPool) {
         seed_activity(&pool, &user_id, "chunk", "c", Some(title), "created", None).await;
     }
 
+    // When
     // Determined independently of the HTTP layer, in the same order the
     // service's own `ORDER BY created_at DESC, id ASC` produces — see
     // `fubbik_db::repo::activity::list`'s doc comment. Asserting against
@@ -245,6 +256,7 @@ async fn limit_and_offset_query_params_paginate(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_order.len(), 3);
 
     let body = json_body(list_activity(app.clone(), &cookie, "?limit=1").await).await;
@@ -283,6 +295,7 @@ async fn limit_and_offset_query_params_paginate(pool: sqlx::PgPool) {
 /// a status-only assertion would pass even if something leaked.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn space_id_filter_for_another_users_space_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_id = {
         signup(app.clone(), "alice-sp@b.test", "Alice").await;
@@ -302,21 +315,27 @@ async fn space_id_filter_for_another_users_space_is_404(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = list_activity(app, &bob_cookie, &format!("?spaceId={alices_space}")).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn space_id_filter_for_nonexistent_space_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-sp-none@b.test", "Alice").await;
 
+    // When
     let res = list_activity(app, &cookie, "?spaceId=no-such-space").await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn space_id_filter_for_the_callers_own_space_narrows_results(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-sp-own@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-sp-own@b.test").await;
@@ -343,6 +362,7 @@ async fn space_id_filter_for_the_callers_own_space_narrows_results(pool: sqlx::P
     )
     .await;
 
+    // When
     let body =
         json_body(list_activity(app, &cookie, &format!("?spaceId={alices_space}")).await).await;
     let titles: Vec<&str> = body
@@ -351,6 +371,7 @@ async fn space_id_filter_for_the_callers_own_space_narrows_results(pool: sqlx::P
         .iter()
         .map(|a| a["entityTitle"].as_str().unwrap())
         .collect();
+    // Then
     assert_eq!(titles, vec!["in space"]);
 }
 
@@ -358,6 +379,7 @@ async fn space_id_filter_for_the_callers_own_space_narrows_results(pool: sqlx::P
 /// constraint in Node, see `fubbik_db::repo::activity`'s module doc.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn action_and_entity_type_round_trip_free_text(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-free@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-free@b.test").await;
@@ -374,7 +396,9 @@ async fn action_and_entity_type_round_trip_free_text(pool: sqlx::PgPool) {
     .await;
 
     let body = json_body(list_activity(app, &cookie, "").await).await;
+    // When
     let row = &body.as_array().unwrap()[0];
+    // Then
     assert_eq!(row["entityType"], "totally-made-up-entity");
     assert_eq!(row["action"], "totally-made-up-action");
 }

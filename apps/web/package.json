@@ -10,10 +10,11 @@
         "check-types": "tsgo -b && pnpm run check-types:e2e",
         "lint": "oxlint src e2e playwright.config.ts playwright.components.config.ts && pnpm run check:legacy-api",
         "test": "vitest run --passWithNoTests",
-        "test:e2e": "playwright test",
+        "test:e2e": "node scripts/run-e2e.mjs",
+        "test:reporting": "node --test scripts/step-file-reporter.test.mjs",
         "gen:api": "openapi-typescript ../../openapi.json -o src/utils/api-types.ts",
         "check-types:e2e": "tsgo --project tsconfig.e2e.json && tsgo --project e2e/components/fixture/tsconfig.json",
-        "test:components": "playwright test --config playwright.components.config.ts"
+        "test:components": "node scripts/run-e2e.mjs --config playwright.components.config.ts"
     },
     "dependencies": {
         "@base-ui/react": "^1.2.0",

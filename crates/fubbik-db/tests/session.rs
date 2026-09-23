@@ -2,6 +2,7 @@ use fubbik_db::repo::{session, user};
 
 #[sqlx::test]
 async fn session_round_trips_and_expires(pool: sqlx::PgPool) {
+    // Given
     let u = user::create(&pool, "a@b.test", "Alice", Some("hash"))
         .await
         .unwrap();
@@ -10,7 +11,9 @@ async fn session_round_trips_and_expires(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let found = session::find_valid(&pool, &token).await.unwrap();
+    // Then
     assert_eq!(found.unwrap().id, u.id);
 
     let expired = session::create(&pool, &u.id, chrono::Duration::seconds(-1))

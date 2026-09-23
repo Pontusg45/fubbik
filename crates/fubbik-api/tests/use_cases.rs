@@ -129,15 +129,18 @@ async fn use_case_requirements(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_returns_201_and_bare_row(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-create@b.test", "Alice").await;
 
+    // When
     let res = create_use_case(
         app.clone(),
         &cookie,
         serde_json::json!({ "name": "Checkout flow", "description": "buy stuff" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let body = json_body(res).await;
     assert_eq!(body["name"], "Checkout flow");
@@ -152,6 +155,7 @@ async fn create_returns_201_and_bare_row(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_returns_bare_array_with_counts_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-list@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-list@b.test", "Bob").await;
@@ -169,7 +173,9 @@ async fn list_returns_bare_array_with_counts_and_is_user_scoped(pool: sqlx::PgPo
     )
     .await;
 
+    // When
     let body = json_body(list_use_cases(app.clone(), &alice_cookie, "").await).await;
+    // Then
     assert!(
         body.is_array(),
         "GET /api/use-cases must return a bare array"
@@ -188,15 +194,18 @@ async fn list_returns_bare_array_with_counts_and_is_user_scoped(pool: sqlx::PgPo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_with_nonexistent_parent_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-noparent@b.test", "Alice").await;
 
+    // When
     let res = create_use_case(
         app.clone(),
         &cookie,
         serde_json::json!({ "name": "Orphan", "parentId": "does-not-exist" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     let body = json_body(res).await;
     assert_eq!(body["message"], "Parent use case not found");
@@ -204,6 +213,7 @@ async fn create_with_nonexistent_parent_is_404(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_cannot_nest_more_than_one_level_deep(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-nest@b.test", "Alice").await;
 
@@ -216,12 +226,14 @@ async fn create_cannot_nest_more_than_one_level_deep(pool: sqlx::PgPool) {
         .await,
     )
     .await;
+    // When
     let parent_body = create_use_case(
         app.clone(),
         &cookie,
         serde_json::json!({ "name": "Parent", "parentId": grandparent["id"] }),
     )
     .await;
+    // Then
     assert_eq!(parent_body.status(), StatusCode::CREATED);
     let parent = json_body(parent_body).await;
 
@@ -254,6 +266,7 @@ async fn create_cannot_nest_more_than_one_level_deep(pool: sqlx::PgPool) {
 /// not succeed cross-tenant.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_parent_lookup_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-parentscope@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-parentscope@b.test", "Bob").await;
@@ -268,12 +281,14 @@ async fn create_parent_lookup_is_user_scoped(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = create_use_case(
         app.clone(),
         &alice_cookie,
         serde_json::json!({ "name": "Alice's child", "parentId": bob_uc["id"] }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -284,10 +299,12 @@ async fn create_parent_lookup_is_user_scoped(pool: sqlx::PgPool) {
 /// `fubbik-db/tests/use_case.rs::create_rejects_another_users_space_and_creates_nothing`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_rejects_another_users_space_id(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-spacescope@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-spacescope@b.test", "Bob").await;
 
+    // When
     let alice_space = json_body(
         app.clone()
             .oneshot(
@@ -310,6 +327,7 @@ async fn create_rejects_another_users_space_id(pool: sqlx::PgPool) {
         serde_json::json!({ "name": "hijack", "spaceId": alice_space["id"] }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let bobs = json_body(list_use_cases(app, &bob_cookie, "").await).await;
@@ -321,6 +339,7 @@ async fn create_rejects_another_users_space_id(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_renames_and_returns_bare_row(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-update@b.test", "Alice").await;
 
@@ -334,6 +353,7 @@ async fn update_renames_and_returns_bare_row(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = update_use_case(
         app.clone(),
         &cookie,
@@ -341,6 +361,7 @@ async fn update_renames_and_returns_bare_row(pool: sqlx::PgPool) {
         serde_json::json!({ "name": "Renamed" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["name"], "Renamed");
@@ -350,6 +371,7 @@ async fn update_renames_and_returns_bare_row(pool: sqlx::PgPool) {
 /// `null` clears it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_description_tri_state_over_http(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-desctri@b.test", "Alice").await;
 
@@ -364,11 +386,13 @@ async fn update_description_tri_state_over_http(pool: sqlx::PgPool) {
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     // Omitted -> untouched.
     let body = json_body(
         update_use_case(app.clone(), &cookie, &id, serde_json::json!({ "order": 5 })).await,
     )
     .await;
+    // Then
     assert_eq!(body["description"], "original");
 
     // Explicit null -> cleared.
@@ -387,6 +411,7 @@ async fn update_description_tri_state_over_http(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_cannot_set_self_as_parent(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-selfparent@b.test", "Alice").await;
 
@@ -396,6 +421,7 @@ async fn update_cannot_set_self_as_parent(pool: sqlx::PgPool) {
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = update_use_case(
         app.clone(),
         &cookie,
@@ -403,6 +429,7 @@ async fn update_cannot_set_self_as_parent(pool: sqlx::PgPool) {
         serde_json::json!({ "parentId": id }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let body = json_body(res).await;
     assert!(
@@ -415,6 +442,7 @@ async fn update_cannot_set_self_as_parent(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_update_is_404_and_leaves_victim_row_intact(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-crossupdate@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-crossupdate@b.test", "Bob").await;
@@ -430,6 +458,7 @@ async fn cross_user_update_is_404_and_leaves_victim_row_intact(pool: sqlx::PgPoo
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = update_use_case(
         app.clone(),
         &bob_cookie,
@@ -437,6 +466,7 @@ async fn cross_user_update_is_404_and_leaves_victim_row_intact(pool: sqlx::PgPoo
         serde_json::json!({ "name": "Hijacked" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let body = json_body(list_use_cases(app.clone(), &alice_cookie, "").await).await;
@@ -445,6 +475,7 @@ async fn cross_user_update_is_404_and_leaves_victim_row_intact(pool: sqlx::PgPoo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_removes_the_use_case(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-delete@b.test", "Alice").await;
 
@@ -459,7 +490,9 @@ async fn delete_removes_the_use_case(pool: sqlx::PgPool) {
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = delete_use_case(app.clone(), &cookie, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body, serde_json::json!({ "message": "Deleted" }));
@@ -470,6 +503,7 @@ async fn delete_removes_the_use_case(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_delete_is_404_and_leaves_victim_row_in_place(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-crossdel@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-crossdel@b.test", "Bob").await;
@@ -485,7 +519,9 @@ async fn cross_user_delete_is_404_and_leaves_victim_row_in_place(pool: sqlx::PgP
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = delete_use_case(app.clone(), &bob_cookie, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let body = json_body(list_use_cases(app.clone(), &alice_cookie, "").await).await;
@@ -501,6 +537,7 @@ async fn cross_user_delete_is_404_and_leaves_victim_row_in_place(pool: sqlx::PgP
 /// even if it exists and belongs to someone else.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn requirements_endpoint_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-reqs@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-reqs@b.test", "Bob").await;
@@ -533,7 +570,9 @@ async fn requirements_endpoint_returns_bare_array_and_is_user_scoped(pool: sqlx:
     .await
     .unwrap();
 
+    // When
     let res = use_case_requirements(app.clone(), &alice_cookie, &use_case_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert!(body.is_array(), "must be a bare array");
@@ -549,13 +588,16 @@ async fn requirements_endpoint_returns_bare_array_and_is_user_scoped(pool: sqlx:
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_requests_are_401(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .clone()
         .oneshot(Request::get("/api/use-cases").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
     let res = app

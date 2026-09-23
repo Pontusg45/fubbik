@@ -45,10 +45,12 @@ async fn create_chunk(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn summarize_uses_owned_chunk_content(pool: sqlx::PgPool) {
+    // Given
     let (app, server) = app_with_response(pool, "A concise summary.").await;
     let user = app.signup("summary@example.test", "Summary").await;
     let id = create_chunk(&app, &user, "Retries", "Retry transient failures.").await;
 
+    // When
     let response = app
         .post(
             &user,
@@ -56,6 +58,7 @@ async fn summarize_uses_owned_chunk_content(pool: sqlx::PgPool) {
             serde_json::json!({ "chunkId": id }),
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(
         TestApp::json(response).await,
@@ -81,12 +84,14 @@ async fn summarize_uses_owned_chunk_content(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn chunk_ai_routes_do_not_cross_tenant_boundaries(pool: sqlx::PgPool) {
+    // Given
     let (app, server) = app_with_response(pool, "unused").await;
     let owner = app.signup("owner-ai@example.test", "Owner").await;
     let stranger = app.signup("stranger-ai@example.test", "Stranger").await;
     let id = create_chunk(&app, &owner, "Private", "Secret").await;
 
     for endpoint in ["summarize", "suggest-connections"] {
+        // When
         let response = app
             .post(
                 &stranger,
@@ -94,6 +99,7 @@ async fn chunk_ai_routes_do_not_cross_tenant_boundaries(pool: sqlx::PgPool) {
                 serde_json::json!({ "chunkId": id }),
             )
             .await;
+        // Then
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
     assert!(server.received_requests().await.unwrap().is_empty());
@@ -101,6 +107,7 @@ async fn chunk_ai_routes_do_not_cross_tenant_boundaries(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn suggest_connections_only_exposes_the_callers_chunks(pool: sqlx::PgPool) {
+    // Given
     let response = r#"[{"id":"candidate","relation":"supports"}]"#;
     let (app, server) = app_with_response(pool, response).await;
     let user = app.signup("suggest@example.test", "Suggest").await;
@@ -109,6 +116,7 @@ async fn suggest_connections_only_exposes_the_callers_chunks(pool: sqlx::PgPool)
     let candidate = create_chunk(&app, &user, "Candidate", "Candidate content").await;
     create_chunk(&app, &other, "Foreign", "Must stay hidden").await;
 
+    // When
     let response = app
         .post(
             &user,
@@ -116,6 +124,7 @@ async fn suggest_connections_only_exposes_the_callers_chunks(pool: sqlx::PgPool)
             serde_json::json!({ "chunkId": target }),
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(
         TestApp::json(response).await,
@@ -135,10 +144,12 @@ async fn suggest_connections_only_exposes_the_callers_chunks(pool: sqlx::PgPool)
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn generate_preserves_json_and_legacy_invalid_json_fallback(pool: sqlx::PgPool) {
+    // Given
     let generated =
         r#"{"title":"Runbooks","content":"Write them.","type":"document","tags":["ops"]}"#;
     let (app, _server) = app_with_response(pool.clone(), generated).await;
     let user = app.signup("generate@example.test", "Generate").await;
+    // When
     let response = app
         .post(
             &user,
@@ -146,6 +157,7 @@ async fn generate_preserves_json_and_legacy_invalid_json_fallback(pool: sqlx::Pg
             serde_json::json!({ "prompt": "runbook" }),
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(
         TestApp::json(response).await,
@@ -179,9 +191,11 @@ async fn generate_preserves_json_and_legacy_invalid_json_fallback(pool: sqlx::Pg
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn structure_requirement_filters_invalid_steps_and_accepts_space_id(pool: sqlx::PgPool) {
+    // Given
     let structured = r#"{"steps":[{"keyword":"given","text":"a user"},{"keyword":"oops","text":"drop"},{"keyword":"then","text":"it works"}]}"#;
     let (app, _server) = app_with_response(pool, structured).await;
     let user = app.signup("structure@example.test", "Structure").await;
+    // When
     let response = app
         .post(
             &user,
@@ -189,6 +203,7 @@ async fn structure_requirement_filters_invalid_steps_and_accepts_space_id(pool: 
             serde_json::json!({ "description": "It should work", "spaceId": null }),
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(
         TestApp::json(response).await,
@@ -201,7 +216,9 @@ async fn structure_requirement_filters_invalid_steps_and_accepts_space_id(pool: 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn ai_routes_require_authentication_and_validate_description_length(pool: sqlx::PgPool) {
+    // Given
     let (app, _) = app_with_response(pool, r#"{"steps":[]}"#).await;
+    // When
     let response = app
         .request(
             None,
@@ -210,6 +227,7 @@ async fn ai_routes_require_authentication_and_validate_description_length(pool: 
             Some(serde_json::json!({ "prompt": "anything" })),
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
     let user = app.signup("validation@example.test", "Validation").await;

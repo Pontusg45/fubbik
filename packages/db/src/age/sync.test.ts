@@ -40,28 +40,35 @@ afterAll(async () => {
 
 describe("ensureVertex", () => {
     it("creates a vertex that can be queried back", async () => {
+        // Given
         if (!ageReady) return;
         const id = uid("a");
         await Effect.runPromise(ensureVertex("chunk", id));
 
+        // When
         const rows = await Effect.runPromise(cypher(`MATCH (c:chunk {id: '${id}'}) RETURN c.id AS id`, "id agtype"));
+        // Then
         expect(rows.length).toBe(1);
         expect((rows[0] as any).id).toContain(id);
     });
 
     it("is idempotent — calling twice creates only one vertex", async () => {
+        // Given
         if (!ageReady) return;
         const id = uid("idempotent");
         await Effect.runPromise(ensureVertex("chunk", id));
         await Effect.runPromise(ensureVertex("chunk", id));
 
+        // When
         const rows = await Effect.runPromise(cypher(`MATCH (c:chunk {id: '${id}'}) RETURN c.id AS id`, "id agtype"));
+        // Then
         expect(rows.length).toBe(1);
     });
 });
 
 describe("createEdge", () => {
     it("creates an edge between two vertices", async () => {
+        // Given
         if (!ageReady) return;
         const fromId = uid("edge-from");
         const toId = uid("edge-to");
@@ -70,15 +77,18 @@ describe("createEdge", () => {
         await Effect.runPromise(ensureVertex("chunk", toId));
         await Effect.runPromise(createEdge("connects", "chunk", fromId, "chunk", toId, { relation: "related_to" }));
 
+        // When
         const rows = await Effect.runPromise(
             cypher(`MATCH (a:chunk {id: '${fromId}'})-[e:connects]->(b:chunk {id: '${toId}'}) RETURN e.relation AS rel`, "rel agtype")
         );
+        // Then
         expect(rows.length).toBe(1);
     });
 });
 
 describe("deleteEdge", () => {
     it("removes an existing edge leaving vertices intact", async () => {
+        // Given
         if (!ageReady) return;
         const fromId = uid("del-a");
         const toId = uid("del-b");
@@ -87,10 +97,12 @@ describe("deleteEdge", () => {
         await Effect.runPromise(ensureVertex("chunk", toId));
         await Effect.runPromise(createEdge("connects", "chunk", fromId, "chunk", toId, { relation: "part_of" }));
 
+        // When
         // Verify edge exists
         const before = await Effect.runPromise(
             cypher(`MATCH (a:chunk {id: '${fromId}'})-[e:connects]->(b:chunk {id: '${toId}'}) RETURN 1 AS found`, "found agtype")
         );
+        // Then
         expect(before.length).toBe(1);
 
         // Delete it
@@ -114,6 +126,7 @@ describe("deleteEdge", () => {
 
 describe("deleteVertex", () => {
     it("removes vertex and its edges (DETACH DELETE)", async () => {
+        // Given
         if (!ageReady) return;
         const centerId = uid("del-center");
         const neighborId = uid("b");
@@ -124,7 +137,9 @@ describe("deleteVertex", () => {
 
         await Effect.runPromise(deleteVertex("chunk", centerId));
 
+        // When
         const rows = await Effect.runPromise(cypher(`MATCH (c:chunk {id: '${centerId}'}) RETURN c.id AS id`, "id agtype"));
+        // Then
         expect(rows.length).toBe(0);
 
         // Edge gone too

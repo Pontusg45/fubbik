@@ -14,7 +14,10 @@ import {
 
 describe("behavior-matrix schema", () => {
     it("behaviorMatrix has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const cols = getTableColumns(behaviorMatrix);
+        // Then
         expect(cols).toHaveProperty("id");
         expect(cols).toHaveProperty("name");
         expect(cols).toHaveProperty("layer");
@@ -26,7 +29,10 @@ describe("behavior-matrix schema", () => {
     });
 
     it("behaviorDimension has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const cols = getTableColumns(behaviorDimension);
+        // Then
         expect(cols).toHaveProperty("id");
         expect(cols).toHaveProperty("matrixId");
         expect(cols).toHaveProperty("name");
@@ -35,7 +41,10 @@ describe("behavior-matrix schema", () => {
     });
 
     it("behaviorRule has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const cols = getTableColumns(behaviorRule);
+        // Then
         expect(cols).toHaveProperty("id");
         expect(cols).toHaveProperty("matrixId");
         expect(cols).toHaveProperty("title");
@@ -47,7 +56,10 @@ describe("behavior-matrix schema", () => {
     });
 
     it("behaviorRule has the decision-context columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const cols = getTableColumns(behaviorRule);
+        // Then
         expect(cols).toHaveProperty("rationale");
         expect(cols).toHaveProperty("alternatives");
         expect(cols).toHaveProperty("consequences");
@@ -55,7 +67,10 @@ describe("behavior-matrix schema", () => {
     });
 
     it("behaviorRuleVersion has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const cols = getTableColumns(behaviorRuleVersion);
+        // Then
         expect(cols).toHaveProperty("id");
         expect(cols).toHaveProperty("ruleId");
         expect(cols).toHaveProperty("snapshot");
@@ -64,7 +79,10 @@ describe("behavior-matrix schema", () => {
     });
 
     it("behaviorCellCode has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const cols = getTableColumns(behaviorCellCode);
+        // Then
         expect(cols).toHaveProperty("id");
         expect(cols).toHaveProperty("cellId");
         expect(cols).toHaveProperty("kind");
@@ -73,7 +91,10 @@ describe("behavior-matrix schema", () => {
     });
 
     it("behaviorTestResult has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const cols = getTableColumns(behaviorTestResult);
+        // Then
         expect(cols).toHaveProperty("id");
         expect(cols).toHaveProperty("cellId");
         expect(cols).toHaveProperty("testRef");
@@ -83,7 +104,10 @@ describe("behavior-matrix schema", () => {
     });
 
     it("behaviorCell has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const cols = getTableColumns(behaviorCell);
+        // Then
         expect(cols).toHaveProperty("id");
         expect(cols).toHaveProperty("ruleId");
         expect(cols).toHaveProperty("dimensionId");
@@ -91,7 +115,10 @@ describe("behavior-matrix schema", () => {
     });
 
     it("behaviorCellRequirement has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const cols = getTableColumns(behaviorCellRequirement);
+        // Then
         expect(cols).toHaveProperty("cellId");
         expect(cols).toHaveProperty("requirementId");
     });

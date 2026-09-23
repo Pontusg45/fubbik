@@ -12,7 +12,10 @@ const client = treaty(app);
 // a real database; exercise them in a higher-level integration suite instead.
 describe("Space routes", () => {
     it("GET /api/spaces does not 401 without auth (reads bypass)", async () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { status } = await client.api.spaces.get();
+        // Then
         expect(status).not.toBe(401);
     });
 });

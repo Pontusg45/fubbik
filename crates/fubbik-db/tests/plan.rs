@@ -65,13 +65,16 @@ async fn seed_chunk(pool: &PgPool, user_id: &str, title: &str) -> String {
 
 #[sqlx::test]
 async fn find_by_id_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "Alice's plan", None, None)
         .await
         .unwrap();
 
+    // When
     let got = plan::find_by_id(&pool, &bob, &p.id).await.unwrap();
+    // Then
     assert!(
         got.is_none(),
         "bob must not read alice's plan by id — Node allows this, the port must not"
@@ -83,15 +86,18 @@ async fn find_by_id_is_user_scoped(pool: PgPool) {
 
 #[sqlx::test]
 async fn update_is_user_scoped_and_leaves_the_victims_row_intact(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "Original", None, None)
         .await
         .unwrap();
 
+    // When
     let res = plan::update(&pool, &bob, &p.id, Some("Hijacked"), None, None)
         .await
         .unwrap();
+    // Then
     assert!(res.is_none(), "bob's update must not match any row");
 
     let after = plan::find_by_id(&pool, &alice, &p.id)
@@ -106,6 +112,7 @@ async fn update_is_user_scoped_and_leaves_the_victims_row_intact(pool: PgPool) {
 
 #[sqlx::test]
 async fn list_breaks_created_at_ties_by_id(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     for i in 0..20 {
         plan::create(&pool, &alice, &format!("plan {i}"), None, None)
@@ -125,7 +132,9 @@ async fn list_breaks_created_at_ties_by_id(pool: PgPool) {
         .map(|p| p.id)
         .collect();
     let mut expected = a.clone();
+    // When
     expected.sort();
+    // Then
     assert_eq!(
         a, expected,
         "ties on created_at must be broken by ascending id, not left to query-plan chance"
@@ -136,9 +145,11 @@ async fn list_breaks_created_at_ties_by_id(pool: PgPool) {
 
 #[sqlx::test]
 async fn create_and_find_by_id_round_trip(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let sp = seed_space(&pool, &alice, "code").await;
 
+    // When
     let created = plan::create(
         &pool,
         &alice,
@@ -149,6 +160,7 @@ async fn create_and_find_by_id_round_trip(pool: PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert_eq!(created.title, "Ship the thing");
     assert_eq!(created.description.as_deref(), Some("a description"));
     assert_eq!(created.status, "draft", "status must default to draft");
@@ -165,6 +177,7 @@ async fn create_and_find_by_id_round_trip(pool: PgPool) {
 
 #[sqlx::test]
 async fn list_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     plan::create(&pool, &alice, "alices plan", None, None)
@@ -174,15 +187,18 @@ async fn list_is_user_scoped(pool: PgPool) {
         .await
         .unwrap();
 
+    // When
     let alice_list = plan::list(&pool, &alice, ListFilter::default())
         .await
         .unwrap();
+    // Then
     assert_eq!(alice_list.len(), 1);
     assert_eq!(alice_list[0].title, "alices plan");
 }
 
 #[sqlx::test]
 async fn list_excludes_archived_by_default_and_include_archived_returns_it(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let active = plan::create(&pool, &alice, "active", None, None)
         .await
@@ -194,10 +210,12 @@ async fn list_excludes_archived_by_default_and_include_archived_returns_it(pool:
         .await
         .unwrap();
 
+    // When
     let default_list = plan::list(&pool, &alice, ListFilter::default())
         .await
         .unwrap();
     let default_ids: Vec<&str> = default_list.iter().map(|p| p.id.as_str()).collect();
+    // Then
     assert!(default_ids.contains(&active.id.as_str()));
     assert!(
         !default_ids.contains(&archived.id.as_str()),
@@ -235,6 +253,7 @@ async fn list_excludes_archived_by_default_and_include_archived_returns_it(pool:
 
 #[sqlx::test]
 async fn list_filters_by_space_id(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let sp1 = seed_space(&pool, &alice, "space-one").await;
     let sp2 = seed_space(&pool, &alice, "space-two").await;
@@ -245,6 +264,7 @@ async fn list_filters_by_space_id(pool: PgPool) {
         .await
         .unwrap();
 
+    // When
     let filtered = plan::list(
         &pool,
         &alice,
@@ -255,21 +275,25 @@ async fn list_filters_by_space_id(pool: PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].title, "in space one");
 }
 
 #[sqlx::test]
 async fn update_with_no_fields_is_a_reselect_and_does_not_bump_updated_at(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let created = plan::create(&pool, &alice, "Original", None, None)
         .await
         .unwrap();
 
+    // When
     let updated = plan::update(&pool, &alice, &created.id, None, None, None)
         .await
         .unwrap()
         .expect("no-op patch must still find the row");
+    // Then
     assert_eq!(updated.updated_at, created.updated_at);
 }
 
@@ -282,15 +306,18 @@ async fn update_with_no_fields_is_a_reselect_and_does_not_bump_updated_at(pool: 
 /// route through the `SELECT`-only branch instead.
 #[sqlx::test]
 async fn update_with_no_fields_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let alices_plan = plan::create(&pool, &alice, "alices plan", None, None)
         .await
         .unwrap();
 
+    // When
     let result = plan::update(&pool, &bob, &alices_plan.id, None, None, None)
         .await
         .unwrap();
+    // Then
     assert!(
         result.is_none(),
         "bob's no-op patch must not find alice's plan"
@@ -305,13 +332,16 @@ async fn update_with_no_fields_is_user_scoped(pool: PgPool) {
 
 #[sqlx::test]
 async fn delete_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let alices_plan = plan::create(&pool, &alice, "alices plan", None, None)
         .await
         .unwrap();
 
+    // When
     let deleted = plan::delete(&pool, &bob, &alices_plan.id).await.unwrap();
+    // Then
     assert!(!deleted, "bob must not be able to delete alice's plan");
     assert!(
         plan::find_by_id(&pool, &alice, &alices_plan.id)
@@ -324,12 +354,15 @@ async fn delete_is_user_scoped(pool: PgPool) {
 
 #[sqlx::test]
 async fn delete_removes_the_callers_own_plan(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "to delete", None, None)
         .await
         .unwrap();
 
+    // When
     let deleted = plan::delete(&pool, &alice, &p.id).await.unwrap();
+    // Then
     assert!(deleted);
     assert!(
         plan::find_by_id(&pool, &alice, &p.id)
@@ -343,13 +376,16 @@ async fn delete_removes_the_callers_own_plan(pool: PgPool) {
 
 #[sqlx::test]
 async fn duplicate_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let alices_plan = plan::create(&pool, &alice, "alices plan", None, None)
         .await
         .unwrap();
 
+    // When
     let result = plan::duplicate(&pool, &bob, &alices_plan.id).await.unwrap();
+    // Then
     assert!(
         result.is_none(),
         "bob must not be able to duplicate alice's plan"
@@ -374,6 +410,7 @@ async fn duplicate_is_user_scoped(pool: PgPool) {
 
 #[sqlx::test]
 async fn duplicate_copies_children_and_resets_task_status(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let source = plan::create(&pool, &alice, "Source Plan", Some("desc"), None)
         .await
@@ -447,11 +484,13 @@ async fn duplicate_copies_children_and_resets_task_status(pool: PgPool) {
     .await
     .unwrap();
 
+    // When
     let copy = plan::duplicate(&pool, &alice, &source.id)
         .await
         .unwrap()
         .expect("duplicate of an owned plan must succeed");
 
+    // Then
     assert_eq!(copy.title, "Source Plan (copy)");
     assert_eq!(copy.description.as_deref(), Some("desc"));
     assert_eq!(copy.status, "draft");
@@ -534,6 +573,7 @@ async fn duplicate_copies_children_and_resets_task_status(pool: PgPool) {
 
 #[sqlx::test]
 async fn reorder_leaves_unmentioned_rows_untouched(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let a = plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("a"), None)
@@ -555,7 +595,9 @@ async fn reorder_leaves_unmentioned_rows_untouched(pool: PgPool) {
     let items = plan::list_analyze_items(&pool, &alice, &p.id)
         .await
         .unwrap();
+    // When
     let c_after = items.iter().find(|i| i.id == c.id).unwrap();
+    // Then
     assert_eq!(
         c_after.order, c_order_before,
         "a row absent from the reorder request must keep its original order, not be renumbered"
@@ -564,15 +606,18 @@ async fn reorder_leaves_unmentioned_rows_untouched(pool: PgPool) {
 
 #[sqlx::test]
 async fn analyze_kind_accepts_only_the_five_known_kinds(pool: PgPool) {
+    // Given
     // Validation lives in the SERVICE layer, matching Node. The DB column is free text.
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
+    // When
     let raw =
         sqlx::query("INSERT INTO plan_analyze_item (id, plan_id, kind) VALUES ($1,$2,'nonsense')")
             .bind("x")
             .bind(&p.id)
             .execute(&pool)
             .await;
+    // Then
     assert!(
         raw.is_ok(),
         "the DB must NOT constrain kind — Node has no CHECK and no enum here"
@@ -581,12 +626,15 @@ async fn analyze_kind_accepts_only_the_five_known_kinds(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_add_a_requirement_to_another_users_plan(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let r = seed_requirement(&pool, &alice).await;
 
+    // When
     let res = plan::add_requirement(&pool, &bob, &p.id, &r).await.unwrap();
+    // Then
     assert!(
         res.is_none(),
         "ownership derives from plan.user_id, guarded in SQL"
@@ -603,12 +651,15 @@ async fn cannot_add_a_requirement_to_another_users_plan(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_create_an_analyze_item_for_another_users_plan(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
 
+    // When
     let res =
         plan::create_analyze_item(&pool, &bob, &p.id, "risk", None, None, Some("evil"), None).await;
+    // Then
     assert!(
         res.is_err(),
         "ownership derives from plan.user_id, guarded in SQL"
@@ -625,6 +676,7 @@ async fn cannot_create_an_analyze_item_for_another_users_plan(pool: PgPool) {
 
 #[sqlx::test]
 async fn remove_requirement_returns_true_then_false(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let r = seed_requirement(&pool, &alice).await;
@@ -632,9 +684,11 @@ async fn remove_requirement_returns_true_then_false(pool: PgPool) {
         .await
         .unwrap();
 
+    // When
     let first = plan::remove_requirement(&pool, &alice, &p.id, &r)
         .await
         .unwrap();
+    // Then
     assert!(first, "the link existed and must be removed");
 
     let second = plan::remove_requirement(&pool, &alice, &p.id, &r)
@@ -645,6 +699,7 @@ async fn remove_requirement_returns_true_then_false(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_remove_another_users_requirement_link(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -653,9 +708,11 @@ async fn cannot_remove_another_users_requirement_link(pool: PgPool) {
         .await
         .unwrap();
 
+    // When
     let res = plan::remove_requirement(&pool, &bob, &p.id, &r)
         .await
         .unwrap();
+    // Then
     assert!(!res, "bob does not own the plan; the link must survive");
 
     let links = plan::list_requirements(&pool, &alice, &p.id).await.unwrap();
@@ -664,6 +721,7 @@ async fn cannot_remove_another_users_requirement_link(pool: PgPool) {
 
 #[sqlx::test]
 async fn reorder_requirements_leaves_unmentioned_rows_untouched(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let ra = seed_requirement(&pool, &alice).await;
@@ -686,7 +744,9 @@ async fn reorder_requirements_leaves_unmentioned_rows_untouched(pool: PgPool) {
         .unwrap();
 
     let links = plan::list_requirements(&pool, &alice, &p.id).await.unwrap();
+    // When
     let c_after = links.iter().find(|l| l.requirement_id == rc).unwrap();
+    // Then
     assert_eq!(
         c_after.order, c_order_before,
         "unmentioned requirement link must keep its order"
@@ -695,6 +755,7 @@ async fn reorder_requirements_leaves_unmentioned_rows_untouched(pool: PgPool) {
 
 #[sqlx::test]
 async fn update_analyze_item_round_trip_and_leaves_kind_unchanged(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let item = plan::create_analyze_item(
@@ -710,6 +771,7 @@ async fn update_analyze_item_round_trip_and_leaves_kind_unchanged(pool: PgPool) 
     .await
     .unwrap();
 
+    // When
     let updated = plan::update_analyze_item(
         &pool,
         &alice,
@@ -724,6 +786,7 @@ async fn update_analyze_item_round_trip_and_leaves_kind_unchanged(pool: PgPool) 
     .unwrap()
     .expect("owned item must update");
 
+    // Then
     assert_eq!(updated.text.as_deref(), Some("changed"));
     assert_eq!(updated.kind, "risk", "kind must never change via PATCH");
     assert_eq!(updated.metadata.0, serde_json::json!({"severity": "high"}));
@@ -731,6 +794,7 @@ async fn update_analyze_item_round_trip_and_leaves_kind_unchanged(pool: PgPool) 
 
 #[sqlx::test]
 async fn cannot_update_another_users_analyze_item(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -739,6 +803,7 @@ async fn cannot_update_another_users_analyze_item(pool: PgPool) {
             .await
             .unwrap();
 
+    // When
     let res = plan::update_analyze_item(
         &pool,
         &bob,
@@ -751,6 +816,7 @@ async fn cannot_update_another_users_analyze_item(pool: PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(res.is_none(), "bob does not own the plan");
 
     let items = plan::list_analyze_items(&pool, &alice, &p.id)
@@ -765,15 +831,18 @@ async fn cannot_update_another_users_analyze_item(pool: PgPool) {
 
 #[sqlx::test]
 async fn delete_analyze_item_returns_true_then_false(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let item = plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("x"), None)
         .await
         .unwrap();
 
+    // When
     let first = plan::delete_analyze_item(&pool, &alice, &p.id, &item.id)
         .await
         .unwrap();
+    // Then
     assert!(first);
     let second = plan::delete_analyze_item(&pool, &alice, &p.id, &item.id)
         .await
@@ -783,6 +852,7 @@ async fn delete_analyze_item_returns_true_then_false(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_delete_another_users_analyze_item(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -791,9 +861,11 @@ async fn cannot_delete_another_users_analyze_item(pool: PgPool) {
             .await
             .unwrap();
 
+    // When
     let res = plan::delete_analyze_item(&pool, &bob, &p.id, &item.id)
         .await
         .unwrap();
+    // Then
     assert!(!res, "bob does not own the plan");
 
     let items = plan::list_analyze_items(&pool, &alice, &p.id)
@@ -804,6 +876,7 @@ async fn cannot_delete_another_users_analyze_item(pool: PgPool) {
 
 #[sqlx::test]
 async fn create_analyze_item_order_is_scoped_per_kind(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let r1 = plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("r1"), None)
@@ -813,10 +886,12 @@ async fn create_analyze_item_order_is_scoped_per_kind(pool: PgPool) {
         plan::create_analyze_item(&pool, &alice, &p.id, "file", None, Some("a.rs"), None, None)
             .await
             .unwrap();
+    // When
     let r2 = plan::create_analyze_item(&pool, &alice, &p.id, "risk", None, None, Some("r2"), None)
         .await
         .unwrap();
 
+    // Then
     assert_eq!(r1.order, 0);
     assert_eq!(
         f1.order, 0,
@@ -829,6 +904,7 @@ async fn create_analyze_item_order_is_scoped_per_kind(pool: PgPool) {
 
 #[sqlx::test]
 async fn list_analyze_items_breaks_order_ties_by_id(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     for i in 0..20 {
@@ -860,7 +936,9 @@ async fn list_analyze_items_breaks_order_ties_by_id(pool: PgPool) {
         .unwrap();
     let ids: Vec<String> = items.iter().map(|i| i.id.clone()).collect();
     let mut expected = ids.clone();
+    // When
     expected.sort();
+    // Then
     assert_eq!(
         ids, expected,
         "ties on kind+order must be broken by ascending id, not left to query-plan chance"
@@ -869,6 +947,7 @@ async fn list_analyze_items_breaks_order_ties_by_id(pool: PgPool) {
 
 #[sqlx::test]
 async fn list_requirements_breaks_order_ties_by_id(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     for _ in 0..20 {
@@ -890,7 +969,9 @@ async fn list_requirements_breaks_order_ties_by_id(pool: PgPool) {
     let links = plan::list_requirements(&pool, &alice, &p.id).await.unwrap();
     let ids: Vec<String> = links.iter().map(|l| l.id.clone()).collect();
     let mut expected = ids.clone();
+    // When
     expected.sort();
+    // Then
     assert_eq!(
         ids, expected,
         "ties on order must be broken by ascending id, not left to query-plan chance"
@@ -918,6 +999,7 @@ async fn seed_task(pool: &PgPool, user_id: &str, plan_id: &str, title: &str) -> 
 
 #[sqlx::test]
 async fn list_tasks_breaks_order_ties_by_id(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     for i in 0..20 {
@@ -936,7 +1018,9 @@ async fn list_tasks_breaks_order_ties_by_id(pool: PgPool) {
     let tasks = plan::list_tasks(&pool, &alice, &p.id).await.unwrap();
     let ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
     let mut expected = ids.clone();
+    // When
     expected.sort();
+    // Then
     assert_eq!(
         ids, expected,
         "ties on order must be broken by ascending id, not left to query-plan chance"
@@ -945,14 +1029,17 @@ async fn list_tasks_breaks_order_ties_by_id(pool: PgPool) {
 
 #[sqlx::test]
 async fn find_task_by_id_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let t = seed_task(&pool, &alice, &p.id, "a").await;
 
+    // When
     let bobs_view = plan::find_task_by_id(&pool, &bob, &p.id, &t.id)
         .await
         .unwrap();
+    // Then
     assert!(bobs_view.is_none(), "bob must not read alice's task by id");
 
     let alices_view = plan::find_task_by_id(&pool, &alice, &p.id, &t.id)
@@ -963,9 +1050,11 @@ async fn find_task_by_id_is_user_scoped(pool: PgPool) {
 
 #[sqlx::test]
 async fn create_task_defaults_status_to_pending_and_appends_order(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
 
+    // When
     let a = plan::create_task(
         &pool,
         &alice,
@@ -978,6 +1067,7 @@ async fn create_task_defaults_status_to_pending_and_appends_order(pool: PgPool) 
     .await
     .unwrap()
     .unwrap();
+    // Then
     assert_eq!(a.status, "pending");
     assert_eq!(a.order, 0);
     assert_eq!(a.metadata.0, serde_json::json!({"k": "v"}));
@@ -993,10 +1083,12 @@ async fn create_task_defaults_status_to_pending_and_appends_order(pool: PgPool) 
 
 #[sqlx::test]
 async fn cannot_create_a_task_for_another_users_plan(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
 
+    // When
     let res = plan::create_task(
         &pool,
         &bob,
@@ -1008,6 +1100,7 @@ async fn cannot_create_a_task_for_another_users_plan(pool: PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(
         res.is_none(),
         "ownership derives from plan.user_id, guarded in SQL"
@@ -1022,10 +1115,12 @@ async fn cannot_create_a_task_for_another_users_plan(pool: PgPool) {
 
 #[sqlx::test]
 async fn update_task_round_trip_and_no_op_is_a_reselect(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let t = seed_task(&pool, &alice, &p.id, "original").await;
 
+    // When
     let updated = plan::update_task(
         &pool,
         &alice,
@@ -1040,6 +1135,7 @@ async fn update_task_round_trip_and_no_op_is_a_reselect(pool: PgPool) {
     .await
     .unwrap()
     .expect("owned task must update");
+    // Then
     assert_eq!(updated.title, "changed");
     assert!(
         updated.description.is_none(),
@@ -1059,11 +1155,13 @@ async fn update_task_round_trip_and_no_op_is_a_reselect(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_update_another_users_task(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let t = seed_task(&pool, &alice, &p.id, "mine").await;
 
+    // When
     let res = plan::update_task(
         &pool,
         &bob,
@@ -1077,6 +1175,7 @@ async fn cannot_update_another_users_task(pool: PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(res.is_none(), "bob does not own the plan");
 
     let still = plan::find_task_by_id(&pool, &alice, &p.id, &t.id)
@@ -1088,12 +1187,15 @@ async fn cannot_update_another_users_task(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_delete_another_users_task(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let t = seed_task(&pool, &alice, &p.id, "mine").await;
 
+    // When
     let res = plan::delete_task(&pool, &bob, &p.id, &t.id).await.unwrap();
+    // Then
     assert!(!res, "bob does not own the plan; the task must survive");
 
     assert!(
@@ -1112,6 +1214,7 @@ async fn cannot_delete_another_users_task(pool: PgPool) {
 
 #[sqlx::test]
 async fn reorder_tasks_leaves_unmentioned_rows_untouched(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let a = seed_task(&pool, &alice, &p.id, "a").await;
@@ -1124,7 +1227,9 @@ async fn reorder_tasks_leaves_unmentioned_rows_untouched(pool: PgPool) {
         .unwrap();
 
     let tasks = plan::list_tasks(&pool, &alice, &p.id).await.unwrap();
+    // When
     let c_after = tasks.iter().find(|t| t.id == c.id).unwrap();
+    // Then
     assert_eq!(
         c_after.order, c_order_before,
         "a row absent from the reorder request must keep its original order, not be renumbered"
@@ -1133,6 +1238,7 @@ async fn reorder_tasks_leaves_unmentioned_rows_untouched(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_reorder_another_users_tasks(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1147,7 +1253,9 @@ async fn cannot_reorder_another_users_tasks(pool: PgPool) {
 
     let tasks = plan::list_tasks(&pool, &alice, &p.id).await.unwrap();
     let a_after = tasks.iter().find(|t| t.id == a.id).unwrap();
+    // When
     let b_after = tasks.iter().find(|t| t.id == b.id).unwrap();
+    // Then
     assert_eq!(
         a_after.order, a.order,
         "bob's rejected reorder must not touch alice's task order"
@@ -1162,6 +1270,7 @@ async fn cannot_reorder_another_users_tasks(pool: PgPool) {
 
 #[sqlx::test]
 async fn list_task_chunks_with_titles_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1171,9 +1280,11 @@ async fn list_task_chunks_with_titles_is_user_scoped(pool: PgPool) {
         .await
         .unwrap();
 
+    // When
     let bobs_view = plan::list_task_chunks_with_titles(&pool, &bob, &p.id, &t.id)
         .await
         .unwrap();
+    // Then
     assert!(
         bobs_view.is_empty(),
         "bob must not read alice's task-chunk links, even by a correct task id"
@@ -1188,15 +1299,18 @@ async fn list_task_chunks_with_titles_is_user_scoped(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_add_a_chunk_to_another_users_task(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let t = seed_task(&pool, &alice, &p.id, "a").await;
     let chunk_id = seed_chunk(&pool, &bob, "evil-chunk").await;
 
+    // When
     let res = plan::add_task_chunk(&pool, &bob, &p.id, &t.id, &chunk_id, "context")
         .await
         .unwrap();
+    // Then
     assert!(res.is_none(), "ownership derives through plan_task -> plan");
 
     let links = plan::list_task_chunks_with_titles(&pool, &alice, &p.id, &t.id)
@@ -1210,6 +1324,7 @@ async fn cannot_add_a_chunk_to_another_users_task(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_remove_another_users_task_chunk_link(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1220,9 +1335,11 @@ async fn cannot_remove_another_users_task_chunk_link(pool: PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let res = plan::remove_task_chunk(&pool, &bob, &p.id, &t.id, &link.id)
         .await
         .unwrap();
+    // Then
     assert!(!res, "bob does not own the plan; the link must survive");
 
     let links = plan::list_task_chunks_with_titles(&pool, &alice, &p.id, &t.id)
@@ -1235,15 +1352,18 @@ async fn cannot_remove_another_users_task_chunk_link(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_add_a_dependency_to_another_users_task(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let a = seed_task(&pool, &alice, &p.id, "a").await;
     let b = seed_task(&pool, &alice, &p.id, "b").await;
 
+    // When
     let res = plan::add_task_dependency(&pool, &bob, &p.id, &b.id, &a.id)
         .await
         .unwrap();
+    // Then
     assert!(res.is_none(), "ownership derives through plan_task -> plan");
 
     let deps = plan::list_task_dependencies(&pool, &alice, &p.id)
@@ -1257,6 +1377,7 @@ async fn cannot_add_a_dependency_to_another_users_task(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_remove_another_users_task_dependency(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1267,9 +1388,11 @@ async fn cannot_remove_another_users_task_dependency(pool: PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let res = plan::remove_task_dependency(&pool, &bob, &p.id, &b.id, &dep.id)
         .await
         .unwrap();
+    // Then
     assert!(
         !res,
         "bob does not own the plan; the dependency must survive"
@@ -1285,6 +1408,7 @@ async fn cannot_remove_another_users_task_dependency(pool: PgPool) {
 
 #[sqlx::test]
 async fn list_task_links_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1301,9 +1425,11 @@ async fn list_task_links_is_user_scoped(pool: PgPool) {
     .await
     .unwrap();
 
+    // When
     let bobs_view = plan::list_task_links(&pool, &bob, &p.id, &t.id)
         .await
         .unwrap();
+    // Then
     assert!(
         bobs_view.is_empty(),
         "bob must not read alice's task links, even by a correct task id"
@@ -1317,11 +1443,13 @@ async fn list_task_links_is_user_scoped(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_add_a_link_to_another_users_task(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let t = seed_task(&pool, &alice, &p.id, "a").await;
 
+    // When
     let res = plan::add_task_link(
         &pool,
         &bob,
@@ -1333,6 +1461,7 @@ async fn cannot_add_a_link_to_another_users_task(pool: PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(res.is_none(), "ownership derives through plan_task -> plan");
 
     let links = plan::list_task_links(&pool, &alice, &p.id, &t.id)
@@ -1346,6 +1475,7 @@ async fn cannot_add_a_link_to_another_users_task(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_remove_another_users_task_link(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1363,9 +1493,11 @@ async fn cannot_remove_another_users_task_link(pool: PgPool) {
     .unwrap()
     .unwrap();
 
+    // When
     let res = plan::remove_task_link(&pool, &bob, &p.id, &t.id, &link.id)
         .await
         .unwrap();
+    // Then
     assert!(!res, "bob does not own the plan; the link must survive");
 
     let links = plan::list_task_links(&pool, &alice, &p.id, &t.id)
@@ -1385,6 +1517,7 @@ async fn cannot_remove_another_users_task_link(pool: PgPool) {
 /// below for the actual atomicity proof.
 #[sqlx::test]
 async fn marking_done_and_unblocking_happy_path(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let a = seed_task(&pool, &alice, &p.id, "a").await;
@@ -1406,9 +1539,11 @@ async fn marking_done_and_unblocking_happy_path(pool: PgPool) {
     .await
     .unwrap();
 
+    // When
     let unblocked = plan::mark_task_done_and_unblock(&pool, &alice, &p.id, &a.id)
         .await
         .unwrap();
+    // Then
     assert_eq!(unblocked, vec![b.id.clone()]);
 
     let tasks = plan::list_tasks(&pool, &alice, &p.id).await.unwrap();
@@ -1421,6 +1556,7 @@ async fn marking_done_and_unblocking_happy_path(pool: PgPool) {
 
 #[sqlx::test]
 async fn only_blocked_dependents_are_unblocked(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let a = seed_task(&pool, &alice, &p.id, "a").await;
@@ -1446,7 +1582,9 @@ async fn only_blocked_dependents_are_unblocked(pool: PgPool) {
         .await
         .unwrap();
 
+    // When
     let tasks = plan::list_tasks(&pool, &alice, &p.id).await.unwrap();
+    // Then
     assert_eq!(
         tasks.iter().find(|t| t.id == b.id).unwrap().status,
         "in_progress",
@@ -1456,14 +1594,17 @@ async fn only_blocked_dependents_are_unblocked(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_mark_another_users_task_done(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let a = seed_task(&pool, &alice, &p.id, "a").await;
 
+    // When
     let unblocked = plan::mark_task_done_and_unblock(&pool, &bob, &p.id, &a.id)
         .await
         .unwrap();
+    // Then
     assert!(
         unblocked.is_empty(),
         "bob does not own the plan; nothing to unblock"
@@ -1504,6 +1645,7 @@ async fn cannot_mark_another_users_task_done(pool: PgPool) {
 /// exists anywhere in `task.rs`.
 #[sqlx::test]
 async fn mark_task_done_and_unblock_rolls_back_when_the_unblock_step_fails(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
     let a = seed_task(&pool, &alice, &p.id, "a").await;
@@ -1547,8 +1689,10 @@ async fn mark_task_done_and_unblock_rolls_back_when_the_unblock_step_fails(pool:
     .await
     .unwrap();
 
+    // When
     // The real public wrapper — not a private step.
     let result = plan::mark_task_done_and_unblock(&pool, &alice, &p.id, &a.id).await;
+    // Then
     assert!(
         result.is_err(),
         "the injected trigger must actually fail the unblock UPDATE"
@@ -1586,6 +1730,7 @@ async fn mark_task_done_and_unblock_rolls_back_when_the_unblock_step_fails(pool:
 
 #[sqlx::test]
 async fn list_requirements_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1594,7 +1739,9 @@ async fn list_requirements_is_user_scoped(pool: PgPool) {
         .await
         .unwrap();
 
+    // When
     let bobs_view = plan::list_requirements(&pool, &bob, &p.id).await.unwrap();
+    // Then
     assert!(
         bobs_view.is_empty(),
         "bob must not read alice's requirement links, even by a correct plan id"
@@ -1606,6 +1753,7 @@ async fn list_requirements_is_user_scoped(pool: PgPool) {
 
 #[sqlx::test]
 async fn list_analyze_items_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1613,7 +1761,9 @@ async fn list_analyze_items_is_user_scoped(pool: PgPool) {
         .await
         .unwrap();
 
+    // When
     let bobs_view = plan::list_analyze_items(&pool, &bob, &p.id).await.unwrap();
+    // Then
     assert!(
         bobs_view.is_empty(),
         "bob must not read alice's analyze items, even by a correct plan id"
@@ -1627,6 +1777,7 @@ async fn list_analyze_items_is_user_scoped(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_reorder_another_users_requirements(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1647,7 +1798,9 @@ async fn cannot_reorder_another_users_requirements(pool: PgPool) {
 
     let links = plan::list_requirements(&pool, &alice, &p.id).await.unwrap();
     let a_after = links.iter().find(|l| l.id == a.id).unwrap();
+    // When
     let b_after = links.iter().find(|l| l.id == b.id).unwrap();
+    // Then
     assert_eq!(
         a_after.order, a.order,
         "bob's rejected reorder must not touch alice's links"
@@ -1660,6 +1813,7 @@ async fn cannot_reorder_another_users_requirements(pool: PgPool) {
 
 #[sqlx::test]
 async fn cannot_reorder_another_users_analyze_items(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1678,7 +1832,9 @@ async fn cannot_reorder_another_users_analyze_items(pool: PgPool) {
         .await
         .unwrap();
     let a_after = items.iter().find(|i| i.id == a.id).unwrap();
+    // When
     let b_after = items.iter().find(|i| i.id == b.id).unwrap();
+    // Then
     assert_eq!(
         a_after.order, a.order,
         "bob's rejected reorder must not touch alice's items"
@@ -1703,6 +1859,7 @@ async fn cannot_reorder_another_users_analyze_items(pool: PgPool) {
 /// failing this test.
 #[sqlx::test]
 async fn list_links_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1717,7 +1874,9 @@ async fn list_links_is_user_scoped(pool: PgPool) {
     .await
     .unwrap();
 
+    // When
     let bobs_view = plan::list_links(&pool, &bob, &p.id).await.unwrap();
+    // Then
     assert!(
         bobs_view.is_empty(),
         "bob must not read alice's plan-level links, even by a correct plan id"
@@ -1735,13 +1894,16 @@ async fn list_links_is_user_scoped(pool: PgPool) {
 /// test.
 #[sqlx::test]
 async fn cannot_add_a_plan_level_link_to_another_users_plan(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
 
+    // When
     let res = plan::add_link(&pool, &bob, &p.id, "github", "https://evil.example", None)
         .await
         .unwrap();
+    // Then
     assert!(res.is_none(), "ownership check must reject bob's insert");
 
     let links = plan::list_links(&pool, &alice, &p.id).await.unwrap();
@@ -1759,6 +1921,7 @@ async fn cannot_add_a_plan_level_link_to_another_users_plan(pool: PgPool) {
 /// deletes alice's link, failing this test.
 #[sqlx::test]
 async fn cannot_remove_another_users_plan_level_link(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1774,9 +1937,11 @@ async fn cannot_remove_another_users_plan_level_link(pool: PgPool) {
     .unwrap()
     .unwrap();
 
+    // When
     let res = plan::remove_link(&pool, &bob, &p.id, &link.id)
         .await
         .unwrap();
+    // Then
     assert!(!res, "bob does not own the plan; the link must survive");
 
     let links = plan::list_links(&pool, &alice, &p.id).await.unwrap();
@@ -1790,6 +1955,7 @@ async fn cannot_remove_another_users_plan_level_link(pool: PgPool) {
 /// into a 2-element vec including bob's plan, failing this test.
 #[sqlx::test]
 async fn list_with_rollups_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     plan::create(&pool, &alice, "alice's plan", None, None)
@@ -1799,9 +1965,11 @@ async fn list_with_rollups_is_user_scoped(pool: PgPool) {
         .await
         .unwrap();
 
+    // When
     let alices_view = plan::list_with_rollups(&pool, &alice, ListFilter::default())
         .await
         .unwrap();
+    // Then
     assert_eq!(alices_view.len(), 1);
     assert_eq!(alices_view[0].title, "alice's plan");
 }
@@ -1819,6 +1987,7 @@ async fn list_with_rollups_is_user_scoped(pool: PgPool) {
 /// including bob's row, failing this test.
 #[sqlx::test]
 async fn list_activity_by_entity_is_user_scoped(pool: PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice").await;
     let bob = seed_user(&pool, "bob").await;
     let p = plan::create(&pool, &alice, "p", None, None).await.unwrap();
@@ -1832,9 +2001,11 @@ async fn list_activity_by_entity_is_user_scoped(pool: PgPool) {
         .await
         .unwrap();
 
+    // When
     let alices_view = plan::list_activity_by_entity(&pool, &alice, "plan", Some(&p.id), 50)
         .await
         .unwrap();
+    // Then
     assert_eq!(
         alices_view.len(),
         1,

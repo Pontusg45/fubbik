@@ -175,6 +175,9 @@ mod tests {
 
     #[test]
     fn defaults_to_24_hours_when_unset_or_garbage() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(resolve_sync_interval(None).unwrap().as_secs(), 86_400);
         assert_eq!(
             resolve_sync_interval(Some("banana")).unwrap().as_secs(),
@@ -184,12 +187,18 @@ mod tests {
 
     #[test]
     fn zero_and_negative_disable_the_job() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(resolve_sync_interval(Some("0")).is_none());
         assert!(resolve_sync_interval(Some("-1")).is_none());
     }
 
     #[test]
     fn fractional_hours_are_honoured() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(resolve_sync_interval(Some("0.5")).unwrap().as_secs(), 1_800);
     }
 }

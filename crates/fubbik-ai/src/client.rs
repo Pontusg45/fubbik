@@ -203,6 +203,7 @@ mod tests {
 
     #[tokio::test]
     async fn embed_returns_the_vector_on_success() {
+        // Given
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/embeddings"))
@@ -212,15 +213,18 @@ mod tests {
             .mount(&server)
             .await;
 
+        // When
         let got = OllamaClient::new(server.uri())
             .embed("hello")
             .await
             .unwrap();
+        // Then
         assert_eq!(got, vec![0.25, -1.5, 3.0]);
     }
 
     #[tokio::test]
     async fn embed_maps_a_non_2xx_to_status() {
+        // Given
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/embeddings"))
@@ -228,15 +232,18 @@ mod tests {
             .mount(&server)
             .await;
 
+        // When
         let err = OllamaClient::new(server.uri())
             .embed("hello")
             .await
             .unwrap_err();
+        // Then
         assert!(matches!(err, AiError::Status(503)), "got {err:?}");
     }
 
     #[tokio::test]
     async fn embed_maps_an_undecodable_body_to_decode() {
+        // Given
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/embeddings"))
@@ -244,10 +251,12 @@ mod tests {
             .mount(&server)
             .await;
 
+        // When
         let err = OllamaClient::new(server.uri())
             .embed("hello")
             .await
             .unwrap_err();
+        // Then
         assert!(matches!(err, AiError::Decode), "got {err:?}");
     }
 
@@ -257,13 +266,18 @@ mod tests {
     /// the prefix reaches the wire.
     #[tokio::test]
     async fn embed_query_sends_the_search_query_prefix() {
+        // Given the inline inputs and test fixtures.
+        // When
         let sent = embed_capturing(serde_json::json!({ "kind": "query", "q": "auth" })).await;
+        // Then
         assert_eq!(sent["prompt"], "search_query: auth");
         assert_eq!(sent["model"], "nomic-embed-text");
     }
 
     #[tokio::test]
     async fn embed_document_builds_nodes_exact_string() {
+        // Given the inline inputs and test fixtures.
+        // When
         let sent = embed_capturing(serde_json::json!({
             "kind": "document",
             "title": "T",
@@ -271,6 +285,7 @@ mod tests {
             "content": "C"
         }))
         .await;
+        // Then
         assert_eq!(sent["prompt"], "search_document: T\nS\nC");
     }
 
@@ -279,6 +294,8 @@ mod tests {
     /// `"search_document: T\n\nC"` — not `"search_document: T\nC"`.
     #[tokio::test]
     async fn embed_document_keeps_the_blank_line_when_summary_is_none() {
+        // Given the inline inputs and test fixtures.
+        // When
         let sent = embed_capturing(serde_json::json!({
             "kind": "document",
             "title": "T",
@@ -286,6 +303,7 @@ mod tests {
             "content": "C"
         }))
         .await;
+        // Then
         assert_eq!(sent["prompt"], "search_document: T\n\nC");
     }
 
@@ -296,6 +314,7 @@ mod tests {
 
     #[tokio::test]
     async fn generate_json_parses_the_nested_response_field() {
+        // Given
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/generate"))
@@ -305,10 +324,12 @@ mod tests {
             .mount(&server)
             .await;
 
+        // When
         let got: Meta = OllamaClient::new(server.uri())
             .generate_json("p", "llama3.2")
             .await
             .unwrap();
+        // Then
         assert_eq!(
             got,
             Meta {
@@ -321,6 +342,7 @@ mod tests {
     /// JSON often enough that this is the realistic failure, not a 500.
     #[tokio::test]
     async fn generate_json_maps_an_unparseable_inner_payload_to_decode() {
+        // Given
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/generate"))
@@ -330,15 +352,18 @@ mod tests {
             .mount(&server)
             .await;
 
+        // When
         let err = OllamaClient::new(server.uri())
             .generate_json::<Meta>("p", "llama3.2")
             .await
             .unwrap_err();
+        // Then
         assert!(matches!(err, AiError::Decode), "got {err:?}");
     }
 
     #[tokio::test]
     async fn generate_json_sends_format_json_and_stream_false() {
+        // Given
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/generate"))
@@ -353,8 +378,10 @@ mod tests {
             .await
             .unwrap();
 
+        // When
         let requests = server.received_requests().await.unwrap();
         let sent: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
+        // Then
         assert_eq!(sent["format"], "json");
         assert_eq!(sent["stream"], false);
         assert_eq!(sent["model"], "llama3.2");
@@ -363,12 +390,15 @@ mod tests {
 
     #[tokio::test]
     async fn is_available_is_true_on_200() {
+        // Given
         let server = MockServer::start().await;
+        // When
         Mock::given(method("GET"))
             .and(path("/api/tags"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
             .mount(&server)
             .await;
+        // Then
         assert!(OllamaClient::new(server.uri()).is_available().await);
     }
 
@@ -376,23 +406,30 @@ mod tests {
     /// unavailable — not just a refused connection.
     #[tokio::test]
     async fn is_available_is_false_on_500() {
+        // Given
         let server = MockServer::start().await;
+        // When
         Mock::given(method("GET"))
             .and(path("/api/tags"))
             .respond_with(ResponseTemplate::new(500))
             .mount(&server)
             .await;
+        // Then
         assert!(!OllamaClient::new(server.uri()).is_available().await);
     }
 
     #[tokio::test]
     async fn is_available_is_false_when_nothing_is_listening() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         // Port 1 is reserved and never has a listener.
         assert!(!OllamaClient::new("http://127.0.0.1:1").is_available().await);
     }
 
     #[tokio::test]
     async fn generate_raw_returns_the_full_string_including_prose() {
+        // Given
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/generate"))
@@ -402,10 +439,12 @@ mod tests {
             .mount(&server)
             .await;
 
+        // When
         let got = OllamaClient::new(server.uri())
             .generate_raw("p", "llama3.2")
             .await
             .unwrap();
+        // Then
         assert_eq!(got, "Sure! [1,2]");
 
         let requests = server.received_requests().await.unwrap();
@@ -418,6 +457,7 @@ mod tests {
 
     #[tokio::test]
     async fn generate_raw_maps_a_non_2xx_to_status() {
+        // Given
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/generate"))
@@ -425,10 +465,12 @@ mod tests {
             .mount(&server)
             .await;
 
+        // When
         let err = OllamaClient::new(server.uri())
             .generate_raw("p", "llama3.2")
             .await
             .unwrap_err();
+        // Then
         assert!(matches!(err, AiError::Status(503)), "got {err:?}");
     }
 }

@@ -102,10 +102,12 @@ async fn a_chunk(app: axum::Router, cookie: &str, title: &str, content: &str) ->
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn archive_hides_from_the_list_and_restore_brings_it_back(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = a_chunk(app.clone(), &cookie, "Doomed", "c").await;
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -114,6 +116,7 @@ async fn archive_hides_from_the_list_and_restore_brings_it_back(pool: sqlx::PgPo
         serde_json::Value::Null,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await["message"], "Archived");
 
@@ -147,6 +150,7 @@ async fn archive_hides_from_the_list_and_restore_brings_it_back(pool: sqlx::PgPo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn archive_restore_and_archived_are_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
@@ -156,7 +160,9 @@ async fn archive_restore_and_archived_are_user_scoped(pool: sqlx::PgPool) {
         format!("/api/chunks/{id}/archive"),
         format!("/api/chunks/{id}/restore"),
     ] {
+        // When
         let res = send(app.clone(), &bob, "POST", &path, serde_json::Value::Null).await;
+        // Then
         assert_eq!(res.status(), StatusCode::NOT_FOUND, "{path}");
     }
 
@@ -187,6 +193,7 @@ async fn archive_restore_and_archived_are_user_scoped(pool: sqlx::PgPool) {
 /// mistake in one is invisible from testing another.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn bulk_update_applies_each_action(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let a = a_chunk(app.clone(), &cookie, "A", "c").await;
@@ -218,7 +225,9 @@ async fn bulk_update_applies_each_action(pool: sqlx::PgPool) {
         .iter()
         .map(|t| t["name"].as_str().unwrap())
         .collect();
+    // When
     tags.sort_unstable();
+    // Then
     assert_eq!(tags, ["alpha", "beta"]);
 
     bulk(app.clone(), &cookie, &ids, "remove_tags", Some("alpha")).await;
@@ -305,12 +314,14 @@ async fn bulk_update_applies_each_action(pool: sqlx::PgPool) {
 /// validated for every id before any write.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_batch_with_one_foreign_id_writes_nothing(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
     let mine = a_chunk(app.clone(), &bob, "Bob's own", "c").await;
     let hers = a_chunk(app.clone(), &alice, "Alice's", "c").await;
 
+    // When
     let res = send(
         app.clone(),
         &bob,
@@ -319,6 +330,7 @@ async fn a_batch_with_one_foreign_id_writes_nothing(pool: sqlx::PgPool) {
         serde_json::json!({ "ids": [mine, hers], "action": "set_type", "value": "schema" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     // Bob's own chunk is untouched — the batch is all-or-nothing.
@@ -331,6 +343,7 @@ async fn a_batch_with_one_foreign_id_writes_nothing(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn bulk_update_rejects_bad_actions_and_values(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = a_chunk(app.clone(), &cookie, "A", "c").await;
@@ -361,6 +374,7 @@ async fn bulk_update_rejects_bad_actions_and_values(pool: sqlx::PgPool) {
             }),
         ),
     ] {
+        // When
         let res = send(
             app.clone(),
             &cookie,
@@ -369,6 +383,7 @@ async fn bulk_update_rejects_bad_actions_and_values(pool: sqlx::PgPool) {
             body,
         )
         .await;
+        // Then
         assert_eq!(
             res.status(),
             StatusCode::BAD_REQUEST,
@@ -379,12 +394,14 @@ async fn bulk_update_rejects_bad_actions_and_values(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn bulk_delete_only_removes_the_callers_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
     let hers = a_chunk(app.clone(), &alice, "Alice's", "c").await;
     let his = a_chunk(app.clone(), &bob, "Bob's", "c").await;
 
+    // When
     let res = send(
         app.clone(),
         &bob,
@@ -393,6 +410,7 @@ async fn bulk_delete_only_removes_the_callers_chunks(pool: sqlx::PgPool) {
         serde_json::json!({ "ids": [his, hers] }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         json_body(res).await["deleted"],
@@ -420,6 +438,7 @@ async fn bulk_delete_only_removes_the_callers_chunks(pool: sqlx::PgPool) {
 /// count rather than passing.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn merge_reparents_everything_and_deletes_the_source(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
 
@@ -494,6 +513,7 @@ async fn merge_reparents_everything_and_deletes_the_source(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -502,6 +522,7 @@ async fn merge_reparents_everything_and_deletes_the_source(pool: sqlx::PgPool) {
         serde_json::json!({ "sourceId": source, "targetId": target }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK, "merge must succeed");
     let merged = json_body(res).await;
     assert_eq!(merged["id"], target.as_str());
@@ -562,6 +583,7 @@ async fn merge_reparents_everything_and_deletes_the_source(pool: sqlx::PgPool) {
 /// a self-loop; it must be removed.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn merging_two_connected_chunks_leaves_no_self_loop(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let source = a_chunk(app.clone(), &cookie, "Source", "s").await;
@@ -576,6 +598,7 @@ async fn merging_two_connected_chunks_leaves_no_self_loop(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -584,6 +607,7 @@ async fn merging_two_connected_chunks_leaves_no_self_loop(pool: sqlx::PgPool) {
         serde_json::json!({ "sourceId": source, "targetId": target }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let detail = json_body(get(app, &cookie, &format!("/api/chunks/{target}")).await).await;
@@ -597,11 +621,13 @@ async fn merging_two_connected_chunks_leaves_no_self_loop(pool: sqlx::PgPool) {
 /// Merging twice must not duplicate the appended body.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn merging_identical_content_does_not_append_it(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let source = a_chunk(app.clone(), &cookie, "Source", "same body").await;
     let target = a_chunk(app.clone(), &cookie, "Target", "same body").await;
 
+    // When
     let merged = json_body(
         send(
             app,
@@ -613,6 +639,7 @@ async fn merging_identical_content_does_not_append_it(pool: sqlx::PgPool) {
         .await,
     )
     .await;
+    // Then
     assert_eq!(
         merged["content"], "same body",
         "content already present in the target is not appended again"
@@ -621,12 +648,14 @@ async fn merging_identical_content_does_not_append_it(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn merge_rejects_self_and_foreign_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
     let hers = a_chunk(app.clone(), &alice, "Alice's", "c").await;
     let his = a_chunk(app.clone(), &bob, "Bob's", "c").await;
 
+    // When
     let res = send(
         app.clone(),
         &alice,
@@ -635,6 +664,7 @@ async fn merge_rejects_self_and_foreign_chunks(pool: sqlx::PgPool) {
         serde_json::json!({ "sourceId": hers, "targetId": hers }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST, "self-merge");
 
     let res = send(

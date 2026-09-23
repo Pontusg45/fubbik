@@ -463,6 +463,7 @@ async fn assert_plan_detail_same(path: &str) {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn chunk_endpoints_match() {
+    // Given both running stacks and their comparison data.
     for path in [
         "/api/chunks",
         "/api/chunks?type=note",
@@ -470,6 +471,8 @@ async fn chunk_endpoints_match() {
         "/api/chunks?sort=alpha",
         "/api/chunks?search=convention",
     ] {
+        // When the comparison helper fetches the corresponding endpoints.
+        // Then the responses agree under the endpoint comparison rules.
         assert_same(path).await;
     }
 }
@@ -485,11 +488,14 @@ async fn chunk_endpoints_match() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn chunk_list_limit_is_clamped_identically_above_both_caps() {
+    // Given
     let (node, rust) = urls();
 
     let (_, node_body) = fetch(&node, "/api/chunks?limit=200").await;
+    // When
     let (_, rust_body) = fetch(&rust, "/api/chunks?limit=200").await;
 
+    // Then
     assert_eq!(
         node_body["chunks"].as_array().unwrap().len(),
         rust_body["chunks"].as_array().unwrap().len(),
@@ -511,7 +517,10 @@ async fn chunk_list_limit_is_clamped_identically_above_both_caps() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn spaces_tags_tag_types_stats_match() {
+    // Given both running stacks and their comparison data.
     for path in ["/api/spaces", "/api/tags", "/api/tag-types", "/api/stats"] {
+        // When the comparison helper fetches the corresponding endpoints.
+        // Then the responses agree under the endpoint comparison rules.
         assert_same(path).await;
     }
 }
@@ -532,6 +541,7 @@ async fn spaces_tags_tag_types_stats_match() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn notifications_favorites_settings_activity_match() {
+    // Given both running stacks and their comparison data.
     for path in [
         "/api/notifications",
         "/api/notifications/count",
@@ -541,6 +551,8 @@ async fn notifications_favorites_settings_activity_match() {
         "/api/settings/features",
         "/api/activity",
     ] {
+        // When the comparison helper fetches the corresponding endpoints.
+        // Then the responses agree under the endpoint comparison rules.
         assert_same(path).await;
     }
 }
@@ -557,6 +569,9 @@ async fn notifications_favorites_settings_activity_match() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn workspaces_list_and_detail_match() {
+    // Given both running stacks and their comparison data.
+    // When the comparison helper fetches the corresponding endpoints.
+    // Then the responses agree under the endpoint comparison rules.
     assert_same("/api/workspaces").await;
 
     let (_, rust) = urls();
@@ -576,6 +591,9 @@ async fn workspaces_list_and_detail_match() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn collections_list_and_chunks_match() {
+    // Given both running stacks and their comparison data.
+    // When the comparison helper fetches the corresponding endpoints.
+    // Then the responses agree under the endpoint comparison rules.
     assert_same("/api/collections").await;
 
     let (_, rust) = urls();
@@ -595,11 +613,14 @@ async fn collections_list_and_chunks_match() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn settings_codebase_matches() {
+    // Given both running stacks and their comparison data.
     let (_, rust) = urls();
     let Some(space_id) = first_id(&rust, "/api/spaces").await else {
         eprintln!("skipping /api/settings/codebase: no spaces in the diff database");
         return;
     };
+    // When the comparison helper fetches the corresponding endpoints.
+    // Then the responses agree under the endpoint comparison rules.
     assert_same(&format!("/api/settings/codebase?codebaseId={space_id}")).await;
 }
 
@@ -613,6 +634,9 @@ async fn settings_codebase_matches() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn plans_list_and_simple_details_match() {
+    // Given both running stacks and their comparison data.
+    // When the comparison helper fetches the corresponding endpoints.
+    // Then the responses agree under the endpoint comparison rules.
     assert_same("/api/plans").await;
 
     let (_, rust) = urls();
@@ -631,11 +655,14 @@ async fn plans_list_and_simple_details_match() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn plan_detail_matches() {
+    // Given both running stacks and their comparison data.
     let (_, rust) = urls();
     let Some(id) = first_id(&rust, "/api/plans").await else {
         eprintln!("skipping /api/plans/{{id}}: no plans in the diff database");
         return;
     };
+    // When the comparison helper fetches the corresponding endpoints.
+    // Then the responses agree under the endpoint comparison rules.
     assert_plan_detail_same(&format!("/api/plans/{id}")).await;
 }
 
@@ -646,6 +673,7 @@ async fn plan_detail_matches() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn plan_task_links_match() {
+    // Given both running stacks and their comparison data.
     let (_, rust) = urls();
     let Some(plan_id) = first_id(&rust, "/api/plans").await else {
         eprintln!(
@@ -657,6 +685,8 @@ async fn plan_task_links_match() {
         eprintln!("skipping /api/plans/{{id}}/tasks/{{taskId}}/links: plan {plan_id} has no tasks");
         return;
     };
+    // When the comparison helper fetches the corresponding endpoints.
+    // Then the responses agree under the endpoint comparison rules.
     assert_same(&format!("/api/plans/{plan_id}/tasks/{task_id}/links")).await;
 }
 
@@ -667,6 +697,9 @@ async fn plan_task_links_match() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn search_parse_and_saved_match() {
+    // Given both running stacks and their comparison data.
+    // When the comparison helper fetches the corresponding endpoints.
+    // Then the responses agree under the endpoint comparison rules.
     assert_same("/api/search/parse?q=type:note").await;
     assert_same("/api/search/saved").await;
 }
@@ -679,11 +712,14 @@ async fn search_parse_and_saved_match() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn search_autocomplete_matches() {
+    // Given both running stacks and their comparison data.
     for path in [
         "/api/search/autocomplete?field=tag&prefix=a",
         "/api/search/autocomplete?field=chunk&prefix=a",
         "/api/search/autocomplete?field=requirement&prefix=a",
     ] {
+        // When the comparison helper fetches the corresponding endpoints.
+        // Then the responses agree under the endpoint comparison rules.
         assert_same(path).await;
     }
 }
@@ -694,6 +730,9 @@ async fn search_autocomplete_matches() {
 #[tokio::test]
 #[ignore = "requires both stacks running"]
 async fn staleness_endpoints_match() {
+    // Given both running stacks and their comparison data.
+    // When the comparison helper fetches the corresponding endpoints.
+    // Then the responses agree under the endpoint comparison rules.
     assert_same("/api/chunks/stale").await;
     assert_same("/api/chunks/stale/count").await;
 }
@@ -705,6 +744,7 @@ async fn staleness_endpoints_match() {
 /// like a parity bug.
 #[test]
 fn normalise_treats_id_and_timestamp_differences_as_equal() {
+    // Given
     let mut node = json!({
         "id": "node-generated-uuid",
         "title": "Naming convention",
@@ -731,8 +771,10 @@ fn normalise_treats_id_and_timestamp_differences_as_equal() {
     });
 
     normalise(&mut node);
+    // When
     normalise(&mut rust);
 
+    // Then
     assert_eq!(
         node, rust,
         "payloads differing only in id/createdAt/updatedAt/userId must normalise equal"
@@ -746,6 +788,7 @@ fn normalise_treats_id_and_timestamp_differences_as_equal() {
 /// silently pass.
 #[test]
 fn normalise_still_detects_a_real_content_difference() {
+    // Given
     let mut node = json!({
         "id": "same-id",
         "title": "Naming convention",
@@ -764,8 +807,10 @@ fn normalise_still_detects_a_real_content_difference() {
     });
 
     normalise(&mut node);
+    // When
     normalise(&mut rust);
 
+    // Then
     assert_ne!(
         node, rust,
         "a real difference in `content` must survive normalisation"
@@ -780,6 +825,7 @@ fn normalise_still_detects_a_real_content_difference() {
 /// that `authorId` differences are NOT masked.
 #[test]
 fn normalise_does_not_mask_fields_with_different_names() {
+    // Given
     let mut node = json!({
         "id": "x",
         "authorId": "user-a"
@@ -790,8 +836,10 @@ fn normalise_does_not_mask_fields_with_different_names() {
     });
 
     normalise(&mut node);
+    // When
     normalise(&mut rust);
 
+    // Then
     assert_ne!(
         node, rust,
         "authorId is not one of the stripped keys and must still be compared"
@@ -807,6 +855,7 @@ fn normalise_does_not_mask_fields_with_different_names() {
 /// (for spaces) `createdAt`/`updatedAt`.
 #[test]
 fn normalise_recurses_into_a_top_level_array() {
+    // Given
     let mut node = json!([
         { "id": "node-1", "name": "fubbik", "kind": "code", "createdAt": "2026-01-01T00:00:00Z" },
         { "id": "node-2", "name": "other", "kind": "wiki", "createdAt": "2026-01-02T00:00:00Z" }
@@ -817,8 +866,10 @@ fn normalise_recurses_into_a_top_level_array() {
     ]);
 
     normalise(&mut node);
+    // When
     normalise(&mut rust);
 
+    // Then
     assert_eq!(
         node, rust,
         "a top-level array response must normalise element-by-element, same as an object"
@@ -836,12 +887,15 @@ fn normalise_recurses_into_a_top_level_array() {
 /// masked.
 #[test]
 fn normalise_does_not_mask_a_stats_count_difference() {
+    // Given
     let mut node = json!({ "chunks": 24, "connections": 36, "tags": 40 });
     let mut rust = json!({ "chunks": 23, "connections": 36, "tags": 40 });
 
     normalise(&mut node);
+    // When
     normalise(&mut rust);
 
+    // Then
     assert_ne!(
         node, rust,
         "a real difference in a stats count must survive normalisation"
@@ -865,6 +919,9 @@ fn is_order_undefined_in_node_covers_exactly_the_five_unordered_lists() {
         "/api/search/autocomplete",
         "/api/search/autocomplete?field=chunk&prefix=a",
     ] {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(
             is_order_undefined_in_node(path),
             "{path} must be compared unordered: Node has no ORDER BY for it"
@@ -910,6 +967,7 @@ fn is_order_undefined_in_node_covers_exactly_the_five_unordered_lists() {
 /// other field stays an exact match.
 #[test]
 fn sort_nested_array_reorders_only_the_named_field() {
+    // Given
     let mut value = json!({
         "id": "w1",
         "name": "Frontend + backend",
@@ -919,8 +977,10 @@ fn sort_nested_array_reorders_only_the_named_field() {
         ]
     });
 
+    // When
     sort_nested_array(&mut value, "spaces");
 
+    // Then
     assert_eq!(
         value,
         json!({
@@ -940,12 +1000,15 @@ fn sort_nested_array_reorders_only_the_named_field() {
 /// specially.
 #[test]
 fn sort_nested_array_does_not_mask_a_real_difference() {
+    // Given
     let mut node = json!({ "spaces": [{ "name": "alpha" }, { "name": "beta" }] });
     let mut rust = json!({ "spaces": [{ "name": "alpha" }, { "name": "delta" }] });
 
     sort_nested_array(&mut node, "spaces");
+    // When
     sort_nested_array(&mut rust, "spaces");
 
+    // Then
     assert_ne!(
         node, rust,
         "a genuinely different spaces set must survive sorting and still compare unequal"
@@ -958,6 +1021,7 @@ fn sort_nested_array_does_not_mask_a_real_difference() {
 /// (`tasks` itself, and each task's other fields) stays untouched.
 #[test]
 fn sort_plan_detail_unordered_fields_ignores_pure_reordering() {
+    // Given
     let mut node = json!({
         "plan": { "id": "p1" },
         "requirements": [],
@@ -986,8 +1050,10 @@ fn sort_plan_detail_unordered_fields_ignores_pure_reordering() {
     });
 
     sort_plan_detail_unordered_fields(&mut node);
+    // When
     sort_plan_detail_unordered_fields(&mut rust);
 
+    // Then
     assert_eq!(
         node, rust,
         "reordering only `dependencies` and per-task `chunks` must not fail the comparison"
@@ -1001,6 +1067,7 @@ fn sort_plan_detail_unordered_fields_ignores_pure_reordering() {
 /// sorting.
 #[test]
 fn sort_plan_detail_unordered_fields_does_not_mask_real_differences() {
+    // Given
     let mut node = json!({
         "tasks": [{ "id": "t1", "chunks": [{ "chunkId": "c1" }] }],
         "dependencies": []
@@ -1010,7 +1077,9 @@ fn sort_plan_detail_unordered_fields_does_not_mask_real_differences() {
         "dependencies": []
     });
     sort_plan_detail_unordered_fields(&mut node);
+    // When
     sort_plan_detail_unordered_fields(&mut different_chunks);
+    // Then
     assert_ne!(
         node, different_chunks,
         "a genuinely different per-task chunks set must survive sorting and still differ"
@@ -1034,6 +1103,7 @@ fn sort_plan_detail_unordered_fields_does_not_mask_real_differences() {
 /// the multiset comparison.
 #[test]
 fn multiset_comparison_ignores_pure_reordering() {
+    // Given two payloads to compare.
     let node = json!([
         { "name": "alpha" },
         { "name": "beta" },
@@ -1045,6 +1115,8 @@ fn multiset_comparison_ignores_pure_reordering() {
         { "name": "beta" }
     ]);
 
+    // When the multiset comparison runs.
+    // Then reordered payloads compare equal.
     assert_same_as_multiset(&node, &rust, "/api/tags");
 }
 
@@ -1055,8 +1127,11 @@ fn multiset_comparison_ignores_pure_reordering() {
 #[test]
 #[should_panic(expected = "body mismatch (compared as a set")]
 fn multiset_comparison_still_detects_a_different_row_set() {
+    // Given two payloads to compare.
     let node = json!([{ "name": "alpha" }, { "name": "beta" }]);
     let rust = json!([{ "name": "alpha" }, { "name": "delta" }]);
 
+    // When the multiset comparison runs.
+    // Then it panics on the different row set.
     assert_same_as_multiset(&node, &rust, "/api/tags");
 }

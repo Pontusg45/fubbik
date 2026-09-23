@@ -16,7 +16,10 @@ import { chunkFeatureDelta, feature, featureSpace, userActiveFeature } from "../
 
 describe("feature table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(feature);
+        // Then
         expect(columns).toHaveProperty("id");
         expect(columns).toHaveProperty("name");
         expect(columns).toHaveProperty("description");
@@ -31,7 +34,10 @@ describe("feature table", () => {
 
 describe("featureSpace table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(featureSpace);
+        // Then
         expect(columns).toHaveProperty("featureId");
         expect(columns).toHaveProperty("spaceId");
     });
@@ -39,7 +45,10 @@ describe("featureSpace table", () => {
 
 describe("chunkFeatureDelta table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(chunkFeatureDelta);
+        // Then
         expect(columns).toHaveProperty("id");
         expect(columns).toHaveProperty("chunkId");
         expect(columns).toHaveProperty("featureId");
@@ -51,7 +60,10 @@ describe("chunkFeatureDelta table", () => {
 
 describe("userActiveFeature table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(userActiveFeature);
+        // Then
         expect(columns).toHaveProperty("userId");
         expect(columns).toHaveProperty("featureId");
     });
@@ -116,8 +128,11 @@ describe("Feature CRUD", () => {
     });
 
     it("creates a feature and reads it back", async () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const created = await createTestFeature(testUserId, { name: "My Feature", priority: 1 });
 
+        // Then
         expect(created.id).toBeDefined();
         expect(created.name).toBe("My Feature");
         expect(created.userId).toBe(testUserId);
@@ -131,13 +146,18 @@ describe("Feature CRUD", () => {
     });
 
     it("returns null for non-existent feature", async () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const found = await Effect.runPromise(featureRepo.getFeatureById("does-not-exist", testUserId));
+        // Then
         expect(found).toBeNull();
     });
 
     it("updates a feature", async () => {
+        // Given
         const created = await createTestFeature(testUserId, { name: "Original", priority: 1 });
 
+        // When
         const updated = await Effect.runPromise(
             featureRepo.updateFeature(created.id, testUserId, {
                 name: "Updated",
@@ -146,6 +166,7 @@ describe("Feature CRUD", () => {
             })
         );
 
+        // Then
         expect(updated).not.toBeNull();
         expect(updated!.name).toBe("Updated");
         expect(updated!.status).toBe("active");
@@ -153,9 +174,12 @@ describe("Feature CRUD", () => {
     });
 
     it("deletes a feature", async () => {
+        // Given
         const created = await createTestFeature(testUserId, { priority: 1 });
 
+        // When
         const deleted = await Effect.runPromise(featureRepo.deleteFeature(created.id, testUserId));
+        // Then
         expect(deleted).not.toBeNull();
         expect(deleted!.id).toBe(created.id);
 
@@ -164,12 +188,15 @@ describe("Feature CRUD", () => {
     });
 
     it("listFeatures returns deltaCount", async () => {
+        // Given
         const f = await createTestFeature(testUserId, { name: "List Test", priority: 1 });
         const chunkId = await createTestChunk(testUserId);
 
+        // When
         // No deltas yet
         const listBefore = await Effect.runPromise(featureRepo.listFeatures(testUserId));
         const rowBefore = listBefore.find(r => r.id === f.id);
+        // Then
         expect(rowBefore).toBeDefined();
         expect(rowBefore!.deltaCount).toBe(0);
 
@@ -190,25 +217,34 @@ describe("Feature CRUD", () => {
     });
 
     it("featureNameConflict detects a duplicate name for a different feature id", async () => {
+        // Given
         const f1 = await createTestFeature(testUserId, { name: "Shared Name", priority: 1 });
         const f2 = await createTestFeature(testUserId, { name: "Other Name", priority: 2 });
 
+        // When
         // Checking whether f2 would conflict if renamed to f1's name
         const conflict = await Effect.runPromise(featureRepo.featureNameConflict(f2.id, testUserId, f1.name));
+        // Then
         expect(conflict).toBe(true);
     });
 
     it("featureNameConflict returns false for same feature id", async () => {
+        // Given
         const f = await createTestFeature(testUserId, { name: "Unique Name", priority: 1 });
 
+        // When
         const conflict = await Effect.runPromise(featureRepo.featureNameConflict(f.id, testUserId, f.name));
+        // Then
         expect(conflict).toBe(false);
     });
 
     it("featureNameConflict returns false when no conflict", async () => {
+        // Given
         const f = await createTestFeature(testUserId, { name: "Some Feature", priority: 1 });
 
+        // When
         const conflict = await Effect.runPromise(featureRepo.featureNameConflict(f.id, testUserId, "Totally Different"));
+        // Then
         expect(conflict).toBe(false);
     });
 });
@@ -234,6 +270,7 @@ describe("Delta operations", () => {
     });
 
     it("upserts a delta (create) and reads it back via getDeltasForChunk", async () => {
+        // Given
         const deltaId = crypto.randomUUID();
         await Effect.runPromise(
             chunkDeltaRepo.upsertDelta({
@@ -244,7 +281,9 @@ describe("Delta operations", () => {
             })
         );
 
+        // When
         const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId, testUserId));
+        // Then
         expect(deltas).toHaveLength(1);
         expect(deltas[0]!.chunkId).toBe(testChunkId);
         expect(deltas[0]!.featureId).toBe(testFeatureId);
@@ -252,6 +291,7 @@ describe("Delta operations", () => {
     });
 
     it("upsert same chunk+feature overwrites the delta (update)", async () => {
+        // Given
         const deltaId = crypto.randomUUID();
         await Effect.runPromise(
             chunkDeltaRepo.upsertDelta({
@@ -272,13 +312,16 @@ describe("Delta operations", () => {
             })
         );
 
+        // When
         const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId, testUserId));
+        // Then
         // Still only one row (upsert merged into existing)
         expect(deltas).toHaveLength(1);
         expect(deltas[0]!.delta).toEqual({ title: "Updated Title", content: "New content" });
     });
 
     it("getDeltasForFeature returns chunk titles", async () => {
+        // Given
         await Effect.runPromise(
             chunkDeltaRepo.upsertDelta({
                 id: crypto.randomUUID(),
@@ -288,7 +331,9 @@ describe("Delta operations", () => {
             })
         );
 
+        // When
         const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForFeature(testFeatureId));
+        // Then
         expect(deltas).toHaveLength(1);
         expect(deltas[0]!.featureId).toBe(testFeatureId);
         expect(deltas[0]!.chunkId).toBe(testChunkId);
@@ -296,6 +341,7 @@ describe("Delta operations", () => {
     });
 
     it("batchFetchDeltas filters by chunkIds AND featureIds", async () => {
+        // Given
         // Create a second chunk and feature
         const chunkId2 = await createTestChunk(testUserId);
         const f2 = await createTestFeature(testUserId, { priority: 2 });
@@ -319,8 +365,10 @@ describe("Delta operations", () => {
             chunkDeltaRepo.upsertDelta({ id: crypto.randomUUID(), chunkId: chunkId2, featureId: f2.id, delta: { title: "c2f2" } })
         );
 
+        // When
         // Only fetch for testChunkId + testFeatureId
         const result = await Effect.runPromise(chunkDeltaRepo.batchFetchDeltas([testChunkId], [testFeatureId]));
+        // Then
         expect(result).toHaveLength(1);
         expect(result[0]!.chunkId).toBe(testChunkId);
         expect(result[0]!.featureId).toBe(testFeatureId);
@@ -328,7 +376,10 @@ describe("Delta operations", () => {
     });
 
     it("batchFetchDeltas returns empty for empty inputs", async () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result1 = await Effect.runPromise(chunkDeltaRepo.batchFetchDeltas([], [testFeatureId]));
+        // Then
         expect(result1).toHaveLength(0);
 
         const result2 = await Effect.runPromise(chunkDeltaRepo.batchFetchDeltas([testChunkId], []));
@@ -336,6 +387,7 @@ describe("Delta operations", () => {
     });
 
     it("deleteDelta removes a specific delta", async () => {
+        // Given
         await Effect.runPromise(
             chunkDeltaRepo.upsertDelta({
                 id: crypto.randomUUID(),
@@ -345,7 +397,9 @@ describe("Delta operations", () => {
             })
         );
 
+        // When
         const deleted = await Effect.runPromise(chunkDeltaRepo.deleteDelta(testChunkId, testFeatureId));
+        // Then
         expect(deleted).not.toBeNull();
 
         const deltas = await Effect.runPromise(chunkDeltaRepo.getDeltasForChunk(testChunkId, testUserId));
@@ -353,6 +407,7 @@ describe("Delta operations", () => {
     });
 
     it("deleting a feature cascades to its deltas", async () => {
+        // Given
         await Effect.runPromise(
             chunkDeltaRepo.upsertDelta({
                 id: crypto.randomUUID(),
@@ -362,14 +417,18 @@ describe("Delta operations", () => {
             })
         );
 
+        // When
         // Delete the feature — cascade should remove deltas
         await Effect.runPromise(featureRepo.deleteFeature(testFeatureId, testUserId));
 
         const remaining = await db.select().from(chunkFeatureDelta).where(eq(chunkFeatureDelta.featureId, testFeatureId));
+        // Then
         expect(remaining).toHaveLength(0);
     });
 
     it("deleting a chunk cascades to its deltas", async () => {
+        // Given the inline inputs and test fixtures.
+        // When
         await Effect.runPromise(
             chunkDeltaRepo.upsertDelta({
                 id: crypto.randomUUID(),
@@ -383,6 +442,7 @@ describe("Delta operations", () => {
         await db.delete(chunk).where(eq(chunk.id, testChunkId));
 
         const remaining = await db.select().from(chunkFeatureDelta).where(eq(chunkFeatureDelta.chunkId, testChunkId));
+        // Then
         expect(remaining).toHaveLength(0);
     });
 });
@@ -403,19 +463,23 @@ describe("Active features", () => {
     });
 
     it("sets and gets active features", async () => {
+        // Given
         const f1 = await createTestFeature(testUserId, { priority: 1 });
         const f2 = await createTestFeature(testUserId, { priority: 2 });
 
         await Effect.runPromise(featureRepo.setActiveFeatures(testUserId, [f1.id, f2.id]));
 
+        // When
         const rows = await Effect.runPromise(featureRepo.getActiveFeatureIds(testUserId));
         const ids = rows.map(r => r.featureId);
+        // Then
         expect(ids).toContain(f1.id);
         expect(ids).toContain(f2.id);
         expect(ids).toHaveLength(2);
     });
 
     it("replaces active features on subsequent set", async () => {
+        // Given
         const f1 = await createTestFeature(testUserId, { priority: 1 });
         const f2 = await createTestFeature(testUserId, { priority: 2 });
 
@@ -423,25 +487,33 @@ describe("Active features", () => {
         // Now switch to only f2
         await Effect.runPromise(featureRepo.setActiveFeatures(testUserId, [f2.id]));
 
+        // When
         const rows = await Effect.runPromise(featureRepo.getActiveFeatureIds(testUserId));
         const ids = rows.map(r => r.featureId);
+        // Then
         expect(ids).not.toContain(f1.id);
         expect(ids).toContain(f2.id);
         expect(ids).toHaveLength(1);
     });
 
     it("clears active features with an empty array", async () => {
+        // Given
         const f1 = await createTestFeature(testUserId, { priority: 1 });
 
         await Effect.runPromise(featureRepo.setActiveFeatures(testUserId, [f1.id]));
         await Effect.runPromise(featureRepo.setActiveFeatures(testUserId, []));
 
+        // When
         const rows = await Effect.runPromise(featureRepo.getActiveFeatureIds(testUserId));
+        // Then
         expect(rows).toHaveLength(0);
     });
 
     it("returns empty list when no active features set", async () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const rows = await Effect.runPromise(featureRepo.getActiveFeatureIds(testUserId));
+        // Then
         expect(rows).toHaveLength(0);
     });
 });
@@ -462,45 +534,57 @@ describe("Priority management", () => {
     });
 
     it("getMaxPriority returns 0 when no features exist", async () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const max = await Effect.runPromise(featureRepo.getMaxPriority(testUserId));
+        // Then
         expect(max).toBe(0);
     });
 
     it("getMaxPriority returns correct value after creating features", async () => {
+        // Given
         await createTestFeature(testUserId, { priority: 1 });
         await createTestFeature(testUserId, { priority: 5 });
         await createTestFeature(testUserId, { priority: 3 });
 
+        // When
         const max = await Effect.runPromise(featureRepo.getMaxPriority(testUserId));
+        // Then
         expect(max).toBe(5);
     });
 
     it("shiftPriorities shifts existing features up correctly", async () => {
+        // Given
         // Create features at priorities 2 and 4
         const f1 = await createTestFeature(testUserId, { priority: 2 });
         const f2 = await createTestFeature(testUserId, { priority: 4 });
 
+        // When
         // Shift up all features at priority >= 2 to make room for a new one at priority 2
         await Effect.runPromise(featureRepo.shiftPriorities(testUserId, 2, "up"));
 
         const [updatedF1] = await db.select().from(feature).where(eq(feature.id, f1.id));
         const [updatedF2] = await db.select().from(feature).where(eq(feature.id, f2.id));
 
+        // Then
         expect(updatedF1!.priority).toBe(3); // shifted from 2 → 3
         expect(updatedF2!.priority).toBe(5); // shifted from 4 → 5
     });
 
     it("shiftPriorities shifts features down correctly", async () => {
+        // Given
         // Create features at priorities 3 and 5
         const f1 = await createTestFeature(testUserId, { priority: 3 });
         const f2 = await createTestFeature(testUserId, { priority: 5 });
 
+        // When
         // Shift down all features at priority <= 5
         await Effect.runPromise(featureRepo.shiftPriorities(testUserId, 5, "down"));
 
         const [updatedF1] = await db.select().from(feature).where(eq(feature.id, f1.id));
         const [updatedF2] = await db.select().from(feature).where(eq(feature.id, f2.id));
 
+        // Then
         expect(updatedF1!.priority).toBe(2); // shifted from 3 → 2
         expect(updatedF2!.priority).toBe(4); // shifted from 5 → 4
     });

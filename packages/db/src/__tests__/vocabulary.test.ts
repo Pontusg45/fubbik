@@ -5,7 +5,10 @@ import { vocabularyEntry } from "../schema/vocabulary";
 
 describe("vocabularyEntry table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(vocabularyEntry);
+        // Then
         expect(columns).toHaveProperty("id");
         expect(columns).toHaveProperty("word");
         expect(columns).toHaveProperty("category");

@@ -99,12 +99,14 @@ async fn a_chunk(app: axum::Router, cookie: &str, title: &str, content: &str) ->
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn comments_round_trip_oldest_first(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let chunk = a_chunk(app.clone(), &cookie, "T", "c").await;
     let path = format!("/api/chunks/{chunk}/comments");
 
     for text in ["first", "second"] {
+        // When
         let res = send(
             app.clone(),
             &cookie,
@@ -113,6 +115,7 @@ async fn comments_round_trip_oldest_first(pool: sqlx::PgPool) {
             serde_json::json!({ "content": text }),
         )
         .await;
+        // Then
         assert_eq!(res.status(), StatusCode::CREATED);
     }
 
@@ -173,6 +176,7 @@ async fn comments_round_trip_oldest_first(pool: sqlx::PgPool) {
 /// to edit it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn comment_reads_follow_the_chunk_and_writes_follow_the_author(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
@@ -187,6 +191,7 @@ async fn comment_reads_follow_the_chunk_and_writes_follow_the_author(pool: sqlx:
     )
     .await;
 
+    // When
     // Reading: gated on the chunk.
     let bobs_view = json_body(
         get(
@@ -197,6 +202,7 @@ async fn comment_reads_follow_the_chunk_and_writes_follow_the_author(pool: sqlx:
         .await,
     )
     .await;
+    // Then
     assert_eq!(
         bobs_view.as_array().unwrap().len(),
         0,
@@ -259,10 +265,12 @@ async fn comment_reads_follow_the_chunk_and_writes_follow_the_author(pool: sqlx:
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_blank_comment_is_rejected(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let chunk = a_chunk(app.clone(), &cookie, "T", "c").await;
 
+    // When
     let res = send(
         app,
         &cookie,
@@ -271,6 +279,7 @@ async fn a_blank_comment_is_rejected(pool: sqlx::PgPool) {
         serde_json::json!({ "content": "   " }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
@@ -282,11 +291,14 @@ async fn a_blank_comment_is_rejected(pool: sqlx::PgPool) {
 /// cookie must still report the service's state, not 401.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn health_answers_without_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
+    // When
     let res = app
         .oneshot(Request::get("/api/health").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["status"], "ok");
@@ -307,6 +319,7 @@ async fn health_answers_without_a_session(pool: sqlx::PgPool) {
 /// rather than passing quietly.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn knowledge_health_sorts_chunks_into_the_right_buckets(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
 
@@ -315,8 +328,10 @@ async fn knowledge_health_sorts_chunks_into_the_right_buckets(pool: sqlx::PgPool
     // Fat: over 100 chars, still an orphan.
     let fat = a_chunk(app.clone(), &cookie, "Fat", &"x".repeat(200)).await;
 
+    // When
     let body = json_body(get(app.clone(), &cookie, "/api/health/knowledge").await).await;
 
+    // Then
     assert_eq!(body["thin"]["count"], 1, "only the short chunk is thin");
     assert_eq!(body["thin"]["chunks"][0]["id"], thin.as_str());
     assert_eq!(body["thin"]["chunks"][0]["contentLength"], 5);
@@ -361,6 +376,7 @@ async fn knowledge_health_sorts_chunks_into_the_right_buckets(pool: sqlx::PgPool
 /// File references are reported with their chunk's title and type.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn knowledge_health_reports_file_refs(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let chunk = a_chunk(app.clone(), &cookie, "Documented", "c").await;
@@ -374,7 +390,9 @@ async fn knowledge_health_reports_file_refs(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let body = json_body(get(app, &cookie, "/api/health/knowledge").await).await;
+    // Then
     assert_eq!(body["fileRefs"]["count"], 1);
     let r = &body["fileRefs"]["refs"][0];
     assert_eq!(r["path"], "src/lib.rs");
@@ -386,11 +404,14 @@ async fn knowledge_health_reports_file_refs(pool: sqlx::PgPool) {
 /// Another user's chunks never appear, in any bucket.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn knowledge_health_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
+    // When
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
     a_chunk(app.clone(), &alice, "Alice's thin", "short").await;
 
+    // Then
     assert_eq!(
         json_body(get(app.clone(), &alice, "/api/health/knowledge").await).await["thin"]["count"],
         1,
@@ -405,6 +426,7 @@ async fn knowledge_health_is_user_scoped(pool: sqlx::PgPool) {
 /// chunks are everyone's business and appear under every space's view.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn the_space_filter_includes_global_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
 
@@ -450,7 +472,9 @@ async fn the_space_filter_includes_global_chunks(pool: sqlx::PgPool) {
         send(app.clone(), &cookie, "POST", "/api/chunks", body).await;
     }
 
+    // When
     let all = json_body(get(app.clone(), &cookie, "/api/health/knowledge").await).await;
+    // Then
     assert_eq!(all["thin"]["count"], 3, "unfiltered sees every chunk");
 
     let scoped = json_body(

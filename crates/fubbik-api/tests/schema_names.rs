@@ -34,10 +34,12 @@ const ALLOWED_DUPLICATES: &[&str] = &[
 
 #[test]
 fn no_unexpected_openapi_schema_name_collisions() {
+    // Given
     let mut by_name: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for file in rust_sources() {
         let src = std::fs::read_to_string(&file).expect("source file is readable");
         for (name, ident) in schema_names_in(&src) {
+            // When
             by_name
                 .entry(name)
                 .or_default()
@@ -45,6 +47,7 @@ fn no_unexpected_openapi_schema_name_collisions() {
         }
     }
 
+    // Then
     assert!(
         by_name.len() > 100,
         "only found {} ToSchema types — the source scan is broken, not the code",

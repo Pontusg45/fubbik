@@ -25,11 +25,14 @@ fn new_graph(name: &str) -> NewSavedGraph {
 
 #[sqlx::test]
 async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
 
+    // When
     let created = saved_graph::create(&pool, &uid, new_graph("My Graph"))
         .await
         .unwrap();
+    // Then
     assert_eq!(created.name, "My Graph");
     assert_eq!(created.layout_algorithm, "force");
     assert_eq!(
@@ -53,12 +56,15 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
 /// guards.
 #[sqlx::test]
 async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
+    // When
     let created = saved_graph::create(&pool, &alice, new_graph("Alice's"))
         .await
         .unwrap();
 
+    // Then
     assert!(
         saved_graph::find_by_id(&pool, &bob, &created.id)
             .await
@@ -70,6 +76,7 @@ async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_is_scoped_to_caller(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     saved_graph::create(&pool, &alice, new_graph("Alice's"))
@@ -79,7 +86,9 @@ async fn list_is_scoped_to_caller(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let alices = saved_graph::list(&pool, &alice, None).await.unwrap();
+    // Then
     assert_eq!(alices.len(), 1);
     assert_eq!(alices[0].name, "Alice's");
 
@@ -90,6 +99,7 @@ async fn list_is_scoped_to_caller(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_filters_by_space_id_when_given(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let space_id = fubbik_db::repo::space::create(
         &pool,
@@ -112,7 +122,9 @@ async fn list_filters_by_space_id_when_given(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let all = saved_graph::list(&pool, &uid, None).await.unwrap();
+    // Then
     assert_eq!(all.len(), 2);
 
     let scoped = saved_graph::list(&pool, &uid, Some(space_id.as_str()))
@@ -137,6 +149,7 @@ async fn list_filters_by_space_id_when_given(pool: sqlx::PgPool) {
 /// the `id ASC` tiebreaker can determine order.
 #[sqlx::test]
 async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     for i in 0..20 {
         saved_graph::create(&pool, &uid, new_graph(&format!("Graph {i}")))
@@ -156,6 +169,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT id FROM saved_graph WHERE user_id = $1 ORDER BY id ASC",
         uid
@@ -163,6 +177,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 20);
 
     let first = saved_graph::list(&pool, &uid, None).await.unwrap();
@@ -183,11 +198,13 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_changes_only_the_given_fields(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let created = saved_graph::create(&pool, &uid, new_graph("Original"))
         .await
         .unwrap();
 
+    // When
     let updated = saved_graph::update(
         &pool,
         &uid,
@@ -201,6 +218,7 @@ async fn update_changes_only_the_given_fields(pool: sqlx::PgPool) {
     .unwrap()
     .unwrap();
 
+    // Then
     assert_eq!(updated.name, "Renamed");
     assert_eq!(
         updated.chunk_ids.0, created.chunk_ids.0,
@@ -216,10 +234,13 @@ async fn update_changes_only_the_given_fields(pool: sqlx::PgPool) {
 /// explicitly clears it.
 #[sqlx::test]
 async fn update_description_tri_state(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let mut with_desc = new_graph("Original");
     with_desc.description = Some("has a description".into());
+    // When
     let created = saved_graph::create(&pool, &uid, with_desc).await.unwrap();
+    // Then
     assert_eq!(created.description.as_deref(), Some("has a description"));
 
     // Omitted: untouched.
@@ -259,6 +280,7 @@ async fn update_description_tri_state(pool: sqlx::PgPool) {
 /// an empty `.set(...)`.
 #[sqlx::test]
 async fn update_with_no_fields_does_not_touch_updated_at(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let created = saved_graph::create(&pool, &uid, new_graph("Original"))
         .await
@@ -269,11 +291,13 @@ async fn update_with_no_fields_does_not_touch_updated_at(pool: sqlx::PgPool) {
     // coincidence.
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
+    // When
     let result = saved_graph::update(&pool, &uid, &created.id, SavedGraphPatch::default())
         .await
         .unwrap()
         .unwrap();
 
+    // Then
     assert_eq!(
         result.updated_at.0, created.updated_at.0,
         "a no-op patch must not bump updated_at"
@@ -284,12 +308,14 @@ async fn update_with_no_fields_does_not_touch_updated_at(pool: sqlx::PgPool) {
 async fn update_on_another_users_saved_graph_returns_none_and_leaves_it_unchanged(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let created = saved_graph::create(&pool, &bob, new_graph("Bob's"))
         .await
         .unwrap();
 
+    // When
     let result = saved_graph::update(
         &pool,
         &alice,
@@ -301,6 +327,7 @@ async fn update_on_another_users_saved_graph_returns_none_and_leaves_it_unchange
     )
     .await
     .unwrap();
+    // Then
     assert!(
         result.is_none(),
         "another user's update must not affect the row"
@@ -315,12 +342,15 @@ async fn update_on_another_users_saved_graph_returns_none_and_leaves_it_unchange
 
 #[sqlx::test]
 async fn delete_removes_row_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
+    // When
     let created = saved_graph::create(&pool, &bob, new_graph("Bob's"))
         .await
         .unwrap();
 
+    // Then
     assert!(
         !saved_graph::delete(&pool, &alice, &created.id)
             .await

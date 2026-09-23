@@ -33,9 +33,11 @@ async fn seed_space(pool: &sqlx::PgPool, user_id: &str, name: &str) -> String {
 
 #[sqlx::test]
 async fn create_entry_lowercases_word_and_round_trips(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let sid = seed_space(&pool, &uid, "Space").await;
 
+    // When
     let created = vocabulary::create_entry(
         &pool,
         &uid,
@@ -51,6 +53,7 @@ async fn create_entry_lowercases_word_and_round_trips(pool: sqlx::PgPool) {
     .unwrap()
     .expect("owned space must insert");
 
+    // Then
     assert_eq!(created.word, "click");
     assert_eq!(created.category, "action");
     assert_eq!(created.expects.unwrap().0, vec!["target".to_string()]);
@@ -63,10 +66,12 @@ async fn create_entry_lowercases_word_and_round_trips(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn create_entry_in_a_foreign_space_inserts_nothing(pool: sqlx::PgPool) {
+    // Given
     let owner = seed_user(&pool, "owner@b.test").await;
     let attacker = seed_user(&pool, "attacker@b.test").await;
     let sid = seed_space(&pool, &owner, "Owner space").await;
 
+    // When
     let result = vocabulary::create_entry(
         &pool,
         &attacker,
@@ -81,6 +86,7 @@ async fn create_entry_in_a_foreign_space_inserts_nothing(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert!(
         result.is_none(),
         "guard: create_entry must not insert into a space the caller does not own"
@@ -94,9 +100,12 @@ async fn create_entry_in_a_foreign_space_inserts_nothing(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn count_and_seed_modifiers(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let sid = seed_space(&pool, &uid, "Space").await;
 
+    // When the operation is evaluated by the assertion.
+    // Then
     assert_eq!(vocabulary::count(&pool, &uid, &sid).await.unwrap(), 0);
 
     let seeded = vocabulary::seed_modifiers(&pool, &uid, &sid).await.unwrap();
@@ -118,6 +127,7 @@ async fn count_and_seed_modifiers(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn seed_modifiers_in_a_foreign_space_inserts_nothing(pool: sqlx::PgPool) {
+    // Given
     let owner = seed_user(&pool, "owner@b.test").await;
     let attacker = seed_user(&pool, "attacker@b.test").await;
     let sid = seed_space(&pool, &owner, "Owner space").await;
@@ -125,6 +135,8 @@ async fn seed_modifiers_in_a_foreign_space_inserts_nothing(pool: sqlx::PgPool) {
     let seeded = vocabulary::seed_modifiers(&pool, &attacker, &sid)
         .await
         .unwrap();
+    // When the operation is evaluated by the assertion.
+    // Then
     assert!(
         seeded.is_empty(),
         "guard: seed_modifiers must not touch a space the caller does not own"
@@ -134,6 +146,7 @@ async fn seed_modifiers_in_a_foreign_space_inserts_nothing(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn create_entries_bulk_skips_conflicts_and_returns_only_inserted_rows(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let sid = seed_space(&pool, &uid, "Space").await;
 
@@ -152,6 +165,7 @@ async fn create_entries_bulk_skips_conflicts_and_returns_only_inserted_rows(pool
     .unwrap()
     .unwrap();
 
+    // When
     let created = vocabulary::create_entries(
         &pool,
         &uid,
@@ -174,6 +188,7 @@ async fn create_entries_bulk_skips_conflicts_and_returns_only_inserted_rows(pool
     .await
     .unwrap();
 
+    // Then
     assert_eq!(
         created.len(),
         1,
@@ -184,20 +199,25 @@ async fn create_entries_bulk_skips_conflicts_and_returns_only_inserted_rows(pool
 
 #[sqlx::test]
 async fn create_entries_empty_input_short_circuits(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let sid = seed_space(&pool, &uid, "Space").await;
+    // When
     let created = vocabulary::create_entries(&pool, &uid, &sid, vec![])
         .await
         .unwrap();
+    // Then
     assert!(created.is_empty());
 }
 
 #[sqlx::test]
 async fn create_entries_in_a_foreign_space_inserts_nothing(pool: sqlx::PgPool) {
+    // Given
     let owner = seed_user(&pool, "owner@b.test").await;
     let attacker = seed_user(&pool, "attacker@b.test").await;
     let sid = seed_space(&pool, &owner, "Owner space").await;
 
+    // When
     let created = vocabulary::create_entries(
         &pool,
         &attacker,
@@ -212,6 +232,7 @@ async fn create_entries_in_a_foreign_space_inserts_nothing(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert!(
         created.is_empty(),
         "guard: create_entries must not insert into a space the caller does not own"
@@ -226,6 +247,7 @@ async fn create_entries_in_a_foreign_space_inserts_nothing(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_returns_empty_for_a_space_the_caller_does_not_own(pool: sqlx::PgPool) {
+    // Given
     let owner = seed_user(&pool, "owner@b.test").await;
     let attacker = seed_user(&pool, "attacker@b.test").await;
     let sid = seed_space(&pool, &owner, "Owner space").await;
@@ -245,12 +267,14 @@ async fn list_returns_empty_for_a_space_the_caller_does_not_own(pool: sqlx::PgPo
     .unwrap()
     .unwrap();
 
+    // When
     // Direct repo call with the attacker's user_id — this is what the
     // service layer's `verify_space_ownership` pre-check exists to
     // prevent from ever running with real data behind it. Proving this
     // returns empty (not the owner's entry) shows the `EXISTS` guard is a
     // second, independent line of defense, not decorative.
     let leaked = vocabulary::list(&pool, &attacker, &sid).await.unwrap();
+    // Then
     assert!(
         leaked.is_empty(),
         "guard: list must not leak another user's space's vocabulary"
@@ -262,6 +286,7 @@ async fn list_returns_empty_for_a_space_the_caller_does_not_own(pool: sqlx::PgPo
 
 #[sqlx::test]
 async fn list_orders_by_category_then_word_then_id(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let sid = seed_space(&pool, &uid, "Space").await;
 
@@ -287,11 +312,13 @@ async fn list_orders_by_category_then_word_then_id(pool: sqlx::PgPool) {
         .unwrap();
     }
 
+    // When
     let listed = vocabulary::list(&pool, &uid, &sid).await.unwrap();
     let pairs: Vec<(&str, &str)> = listed
         .iter()
         .map(|e| (e.category.as_str(), e.word.as_str()))
         .collect();
+    // Then
     assert_eq!(
         pairs,
         vec![
@@ -314,10 +341,12 @@ async fn list_orders_by_category_then_word_then_id(pool: sqlx::PgPool) {
 /// deterministic across repeated calls with real, non-tied data.
 #[sqlx::test]
 async fn list_ordering_is_stable_across_repeated_calls(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let sid = seed_space(&pool, &uid, "Space").await;
 
     for word in ["mango", "kiwi", "fig", "date", "cherry"] {
+        // When
         vocabulary::create_entry(
             &pool,
             &uid,
@@ -347,12 +376,14 @@ async fn list_ordering_is_stable_across_repeated_calls(pool: sqlx::PgPool) {
         .map(|e| e.word)
         .collect();
 
+    // Then
     assert_eq!(first, second);
     assert_eq!(first, vec!["cherry", "date", "fig", "kiwi", "mango"]);
 }
 
 #[sqlx::test]
 async fn get_by_id_is_unscoped_like_node(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let sid = seed_space(&pool, &uid, "Space").await;
     let created = vocabulary::create_entry(
@@ -370,10 +401,12 @@ async fn get_by_id_is_unscoped_like_node(pool: sqlx::PgPool) {
     .unwrap()
     .unwrap();
 
+    // When
     let found = vocabulary::get_by_id(&pool, &created.id)
         .await
         .unwrap()
         .unwrap();
+    // Then
     assert_eq!(found.id, created.id);
 
     assert!(
@@ -386,6 +419,7 @@ async fn get_by_id_is_unscoped_like_node(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_sets_only_provided_fields_and_always_bumps_updated_at(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let sid = seed_space(&pool, &uid, "Space").await;
     let created = vocabulary::create_entry(
@@ -403,11 +437,13 @@ async fn update_sets_only_provided_fields_and_always_bumps_updated_at(pool: sqlx
     .unwrap()
     .unwrap();
 
+    // When
     // All-omitted patch: word/category/expects untouched, updated_at still bumps.
     let untouched = vocabulary::update(&pool, &uid, &created.id, VocabularyPatch::default())
         .await
         .unwrap()
         .unwrap();
+    // Then
     assert_eq!(untouched.word, "click");
     assert_eq!(untouched.category, "action");
     assert!(untouched.updated_at.0 >= created.updated_at.0);
@@ -436,6 +472,7 @@ async fn update_sets_only_provided_fields_and_always_bumps_updated_at(pool: sqlx
 
 #[sqlx::test]
 async fn update_cannot_touch_another_users_entry_via_a_guessed_id(pool: sqlx::PgPool) {
+    // Given
     let owner = seed_user(&pool, "owner@b.test").await;
     let attacker = seed_user(&pool, "attacker@b.test").await;
     let sid = seed_space(&pool, &owner, "Owner space").await;
@@ -454,6 +491,7 @@ async fn update_cannot_touch_another_users_entry_via_a_guessed_id(pool: sqlx::Pg
     .unwrap()
     .unwrap();
 
+    // When
     // Direct repo call with the attacker's user_id, id guessed/known —
     // simulates the service-layer `get_by_id` + `verify_space_ownership`
     // sequence having been bypassed entirely.
@@ -469,6 +507,7 @@ async fn update_cannot_touch_another_users_entry_via_a_guessed_id(pool: sqlx::Pg
     )
     .await
     .unwrap();
+    // Then
     assert!(
         result.is_none(),
         "guard: update must not touch another user's entry"
@@ -483,8 +522,10 @@ async fn update_cannot_touch_another_users_entry_via_a_guessed_id(pool: sqlx::Pg
 
 #[sqlx::test]
 async fn delete_removes_the_row_and_reports_whether_it_existed(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let sid = seed_space(&pool, &uid, "Space").await;
+    // When
     let created = vocabulary::create_entry(
         &pool,
         &uid,
@@ -500,6 +541,7 @@ async fn delete_removes_the_row_and_reports_whether_it_existed(pool: sqlx::PgPoo
     .unwrap()
     .unwrap();
 
+    // Then
     assert!(vocabulary::delete(&pool, &uid, &created.id).await.unwrap());
     assert!(
         vocabulary::get_by_id(&pool, &created.id)
@@ -515,6 +557,7 @@ async fn delete_removes_the_row_and_reports_whether_it_existed(pool: sqlx::PgPoo
 
 #[sqlx::test]
 async fn delete_cannot_touch_another_users_entry_via_a_guessed_id(pool: sqlx::PgPool) {
+    // Given
     let owner = seed_user(&pool, "owner@b.test").await;
     let attacker = seed_user(&pool, "attacker@b.test").await;
     let sid = seed_space(&pool, &owner, "Owner space").await;
@@ -533,9 +576,11 @@ async fn delete_cannot_touch_another_users_entry_via_a_guessed_id(pool: sqlx::Pg
     .unwrap()
     .unwrap();
 
+    // When
     let deleted = vocabulary::delete(&pool, &attacker, &created.id)
         .await
         .unwrap();
+    // Then
     assert!(
         !deleted,
         "guard: delete must not remove another user's entry"

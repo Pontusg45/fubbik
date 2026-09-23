@@ -153,6 +153,10 @@ fubbik/
 ├── crates/          # Primary Rust API, database, CLI, and core libraries
 ```
 
+## Test conventions
+
+Mark test bodies with `// Given`, `// When`, and `// Then` comments for setup, the operation under test, and its assertions. This applies to Rust, TypeScript, JavaScript, browser tests, and compile-time contracts. When an assertion also evaluates the operation, keep the When and Then comments together above it. Repeat the action and outcome markers for multi-step scenarios.
+
 ## Available Scripts
 
 - `pnpm run dev`: Start the web app and Rust API
@@ -162,6 +166,7 @@ fubbik/
 - `pnpm run check-types`: Type-check all packages (uses `tsgo`)
 - `pnpm run db:studio`: Open database studio UI
 - `just rust-test`: Run Rust tests with the canonical PG18/vector/AGE adapter
+- `pnpm test`: Run workspace tests after starting the [database test adapter](packages/db/README.md)
 - `pnpm run ci`: Run the TypeScript CI pipeline
 - `pnpm run test:e2e`: Run the browser critical-path suite
 

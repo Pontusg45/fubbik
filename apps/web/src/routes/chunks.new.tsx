@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardPanel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { isValidGlob, validateChunkContent, type ApplyToRow, type FileRefRow } from "@/features/chunks/chunk-form-model";
 import { DraftIndicator } from "@/features/chunks/draft-indicator";
 import { SimilarChunksWarning } from "@/features/chunks/similar-chunks-warning";
 import { chunkTemplates } from "@/features/chunks/templates";
@@ -32,25 +33,7 @@ export const Route = createFileRoute("/chunks/new")({
     }
 });
 
-interface ApplyToRow {
-    pattern: string;
-    note: string;
-}
-
-interface FileRefRow {
-    path: string;
-    anchor: string;
-    relation: "documents" | "configures" | "tests" | "implements";
-}
-
 const DRAFT_KEY = "chunk-draft-new";
-
-function isValidGlob(pattern: string): boolean {
-    if (!pattern.trim()) return true;
-    const unmatched = (pattern.match(/\[/g) || []).length !== (pattern.match(/\]/g) || []).length;
-    const emptyBraces = /\{\s*\}/.test(pattern);
-    return !unmatched && !emptyBraces;
-}
 
 interface ChunkDraft {
     title: string;
@@ -156,10 +139,7 @@ function NewChunk() {
     });
 
     function validate() {
-        const e: Record<string, string> = {};
-        if (!title.trim()) e.title = "Title is required";
-        else if (title.length > 200) e.title = "Title must be 200 characters or less";
-        if (content.length > 50000) e.content = "Content must be 50,000 characters or less";
+        const e = validateChunkContent(title, content);
         setErrors(e);
         return Object.keys(e).length === 0;
     }

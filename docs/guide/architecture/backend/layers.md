@@ -11,22 +11,19 @@ description: The three-layer backend pattern — repository, service, and route
 
 ## Repository Layer
 
-Located at `packages/db/src/repository/`. Pure data access — functions return `Effect<T, DatabaseError>`. No business logic.
+Located at `crates/fubbik-db/src/repo/`. SQLx functions own scoped queries and database operations. Multi-write workflows can pass the same transaction connection through repositories.
 
 ## Service Layer
 
-Located at `packages/api/src/*/service.ts`. Business logic — composes repository Effects, validates inputs, introduces domain errors
-(`NotFoundError`, `AuthError`, `ValidationError`).
+Located at `crates/fubbik-api/src/<domain>/service.rs`. Domain workflows validate inputs, compose repository operations, and return typed `AppResult` errors. Workflows that must succeed together own a transaction.
 
 ## Route Layer
 
-Located at `packages/api/src/*/routes.ts`. HTTP layer — calls services via `Effect.runPromise()`. Uses Elysia's `t` schema for request
-validation. Errors propagate to the global error handler.
+Located at `crates/fubbik-api/src/<domain>/routes.rs`. Axum routes handle HTTP extraction and response shaping. DTOs in the neighboring `dto.rs` define the wire contract; the Rust OpenAPI document generates the web client.
 
 ## Data Flow
 
 ```
-HTTP Request → Route (validate) → Service (logic) → Repository (data) → PostgreSQL
-                                                                        ↓
-HTTP Response ← Route (format) ← Service (compose) ← Repository (query) ←
+HTTP Request → Axum route → domain workflow → SQLx repository → PostgreSQL
+HTTP Response ← DTO/serializer ← domain result ← query result ←
 ```

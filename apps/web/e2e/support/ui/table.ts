@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop -- Each sort click depends on the state produced by the previous click. */
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, type Locator } from "@playwright/test";
+import { reportStep } from "../reporting";
 
 import { Button, Checkbox, Surface, named, type Name } from "./core";
 
@@ -50,7 +51,7 @@ export class Table<Schema extends Columns> extends Surface {
     async sortBy(key: SortableKey<Schema>, direction: "ascending" | "descending") {
         const column = this.column(key);
         if (!column.sortable) throw new TypeError(`Column is not sortable: ${key}`);
-        await test.step(`Sort table by ${key}: ${direction}`, async () => {
+        await reportStep(`Sort table by ${key}: ${direction}`, this.root.getByRole("columnheader", named(column.label)), async () => {
             const header = this.root.getByRole("columnheader", named(column.label));
             const button = new Button(header.getByRole("button"));
             for (let attempts = 0; attempts < 3; attempts++) {

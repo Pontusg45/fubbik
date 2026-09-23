@@ -116,7 +116,10 @@ mod tests {
 
     #[test]
     fn extracts_slash_containing_paths_with_extensions() {
+        // Given the inline inputs and test fixtures.
+        // When
         let paths = extract_file_paths("see src/lib.rs and also docs/readme.md for details");
+        // Then
         assert_eq!(
             paths,
             vec!["src/lib.rs".to_string(), "docs/readme.md".to_string()]
@@ -125,18 +128,27 @@ mod tests {
 
     #[test]
     fn ignores_tokens_without_a_slash() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(extract_file_paths("update Cargo.toml please").is_empty());
     }
 
     #[test]
     fn strips_trailing_punctuation() {
+        // Given the inline inputs and test fixtures.
+        // When
         let paths = extract_file_paths("check src/main.rs, then commit.");
+        // Then
         assert_eq!(paths, vec!["src/main.rs".to_string()]);
     }
 
     #[test]
     fn dedupes_repeated_paths() {
+        // Given the inline inputs and test fixtures.
+        // When
         let paths = extract_file_paths("src/lib.rs then src/lib.rs again");
+        // Then
         assert_eq!(paths, vec!["src/lib.rs".to_string()]);
     }
 }

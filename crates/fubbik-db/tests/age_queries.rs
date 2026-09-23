@@ -67,6 +67,7 @@ async fn seed_covers_edge(pool: &sqlx::PgPool, requirement_id: &str, chunk_id: &
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn neighborhood_returns_connected_chunk_ids(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -77,7 +78,9 @@ async fn neighborhood_returns_connected_chunk_ids(pool: sqlx::PgPool) {
     age::ensure_vertex(&pool, &b).await.unwrap();
     age::create_edge(&pool, "connects", &a, &b).await.unwrap();
 
+    // When
     let ids = age::get_neighborhood(&pool, &a, 1).await.unwrap();
+    // Then
     assert!(
         ids.contains(&b),
         "a 1-hop neighbourhood must include the directly connected chunk"
@@ -89,6 +92,7 @@ async fn neighborhood_at_hops_1_excludes_a_transitive_chunk_reachable_only_at_ho
     pool: sqlx::PgPool,
 ) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -102,7 +106,9 @@ async fn neighborhood_at_hops_1_excludes_a_transitive_chunk_reachable_only_at_ho
     age::create_edge(&pool, "related_to", &a, &b).await.unwrap();
     age::create_edge(&pool, "related_to", &b, &c).await.unwrap();
 
+    // When
     let one_hop = age::get_neighborhood(&pool, &a, 1).await.unwrap();
+    // Then
     assert!(one_hop.contains(&b));
     assert!(
         !one_hop.contains(&c),
@@ -123,7 +129,10 @@ async fn neighborhood_at_hops_1_excludes_a_transitive_chunk_reachable_only_at_ho
 /// `get_neighborhood_in_graph`, and both must degrade the same way.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_graph_clause_degrades_to_empty_when_age_is_unavailable(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When
     let ids = age::get_neighborhood_in_graph(&pool, "no_such_graph", "whatever", 1).await;
+    // Then
     assert_eq!(
         ids.unwrap_or_default(),
         Vec::<String>::new(),
@@ -142,11 +151,14 @@ async fn a_graph_clause_degrades_to_empty_when_age_is_unavailable(pool: sqlx::Pg
 /// report for the before/after proof).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_graph_clause_degrades_via_ok_empty_not_a_propagated_error(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When
     let ids = age::get_neighborhood_in_graph(&pool, "no_such_graph", "whatever", 1)
         .await
         .expect(
             "must be Ok(vec![]), not Err — Node degrades every graph clause to empty results via Effect.orElse, never a 500",
         );
+    // Then
     assert_eq!(ids, Vec::<String>::new());
 }
 
@@ -155,6 +167,7 @@ async fn a_graph_clause_degrades_via_ok_empty_not_a_propagated_error(pool: sqlx:
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn shortest_path_reports_the_chunk_chain_and_edge_relations(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -168,11 +181,13 @@ async fn shortest_path_reports_the_chunk_chain_and_edge_relations(pool: sqlx::Pg
     age::create_edge(&pool, "depends_on", &a, &b).await.unwrap();
     age::create_edge(&pool, "extends", &b, &c).await.unwrap();
 
+    // When
     let path = age::find_shortest_path_with_details(&pool, &a, &c)
         .await
         .unwrap()
         .expect("a path must be found through b");
 
+    // Then
     assert_eq!(path.chunk_ids, vec![a.clone(), b.clone(), c.clone()]);
     assert_eq!(path.edges.len(), 2);
     assert_eq!(path.edges[0].relation, "depends_on");
@@ -182,6 +197,7 @@ async fn shortest_path_reports_the_chunk_chain_and_edge_relations(pool: sqlx::Pg
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn shortest_path_is_none_when_no_path_exists(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -191,9 +207,11 @@ async fn shortest_path_is_none_when_no_path_exists(pool: sqlx::PgPool) {
     age::ensure_vertex(&pool, &a).await.unwrap();
     age::ensure_vertex(&pool, &b).await.unwrap();
 
+    // When
     let path = age::find_shortest_path_with_details(&pool, &a, &b)
         .await
         .unwrap();
+    // Then
     assert!(path.is_none(), "two disconnected chunks have no path");
 }
 
@@ -209,12 +227,15 @@ async fn shortest_path_is_none_when_no_path_exists(pool: sqlx::PgPool) {
 /// goes red if the degrade-to-`Ok(None)` behaviour is removed.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn shortest_path_degrades_to_none_not_a_propagated_error(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When
     let path =
         age::find_shortest_path_with_details_in_graph(&pool, "no_such_graph", "a", "b")
             .await
             .expect(
                 "must be Ok(None), not Err — Node degrades every graph clause to empty results via Effect.orElse, never a 500",
             );
+    // Then
     assert!(path.is_none());
 }
 
@@ -225,6 +246,7 @@ async fn affected_by_requirement_reaches_connected_chunks_via_the_covered_chunk(
     pool: sqlx::PgPool,
 ) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -243,9 +265,11 @@ async fn affected_by_requirement_reaches_connected_chunks_via_the_covered_chunk(
     seed_requirement_vertex(&pool, &requirement_id).await;
     seed_covers_edge(&pool, &requirement_id, &covered).await;
 
+    // When
     let ids = age::get_chunks_affected_by_requirement(&pool, &requirement_id, 1)
         .await
         .unwrap();
+    // Then
     assert!(
         ids.contains(&covered),
         "the covered chunk itself (0 hops) must be included"
@@ -274,6 +298,7 @@ async fn affected_by_requirement_includes_the_covered_chunk_even_with_zero_conne
     pool: sqlx::PgPool,
 ) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -287,9 +312,11 @@ async fn affected_by_requirement_includes_the_covered_chunk_even_with_zero_conne
     seed_requirement_vertex(&pool, &requirement_id).await;
     seed_covers_edge(&pool, &requirement_id, &covered).await;
 
+    // When
     let ids = age::get_chunks_affected_by_requirement(&pool, &requirement_id, 2)
         .await
         .unwrap();
+    // Then
     assert_eq!(
         ids,
         vec![covered],
@@ -304,6 +331,8 @@ async fn affected_by_requirement_includes_the_covered_chunk_even_with_zero_conne
 /// `.unwrap_or_default()`, so it goes red if the degrade is removed.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn affected_by_requirement_degrades_to_empty_not_a_propagated_error(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When
     let ids = age::get_chunks_affected_by_requirement_in_graph(
         &pool,
         "no_such_graph",
@@ -314,6 +343,7 @@ async fn affected_by_requirement_degrades_to_empty_not_a_propagated_error(pool: 
     .expect(
         "must be Ok(vec![]), not Err — Node degrades every graph clause to empty results via Effect.orElse, never a 500",
     );
+    // Then
     assert_eq!(ids, Vec::<String>::new());
 }
 
@@ -322,6 +352,7 @@ async fn affected_by_requirement_degrades_to_empty_not_a_propagated_error(pool: 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn impact_ripple_includes_a_strongly_connected_downstream_chunk(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -336,7 +367,9 @@ async fn impact_ripple_includes_a_strongly_connected_downstream_chunk(pool: sqlx
         .await
         .unwrap();
 
+    // When
     let ids = age::compute_impact_ripple(&pool, &source).await.unwrap();
+    // Then
     assert!(
         ids.contains(&downstream),
         "a 1-hop depends_on target must clear the degree cutoff"
@@ -350,6 +383,7 @@ async fn impact_ripple_includes_a_strongly_connected_downstream_chunk(pool: sqlx
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn impact_ripple_is_empty_for_a_chunk_with_no_downstream_connections(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -357,7 +391,9 @@ async fn impact_ripple_is_empty_for_a_chunk_with_no_downstream_connections(pool:
     let lonely = seed_chunk(&pool, &alice).await;
     age::ensure_vertex(&pool, &lonely).await.unwrap();
 
+    // When
     let ids = age::compute_impact_ripple(&pool, &lonely).await.unwrap();
+    // Then
     assert_eq!(ids, Vec::<String>::new());
 }
 
@@ -370,10 +406,13 @@ async fn impact_ripple_is_empty_for_a_chunk_with_no_downstream_connections(pool:
 /// `.unwrap_or_default()`, so it goes red if the degrade is removed.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn impact_ripple_degrades_to_empty_not_a_propagated_error(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When
     let ids = age::compute_impact_ripple_in_graph(&pool, "no_such_graph", "whatever")
         .await
         .expect(
             "must be Ok(vec![]), not Err — Node degrades every graph clause to empty results via Effect.orElse, never a 500",
         );
+    // Then
     assert_eq!(ids, Vec::<String>::new());
 }

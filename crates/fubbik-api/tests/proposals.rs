@@ -169,10 +169,12 @@ async fn get_proposal(app: axum::Router, cookie: &str, id: &str) -> axum::respon
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_rejects_empty_changes(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-empty@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Chunk").await;
 
+    // When
     let res = create_proposal(
         app,
         &cookie,
@@ -180,6 +182,7 @@ async fn create_rejects_empty_changes(pool: sqlx::PgPool) {
         serde_json::json!({ "changes": {} }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let body = json_body(res).await;
     // `AppError::Validation`'s `Display` prepends "validation failed: " to
@@ -192,11 +195,13 @@ async fn create_rejects_empty_changes(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_has_no_ownership_check_any_authenticated_user_may_propose(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-propose@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-propose@b.test", "Bob").await;
     let alice_chunk = create_chunk(app.clone(), &alice_cookie, "Alice's chunk").await;
 
+    // When
     // Bob, who does not own the chunk, proposes changes to it. Node's
     // createProposal never checks this — see fubbik_db::repo::proposal's
     // module doc comment.
@@ -207,6 +212,7 @@ async fn create_has_no_ownership_check_any_authenticated_user_may_propose(pool: 
         serde_json::json!({ "changes": { "title": "Bob's suggestion" } }),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -220,6 +226,7 @@ async fn create_has_no_ownership_check_any_authenticated_user_may_propose(pool: 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_chunk_proposals_orders_ascending_and_accepts_any_status(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-list@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Chunk").await;
@@ -227,6 +234,7 @@ async fn list_chunk_proposals_orders_ascending_and_accepts_any_status(pool: sqlx
     let first = create_pending_proposal(app.clone(), &cookie, &chunk_id, "v1").await;
     let second = create_pending_proposal(app.clone(), &cookie, &chunk_id, "v2").await;
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -237,6 +245,7 @@ async fn list_chunk_proposals_orders_ascending_and_accepts_any_status(pool: sqlx
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let ids: Vec<&str> = body
@@ -271,11 +280,13 @@ async fn list_chunk_proposals_orders_ascending_and_accepts_any_status(pool: sqlx
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn global_list_defaults_to_pending_and_validates_status(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-global@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Chunk").await;
     let proposal_id = create_pending_proposal(app.clone(), &cookie, &chunk_id, "v1").await;
 
+    // When
     // No ?status= at all -> defaults to pending, not "every status".
     let res = app
         .clone()
@@ -287,6 +298,7 @@ async fn global_list_defaults_to_pending_and_validates_status(pool: sqlx::PgPool
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let ids: Vec<&str> = body
@@ -333,6 +345,7 @@ async fn global_list_defaults_to_pending_and_validates_status(pool: sqlx::PgPool
 /// `fubbik-db/tests/proposal.rs::list_is_scoped_to_the_caller`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn global_list_does_not_leak_another_users_proposals(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-list-scope@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-list-scope@b.test", "Bob").await;
@@ -341,6 +354,7 @@ async fn global_list_does_not_leak_another_users_proposals(pool: sqlx::PgPool) {
     create_pending_proposal(app.clone(), &alice_cookie, &alice_chunk, "a-change").await;
     create_pending_proposal(app.clone(), &bob_cookie, &bob_chunk, "b-change").await;
 
+    // When
     let alice_view = json_body(
         app.clone()
             .oneshot(
@@ -359,6 +373,7 @@ async fn global_list_does_not_leak_another_users_proposals(pool: sqlx::PgPool) {
         .iter()
         .map(|p| p["chunkId"].as_str().unwrap())
         .collect();
+    // Then
     assert_eq!(
         alice_chunks,
         vec![alice_chunk.as_str()],
@@ -390,13 +405,16 @@ async fn global_list_does_not_leak_another_users_proposals(pool: sqlx::PgPool) {
 /// `fubbik-db/tests/proposal.rs::find_by_id_for_owner_is_scoped`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_by_id_is_404_for_a_proposal_on_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-get-scope@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-get-scope@b.test", "Bob").await;
     let chunk_id = create_chunk(app.clone(), &alice_cookie, "Alice's chunk").await;
     let proposal_id = create_pending_proposal(app.clone(), &alice_cookie, &chunk_id, "v2").await;
 
+    // When
     let res = get_proposal(app.clone(), &bob_cookie, &proposal_id).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -409,10 +427,12 @@ async fn get_by_id_is_404_for_a_proposal_on_another_users_chunk(pool: sqlx::PgPo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn count_returns_pending_object_shape(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-count@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Chunk").await;
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -423,6 +443,7 @@ async fn count_returns_pending_object_shape(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         json_body(res).await,
@@ -449,12 +470,15 @@ async fn count_returns_pending_object_shape(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn approve_applies_changes_to_the_chunk_and_marks_the_proposal_approved(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-approve@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Original title").await;
     let proposal_id = create_pending_proposal(app.clone(), &cookie, &chunk_id, "New title").await;
 
+    // When
     let res = approve(app.clone(), &cookie, &proposal_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["status"], "approved");
@@ -478,10 +502,12 @@ async fn approve_applies_changes_to_the_chunk_and_marks_the_proposal_approved(po
 /// `fubbik-db/tests/proposal.rs::approve_applies_every_proposed_changes_field`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn approve_no_longer_drops_alternatives_and_scope(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-fields@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Original title").await;
 
+    // When
     let res = create_proposal(
         app.clone(),
         &cookie,
@@ -494,6 +520,7 @@ async fn approve_no_longer_drops_alternatives_and_scope(pool: sqlx::PgPool) {
         }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let proposal_id = json_body(res).await["id"].as_str().unwrap().to_string();
 
@@ -515,11 +542,14 @@ async fn approve_no_longer_drops_alternatives_and_scope(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn approving_an_already_reviewed_proposal_is_400(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-double@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Chunk").await;
+    // When
     let proposal_id = create_pending_proposal(app.clone(), &cookie, &chunk_id, "v1").await;
 
+    // Then
     assert_eq!(
         approve(app.clone(), &cookie, &proposal_id).await.status(),
         StatusCode::OK
@@ -546,6 +576,7 @@ async fn approving_an_already_reviewed_proposal_is_400(pool: sqlx::PgPool) {
 async fn cross_user_approve_is_404_and_leaves_both_chunk_and_proposal_unchanged(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-crossapprove@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-crossapprove@b.test", "Bob").await;
@@ -558,7 +589,9 @@ async fn cross_user_approve_is_404_and_leaves_both_chunk_and_proposal_unchanged(
     )
     .await;
 
+    // When
     let res = approve(app.clone(), &bob_cookie, &proposal_id).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -581,13 +614,16 @@ async fn cross_user_approve_is_404_and_leaves_both_chunk_and_proposal_unchanged(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn reject_marks_the_proposal_rejected_without_touching_the_chunk(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-reject@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Original title").await;
     let proposal_id =
         create_pending_proposal(app.clone(), &cookie, &chunk_id, "Proposed title").await;
 
+    // When
     let res = reject(app.clone(), &cookie, &proposal_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["status"], "rejected");
@@ -609,6 +645,7 @@ async fn reject_marks_the_proposal_rejected_without_touching_the_chunk(pool: sql
 /// this is the end-to-end confirmation.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_reject_is_404_and_leaves_the_proposal_pending(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-crossreject@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-crossreject@b.test", "Bob").await;
@@ -616,7 +653,9 @@ async fn cross_user_reject_is_404_and_leaves_the_proposal_pending(pool: sqlx::Pg
     let proposal_id =
         create_pending_proposal(app.clone(), &alice_cookie, &chunk_id, "Some change").await;
 
+    // When
     let res = reject(app.clone(), &bob_cookie, &proposal_id).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -633,11 +672,13 @@ async fn cross_user_reject_is_404_and_leaves_the_proposal_pending(pool: sqlx::Pg
 /// A later invalid action rolls the entire batch back.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn bulk_action_is_atomic_and_rolls_back_earlier_writes(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-bulk@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Original").await;
     let p1 = create_pending_proposal(app.clone(), &cookie, &chunk_id, "Approved via bulk").await;
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -657,6 +698,7 @@ async fn bulk_action_is_atomic_and_rolls_back_earlier_writes(pool: sqlx::PgPool)
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     // Neither the chunk nor p1 changed despite the first action succeeding
@@ -669,12 +711,14 @@ async fn bulk_action_is_atomic_and_rolls_back_earlier_writes(pool: sqlx::PgPool)
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn bulk_action_approves_and_rejects_in_one_call(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-bulk2@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "Chunk").await;
     let p1 = create_pending_proposal(app.clone(), &cookie, &chunk_id, "Approve me").await;
     let p2 = create_pending_proposal(app.clone(), &cookie, &chunk_id, "Reject me").await;
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -694,6 +738,7 @@ async fn bulk_action_approves_and_rejects_in_one_call(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body[0]["status"], "approved");
@@ -703,10 +748,13 @@ async fn bulk_action_approves_and_rejects_in_one_call(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn not_found_message_is_titlecase(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-404@b.test", "Alice").await;
 
+    // When
     let res = get_proposal(app.clone(), &cookie, "no-such-id").await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     assert_eq!(json_body(res).await["message"], "Proposal not found");
 
@@ -721,13 +769,16 @@ async fn not_found_message_is_titlecase(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_requests_are_401(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .clone()
         .oneshot(Request::get("/api/proposals").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
     let res = app

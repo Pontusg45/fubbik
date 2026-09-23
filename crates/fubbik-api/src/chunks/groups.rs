@@ -262,6 +262,9 @@ mod tests {
 
     #[test]
     fn parses_inline_tag_type_and_falls_back_to_type() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             parse_group_by("tagtype:domain"),
             (GroupBy::TagType, Some("domain".into()))
@@ -271,6 +274,9 @@ mod tests {
 
     #[test]
     fn normalizes_comma_separated_tags() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(parse_tags(Some("one, two,,")), vec!["one", "two"]);
     }
 }

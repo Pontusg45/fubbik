@@ -17,6 +17,7 @@ function makeChunk(overrides: Partial<DiscoveredChunk> & { title: string }): Dis
 
 describe("inferConnections", () => {
     it("creates references connections for markdown links between tier-1 docs", () => {
+        // Given
         const readme = makeChunk({
             title: "README",
             content: "See the [Guide](./docs/guide.md) for more info.",
@@ -31,11 +32,14 @@ describe("inferConnections", () => {
 
         const connections = inferConnections([readme, guide]);
 
+        // When
         const ref = connections.find(c => c.sourceTitle === "README" && c.targetTitle === "Guide" && c.relation === "references");
+        // Then
         expect(ref).toBeDefined();
     });
 
     it("creates part_of connections for monorepo packages", () => {
+        // Given
         const structure = makeChunk({
             title: "Project Structure (Monorepo)",
             tier: 2,
@@ -51,13 +55,16 @@ describe("inferConnections", () => {
 
         const connections = inferConnections([structure, techStack]);
 
+        // When
         const partOf = connections.find(
             c => c.sourceTitle === "Tech Stack — @mono/web" && c.targetTitle === "Project Structure (Monorepo)" && c.relation === "part_of"
         );
+        // Then
         expect(partOf).toBeDefined();
     });
 
     it("creates depends_on between routes and database", () => {
+        // Given
         const routes = makeChunk({
             title: "API Routes",
             tier: 3,
@@ -73,13 +80,16 @@ describe("inferConnections", () => {
 
         const connections = inferConnections([routes, db]);
 
+        // When
         const dep = connections.find(
             c => c.sourceTitle === "API Routes" && c.targetTitle === "Database Schema" && c.relation === "depends_on"
         );
+        // Then
         expect(dep).toBeDefined();
     });
 
     it("creates supports connections when tier2/3 keywords appear in tier1 content", () => {
+        // Given
         const readme = makeChunk({
             title: "README",
             content: "This project uses Drizzle ORM for database access",
@@ -96,13 +106,16 @@ describe("inferConnections", () => {
 
         const connections = inferConnections([readme, dbSchema]);
 
+        // When
         const supports = connections.find(
             c => c.sourceTitle === "Database Schema" && c.targetTitle === "README" && c.relation === "supports"
         );
+        // Then
         expect(supports).toBeDefined();
     });
 
     it("returns empty for unrelated chunks", () => {
+        // Given
         const readme = makeChunk({
             title: "README",
             content: "A simple hello world project",
@@ -119,7 +132,9 @@ describe("inferConnections", () => {
 
         const connections = inferConnections([readme, ci]);
 
+        // When
         const supports = connections.filter(c => c.relation === "supports");
+        // Then
         expect(supports).toHaveLength(0);
     });
 });

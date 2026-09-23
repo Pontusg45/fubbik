@@ -87,12 +87,15 @@ async fn add_dependency(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn add_get_and_remove_round_trip(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-dep@b.test", "Alice").await;
     let a = create_requirement(app.clone(), &cookie, "A").await;
     let b = create_requirement(app.clone(), &cookie, "B").await;
 
+    // When
     let res = add_dependency(app.clone(), &cookie, &a, &b).await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     assert_eq!(
         json_body(res).await,
@@ -133,12 +136,15 @@ async fn add_get_and_remove_round_trip(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn add_rejects_a_cycle(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cycle@b.test", "Alice").await;
     let a = create_requirement(app.clone(), &cookie, "A").await;
     let b = create_requirement(app.clone(), &cookie, "B").await;
+    // When
     let c = create_requirement(app.clone(), &cookie, "C").await;
 
+    // Then
     assert_eq!(
         add_dependency(app.clone(), &cookie, &a, &b).await.status(),
         StatusCode::CREATED
@@ -159,11 +165,14 @@ async fn add_rejects_a_cycle(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn add_rejects_a_self_dependency(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-self-dep@b.test", "Alice").await;
     let a = create_requirement(app.clone(), &cookie, "A").await;
 
+    // When
     let res = add_dependency(app.clone(), &cookie, &a, &a).await;
+    // Then
     assert!(
         res.status().is_client_error() || res.status().is_server_error(),
         "a requirement cannot depend on itself, matching Node's DB-constraint-only guard"
@@ -172,13 +181,16 @@ async fn add_rejects_a_self_dependency(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn add_dependency_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-dep-owner@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-dep-owner@b.test", "Bob").await;
     let a = create_requirement(app.clone(), &alice_cookie, "Alice's").await;
     let b = create_requirement(app.clone(), &alice_cookie, "Alice's other").await;
 
+    // When
     let res = add_dependency(app.clone(), &bob_cookie, &a, &b).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -188,10 +200,13 @@ async fn add_dependency_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn dependency_graph_includes_current_and_transitive_nodes(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-graph@b.test", "Alice").await;
     let a = create_requirement(app.clone(), &cookie, "A").await;
+    // When
     let b = create_requirement(app.clone(), &cookie, "B").await;
+    // Then
     assert_eq!(
         add_dependency(app.clone(), &cookie, &a, &b).await.status(),
         StatusCode::CREATED

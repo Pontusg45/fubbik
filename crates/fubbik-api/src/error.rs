@@ -63,6 +63,8 @@ mod tests {
 
     #[test]
     fn maps_variants_to_status_codes() {
+        // Given the inline inputs and test fixtures.
+        // When
         let cases = [
             (AppError::NotFound("chunk".into()), StatusCode::NOT_FOUND),
             (AppError::Auth, StatusCode::UNAUTHORIZED),
@@ -70,13 +72,17 @@ mod tests {
             (AppError::Conflict("dupe".into()), StatusCode::CONFLICT),
         ];
         for (err, expected) in cases {
+            // Then
             assert_eq!(ApiError::from(err).into_response().status(), expected);
         }
     }
 
     #[test]
     fn external_maps_to_bad_gateway() {
+        // Given the inline inputs and test fixtures.
+        // When
         let err = AppError::External("upstream down".into());
+        // Then
         assert_eq!(
             ApiError::from(err).into_response().status(),
             StatusCode::BAD_GATEWAY
@@ -85,7 +91,10 @@ mod tests {
 
     #[test]
     fn unsupported_media_type_maps_to_415() {
+        // Given the inline inputs and test fixtures.
+        // When
         let err = AppError::UnsupportedMediaType("expected application/json".into());
+        // Then
         assert_eq!(
             ApiError::from(err).into_response().status(),
             StatusCode::UNSUPPORTED_MEDIA_TYPE
@@ -94,8 +103,11 @@ mod tests {
 
     #[tokio::test]
     async fn database_error_does_not_leak_underlying_detail() {
+        // Given
         let err = AppError::Database(sqlx::Error::Protocol("SENTINEL_LEAK_CHECK".into()));
+        // When
         let response = ApiError::from(err).into_response();
+        // Then
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
         let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
@@ -107,7 +119,10 @@ mod tests {
 
     #[test]
     fn row_not_found_converts_to_404_not_500() {
+        // Given the inline inputs and test fixtures.
+        // When
         let err: AppError = sqlx::Error::RowNotFound.into();
+        // Then
         assert_eq!(
             ApiError::from(err).into_response().status(),
             StatusCode::NOT_FOUND
@@ -117,7 +132,10 @@ mod tests {
     #[test]
     fn exhausted_or_closed_pool_maps_to_503() {
         for error in [sqlx::Error::PoolTimedOut, sqlx::Error::PoolClosed] {
+            // Given the inline inputs and test fixtures.
+            // When
             let response = ApiError::from(AppError::Database(error)).into_response();
+            // Then
             assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         }
     }

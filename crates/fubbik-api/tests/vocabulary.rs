@@ -164,9 +164,11 @@ async fn delete_entry(app: axum::Router, cookie: &str, id: &str) -> axum::respon
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_returns_empty_array_when_space_id_is_absent(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-noquery@b.test", "Alice").await;
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -177,12 +179,14 @@ async fn list_returns_empty_array_when_space_id_is_absent(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await, serde_json::json!([]));
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_404s_for_a_space_the_caller_does_not_own(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let owner_cookie = signup(app.clone(), "owner-list@b.test", "Owner").await;
     let attacker_cookie = signup(app.clone(), "attacker-list@b.test", "Attacker").await;
@@ -196,7 +200,9 @@ async fn list_404s_for_a_space_the_caller_does_not_own(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = get_vocabulary(app.clone(), &attacker_cookie, &sid).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     // The owner's own view must be unaffected by the attacker's attempt.
@@ -215,17 +221,20 @@ async fn list_404s_for_a_space_the_caller_does_not_own(pool: sqlx::PgPool) {
 async fn create_entry_returns_201_lowercases_word_and_auto_seeds_modifiers_once(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-create@b.test", "Alice").await;
     let uid = user_id_for_email(&pool, "alice-create@b.test").await;
     let sid = seed_space(&pool, &uid, "Space").await;
 
+    // When
     let res = create_entry(
         app.clone(),
         &cookie,
         serde_json::json!({ "word": "ClICk", "category": "action", "expects": ["target"], "spaceId": sid }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let body = json_body(res).await;
     assert_eq!(body["word"], "click");
@@ -259,18 +268,21 @@ async fn create_entry_returns_201_lowercases_word_and_auto_seeds_modifiers_once(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_entry_404s_for_a_space_the_caller_does_not_own(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let owner_cookie = signup(app.clone(), "owner-ce@b.test", "Owner").await;
     let attacker_cookie = signup(app.clone(), "attacker-ce@b.test", "Attacker").await;
     let owner_id = user_id_for_email(&pool, "owner-ce@b.test").await;
     let sid = seed_space(&pool, &owner_id, "Owner space").await;
 
+    // When
     let res = create_entry(
         app.clone(),
         &attacker_cookie,
         serde_json::json!({ "word": "click", "category": "action", "spaceId": sid }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let owners_view = json_body(get_vocabulary(app.clone(), &owner_cookie, &sid).await).await;
@@ -283,6 +295,7 @@ async fn create_entry_404s_for_a_space_the_caller_does_not_own(pool: sqlx::PgPoo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn bulk_create_returns_201_and_skips_conflicting_entries(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-bulk@b.test", "Alice").await;
     let uid = user_id_for_email(&pool, "alice-bulk@b.test").await;
@@ -295,6 +308,7 @@ async fn bulk_create_returns_201_and_skips_conflicting_entries(pool: sqlx::PgPoo
     )
     .await;
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -315,6 +329,7 @@ async fn bulk_create_returns_201_and_skips_conflicting_entries(pool: sqlx::PgPoo
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let body = json_body(res).await;
     let created = body.as_array().unwrap();
@@ -328,6 +343,7 @@ async fn bulk_create_returns_201_and_skips_conflicting_entries(pool: sqlx::PgPoo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn parse_matches_the_spaces_vocabulary(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-parse@b.test", "Alice").await;
     let uid = user_id_for_email(&pool, "alice-parse@b.test").await;
@@ -346,6 +362,7 @@ async fn parse_matches_the_spaces_vocabulary(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -359,6 +376,7 @@ async fn parse_matches_the_spaces_vocabulary(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["warnings"], serde_json::json!([]));
@@ -374,12 +392,14 @@ async fn parse_matches_the_spaces_vocabulary(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn suggest_404s_for_a_foreign_space_and_200s_with_an_array_otherwise(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let owner_cookie = signup(app.clone(), "owner-sug@b.test", "Owner").await;
     let attacker_cookie = signup(app.clone(), "attacker-sug@b.test", "Attacker").await;
     let owner_id = user_id_for_email(&pool, "owner-sug@b.test").await;
     let sid = seed_space(&pool, &owner_id, "Owner space").await;
 
+    // When
     let foreign_res = app
         .clone()
         .oneshot(
@@ -393,6 +413,7 @@ async fn suggest_404s_for_a_foreign_space_and_200s_with_an_array_otherwise(pool:
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(foreign_res.status(), StatusCode::NOT_FOUND);
 
     // No Ollama server is running in this test environment, so this must
@@ -423,6 +444,7 @@ async fn suggest_404s_for_a_foreign_space_and_200s_with_an_array_otherwise(pool:
 /// standing in for Ollama exercises it here for the first time.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn suggest_returns_entries_from_the_model(pool: sqlx::PgPool) {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("POST"))
         .and(wiremock::matchers::path("/api/generate"))
@@ -442,6 +464,7 @@ async fn suggest_returns_entries_from_the_model(pool: sqlx::PgPool) {
     let sid = seed_space(&pool, &user_id, "Suggest space").await;
     seed_chunk(&pool, &user_id, &sid, "How auth works", "The user logs in.").await;
 
+    // When
     let res = app
         .oneshot(
             Request::post("/api/vocabulary/suggest")
@@ -454,6 +477,7 @@ async fn suggest_returns_entries_from_the_model(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -469,6 +493,7 @@ async fn suggest_returns_entries_from_the_model(pool: sqlx::PgPool) {
 async fn update_returns_200_and_404s_with_unchanged_data_for_another_users_entry(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let owner_cookie = signup(app.clone(), "owner-upd@b.test", "Owner").await;
     let attacker_cookie = signup(app.clone(), "attacker-upd@b.test", "Attacker").await;
@@ -486,6 +511,7 @@ async fn update_returns_200_and_404s_with_unchanged_data_for_another_users_entry
     .await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let ok_res = update_entry(
         app.clone(),
         &owner_cookie,
@@ -493,6 +519,7 @@ async fn update_returns_200_and_404s_with_unchanged_data_for_another_users_entry
         serde_json::json!({ "word": "tap" }),
     )
     .await;
+    // Then
     assert_eq!(ok_res.status(), StatusCode::OK);
     assert_eq!(json_body(ok_res).await["word"], "tap");
 
@@ -517,6 +544,7 @@ async fn update_returns_200_and_404s_with_unchanged_data_for_another_users_entry
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_returns_200_and_404s_leaving_another_users_entry_intact(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let owner_cookie = signup(app.clone(), "owner-del@b.test", "Owner").await;
     let attacker_cookie = signup(app.clone(), "attacker-del@b.test", "Attacker").await;
@@ -534,7 +562,9 @@ async fn delete_returns_200_and_404s_leaving_another_users_entry_intact(pool: sq
     .await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let foreign_res = delete_entry(app.clone(), &attacker_cookie, id).await;
+    // Then
     assert_eq!(foreign_res.status(), StatusCode::NOT_FOUND);
     assert!(
         fubbik_db::repo::vocabulary::get_by_id(&pool, id)

@@ -14,6 +14,8 @@ fn c(field: &str, operator: &str, value: &str) -> QueryClause {
 
 #[test]
 fn parses_every_catalogued_query_form() {
+    // Given the inline inputs and test fixtures.
+    // When
     // (input, expected clauses)
     let cases: Vec<(&str, Vec<QueryClause>)> = vec![
         ("type:reference", vec![c("type", "is", "reference")]),
@@ -45,13 +47,17 @@ fn parses_every_catalogued_query_form() {
         ),
     ];
     for (input, expected) in cases {
+        // Then
         assert_eq!(parse_query_string(input), expected, "input: {input}");
     }
 }
 
 #[test]
 fn not_negates_only_the_next_clause() {
+    // Given the inline inputs and test fixtures.
+    // When
     let got = parse_query_string("NOT tag:deprecated type:note");
+    // Then
     assert_eq!(
         got[0].negate,
         Some(true),
@@ -65,7 +71,10 @@ fn not_negates_only_the_next_clause() {
 
 #[test]
 fn hops_attaches_to_the_most_recent_near_clause() {
+    // Given the inline inputs and test fixtures.
+    // When
     let got = parse_query_string("near:abc hops:2");
+    // Then
     assert_eq!(got.len(), 1, "hops is not a standalone clause");
     assert_eq!(got[0].field, "near");
     assert_eq!(
@@ -81,8 +90,11 @@ fn hops_attaches_to_the_most_recent_near_clause() {
 
 #[test]
 fn hops_after_a_non_near_clause_is_silently_dropped() {
+    // Given the inline inputs and test fixtures.
+    // When
     // Looks like a bug. It is Node's behaviour: hops scans backwards for `near` only.
     let got = parse_query_string("affected-by:req-1 hops:3");
+    // Then
     assert_eq!(got.len(), 1);
     assert_eq!(got[0].field, "affected-by");
     assert!(
@@ -93,6 +105,9 @@ fn hops_after_a_non_near_clause_is_silently_dropped() {
 
 #[test]
 fn hops_with_no_preceding_near_is_a_no_op() {
+    // Given the inline inputs and test fixtures.
+    // When the operation is evaluated by the assertion.
+    // Then
     assert_eq!(
         parse_query_string("hops:2"),
         vec![],
@@ -102,7 +117,10 @@ fn hops_with_no_preceding_near_is_a_no_op() {
 
 #[test]
 fn path_splits_on_arrow_into_from_to_params() {
+    // Given the inline inputs and test fixtures.
+    // When
     let got = parse_query_string("path:\"A\"->\"B\"");
+    // Then
     assert_eq!(got.len(), 1);
     assert_eq!(got[0].field, "path");
     assert_eq!(got[0].operator, "is");
@@ -131,8 +149,11 @@ fn path_splits_on_arrow_into_from_to_params() {
 // space-quoting round trip (via a `text` clause).
 #[test]
 fn serialiser_round_trips_params_and_quotes_text_values_containing_spaces() {
+    // Given
     let clauses = parse_query_string("near:AuthFlow hops:2");
+    // When
     let s = clauses_to_query_string(&clauses);
+    // Then
     assert_eq!(s, "near:AuthFlow hops:2");
     assert_eq!(
         parse_query_string(&s),
@@ -171,11 +192,14 @@ fn serialiser_round_trips_params_and_quotes_text_values_containing_spaces() {
 /// verified behaviour, reproduced byte-for-byte.
 #[test]
 fn near_quoted_with_a_space_produces_a_near_clause_plus_a_stray_text_clause() {
+    // Given the inline inputs and test fixtures.
+    // When
     let got = parse_query_string("near:\"Auth Flow\" hops:2");
 
     let mut hops = BTreeMap::new();
     hops.insert("hops".to_string(), "2".to_string());
 
+    // Then
     assert_eq!(
         got,
         vec![

@@ -133,6 +133,9 @@ mod tests {
 
     #[test]
     fn strips_leading_dot_slash() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_path("./src/auth/service.ts"),
             "src/auth/service.ts"
@@ -141,6 +144,9 @@ mod tests {
 
     #[test]
     fn strips_leading_slash() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_path("/src/auth/service.ts"),
             "src/auth/service.ts"
@@ -149,6 +155,9 @@ mod tests {
 
     #[test]
     fn collapses_consecutive_slashes() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_path("src//auth///service.ts"),
             "src/auth/service.ts"
@@ -157,11 +166,17 @@ mod tests {
 
     #[test]
     fn strips_trailing_slash() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(normalize_path("src/auth/"), "src/auth");
     }
 
     #[test]
     fn handles_combined_edge_cases() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             normalize_path("./src//auth/./service.ts"),
             "src/auth/./service.ts"
@@ -170,11 +185,17 @@ mod tests {
 
     #[test]
     fn returns_empty_string_unchanged() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(normalize_path(""), "");
     }
 
     #[test]
     fn handles_already_clean_paths() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(normalize_path("src/auth/service.ts"), "src/auth/service.ts");
     }
 
@@ -182,16 +203,25 @@ mod tests {
 
     #[test]
     fn matches_dot_slash_prefixed_path_against_globstar_pattern() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(glob_match("src/**/*.ts", "./src/auth/service.ts"));
     }
 
     #[test]
     fn matches_leading_slash_path_against_globstar_pattern() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(glob_match("src/**/*.ts", "/src/auth/service.ts"));
     }
 
     #[test]
     fn normalizes_the_pattern_too() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(glob_match("./src/**/*.ts", "src/auth/service.ts"));
     }
 
@@ -199,18 +229,27 @@ mod tests {
 
     #[test]
     fn exact_literal_path_matches_itself() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(glob_match("src/foo.rs", "src/foo.rs"));
         assert!(!glob_match("src/foo.rs", "src/bar.rs"));
     }
 
     #[test]
     fn single_star_does_not_cross_a_slash() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(glob_match("src/*.rs", "src/foo.rs"));
         assert!(!glob_match("src/*.rs", "src/nested/foo.rs"));
     }
 
     #[test]
     fn double_star_crosses_slashes() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(glob_match("src/**/*.rs", "src/a/b/foo.rs"));
     }
 
@@ -226,16 +265,25 @@ mod tests {
     /// unit tests live in a different `cargo test` target.
     #[test]
     fn double_star_requires_a_real_directory_segment_either_side() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(!glob_match("src/**/*.rs", "src/foo.rs"));
     }
 
     #[test]
     fn leading_and_trailing_slashes_and_dot_slash_are_normalized_away() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(glob_match("./src/foo.rs", "/src/foo.rs/"));
     }
 
     #[test]
     fn dot_is_literal_not_any_char() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(!glob_match("src/foo.rs", "src/fooXrs"));
     }
 }

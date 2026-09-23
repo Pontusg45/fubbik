@@ -16,7 +16,10 @@ const vocab: VocabEntry[] = [
 
 describe("parseStepText", () => {
     it("parses a valid step with no warnings", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = parseStepText("click the button", vocab);
+        // Then
         expect(result.warnings).toHaveLength(0);
         expect(result.tokens).toHaveLength(3);
         expect(result.tokens[0]).toMatchObject({ text: "click", category: "action" });
@@ -25,9 +28,12 @@ describe("parseStepText", () => {
     });
 
     it("matches multi-word entries greedily", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = parseStepText("user is logged in", vocab);
         // "logged in" should be matched as one token, not "log" + unknown
         const loggedInToken = result.tokens.find(t => t.text.toLowerCase() === "logged in");
+        // Then
         expect(loggedInToken).toBeDefined();
         expect(loggedInToken!.category).toBe("state");
 
@@ -37,30 +43,42 @@ describe("parseStepText", () => {
     });
 
     it("produces warnings for unknown words", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = parseStepText("click the foobar button", vocab);
         const unknownWarnings = result.warnings.filter(w => w.type === "unknown_word");
+        // Then
         expect(unknownWarnings).toHaveLength(1);
         expect(unknownWarnings[0]!.word).toBe("foobar");
     });
 
     it("produces warning for unexpected category after action", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         // "click" expects "target", but "click" is followed by another action "type"
         const result = parseStepText("click type", vocab);
         const catWarning = result.warnings.find(w => w.type === "unexpected_category");
+        // Then
         expect(catWarning).toBeDefined();
         expect(catWarning!.word).toBe("type");
     });
 
     it("produces warning for dangling expects at end of step", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         // "click" expects "target" but step ends
         const result = parseStepText("click", vocab);
         const danglingWarning = result.warnings.find(w => w.type === "expects_not_satisfied");
+        // Then
         expect(danglingWarning).toBeDefined();
         expect(danglingWarning!.word).toBe("click");
     });
 
     it("does not produce unknown warnings for quoted literals", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = parseStepText('type "hello world" field', vocab);
+        // Then
         expect(result.warnings).toHaveLength(0);
         const literalToken = result.tokens.find(t => t.text === '"hello world"');
         expect(literalToken).toBeDefined();
@@ -68,14 +86,20 @@ describe("parseStepText", () => {
     });
 
     it("matches case insensitively", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = parseStepText("Click THE Button", vocab);
+        // Then
         expect(result.warnings).toHaveLength(0);
         expect(result.tokens[0]).toMatchObject({ text: "Click", category: "action" });
         expect(result.tokens[2]).toMatchObject({ text: "Button", category: "target" });
     });
 
     it("returns empty result for empty text", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = parseStepText("", vocab);
+        // Then
         expect(result.tokens).toHaveLength(0);
         expect(result.warnings).toHaveLength(0);
     });

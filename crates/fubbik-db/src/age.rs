@@ -1059,6 +1059,9 @@ mod tests {
 
     #[test]
     fn dollar_quote_chooses_a_delimiter_absent_from_the_query() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(dollar_quote("RETURN 1"), "$fubbik_0$RETURN 1$fubbik_0$");
         assert_eq!(
             dollar_quote("RETURN '$fubbik_0$'"),
@@ -1068,6 +1071,9 @@ mod tests {
 
     #[test]
     fn age_identifiers_reject_sql_syntax() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(validate_identifier("knowledge_2", "graph").is_ok());
         assert!(validate_identifier("knowledge'); DROP TABLE plan; --", "graph").is_err());
         assert!(validate_identifier("two columns", "column").is_err());
@@ -1075,9 +1081,12 @@ mod tests {
 
     #[test]
     fn strips_vertex_suffix() {
+        // Given
         // Exact output captured from AGE 1.7.0.
         let raw = r#"{"id": 1125899906842625, "label": "chunk", "properties": {"url": "https://x.test", "title": "hello"}}::vertex"#;
+        // When
         let v = parse_agtype(raw).unwrap();
+        // Then
         assert_eq!(v["label"], "chunk");
         assert_eq!(v["properties"]["title"], "hello");
         assert_eq!(v["properties"]["url"], "https://x.test");
@@ -1085,6 +1094,9 @@ mod tests {
 
     #[test]
     fn parses_bare_scalars() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(parse_agtype("42").unwrap(), 42);
         assert_eq!(parse_agtype("1.5").unwrap(), 1.5);
         assert_eq!(parse_agtype(r#""plain string""#).unwrap(), "plain string");
@@ -1092,16 +1104,22 @@ mod tests {
 
     #[test]
     fn preserves_property_values_containing_double_colons() {
+        // Given
         let raw =
             r#"{"id": 1407374883553281, "label": "probe", "properties": {"code": "a::b"}}::vertex"#;
+        // When
         let v = parse_agtype(raw).unwrap();
+        // Then
         assert_eq!(v["properties"]["code"], "a::b");
     }
 
     #[test]
     fn strips_edge_suffix() {
+        // Given
         let raw = r#"{"id": 2251799813685249, "label": "REL_REV", "end_id": 1125899906842625, "start_id": 1125899906842626, "properties": {}}::edge"#;
+        // When
         let v = parse_agtype(raw).unwrap();
+        // Then
         assert_eq!(v["label"], "REL_REV");
         assert_eq!(v["start_id"], 1125899906842626_i64);
         assert_eq!(v["end_id"], 1125899906842625_i64);
@@ -1109,13 +1127,16 @@ mod tests {
 
     #[test]
     fn strips_all_nested_suffixes_in_a_path() {
+        // Given
         // A path result: every vertex/edge nested in the array carries its
         // own `::vertex`/`::edge` suffix in ADDITION to the outer `::path`
         // suffix. Only stripping the trailing suffix leaves this invalid
         // JSON (this is the bug the scanner fixes).
         let raw = r#"[{"id": 1125899906842625, "label": "probe_rev", "properties": {}}::vertex, {"id": 2251799813685249, "label": "REL_REV", "end_id": 1125899906842627, "start_id": 1125899906842625, "properties": {}}::edge, {"id": 1125899906842627, "label": "probe_rev", "properties": {}}::vertex]::path"#;
         let v = parse_agtype(raw).unwrap();
+        // When
         let arr = v.as_array().unwrap();
+        // Then
         assert_eq!(arr.len(), 3);
         assert_eq!(arr[0]["label"], "probe_rev");
         assert_eq!(arr[1]["label"], "REL_REV");
@@ -1124,6 +1145,9 @@ mod tests {
 
     #[test]
     fn strips_numeric_scalar_suffix() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(parse_agtype("1.5::numeric").unwrap(), 1.5);
     }
 }

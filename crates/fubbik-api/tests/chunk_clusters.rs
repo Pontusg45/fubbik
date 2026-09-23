@@ -42,6 +42,7 @@ async fn set_embedding(pool: &sqlx::PgPool, id: &str, embedding: String, updated
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn clusters_use_recent_seeds_and_rank_vector_neighbors(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool.clone());
     let owner = app.signup("clusters@example.com", "Owner").await;
     let seed = create_chunk(&app, &owner, "Seed").await;
@@ -52,7 +53,9 @@ async fn clusters_use_recent_seeds_and_rank_vector_neighbors(pool: sqlx::PgPool)
     set_embedding(&pool, &close, vector(0.9, 0.1), "2026-01-02 00:00:00").await;
     set_embedding(&pool, &far, vector(0.0, 1.0), "2026-01-01 00:00:00").await;
 
+    // When
     let response = app.get(&owner, "/api/chunks/clusters").await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     let clusters = TestApp::json(response).await;
     let clusters = clusters.as_array().unwrap();
@@ -66,11 +69,14 @@ async fn clusters_use_recent_seeds_and_rank_vector_neighbors(pool: sqlx::PgPool)
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn clusters_are_empty_without_embeddings(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let owner = app.signup("clusters-empty@example.com", "Owner").await;
     create_chunk(&app, &owner, "No embedding").await;
 
+    // When
     let response = app.get(&owner, "/api/chunks/clusters").await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(TestApp::json(response).await, serde_json::json!([]));
 }

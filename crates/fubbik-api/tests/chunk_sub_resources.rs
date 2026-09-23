@@ -156,13 +156,16 @@ async fn patterns_json(response: axum::response::Response) -> serde_json::Value 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_get_applies_to_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
     let alice_cookie = signup(app.clone(), "alice-ato-get@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-ato-get@b.test", "Bob").await;
     let chunk_id = create_chunk(app.clone(), &alice_cookie, "Alice's chunk").await;
 
+    // When
     let res = get_applies_to(app.clone(), &bob_cookie, &chunk_id).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -172,13 +175,16 @@ async fn cross_user_get_applies_to_is_404(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_put_applies_to_is_404_and_leaves_patterns_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
     let alice_cookie = signup(app.clone(), "alice-ato-put@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-ato-put@b.test", "Bob").await;
     let chunk_id = create_chunk(app.clone(), &alice_cookie, "Alice's chunk").await;
 
+    // When
     let seed = put_applies_to(app.clone(), &alice_cookie, &chunk_id, &["src/**/*.ts"]).await;
+    // Then
     assert_eq!(seed.status(), StatusCode::OK);
 
     let res = put_applies_to(app.clone(), &bob_cookie, &chunk_id, &["evil/**"]).await;
@@ -206,13 +212,16 @@ async fn cross_user_put_applies_to_is_404_and_leaves_patterns_unchanged(pool: sq
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_get_file_refs_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
     let alice_cookie = signup(app.clone(), "alice-fr-get@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-fr-get@b.test", "Bob").await;
     let chunk_id = create_chunk(app.clone(), &alice_cookie, "Alice's chunk").await;
 
+    // When
     let res = get_file_refs(app.clone(), &bob_cookie, &chunk_id).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -222,13 +231,16 @@ async fn cross_user_get_file_refs_is_404(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_put_file_refs_is_404_and_leaves_refs_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
     let alice_cookie = signup(app.clone(), "alice-fr-put@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-fr-put@b.test", "Bob").await;
     let chunk_id = create_chunk(app.clone(), &alice_cookie, "Alice's chunk").await;
 
+    // When
     let seed = put_file_refs(app.clone(), &alice_cookie, &chunk_id, &["src/index.ts"]).await;
+    // Then
     assert_eq!(seed.status(), StatusCode::OK);
 
     let res = put_file_refs(app.clone(), &bob_cookie, &chunk_id, &["evil.ts"]).await;
@@ -285,10 +297,12 @@ async fn raw_put(
 /// endpoint looked healthy the whole time.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn applies_to_note_round_trips(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "T").await;
 
+    // When
     let res = raw_put(
         app.clone(),
         &cookie,
@@ -299,6 +313,7 @@ async fn applies_to_note_round_trips(pool: sqlx::PgPool) {
         ]),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     // `get_applies_to` orders by `pattern, id`, so `docs/**` sorts first.
@@ -321,10 +336,12 @@ async fn applies_to_note_round_trips(pool: sqlx::PgPool) {
 /// half of [`applies_to_note_round_trips`], and the same class of bug.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn file_refs_anchor_and_relation_round_trip(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "T").await;
 
+    // When
     let res = raw_put(
         app.clone(),
         &cookie,
@@ -335,6 +352,7 @@ async fn file_refs_anchor_and_relation_round_trip(pool: sqlx::PgPool) {
         ]),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let rows = patterns_json(get_file_refs(app, &cookie, &chunk_id).await).await;
@@ -358,10 +376,12 @@ async fn file_refs_anchor_and_relation_round_trip(pool: sqlx::PgPool) {
 /// a 400 naming the field rather than a serde parse error.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn file_refs_put_rejects_an_unknown_relation(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "T").await;
 
+    // When
     let res = raw_put(
         app.clone(),
         &cookie,
@@ -369,6 +389,7 @@ async fn file_refs_put_rejects_an_unknown_relation(pool: sqlx::PgPool) {
         serde_json::json!([{ "path": "src/lib.rs", "relation": "vandalises" }]),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
     // The rejection must be total: nothing from the batch was written.
@@ -383,6 +404,7 @@ async fn file_refs_put_rejects_an_unknown_relation(pool: sqlx::PgPool) {
 /// Node caps both sub-resource bodies at 50 entries; so does this.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn applies_to_put_rejects_more_than_fifty_entries(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let chunk_id = create_chunk(app.clone(), &cookie, "T").await;
@@ -395,6 +417,7 @@ async fn applies_to_put_rejects_more_than_fifty_entries(pool: sqlx::PgPool) {
 
     let path = format!("/api/chunks/{chunk_id}/applies-to");
 
+    // When
     // 51 is rejected...
     let res = raw_put(
         app.clone(),
@@ -403,6 +426,7 @@ async fn applies_to_put_rejects_more_than_fifty_entries(pool: sqlx::PgPool) {
         serde_json::Value::Array(fifty_one),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
     // ...and 50 is not, so the boundary is where it claims to be rather

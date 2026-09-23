@@ -249,6 +249,9 @@ mod tests {
 
     #[test]
     fn document_becomes_architecture() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(
             format_chunk_text(&chunk("document", None, "body"))
                 .starts_with("## Architecture: Title")
@@ -257,6 +260,9 @@ mod tests {
 
     #[test]
     fn note_becomes_note_and_convention_becomes_convention() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(format_chunk_text(&chunk("note", None, "body")).starts_with("## Note: Title"));
         assert!(
             format_chunk_text(&chunk("convention", None, "body"))
@@ -268,6 +274,9 @@ mod tests {
     /// Node's `charAt(0).toUpperCase() + slice(1)`.
     #[test]
     fn unknown_type_is_title_cased() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(
             format_chunk_text(&chunk("runbook", None, "body")).starts_with("## Runbook: Title")
         );
@@ -275,7 +284,10 @@ mod tests {
 
     #[test]
     fn rationale_is_appended_with_its_label() {
+        // Given the inline inputs and test fixtures.
+        // When
         let out = format_chunk_text(&chunk("note", Some("because"), "body"));
+        // Then
         assert_eq!(out, "## Note: Title\nbody\n**Rationale:** because");
     }
 
@@ -283,6 +295,9 @@ mod tests {
     /// omitted rather than producing a blank line.
     #[test]
     fn empty_content_is_omitted_not_blank() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             format_chunk_text(&chunk("note", None, "")),
             "## Note: Title"
@@ -294,6 +309,9 @@ mod tests {
     /// way `None` is — not rendered as a bare `**Rationale:** ` line.
     #[test]
     fn empty_rationale_is_omitted_not_rendered() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             format_chunk_text(&chunk("note", Some(""), "body")),
             "## Note: Title\nbody"
@@ -319,6 +337,8 @@ mod tests {
 
     #[test]
     fn types_map_to_their_section_titles() {
+        // Given the inline inputs and test fixtures.
+        // When
         let out = format_structured(vec![
             with_meta("note", &[]),
             with_meta("document", &[]),
@@ -327,6 +347,7 @@ mod tests {
             with_meta("checklist", &[]),
         ]);
         let titles: Vec<&str> = out.sections.iter().map(|s| s.title.as_str()).collect();
+        // Then
         assert!(titles.contains(&"Notes"));
         assert!(titles.contains(&"Architecture"));
         assert!(titles.contains(&"API Reference"));
@@ -338,20 +359,29 @@ mod tests {
     /// section — the one case where the tag, not the type, decides.
     #[test]
     fn a_note_tagged_convention_becomes_its_own_section() {
+        // Given the inline inputs and test fixtures.
+        // When
         let out = format_structured(vec![with_meta("note", &["convention"])]);
+        // Then
         assert_eq!(out.sections.len(), 1);
         assert_eq!(out.sections[0].title, "Conventions");
     }
 
     #[test]
     fn a_note_without_the_tag_stays_in_notes() {
+        // Given the inline inputs and test fixtures.
+        // When
         let out = format_structured(vec![with_meta("note", &["other"])]);
+        // Then
         assert_eq!(out.sections[0].title, "Notes");
     }
 
     #[test]
     fn chunks_of_one_type_group_into_a_single_section() {
+        // Given the inline inputs and test fixtures.
+        // When
         let out = format_structured(vec![with_meta("note", &[]), with_meta("note", &[])]);
+        // Then
         assert_eq!(out.sections.len(), 1);
         assert_eq!(out.sections[0].chunks.len(), 2);
         assert_eq!(out.total_chunks, 2);
@@ -359,7 +389,10 @@ mod tests {
 
     #[test]
     fn unknown_type_gets_a_title_cased_section() {
+        // Given the inline inputs and test fixtures.
+        // When
         let out = format_structured(vec![with_meta("runbook", &[])]);
+        // Then
         assert_eq!(out.sections[0].title, "Runbook");
     }
 
@@ -371,6 +404,8 @@ mod tests {
     /// to the existing section rather than creating a new one or moving it.
     #[test]
     fn sections_appear_in_first_encounter_order() {
+        // Given the inline inputs and test fixtures.
+        // When
         let out = format_structured(vec![
             with_meta("checklist", &[]),
             with_meta("note", &[]),
@@ -378,11 +413,13 @@ mod tests {
             with_meta("checklist", &[]), // repeat — must not move the section
         ]);
         let titles: Vec<&str> = out.sections.iter().map(|s| s.title.as_str()).collect();
+        // Then
         assert_eq!(titles, vec!["Checklists", "Notes", "Architecture"]);
     }
 
     #[test]
     fn markdown_includes_health_flags_and_rationale() {
+        // Given
         let mut meta = with_meta("note", &[]);
         meta.chunk.title = "Widget".into();
         meta.chunk.content = "Body text".into();
@@ -391,8 +428,10 @@ mod tests {
         meta.is_stale = true;
         meta.has_pending_proposal = true;
 
+        // When
         let out = format_structured_markdown(&format_structured(vec![meta]));
 
+        // Then
         assert!(out.starts_with("# Project Context"));
         assert!(out.contains("## Notes"));
         assert!(out.contains("### Widget [health: 42] ⚠ STALE ⚠ PENDING PROPOSAL"));
@@ -402,7 +441,10 @@ mod tests {
 
     #[test]
     fn markdown_trims_trailing_whitespace() {
+        // Given the inline inputs and test fixtures.
+        // When
         let out = format_structured_markdown(&format_structured(vec![with_meta("note", &[])]));
+        // Then
         assert_eq!(out, out.trim_end());
         assert!(!out.ends_with('\n'));
     }

@@ -167,11 +167,11 @@ export function getGraphProximityBoost(anchorId: string, candidateIds: string[],
     if (candidateIds.length === 0) return Effect.succeed(new Map<string, number>());
 
     const idList = candidateIds.map(id => `'${escCypher(id)}'`).join(",");
+    // AGE has no shortestPath(); aggregate bounded paths to retain the shortest distance.
     return cypher(
-        `MATCH (anchor:chunk {id: '${escCypher(anchorId)}'}), (target:chunk)
+        `MATCH p = (anchor:chunk {id: '${escCypher(anchorId)}'})-[*1..${maxHops}]-(target:chunk)
          WHERE target.id IN [${idList}]
-         MATCH p = shortestPath((anchor)-[*1..${maxHops}]-(target))
-         RETURN target.id AS id, length(p) AS hops`,
+         RETURN target.id AS id, min(length(p)) AS hops`,
         "id agtype, hops agtype"
     ).pipe(
         Effect.map(rows => {

@@ -70,6 +70,7 @@ fn params() -> ListParams {
 
 #[sqlx::test]
 async fn list_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
 
@@ -94,7 +95,9 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let alice_list = activity::list(&pool, &alice, &params()).await.unwrap();
+    // Then
     assert_eq!(alice_list.len(), 1);
     assert_eq!(alice_list[0].entity_title.as_deref(), Some("Alice's chunk"));
 
@@ -105,6 +108,7 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn entity_type_filter_narrows_results(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
 
     seed_activity(&pool, &alice, "chunk", "c1", None, "created", None).await;
@@ -112,7 +116,9 @@ async fn entity_type_filter_narrows_results(pool: sqlx::PgPool) {
 
     let mut p = params();
     p.entity_type = Some("requirement".into());
+    // When
     let filtered = activity::list(&pool, &alice, &p).await.unwrap();
+    // Then
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].entity_type, "requirement");
 }
@@ -123,6 +129,7 @@ async fn entity_type_filter_narrows_results(pool: sqlx::PgPool) {
 /// round-trips arbitrary strings rather than rejecting or coercing them.
 #[sqlx::test]
 async fn action_and_entity_type_are_free_text(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
 
     seed_activity(
@@ -136,7 +143,9 @@ async fn action_and_entity_type_are_free_text(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let listed = activity::list(&pool, &alice, &params()).await.unwrap();
+    // Then
     assert_eq!(listed[0].entity_type, "totally-made-up-entity");
     assert_eq!(listed[0].action, "totally-made-up-action");
 }
@@ -149,6 +158,7 @@ async fn action_and_entity_type_are_free_text(pool: sqlx::PgPool) {
 /// fail — see the report for the exact failure message.
 #[sqlx::test]
 async fn space_id_filter_is_rejected_for_another_users_space(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let bobs_space = seed_space(&pool, &bob, "bobs-space").await;
@@ -169,7 +179,9 @@ async fn space_id_filter_is_rejected_for_another_users_space(pool: sqlx::PgPool)
 
     let mut p = params();
     p.space_id = Some(bobs_space.clone());
+    // When
     let result = activity::list(&pool, &alice, &p).await.unwrap();
+    // Then
     assert!(
         result.is_empty(),
         "a spaceId belonging to another user must not be usable as a filter, even by its owner's row's actual creator"
@@ -178,6 +190,7 @@ async fn space_id_filter_is_rejected_for_another_users_space(pool: sqlx::PgPool)
 
 #[sqlx::test]
 async fn space_id_filter_matches_the_callers_own_space(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let alices_space = seed_space(&pool, &alice, "alices-space").await;
 
@@ -204,7 +217,9 @@ async fn space_id_filter_matches_the_callers_own_space(pool: sqlx::PgPool) {
 
     let mut p = params();
     p.space_id = Some(alices_space);
+    // When
     let result = activity::list(&pool, &alice, &p).await.unwrap();
+    // Then
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].entity_title.as_deref(), Some("in space"));
 }
@@ -218,6 +233,7 @@ async fn space_id_filter_matches_the_callers_own_space(pool: sqlx::PgPool) {
 /// `created_at`, so only the `id ASC` tiebreaker can determine order.
 #[sqlx::test]
 async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
 
     for title in [
@@ -257,6 +273,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT id FROM activity_log WHERE user_id = $1 ORDER BY id ASC",
         alice
@@ -264,6 +281,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 20);
 
     let mut p = params();

@@ -12,9 +12,12 @@ const client = treaty(app);
 // endpoints that were previously gated.
 describe("Chunk routes — auth currently bypassed", () => {
     it("POST /api/chunks/import does not 401 without auth", async () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { status } = await client.api.chunks.import.post({
             chunks: [{ title: "test" }]
         });
+        // Then
         expect(status).not.toBe(401);
     });
 });

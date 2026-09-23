@@ -6,7 +6,10 @@ import { spaceCodeMetadata } from "../schema/space-code-metadata";
 
 describe("space table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(space);
+        // Then
         expect(columns).toHaveProperty("id");
         expect(columns).toHaveProperty("name");
         expect(columns).toHaveProperty("kind");
@@ -19,7 +22,10 @@ describe("space table", () => {
 
 describe("spaceCodeMetadata table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(spaceCodeMetadata);
+        // Then
         expect(columns).toHaveProperty("spaceId");
         expect(columns).toHaveProperty("userId");
         expect(columns).toHaveProperty("remoteUrl");
@@ -29,7 +35,10 @@ describe("spaceCodeMetadata table", () => {
 
 describe("chunkSpace table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(chunkSpace);
+        // Then
         expect(columns).toHaveProperty("chunkId");
         expect(columns).toHaveProperty("spaceId");
     });

@@ -48,8 +48,10 @@ async fn json_body(response: axum::response::Response) -> serde_json::Value {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn signup_then_signin_sets_cookie(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let signup = app
         .clone()
         .oneshot(
@@ -62,6 +64,7 @@ async fn signup_then_signin_sets_cookie(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(signup.status(), StatusCode::OK);
 
     let signin = app
@@ -82,8 +85,10 @@ async fn signup_then_signin_sets_cookie(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn credential_cookie_uses_production_security_attributes(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let response = app
         .oneshot(
             Request::post("/api/auth/sign-up/email")
@@ -95,6 +100,7 @@ async fn credential_cookie_uses_production_security_attributes(pool: sqlx::PgPoo
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
 
     let cookie = response.headers()["set-cookie"].to_str().unwrap();
@@ -105,8 +111,10 @@ async fn credential_cookie_uses_production_security_attributes(pool: sqlx::PgPoo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn credential_cookie_allows_plain_http_in_implicit_dev_mode(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state_dev(pool));
 
+    // When
     let response = app
         .oneshot(
             Request::post("/api/auth/sign-up/email")
@@ -118,6 +126,7 @@ async fn credential_cookie_allows_plain_http_in_implicit_dev_mode(pool: sqlx::Pg
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
 
     let cookie = response.headers()["set-cookie"].to_str().unwrap();
@@ -128,6 +137,7 @@ async fn credential_cookie_allows_plain_http_in_implicit_dev_mode(pool: sqlx::Pg
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn wrong_password_is_unauthorized(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     app.clone()
         .oneshot(
@@ -141,6 +151,7 @@ async fn wrong_password_is_unauthorized(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let res = app
         .oneshot(
             Request::post("/api/auth/sign-in/email")
@@ -150,6 +161,7 @@ async fn wrong_password_is_unauthorized(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
@@ -157,9 +169,11 @@ async fn wrong_password_is_unauthorized(pool: sqlx::PgPool) {
 /// path in `sign_up` and confirms the user-facing result is a clean 409.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn duplicate_signup_is_conflict(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let body = || Body::from(r#"{"email":"dup@b.test","password":"hunter22","name":"Dup"}"#);
 
+    // When
     let first = app
         .clone()
         .oneshot(
@@ -170,6 +184,7 @@ async fn duplicate_signup_is_conflict(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(first.status(), StatusCode::OK);
 
     let second = app
@@ -186,8 +201,10 @@ async fn duplicate_signup_is_conflict(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn signup_normalizes_email_and_signin_is_case_insensitive(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
 
+    // When
     let signup = app
         .clone()
         .oneshot(
@@ -200,6 +217,7 @@ async fn signup_normalizes_email_and_signin_is_case_insensitive(pool: sqlx::PgPo
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(signup.status(), StatusCode::OK);
     assert_eq!(
         json_body(signup).await["user"]["email"],
@@ -229,8 +247,10 @@ async fn signup_normalizes_email_and_signin_is_case_insensitive(pool: sqlx::PgPo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn signup_rejects_invalid_email_without_creating_a_user(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
 
+    // When
     let response = app
         .oneshot(
             Request::post("/api/auth/sign-up/email")
@@ -242,6 +262,7 @@ async fn signup_rejects_invalid_email_without_creating_a_user(pool: sqlx::PgPool
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
     let count: i64 = sqlx::query_scalar(r#"SELECT count(*) FROM "user""#)
@@ -253,8 +274,10 @@ async fn signup_rejects_invalid_email_without_creating_a_user(pool: sqlx::PgPool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn signin_rejects_invalid_email_as_bad_request(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let response = app
         .oneshot(
             Request::post("/api/auth/sign-in/email")
@@ -266,11 +289,13 @@ async fn signin_rejects_invalid_email_as_bad_request(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn signup_rejects_passwords_over_better_auths_128_character_limit(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let password = "x".repeat(129);
     let body = serde_json::json!({
@@ -279,6 +304,7 @@ async fn signup_rejects_passwords_over_better_auths_128_character_limit(pool: sq
         "name": "Long"
     });
 
+    // When
     let response = app
         .oneshot(
             Request::post("/api/auth/sign-up/email")
@@ -288,6 +314,7 @@ async fn signup_rejects_passwords_over_better_auths_128_character_limit(pool: sq
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     assert!(
         user::find_by_email(&pool, "long-password@b.test")
@@ -299,6 +326,7 @@ async fn signup_rejects_passwords_over_better_auths_128_character_limit(pool: sq
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn signup_measures_unicode_passwords_like_javascript(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     // 40 emoji are 80 UTF-16 code units (JavaScript's string.length), but
     // 160 UTF-8 bytes. Better Auth accepts this; a Rust byte-length check
@@ -310,6 +338,7 @@ async fn signup_measures_unicode_passwords_like_javascript(pool: sqlx::PgPool) {
         "name": "Unicode"
     });
 
+    // When
     let response = app
         .oneshot(
             Request::post("/api/auth/sign-up/email")
@@ -319,6 +348,7 @@ async fn signup_measures_unicode_passwords_like_javascript(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -329,12 +359,14 @@ async fn signup_measures_unicode_passwords_like_javascript(pool: sqlx::PgPool) {
 /// DB-constraint mapping) actually catches it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn concurrent_duplicate_signup_yields_conflict_not_500(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let body = || Body::from(r#"{"email":"race@b.test","password":"hunter22","name":"Racer"}"#);
 
     let app1 = app.clone();
     let app2 = app.clone();
 
+    // When
     let (r1, r2) = tokio::join!(
         app1.oneshot(
             Request::post("/api/auth/sign-up/email")
@@ -351,6 +383,7 @@ async fn concurrent_duplicate_signup_yields_conflict_not_500(pool: sqlx::PgPool)
     );
 
     let statuses = [r1.unwrap().status(), r2.unwrap().status()];
+    // Then
     assert!(
         statuses.contains(&StatusCode::OK),
         "one concurrent signup should succeed: {statuses:?}"
@@ -367,8 +400,10 @@ async fn concurrent_duplicate_signup_yields_conflict_not_500(pool: sqlx::PgPool)
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_session_with_valid_cookie_returns_current_user(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let signup = app
         .clone()
         .oneshot(
@@ -381,6 +416,7 @@ async fn get_session_with_valid_cookie_returns_current_user(pool: sqlx::PgPool) 
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(signup.status(), StatusCode::OK);
     let cookie = cookie_pair(&signup);
 
@@ -404,8 +440,10 @@ async fn get_session_with_valid_cookie_returns_current_user(pool: sqlx::PgPool) 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_session_without_cookie_returns_null_like_better_auth(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::get("/api/auth/get-session")
@@ -414,14 +452,17 @@ async fn get_session_without_cookie_returns_null_like_better_auth(pool: sqlx::Pg
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await, serde_json::Value::Null);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_session_with_garbage_cookie_returns_null_not_500(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::get("/api/auth/get-session")
@@ -431,12 +472,14 @@ async fn get_session_with_garbage_cookie_returns_null_not_500(pool: sqlx::PgPool
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await, serde_json::Value::Null);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_session_does_not_turn_implicit_dev_access_into_a_browser_session(pool: sqlx::PgPool) {
+    // Given
     // Seeded via the canonical bootstrap, not `user::create`: the fallback
     // now enforces the fixed `id = "dev-user"` invariant (matching Node's
     // `IMPLICIT_DEV_USER_ID`), so a same-email row under an arbitrary id —
@@ -447,6 +490,7 @@ async fn get_session_does_not_turn_implicit_dev_access_into_a_browser_session(po
     user::ensure_implicit_dev_user(&pool).await.unwrap();
 
     let app = fubbik_api::router(state_dev(pool.clone()));
+    // When
     let res = app
         .oneshot(
             Request::get("/api/auth/get-session")
@@ -455,6 +499,7 @@ async fn get_session_does_not_turn_implicit_dev_access_into_a_browser_session(po
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     assert_eq!(json_body(res).await, serde_json::Value::Null);
@@ -464,7 +509,9 @@ async fn get_session_does_not_turn_implicit_dev_access_into_a_browser_session(po
 /// extractors bootstrap that user lazily; polling from the browser must not.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_session_without_cookie_does_not_create_the_implicit_dev_user(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state_dev(pool.clone()));
+    // When
     let res = app
         .oneshot(
             Request::get("/api/auth/get-session")
@@ -473,6 +520,7 @@ async fn get_session_without_cookie_does_not_create_the_implicit_dev_user(pool: 
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     assert_eq!(json_body(res).await, serde_json::Value::Null);
@@ -481,7 +529,9 @@ async fn get_session_without_cookie_does_not_create_the_implicit_dev_user(pool: 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn signup_and_signin_return_better_auth_compatible_envelopes(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
+    // When
     let signup = app
         .clone()
         .oneshot(
@@ -495,6 +545,7 @@ async fn signup_and_signin_return_better_auth_compatible_envelopes(pool: sqlx::P
         .await
         .unwrap();
     let signup_json = json_body(signup).await;
+    // Then
     assert!(signup_json["token"].is_string());
     assert_eq!(signup_json["user"]["email"], "shape@b.test");
 
@@ -517,6 +568,7 @@ async fn signup_and_signin_return_better_auth_compatible_envelopes(pool: sqlx::P
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn signin_accepts_a_better_auth_scrypt_hash_and_upgrades_it(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let user = user::create(&pool, "legacy@b.test", "Legacy", None)
         .await
@@ -533,6 +585,7 @@ async fn signin_accepts_a_better_auth_scrypt_hash_and_upgrades_it(pool: sqlx::Pg
     .await
     .unwrap();
 
+    // When
     let response = app
         .oneshot(
             Request::post("/api/auth/sign-in/email")
@@ -544,6 +597,7 @@ async fn signin_accepts_a_better_auth_scrypt_hash_and_upgrades_it(pool: sqlx::Pg
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     let upgraded = user::find_by_id(&pool, &user.id).await.unwrap().unwrap();
     assert!(upgraded.password_hash.unwrap().starts_with("$argon2id$"));
@@ -559,6 +613,7 @@ async fn signin_accepts_a_better_auth_scrypt_hash_and_upgrades_it(pool: sqlx::Pg
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn signed_out_session_cookie_is_not_replayable(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
     app.clone()
@@ -573,6 +628,7 @@ async fn signed_out_session_cookie_is_not_replayable(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let signin = app
         .clone()
         .oneshot(
@@ -585,6 +641,7 @@ async fn signed_out_session_cookie_is_not_replayable(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(signin.status(), StatusCode::OK);
     let cookie = cookie_pair(&signin);
 

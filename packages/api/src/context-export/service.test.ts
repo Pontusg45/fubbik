@@ -97,6 +97,7 @@ describe("exportContext", () => {
     });
 
     it("returns markdown format by default with header", async () => {
+        // Given
         const chunks = [makeChunk({ id: "c1", title: "My Doc", content: "Hello world" })];
         setupListChunksMock(chunks);
 
@@ -109,28 +110,34 @@ describe("exportContext", () => {
         const fmtMarkdownMock = formatStructuredMarkdown as ReturnType<typeof vi.fn>;
         fmtMarkdownMock.mockReturnValue("# Project Context\n\n## Architecture\n\n### My Doc [health: 50]\n\nHello world");
 
+        // When
         const result = await Effect.runPromise(exportContext("user-1", {}));
 
+        // Then
         expect(result.format).toBe("markdown");
         expect(result.content).toContain("# Project Context");
         expect(result.content).toContain("My Doc");
     });
 
     it("returns json format when requested", async () => {
+        // Given
         const chunks = [makeChunk({ id: "c1", title: "JSON Chunk" })];
         setupListChunksMock(chunks);
 
         const enriched = [makeEnrichedChunk({ id: "c1", title: "JSON Chunk" })];
         setupEnrichChunksMock(enriched);
 
+        // When
         const result = await Effect.runPromise(exportContext("user-1", { format: "json" }));
 
+        // Then
         expect(result.format).toBe("json");
         expect(result.chunks).toBeDefined();
         expect(result.chunks![0]!.title).toBe("JSON Chunk");
     });
 
     it("respects token budget and excludes chunks that exceed it", async () => {
+        // Given
         const longContent = "x".repeat(2000); // ~500 tokens
         const chunks = [
             makeChunk({ id: "c1", title: "First", content: "Short content", type: "document" }),
@@ -157,9 +164,11 @@ describe("exportContext", () => {
             () => "# Project Context\n\n## Architecture\n\n### First [health: 50]\n\nShort content\n\n### Third [health: 50]\n\nAlso short"
         );
 
+        // When
         // Very tight budget — should only fit small chunks
         const result = await Effect.runPromise(exportContext("user-1", { maxTokens: 100 }));
 
+        // Then
         expect(result.format).toBe("markdown");
         expect(result.tokens).toBeLessThanOrEqual(100);
         // The long chunk should not be included
@@ -167,6 +176,7 @@ describe("exportContext", () => {
     });
 
     it("produces minimal output for empty chunk list", async () => {
+        // Given
         setupListChunksMock([]);
         setupEnrichChunksMock([]);
 
@@ -176,14 +186,17 @@ describe("exportContext", () => {
         const fmtMarkdownMock = formatStructuredMarkdown as ReturnType<typeof vi.fn>;
         fmtMarkdownMock.mockReturnValue("# Project Context\n\n");
 
+        // When
         const result = await Effect.runPromise(exportContext("user-1", {}));
 
+        // Then
         expect(result.format).toBe("markdown");
         expect(result.content).toBe("# Project Context\n\n");
         expect(result.tokens).toBeGreaterThan(0); // header tokens
     });
 
     it("formats document type as 'Architecture' label", async () => {
+        // Given
         const chunks = [makeChunk({ id: "c1", title: "DB Design", type: "document" })];
         setupListChunksMock(chunks);
 
@@ -199,12 +212,15 @@ describe("exportContext", () => {
         const fmtMarkdownMock = formatStructuredMarkdown as ReturnType<typeof vi.fn>;
         fmtMarkdownMock.mockReturnValue("# Project Context\n\n## Architecture\n\n### DB Design [health: 50]\n\nSome content");
 
+        // When
         const result = await Effect.runPromise(exportContext("user-1", { maxTokens: 5000 }));
 
+        // Then
         expect(result.content).toContain("## Architecture");
     });
 
     it("includes rationale in formatted output when present", async () => {
+        // Given
         const chunks = [
             makeChunk({
                 id: "c1",
@@ -236,12 +252,15 @@ describe("exportContext", () => {
             "# Project Context\n\n## Architecture\n\n### Decision [health: 50]\n\nWe chose X.\n\n**Rationale:** Because Y is better than Z."
         );
 
+        // When
         const result = await Effect.runPromise(exportContext("user-1", { maxTokens: 5000 }));
 
+        // Then
         expect(result.content).toContain("**Rationale:** Because Y is better than Z.");
     });
 
     it("scores document type higher than note type", async () => {
+        // Given
         const chunks = [
             makeChunk({ id: "c1", title: "A Note", type: "note", content: "note content" }),
             makeChunk({ id: "c2", title: "A Doc", type: "document", content: "doc content" })
@@ -255,14 +274,17 @@ describe("exportContext", () => {
         ];
         setupEnrichChunksMock(enriched);
 
+        // When
         const result = await Effect.runPromise(exportContext("user-1", { format: "json", maxTokens: 5000 }));
 
+        // Then
         // Document should appear before note due to higher score (budgetChunks sorts by score desc)
         expect(result.chunks![0]!.title).toBe("A Doc");
         expect(result.chunks![1]!.title).toBe("A Note");
     });
 
     it("boosts score for chunks matching forPath context", async () => {
+        // Given
         const otherChunk = makeChunk({
             id: "c1",
             title: "Generic",
@@ -289,13 +311,16 @@ describe("exportContext", () => {
         const resolveForFilesMock = resolveForFiles as ReturnType<typeof vi.fn>;
         resolveForFilesMock.mockReturnValue(Effect.succeed(["c2"]));
 
+        // When
         const result = await Effect.runPromise(exportContext("user-1", { forPath: "src/index.ts", format: "json", maxTokens: 5000 }));
 
+        // Then
         // The file-relevant chunk should be boosted to first position (5 + 15 = 20 > 10)
         expect(result.chunks![0]!.title).toBe("Relevant");
     });
 
     it("includes tags in json output", async () => {
+        // Given
         const chunks = [makeChunk({ id: "c1", title: "Tagged" })];
         setupListChunksMock(chunks);
 
@@ -308,12 +333,15 @@ describe("exportContext", () => {
         ];
         setupEnrichChunksMock(enriched);
 
+        // When
         const result = await Effect.runPromise(exportContext("user-1", { format: "json", maxTokens: 5000 }));
 
+        // Then
         expect(result.chunks![0]!.tags).toEqual(["architecture", "backend"]);
     });
 
     it("approved chunks are scored higher via reviewStatus", async () => {
+        // Given
         const chunks = [
             makeChunk({ id: "c1", title: "Unapproved", type: "note", reviewStatus: null }),
             makeChunk({ id: "c2", title: "Approved", type: "note", reviewStatus: "approved" })
@@ -327,8 +355,10 @@ describe("exportContext", () => {
         ];
         setupEnrichChunksMock(enriched);
 
+        // When
         const result = await Effect.runPromise(exportContext("user-1", { format: "json", maxTokens: 5000 }));
 
+        // Then
         expect(result.chunks![0]!.title).toBe("Approved");
     });
 });
@@ -337,26 +367,33 @@ describe("exportContext", () => {
 
 describe("generateClaudeMd", () => {
     it("returns empty message when no chunks found", async () => {
+        // Given
         const mock = listChunksByTag as ReturnType<typeof vi.fn>;
         mock.mockReturnValue(Effect.succeed([]));
 
+        // When
         const result = await Effect.runPromise(generateClaudeMd({ userId: "user-1" }));
 
+        // Then
         expect(result.chunks).toBe(0);
         expect(result.content).toContain("# Project Context");
         expect(result.content).toContain('No chunks found with tag "claude-context"');
     });
 
     it("uses custom tag name when provided", async () => {
+        // Given
         const mock = listChunksByTag as ReturnType<typeof vi.fn>;
         mock.mockReturnValue(Effect.succeed([]));
 
+        // When
         const result = await Effect.runPromise(generateClaudeMd({ userId: "user-1", tag: "my-tag" }));
 
+        // Then
         expect(result.content).toContain('No chunks found with tag "my-tag"');
     });
 
     it("groups chunks by type into sections", async () => {
+        // Given
         const mock = listChunksByTag as ReturnType<typeof vi.fn>;
         mock.mockReturnValue(
             Effect.succeed([
@@ -366,8 +403,10 @@ describe("generateClaudeMd", () => {
             ])
         );
 
+        // When
         const result = await Effect.runPromise(generateClaudeMd({ userId: "user-1" }));
 
+        // Then
         expect(result.chunks).toBe(3);
         expect(result.content).toContain("## Conventions");
         expect(result.content).toContain("## Architecture");
@@ -378,6 +417,7 @@ describe("generateClaudeMd", () => {
     });
 
     it("outputs sections in correct order: Conventions, Architecture, References, Other", async () => {
+        // Given
         const mock = listChunksByTag as ReturnType<typeof vi.fn>;
         mock.mockReturnValue(
             Effect.succeed([
@@ -388,6 +428,7 @@ describe("generateClaudeMd", () => {
             ])
         );
 
+        // When
         const result = await Effect.runPromise(generateClaudeMd({ userId: "user-1" }));
 
         const convIdx = result.content.indexOf("## Conventions");
@@ -395,12 +436,14 @@ describe("generateClaudeMd", () => {
         const refIdx = result.content.indexOf("## References");
         const otherIdx = result.content.indexOf("## Other");
 
+        // Then
         expect(convIdx).toBeLessThan(archIdx);
         expect(archIdx).toBeLessThan(refIdx);
         expect(refIdx).toBeLessThan(otherIdx);
     });
 
     it("includes rationale in chunk entries when present", async () => {
+        // Given
         const mock = listChunksByTag as ReturnType<typeof vi.fn>;
         mock.mockReturnValue(
             Effect.succeed([
@@ -408,19 +451,24 @@ describe("generateClaudeMd", () => {
             ])
         );
 
+        // When
         const result = await Effect.runPromise(generateClaudeMd({ userId: "user-1" }));
 
+        // Then
         expect(result.content).toContain("**Rationale:** Speed matters");
     });
 
     it("produces valid markdown structure", async () => {
+        // Given
         const mock = listChunksByTag as ReturnType<typeof vi.fn>;
         mock.mockReturnValue(
             Effect.succeed([{ id: "1", title: "Test", content: "Content", type: "note", rationale: null, summary: null }])
         );
 
+        // When
         const result = await Effect.runPromise(generateClaudeMd({ userId: "user-1" }));
 
+        // Then
         // Starts with H1
         expect(result.content).toMatch(/^# Project Context/);
         // Contains H2 section

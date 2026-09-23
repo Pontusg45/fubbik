@@ -93,6 +93,7 @@ function ChunksList() {
     const { selectedIds, setSelectedIds, bulkUpdateMutation, singleDeleteMutation, reviewMutation, handleSelectionClick, toggleAll } =
         useBulkChunkOperations();
     const [searchInput, setSearchInput] = useState(q ?? "");
+    useEffect(() => setSearchInput(q ?? ""), [q]);
     const handleClearAllFilters = () => {
         clearAllFilters();
         setSearchInput("");

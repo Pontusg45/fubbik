@@ -395,7 +395,10 @@ mod tests {
 
     #[test]
     fn rejects_empty_delta() {
+        // Given the inline inputs and test fixtures.
+        // When
         let err = validate_delta(&map(serde_json::json!({}))).unwrap_err();
+        // Then
         assert!(err.to_string().contains("at least one field"));
     }
 
@@ -404,7 +407,10 @@ mod tests {
         // `tags` and `embedding` are real chunk columns, and both are
         // rejected — the allow-list is not "any chunk field".
         for bad in ["tags", "embedding", "userId"] {
+            // Given the inline inputs and test fixtures.
+            // When
             let err = validate_delta(&map(serde_json::json!({ bad: "x" }))).unwrap_err();
+            // Then
             assert!(
                 err.to_string().contains(bad),
                 "message must name the offending field `{bad}`"
@@ -414,20 +420,26 @@ mod tests {
 
     #[test]
     fn accepts_all_seven_allowed_fields_and_any_subset() {
+        // Given
         let all = serde_json::json!({
             "title": "T", "content": "C", "type": "document",
             "rationale": "R", "alternatives": ["A"], "consequences": "Q",
             "summary": "S"
         });
+        // When full and partial deltas are validated.
+        // Then both validations succeed without an error.
         validate_delta(&map(all)).unwrap();
         validate_delta(&map(serde_json::json!({ "title": "only" }))).unwrap();
     }
 
     #[test]
     fn unknown_field_beats_emptiness_in_the_message() {
+        // Given the inline inputs and test fixtures.
+        // When
         // Order matters: Node checks unknown keys first, so a delta that is
         // both non-empty and wrong reports the field, never "at least one".
         let err = validate_delta(&map(serde_json::json!({ "nope": 1 }))).unwrap_err();
+        // Then
         assert!(
             err.to_string()
                 .starts_with("validation failed: Invalid delta fields: nope")

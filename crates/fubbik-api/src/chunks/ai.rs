@@ -234,21 +234,33 @@ mod tests {
 
     #[test]
     fn clamp_limit_defaults_to_five() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(clamp_limit(None), 5);
     }
 
     #[test]
     fn clamp_limit_caps_at_twenty() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(clamp_limit(Some(100)), 20);
     }
 
     #[test]
     fn clamp_limit_passes_through_values_under_the_cap() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(clamp_limit(Some(3)), 3);
     }
 
     #[test]
     fn parse_exclude_splits_and_trims_whitespace() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             parse_exclude("a, b"),
             vec!["a".to_string(), "b".to_string()]
@@ -257,12 +269,18 @@ mod tests {
 
     #[test]
     fn parse_exclude_single_term_with_no_comma() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(parse_exclude("billing"), vec!["billing".to_string()]);
     }
 
     #[test]
     fn parse_scope_builds_an_object_from_well_formed_pairs() {
+        // Given the inline inputs and test fixtures.
+        // When
         let scope = parse_scope("env:prod,tier:gold").unwrap();
+        // Then
         assert_eq!(scope, serde_json::json!({ "env": "prod", "tier": "gold" }));
     }
 
@@ -271,6 +289,9 @@ mod tests {
     /// (nothing else was in the string).
     #[test]
     fn parse_scope_a_b_c_yields_none() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(parse_scope("a:b:c"), None);
     }
 
@@ -279,17 +300,26 @@ mod tests {
     /// well-formed one still applies.
     #[test]
     fn parse_scope_x_1_bad_keeps_only_x() {
+        // Given the inline inputs and test fixtures.
+        // When
         let scope = parse_scope("x:1,bad").unwrap();
+        // Then
         assert_eq!(scope, serde_json::json!({ "x": "1" }));
     }
 
     #[test]
     fn parse_scope_all_malformed_yields_none() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(parse_scope("bare,a:b:c"), None);
     }
 
     #[test]
     fn parse_scope_empty_string_yields_none() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(parse_scope(""), None);
     }
 }

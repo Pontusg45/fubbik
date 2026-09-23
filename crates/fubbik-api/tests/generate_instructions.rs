@@ -190,18 +190,21 @@ async fn seed_categorized_chunks(pool: &sqlx::PgPool, user_id: &str, space_id: &
 /// test.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn each_format_produces_a_distinct_document(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "formats@b.test", "Formats").await;
     let user_id = user_id_for_email(&pool, "formats@b.test").await;
     let space_id = make_space(&pool, &user_id, "formats-space").await;
     seed_categorized_chunks(&pool, &user_id, &space_id).await;
 
+    // When
     let claude = get(
         app.clone(),
         &cookie,
         &format!("/api/spaces/{space_id}/generate-instructions?format=claude"),
     )
     .await;
+    // Then
     assert_eq!(claude.status(), StatusCode::OK);
     let claude_content = json_body(claude).await["content"]
         .as_str()
@@ -268,11 +271,13 @@ async fn each_format_produces_a_distinct_document(pool: sqlx::PgPool) {
 /// which `extract::Query` turns into `AppError::Validation` -> `400`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unknown_format_is_rejected_or_defaults(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "badformat@b.test", "Bad Format").await;
     let user_id = user_id_for_email(&pool, "badformat@b.test").await;
     let space_id = make_space(&pool, &user_id, "bad-format-space").await;
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
@@ -280,6 +285,7 @@ async fn unknown_format_is_rejected_or_defaults(pool: sqlx::PgPool) {
     )
     .await;
 
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::BAD_REQUEST,
@@ -292,11 +298,13 @@ async fn unknown_format_is_rejected_or_defaults(pool: sqlx::PgPool) {
 /// case `unknown_format_is_rejected_or_defaults` doesn't cover.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn missing_format_defaults_to_claude(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "noformat@b.test", "No Format").await;
     let user_id = user_id_for_email(&pool, "noformat@b.test").await;
     let space_id = make_space(&pool, &user_id, "no-format-space").await;
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
@@ -304,6 +312,7 @@ async fn missing_format_defaults_to_claude(pool: sqlx::PgPool) {
     )
     .await;
 
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["format"], "claude");
@@ -325,18 +334,21 @@ async fn missing_format_defaults_to_claude(pool: sqlx::PgPool) {
 /// consumer complained.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn codebases_alias_matches_spaces_route(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alias@b.test", "Alias").await;
     let user_id = user_id_for_email(&pool, "alias@b.test").await;
     let space_id = make_space(&pool, &user_id, "alias-space").await;
     seed_categorized_chunks(&pool, &user_id, &space_id).await;
 
+    // When
     let primary = get(
         app.clone(),
         &cookie,
         &format!("/api/spaces/{space_id}/generate-instructions?format=agents"),
     )
     .await;
+    // Then
     assert_eq!(primary.status(), StatusCode::OK);
     let primary_body = json_body(primary).await;
 
@@ -365,6 +377,7 @@ async fn codebases_alias_matches_spaces_route(pool: sqlx::PgPool) {
 /// space (or its chunks) having been damaged by B's request.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn generate_instructions_is_scoped_to_the_space_owner(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
 
     let cookie_a = signup(app.clone(), "owner-a@b.test", "Owner A").await;
@@ -374,6 +387,7 @@ async fn generate_instructions_is_scoped_to_the_space_owner(pool: sqlx::PgPool) 
 
     let cookie_b = signup(app.clone(), "intruder-b@b.test", "Intruder B").await;
 
+    // When
     // B requests A's space.
     let res = get(
         app.clone(),
@@ -381,6 +395,7 @@ async fn generate_instructions_is_scoped_to_the_space_owner(pool: sqlx::PgPool) 
         &format!("/api/spaces/{space_a}/generate-instructions?format=claude"),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -413,14 +428,17 @@ async fn generate_instructions_is_scoped_to_the_space_owner(pool: sqlx::PgPool) 
 /// merely "does this id belong to someone else".
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn nonexistent_space_is_rejected(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "nospace@b.test", "No Space").await;
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/spaces/does-not-exist/generate-instructions?format=claude",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }

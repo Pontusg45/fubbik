@@ -137,7 +137,7 @@ pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResul
     Ok(rows)
 }
 
-/// Writes one fire-and-forget audit-log row, matching Node's
+/// Writes one audit-log row, matching Node's
 /// `createActivity` (`packages/db/src/repository/activity.ts:31-44`) —
 /// called directly by other domains' service layers (first consumer: the
 /// `plans` domain's task create/update/delete handlers), never exposed as
@@ -145,9 +145,10 @@ pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResul
 /// every read path in this module, a `create` call always writes under the
 /// caller's own `user_id`, supplied by the service layer from the
 /// authenticated session — there is no id a caller could substitute to
-/// write into someone else's log.
-pub async fn create(
-    pool: &PgPool,
+/// write into someone else's log. The executor may be a transaction, so a
+/// domain workflow can commit its data and audit row together.
+pub async fn create<'e, E: sqlx::PgExecutor<'e>>(
+    executor: E,
     user_id: &str,
     entity_type: &str,
     entity_id: &str,
@@ -170,7 +171,7 @@ pub async fn create(
         action,
         space_id
     )
-    .fetch_one(pool)
+    .fetch_one(executor)
     .await?;
     Ok(row)
 }

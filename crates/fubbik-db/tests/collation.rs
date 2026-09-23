@@ -13,12 +13,15 @@
 
 #[sqlx::test]
 async fn orders_titles_the_way_icu_does(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When
     let provider: String = sqlx::query_scalar(
         "SELECT datlocprovider::text FROM pg_database WHERE datname = current_database()",
     )
     .fetch_one(&pool)
     .await
     .expect("pg_database is always readable");
+    // Then
     assert_eq!(
         provider, "i",
         "test database's locale provider is not ICU — #[sqlx::test] databases do not \

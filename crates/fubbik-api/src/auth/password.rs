@@ -72,18 +72,27 @@ mod tests {
 
     #[test]
     fn verifies_correct_password() {
+        // Given the inline inputs and test fixtures.
+        // When
         let hash = hash_password("correct horse").unwrap();
+        // Then
         assert!(verify_password("correct horse", &hash));
     }
 
     #[test]
     fn rejects_wrong_password() {
+        // Given the inline inputs and test fixtures.
+        // When
         let hash = hash_password("correct horse").unwrap();
+        // Then
         assert!(!verify_password("wrong horse", &hash));
     }
 
     #[test]
     fn salts_differ_across_hashes() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_ne!(
             hash_password("same").unwrap(),
             hash_password("same").unwrap()
@@ -92,6 +101,9 @@ mod tests {
 
     #[test]
     fn rejects_malformed_hash_without_panicking() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(!verify_password("anything", "not-a-phc-string"));
     }
 
@@ -100,7 +112,10 @@ mod tests {
     /// without a test failure calling it out.
     #[test]
     fn hash_uses_argon2id_variant() {
+        // Given the inline inputs and test fixtures.
+        // When
         let hash = hash_password("correct horse").unwrap();
+        // Then
         assert!(hash.starts_with("$argon2id$"));
     }
 
@@ -108,7 +123,10 @@ mod tests {
     /// rather than panicking or short-circuiting.
     #[test]
     fn empty_password_round_trips() {
+        // Given the inline inputs and test fixtures.
+        // When
         let hash = hash_password("").unwrap();
+        // Then
         assert!(verify_password("", &hash));
         assert!(!verify_password("not empty", &hash));
     }
@@ -118,12 +136,18 @@ mod tests {
     /// uninitialized/empty DB column straight into verification.
     #[test]
     fn rejects_empty_hash_without_panicking() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(!verify_password("anything", ""));
     }
 
     #[test]
     fn verifies_better_auth_scrypt_fixture() {
+        // Given
         let hash = "00112233445566778899aabbccddeeff:c3b39f3eda79a45635ff935ee89c8c242531c4d6c6b5fe6bc27a369e3e1e16527bc69395cf710c41dcab0029263692fd327e358e9dc6bcdc7367f97f93ca44a0";
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(verify_better_auth_password("legacy-password", hash));
         assert!(!verify_better_auth_password("wrong", hash));
     }

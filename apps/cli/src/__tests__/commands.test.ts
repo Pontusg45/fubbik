@@ -36,7 +36,10 @@ function runCli(args: string): {
 
 describe("CLI help output", () => {
     it("root --help lists all commands", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout } = runCli("--help");
+        // Then
         expect(stdout).toContain("fubbik");
         expect(stdout).toContain("plan");
         expect(stdout).toContain("check-files");
@@ -54,7 +57,10 @@ describe("CLI help output", () => {
     });
 
     it("chunk --help shows subcommands", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout } = runCli("chunk --help");
+        // Then
         expect(stdout).toContain("add");
         expect(stdout).toContain("get");
         expect(stdout).toContain("list");
@@ -67,7 +73,10 @@ describe("CLI help output", () => {
     });
 
     it("plan --help shows subcommands", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout } = runCli("plan --help");
+        // Then
         expect(stdout).toContain("create");
         expect(stdout).toContain("list");
         expect(stdout).toContain("show");
@@ -78,42 +87,63 @@ describe("CLI help output", () => {
     });
 
     it("check-files --help shows --staged option", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout } = runCli("check-files --help");
+        // Then
         expect(stdout).toContain("--staged");
     });
 
     it("sync-claude-md --help shows options", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout } = runCli("sync-claude-md --help");
+        // Then
         expect(stdout).toContain("--tag");
         expect(stdout).toContain("--output");
         expect(stdout).toContain("--watch");
     });
 
     it("context for --help shows path argument", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout } = runCli("context for --help");
+        // Then
         expect(stdout).toContain("path");
     });
 
     it("context --help shows subcommands", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout } = runCli("context --help");
+        // Then
         expect(stdout).toContain("export");
         expect(stdout).toContain("for");
         expect(stdout).toContain("dir");
     });
 
     it("hooks --help shows install and uninstall", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout } = runCli("hooks --help");
+        // Then
         expect(stdout).toContain("install");
         expect(stdout).toContain("uninstall");
     });
 
     it("completions --help shows shell argument", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout } = runCli("completions --help");
+        // Then
         expect(stdout).toContain("shell");
     });
 
     it("setup --help shows options", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout } = runCli("setup --help");
+        // Then
         expect(stdout).toContain("--server");
         expect(stdout).toContain("--dry-run");
         expect(stdout).toContain("--yes");
@@ -125,7 +155,10 @@ describe("CLI help output", () => {
 
 describe("completions", () => {
     it("zsh outputs valid zsh completion script", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { stdout, exitCode } = runCli("completions zsh");
+        // Then
         expect(exitCode).toBe(0);
         expect(stdout).toContain("#compdef fubbik");
         expect(stdout).toContain("_fubbik");
@@ -136,19 +169,28 @@ describe("completions", () => {
 
 describe("CLI error handling", () => {
     it("plan create without --title exits non-zero", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { exitCode } = runCli("plan create");
+        // Then
         expect(exitCode).not.toBe(0);
     });
 
     it("check-files --staged does not crash without server", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         // With HOME set to /tmp/fubbik-test there is no .fubbik store,
         // so the command should exit gracefully (not throw unhandled exception).
         const result = runCli("check-files --staged");
+        // Then
         expect(result.exitCode).toBeDefined();
     });
 
     it("unknown command shows help / error", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = runCli("nonexistent-command");
+        // Then
         expect(result.exitCode).not.toBe(0);
     });
 });

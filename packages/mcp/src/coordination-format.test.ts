@@ -6,6 +6,7 @@ import type { CoordinationBoard } from "@fubbik/client";
 import { formatBoard } from "./coordination-format.js";
 
 test("formats full identifiers, claims, direct messages, and pagination", () => {
+    // Given
     const board: CoordinationBoard = {
         plan: { id: "plan-full-id", title: "Ship", status: "in_progress" },
         tasks: [{ id: "task-full-id", title: "Research", status: "in_progress", dependsOn: [] }],
@@ -28,8 +29,10 @@ test("formats full identifiers, claims, direct messages, and pagination", () => 
         ],
         cursor: { nextSequence: 42, acknowledgedSequence: 1, hasMore: true }
     };
+    // When
     const text = formatBoard(board, "root-full-id");
     for (const expected of ["plan-full-id", "task-full-id", "child-full-id", "#42", "Done", "More entries are available"]) {
+        // Then
         assert.match(text, new RegExp(expected));
     }
 });

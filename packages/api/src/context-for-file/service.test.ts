@@ -43,6 +43,7 @@ function makeChunk(id: string, title: string) {
 
 describe("getContextForFile", () => {
     it("uses batch getAppliesToForChunks instead of per-chunk queries", async () => {
+        // Given
         const lookupMock = lookupChunksByFilePath as ReturnType<typeof vi.fn>;
         lookupMock.mockReturnValue(Effect.succeed([]));
 
@@ -71,8 +72,10 @@ describe("getContextForFile", () => {
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
+        // When
         const result = await Effect.runPromise(getContextForFile("user-1", "src/auth/service.ts"));
 
+        // Then
         // Should have called batch function exactly once
         expect(batchMock).toHaveBeenCalledTimes(1);
         expect(batchMock).toHaveBeenCalledWith(["c1", "c2", "c3"]);
@@ -86,6 +89,7 @@ describe("getContextForFile", () => {
 
 describe("getContextForFile scoring", () => {
     it("returns chunks with score property and sorted by score descending", async () => {
+        // Given
         const now = new Date();
 
         const lookupMock = lookupChunksByFilePath as ReturnType<typeof vi.fn>;
@@ -137,8 +141,10 @@ describe("getContextForFile scoring", () => {
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
+        // When
         const result = await Effect.runPromise(getContextForFile("user-1", "src/auth/service.ts"));
 
+        // Then
         expect(result.chunks).toHaveLength(2);
 
         // Both chunks should have a numeric score
@@ -154,6 +160,7 @@ describe("getContextForFile scoring", () => {
     });
 
     it("gives file-ref matches a higher strategy bonus than applies-to", async () => {
+        // Given
         const now = new Date();
         const baseFields = {
             rationale: null,
@@ -201,8 +208,10 @@ describe("getContextForFile scoring", () => {
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
+        // When
         const result = await Effect.runPromise(getContextForFile("user-1", "src/auth/service.ts"));
 
+        // Then
         expect(result.chunks).toHaveLength(2);
 
         const fileRefChunk = result.chunks.find(c => c.id === "c-ref")!;
@@ -217,6 +226,7 @@ describe("getContextForFile scoring", () => {
 
 describe("getContextForFile semantic strategy", () => {
     it("adds semantic matches when Ollama is available", async () => {
+        // Given
         const lookupMock = lookupChunksByFilePath as ReturnType<typeof vi.fn>;
         lookupMock.mockReturnValue(Effect.succeed([]));
 
@@ -242,14 +252,17 @@ describe("getContextForFile semantic strategy", () => {
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
+        // When
         const result = await Effect.runPromise(getContextForFile("user-1", "src/auth/middleware.ts"));
 
+        // Then
         expect(result.chunks).toHaveLength(1);
         expect(result.chunks[0]!.id).toBe("s1");
         expect(result.chunks[0]!.matchReason).toBe("semantic");
     });
 
     it("skips semantic search silently when Ollama is down", async () => {
+        // Given
         const lookupMock = lookupChunksByFilePath as ReturnType<typeof vi.fn>;
         lookupMock.mockReturnValue(Effect.succeed([]));
 
@@ -268,8 +281,10 @@ describe("getContextForFile semantic strategy", () => {
         const reqMock = getRequirementsForChunks as ReturnType<typeof vi.fn>;
         reqMock.mockReturnValue(Effect.succeed([]));
 
+        // When
         const result = await Effect.runPromise(getContextForFile("user-1", "src/auth/middleware.ts"));
 
+        // Then
         expect(result.chunks).toHaveLength(0);
     });
 });

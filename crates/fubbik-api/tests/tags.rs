@@ -149,10 +149,13 @@ async fn names(app: axum::Router, cookie: &str) -> Vec<String> {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_then_list_round_trip(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-create@b.test", "Alice").await;
 
+    // When
     let res = create_tag(app.clone(), &cookie, "rust", None).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::CREATED,
@@ -184,6 +187,7 @@ async fn create_then_list_round_trip(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_joins_tag_type_fields(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-jointype@b.test", "Alice").await;
 
@@ -202,8 +206,10 @@ async fn list_joins_tag_type_fields(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let created =
         json_body(create_tag(app.clone(), &cookie, "rust", Some(&tag_type_id)).await).await;
+    // Then
     assert_eq!(created["tagTypeId"], tag_type_id);
 
     let listed = json_body(list_tags(app.clone(), &cookie).await).await;
@@ -214,6 +220,7 @@ async fn list_joins_tag_type_fields(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_patch_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-patch@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-patch@b.test", "Bob").await;
@@ -221,6 +228,7 @@ async fn cross_user_patch_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
     let created = json_body(create_tag(app.clone(), &alice_cookie, "rust", None).await).await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = patch_tag(
         app.clone(),
         &bob_cookie,
@@ -228,6 +236,7 @@ async fn cross_user_patch_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
         serde_json::json!({ "name": "hijacked" }),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -243,6 +252,7 @@ async fn cross_user_patch_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_delete_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-delete@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-delete@b.test", "Bob").await;
@@ -250,7 +260,9 @@ async fn cross_user_delete_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
     let created = json_body(create_tag(app.clone(), &alice_cookie, "rust", None).await).await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = delete_tag(app.clone(), &bob_cookie, &id).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -266,6 +278,7 @@ async fn cross_user_delete_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_cascades_chunk_tag(pool: sqlx::PgPool) {
+    // Given
     use fubbik_db::repo::{chunk, tag};
 
     let app = fubbik_api::router(state(pool.clone()));
@@ -300,7 +313,9 @@ async fn delete_cascades_chunk_tag(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let res = delete_tag(app.clone(), &cookie, &created_tag.id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await["message"], "Deleted");
 
@@ -319,6 +334,7 @@ async fn delete_cascades_chunk_tag(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_name_conflict_is_400_and_leaves_row_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-conflict@b.test", "Alice").await;
 
@@ -326,6 +342,7 @@ async fn update_name_conflict_is_400_and_leaves_row_unchanged(pool: sqlx::PgPool
     let second = json_body(create_tag(app.clone(), &cookie, "postgres", None).await).await;
     let second_id = second["id"].as_str().unwrap().to_string();
 
+    // When
     let res = patch_tag(
         app.clone(),
         &cookie,
@@ -333,6 +350,7 @@ async fn update_name_conflict_is_400_and_leaves_row_unchanged(pool: sqlx::PgPool
         serde_json::json!({ "name": "rust" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let body = json_body(res).await;
     // `AppError::Validation`'s `Display` prepends "validation failed: " to
@@ -358,6 +376,7 @@ async fn update_name_conflict_is_400_and_leaves_row_unchanged(pool: sqlx::PgPool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_tag_type_id_explicit_null_clears_it(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-clear@b.test", "Alice").await;
     let user_id: String =
@@ -377,7 +396,9 @@ async fn update_tag_type_id_explicit_null_clears_it(pool: sqlx::PgPool) {
 
     let created =
         json_body(create_tag(app.clone(), &cookie, "rust", Some(&tag_type_id)).await).await;
+    // When
     let id = created["id"].as_str().unwrap().to_string();
+    // Then
     assert_eq!(created["tagTypeId"], tag_type_id);
 
     // Omitted `tagTypeId` must leave it untouched.
@@ -413,11 +434,14 @@ async fn update_tag_type_id_explicit_null_clears_it(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_review_status_sets_reviewed_by_and_at(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-review@b.test", "Alice").await;
 
     let created = json_body(create_tag(app.clone(), &cookie, "rust", None).await).await;
+    // When
     let id = created["id"].as_str().unwrap().to_string();
+    // Then
     assert_eq!(created["reviewedBy"], serde_json::Value::Null);
     assert_eq!(created["reviewedAt"], serde_json::Value::Null);
 
@@ -442,6 +466,7 @@ async fn update_review_status_sets_reviewed_by_and_at(pool: sqlx::PgPool) {
 /// accepted.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_review_status_accepts_every_valid_value(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-review-valid@b.test", "Alice").await;
 
@@ -449,6 +474,7 @@ async fn update_review_status_accepts_every_valid_value(pool: sqlx::PgPool) {
     let id = created["id"].as_str().unwrap().to_string();
 
     for value in ["draft", "reviewed", "approved"] {
+        // When
         let res = patch_tag(
             app.clone(),
             &cookie,
@@ -456,6 +482,7 @@ async fn update_review_status_accepts_every_valid_value(pool: sqlx::PgPool) {
             serde_json::json!({ "reviewStatus": value }),
         )
         .await;
+        // Then
         assert_eq!(
             res.status(),
             StatusCode::OK,
@@ -478,11 +505,14 @@ async fn update_review_status_accepts_every_valid_value(pool: sqlx::PgPool) {
 async fn update_review_status_invalid_value_is_rejected_and_leaves_row_unchanged(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-review-invalid@b.test", "Alice").await;
 
     let created = json_body(create_tag(app.clone(), &cookie, "rust", None).await).await;
+    // When
     let id = created["id"].as_str().unwrap().to_string();
+    // Then
     assert_eq!(created["reviewStatus"], "approved");
 
     let res = patch_tag(
@@ -522,12 +552,14 @@ async fn update_review_status_invalid_value_is_rejected_and_leaves_row_unchanged
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn merge_moves_chunk_count_and_deletes_source(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-merge@b.test", "Alice").await;
 
     let source = json_body(create_tag(app.clone(), &cookie, "source", None).await).await;
     let target = json_body(create_tag(app.clone(), &cookie, "target", None).await).await;
 
+    // When
     let res = merge_tags(
         app.clone(),
         &cookie,
@@ -535,6 +567,7 @@ async fn merge_moves_chunk_count_and_deletes_source(pool: sqlx::PgPool) {
         target["id"].as_str().unwrap(),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["targetId"], target["id"]);
@@ -545,13 +578,16 @@ async fn merge_moves_chunk_count_and_deletes_source(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn merge_into_self_is_400(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-selfmerge@b.test", "Alice").await;
 
     let tag = json_body(create_tag(app.clone(), &cookie, "solo", None).await).await;
     let id = tag["id"].as_str().unwrap().to_string();
 
+    // When
     let res = merge_tags(app.clone(), &cookie, &id, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let body = json_body(res).await;
     // See the comment in `update_name_conflict_is_400_and_leaves_row_unchanged`
@@ -568,11 +604,13 @@ async fn merge_into_self_is_400(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn merge_unknown_source_id_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-mergeunknown@b.test", "Alice").await;
 
     let target = json_body(create_tag(app.clone(), &cookie, "target", None).await).await;
 
+    // When
     let res = merge_tags(
         app.clone(),
         &cookie,
@@ -580,6 +618,7 @@ async fn merge_unknown_source_id_is_404(pool: sqlx::PgPool) {
         target["id"].as_str().unwrap(),
     )
     .await;
+    // Then
     // APPROVED DIVERGENCE: Node throws an untagged Error here (-> 500);
     // this returns AppError::NotFound (-> 404) instead.
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
@@ -591,6 +630,7 @@ async fn merge_unknown_source_id_is_404(pool: sqlx::PgPool) {
 async fn merge_of_another_users_tag_is_404_and_leaves_both_users_data_unchanged(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-crossmerge@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-crossmerge@b.test", "Bob").await;
@@ -598,6 +638,7 @@ async fn merge_of_another_users_tag_is_404_and_leaves_both_users_data_unchanged(
     let alices_tag = json_body(create_tag(app.clone(), &alice_cookie, "alices", None).await).await;
     let bobs_tag = json_body(create_tag(app.clone(), &bob_cookie, "bobs", None).await).await;
 
+    // When
     // Alice tries to merge Bob's tag into her own — must be rejected.
     let res = merge_tags(
         app.clone(),
@@ -606,6 +647,7 @@ async fn merge_of_another_users_tag_is_404_and_leaves_both_users_data_unchanged(
         alices_tag["id"].as_str().unwrap(),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     // Neither user's tag list was mutated by the rejected merge.
@@ -615,11 +657,14 @@ async fn merge_of_another_users_tag_is_404_and_leaves_both_users_data_unchanged(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .oneshot(Request::get("/api/tags").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }

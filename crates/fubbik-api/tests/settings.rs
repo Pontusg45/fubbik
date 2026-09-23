@@ -110,9 +110,12 @@ async fn patch(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn features_is_reachable_with_no_session_and_defaults_all_true(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = get(app, "/api/settings/features", None).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -134,6 +137,7 @@ async fn features_is_reachable_with_no_session_and_defaults_all_true(pool: sqlx:
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn features_reflects_stored_instance_setting_and_leaves_others_defaulted(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-features@b.test", "Alice").await;
 
@@ -145,8 +149,10 @@ async fn features_reflects_stored_instance_setting_and_leaves_others_defaulted(p
     )
     .await;
 
+    // When
     let res = get(app, "/api/settings/features", None).await;
     let body = json_body(res).await;
+    // Then
     assert_eq!(body["aiEnabled"], false);
     assert_eq!(
         body["enrichmentEnabled"], true,
@@ -158,9 +164,12 @@ async fn features_reflects_stored_instance_setting_and_leaves_others_defaulted(p
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn user_settings_require_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = get(app.clone(), "/api/settings/user", None).await;
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
     let res = patch(
@@ -175,10 +184,12 @@ async fn user_settings_require_a_session(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn user_settings_are_isolated_per_user(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-user@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-user@b.test", "Bob").await;
 
+    // When
     let res = patch(
         app.clone(),
         "/api/settings/user",
@@ -186,6 +197,7 @@ async fn user_settings_are_isolated_per_user(pool: sqlx::PgPool) {
         serde_json::json!({ "key": "theme", "value": "dark" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         json_body(res).await,
@@ -208,9 +220,12 @@ async fn user_settings_are_isolated_per_user(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn codebase_settings_require_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = get(app.clone(), "/api/settings/codebase?codebaseId=x", None).await;
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
     let res = patch(
@@ -225,11 +240,13 @@ async fn codebase_settings_require_a_session(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn codebase_settings_round_trip_for_own_space(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-cb@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-cb@b.test").await;
     let space_id = seed_space(&pool, &user_id, "alices-space").await;
 
+    // When
     let res = patch(
         app.clone(),
         "/api/settings/codebase",
@@ -237,6 +254,7 @@ async fn codebase_settings_round_trip_for_own_space(pool: sqlx::PgPool) {
         serde_json::json!({ "codebaseId": space_id, "key": "defaultChunkType", "value": "note" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         json_body(res).await,
@@ -264,12 +282,14 @@ async fn codebase_settings_round_trip_for_own_space(pool: sqlx::PgPool) {
 async fn set_codebase_setting_for_another_users_space_is_404_and_leaves_it_unchanged(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-cb-x@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-cb-x@b.test", "Bob").await;
     let alice_id = user_id_for_email(&pool, "alice-cb-x@b.test").await;
     let alices_space = seed_space(&pool, &alice_id, "alices-space").await;
 
+    // When
     let res = patch(
         app.clone(),
         "/api/settings/codebase",
@@ -277,6 +297,7 @@ async fn set_codebase_setting_for_another_users_space_is_404_and_leaves_it_uncha
         serde_json::json!({ "codebaseId": alices_space, "key": "defaultChunkType", "value": "hijacked" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let view = json_body(
@@ -300,6 +321,7 @@ async fn set_codebase_setting_for_another_users_space_is_404_and_leaves_it_uncha
 /// that leaks the space's existence-with-no-settings state.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_codebase_settings_for_another_users_space_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let bob_cookie = signup(app.clone(), "bob-cb-r@b.test", "Bob").await;
     let alice_id = {
@@ -308,26 +330,31 @@ async fn get_codebase_settings_for_another_users_space_is_404(pool: sqlx::PgPool
     };
     let alices_space = seed_space(&pool, &alice_id, "alices-space").await;
 
+    // When
     let res = get(
         app,
         &format!("/api/settings/codebase?codebaseId={alices_space}"),
         Some(&bob_cookie),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn codebase_settings_for_nonexistent_space_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cb-none@b.test", "Alice").await;
 
+    // When
     let res = get(
         app,
         "/api/settings/codebase?codebaseId=no-such-space",
         Some(&cookie),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -339,9 +366,12 @@ async fn codebase_settings_for_nonexistent_space_is_404(pool: sqlx::PgPool) {
 /// (`packages/api/src/settings/routes.ts:55-71`), not a bug.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn instance_get_is_open_but_patch_requires_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = get(app.clone(), "/api/settings/instance", None).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -372,10 +402,12 @@ async fn instance_get_is_open_but_patch_requires_a_session(pool: sqlx::PgPool) {
 async fn any_authenticated_user_can_write_instance_settings_and_it_is_visible_globally(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-inst@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-inst@b.test", "Bob").await;
 
+    // When
     let res = patch(
         app.clone(),
         "/api/settings/instance",
@@ -383,6 +415,7 @@ async fn any_authenticated_user_can_write_instance_settings_and_it_is_visible_gl
         serde_json::json!({ "key": "aiEnabled", "value": false }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     // Bob (a different, unrelated authenticated user) sees Alice's write.
@@ -397,6 +430,7 @@ async fn any_authenticated_user_can_write_instance_settings_and_it_is_visible_gl
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn instance_setting_upsert_overwrites_via_http(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-inst-up@b.test", "Alice").await;
 
@@ -415,6 +449,8 @@ async fn instance_setting_upsert_overwrites_via_http(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let view = json_body(get(app, "/api/settings/instance", Some(&cookie)).await).await;
+    // Then
     assert_eq!(view, serde_json::json!({ "aiEnabled": false }));
 }

@@ -163,15 +163,18 @@ async fn names(app: axum::Router, cookie: &str) -> Vec<String> {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_then_list_round_trip(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-create@b.test", "Alice").await;
 
+    // When
     let res = create_space(
         app.clone(),
         &cookie,
         serde_json::json!({ "name": "notes", "kind": "wiki" }),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::CREATED,
@@ -206,9 +209,11 @@ async fn create_then_list_round_trip(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_defaults_kind_to_code(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-defaultkind@b.test", "Alice").await;
 
+    // When
     let created = json_body(
         create_space(
             app.clone(),
@@ -218,11 +223,13 @@ async fn create_defaults_kind_to_code(pool: sqlx::PgPool) {
         .await,
     )
     .await;
+    // Then
     assert_eq!(created["kind"], "code");
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detail_nests_code_metadata_but_list_does_not(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-detail@b.test", "Alice").await;
 
@@ -242,7 +249,9 @@ async fn detail_nests_code_metadata_but_list_does_not(pool: sqlx::PgPool) {
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let detail = json_body(get_space(app.clone(), &cookie, &id).await).await;
+    // Then
     assert!(
         detail.get("space").is_some() && detail.get("code").is_some(),
         "detail must be the nested {{space, code}} shape, got: {detail}"
@@ -262,6 +271,7 @@ async fn detail_nests_code_metadata_but_list_does_not(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detail_of_a_non_code_space_has_null_code(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-wiki@b.test", "Alice").await;
 
@@ -276,12 +286,15 @@ async fn detail_of_a_non_code_space_has_null_code(pool: sqlx::PgPool) {
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let detail = json_body(get_space(app.clone(), &cookie, &id).await).await;
+    // Then
     assert_eq!(detail["code"], serde_json::Value::Null);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detect_match_returns_bare_space_without_a_code_key(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-detect@b.test", "Alice").await;
 
@@ -300,12 +313,14 @@ async fn detect_match_returns_bare_space_without_a_code_key(pool: sqlx::PgPool) 
     )
     .await;
 
+    // When
     let res = detect_space(
         app.clone(),
         &cookie,
         "remoteUrl=git%40github.com%3Aacme%2Ffubbik.git",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["id"], created["id"]);
@@ -323,15 +338,18 @@ async fn detect_match_returns_bare_space_without_a_code_key(pool: sqlx::PgPool) 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detect_no_match_returns_a_genuinely_empty_body(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-detectnomatch@b.test", "Alice").await;
 
+    // When
     let res = detect_space(
         app.clone(),
         &cookie,
         "remoteUrl=github.com%2Fnobody%2Fnothing",
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -350,9 +368,11 @@ async fn detect_no_match_returns_a_genuinely_empty_body(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detect_with_no_query_params_returns_empty_body(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-detectnoparams@b.test", "Alice").await;
 
+    // When
     let res = app
         .oneshot(
             Request::get("/api/spaces/detect")
@@ -362,6 +382,7 @@ async fn detect_with_no_query_params_returns_empty_body(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = res.into_body().collect().await.unwrap().to_bytes();
     assert!(body.is_empty());
@@ -369,6 +390,7 @@ async fn detect_with_no_query_params_returns_empty_body(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_with_duplicate_remote_url_is_400(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-dupe@b.test", "Alice").await;
 
@@ -379,12 +401,14 @@ async fn create_with_duplicate_remote_url_is_400(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = create_space(
         app.clone(),
         &cookie,
         serde_json::json!({ "name": "two", "kind": "code", "remoteUrl": "git@github.com:acme/fubbik.git" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let body = json_body(res).await;
     assert!(
@@ -397,6 +421,7 @@ async fn create_with_duplicate_remote_url_is_400(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_description_explicit_null_clears_it(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-clear@b.test", "Alice").await;
 
@@ -411,6 +436,7 @@ async fn update_description_explicit_null_clears_it(pool: sqlx::PgPool) {
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     // Omitted description must leave it untouched.
     let untouched = json_body(
         patch_space(
@@ -422,6 +448,7 @@ async fn update_description_explicit_null_clears_it(pool: sqlx::PgPool) {
         .await,
     )
     .await;
+    // Then
     assert_eq!(untouched["description"], "original");
 
     // Explicit null must clear it.
@@ -453,6 +480,7 @@ async fn update_description_explicit_null_clears_it(pool: sqlx::PgPool) {
 async fn patching_name_only_on_a_code_space_preserves_remote_url_and_local_paths(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-clearcode@b.test", "Alice").await;
 
@@ -480,7 +508,9 @@ async fn patching_name_only_on_a_code_space_preserves_remote_url_and_local_paths
     )
     .await;
 
+    // When
     let detail = json_body(get_space(app.clone(), &cookie, &id).await).await;
+    // Then
     assert_eq!(detail["space"]["name"], "renamed");
     assert_eq!(
         detail["code"]["remoteUrl"], "github.com/acme/fubbik",
@@ -498,6 +528,7 @@ async fn patching_name_only_on_a_code_space_preserves_remote_url_and_local_paths
 /// only ever sends `{name}`) must never erode its git remote metadata.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn several_name_only_patches_do_not_erode_code_metadata(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-repeatedpatch@b.test", "Alice").await;
 
@@ -518,6 +549,7 @@ async fn several_name_only_patches_do_not_erode_code_metadata(pool: sqlx::PgPool
     let id = created["id"].as_str().unwrap().to_string();
 
     for name in ["renamed-once", "renamed-twice", "renamed-thrice"] {
+        // When
         let res = patch_space(
             app.clone(),
             &cookie,
@@ -525,6 +557,7 @@ async fn several_name_only_patches_do_not_erode_code_metadata(pool: sqlx::PgPool
             serde_json::json!({ "name": name }),
         )
         .await;
+        // Then
         assert_eq!(res.status(), StatusCode::OK);
     }
 
@@ -546,6 +579,7 @@ async fn several_name_only_patches_do_not_erode_code_metadata(pool: sqlx::PgPool
 /// t.String(...), t.Null()]))`) permits it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn explicit_null_still_clears_remote_url_on_a_code_space(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-explicitclear@b.test", "Alice").await;
 
@@ -573,7 +607,9 @@ async fn explicit_null_still_clears_remote_url_on_a_code_space(pool: sqlx::PgPoo
     )
     .await;
 
+    // When
     let detail = json_body(get_space(app.clone(), &cookie, &id).await).await;
+    // Then
     assert_eq!(detail["code"]["remoteUrl"], serde_json::Value::Null);
     assert_eq!(
         detail["code"]["localPaths"],
@@ -584,6 +620,7 @@ async fn explicit_null_still_clears_remote_url_on_a_code_space(pool: sqlx::PgPoo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_cannot_get_patch_or_delete_a_space(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-cross@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-cross@b.test", "Bob").await;
@@ -599,7 +636,9 @@ async fn cross_user_cannot_get_patch_or_delete_a_space(pool: sqlx::PgPool) {
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = get_space(app.clone(), &bob_cookie, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let res = patch_space(
@@ -623,6 +662,7 @@ async fn cross_user_cannot_get_patch_or_delete_a_space(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_cannot_reset_a_space(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-crossreset@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-crossreset@b.test", "Bob").await;
@@ -638,7 +678,9 @@ async fn cross_user_cannot_reset_a_space(pool: sqlx::PgPool) {
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = reset_space(app.clone(), &bob_cookie, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     assert_eq!(names(app.clone(), &alice_cookie).await, vec!["notes"]);
@@ -646,6 +688,7 @@ async fn cross_user_cannot_reset_a_space(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn reset_wipes_content_but_keeps_the_space_and_its_code_metadata(pool: sqlx::PgPool) {
+    // Given
     use fubbik_db::repo::{chunk, space, user};
 
     let app = fubbik_api::router(state(pool.clone()));
@@ -690,7 +733,9 @@ async fn reset_wipes_content_but_keeps_the_space_and_its_code_metadata(pool: sql
         .await
         .unwrap();
 
+    // When
     let res = reset_space(app.clone(), &cookie, &space_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["chunksDeleted"], 1);
@@ -714,6 +759,7 @@ async fn reset_wipes_content_but_keeps_the_space_and_its_code_metadata(pool: sql
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_removes_the_space_row_after_wiping_content(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-delete@b.test", "Alice").await;
 
@@ -728,7 +774,9 @@ async fn delete_removes_the_space_row_after_wiping_content(pool: sqlx::PgPool) {
     .await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = delete_space(app.clone(), &cookie, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await["message"], "Deleted");
 
@@ -741,11 +789,14 @@ async fn delete_removes_the_space_row_after_wiping_content(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .oneshot(Request::get("/api/spaces").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }

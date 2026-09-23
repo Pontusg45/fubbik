@@ -78,8 +78,11 @@ mod tests {
 
     #[test]
     fn allows_up_to_the_limit_then_denies() {
+        // Given the inline inputs and test fixtures.
+        // When
         let limiter = RateLimiter::new();
         for i in 0..10 {
+            // Then
             assert!(
                 limiter.check("k", 10, Duration::from_secs(60)).allowed,
                 "call {i}"
@@ -90,10 +93,13 @@ mod tests {
 
     #[test]
     fn keys_do_not_share_a_window() {
+        // Given
         let limiter = RateLimiter::new();
         for _ in 0..10 {
+            // When
             limiter.check("a", 10, Duration::from_secs(60));
         }
+        // Then
         assert!(
             limiter.check("b", 10, Duration::from_secs(60)).allowed,
             "one user exhausting their budget must not block another"
@@ -102,7 +108,10 @@ mod tests {
 
     #[test]
     fn the_window_resets_once_it_expires() {
+        // Given the inline inputs and test fixtures.
+        // When
         let limiter = RateLimiter::new();
+        // Then
         // A zero-length window is already expired on the next lookup, which
         // exercises the reset branch without a sleep.
         assert!(limiter.check("k", 1, Duration::from_secs(0)).allowed);
@@ -111,9 +120,12 @@ mod tests {
 
     #[test]
     fn a_denial_reports_seconds_until_reset() {
+        // Given
         let limiter = RateLimiter::new();
         limiter.check("k", 1, Duration::from_secs(60));
+        // When
         let decision = limiter.check("k", 1, Duration::from_secs(60));
+        // Then
         assert!(!decision.allowed);
         assert!(
             decision.retry_after_secs > 0 && decision.retry_after_secs <= 60,
@@ -128,9 +140,12 @@ mod tests {
     /// is needed.
     #[test]
     fn expired_entries_are_evicted_on_lookup() {
+        // Given
         let limiter = RateLimiter::new();
         limiter.check("gone", 1, Duration::from_secs(0));
+        // When
         limiter.check("kept", 1, Duration::from_secs(60));
+        // Then
         assert_eq!(limiter.len(), 1);
         assert!(limiter.contains("kept"));
     }
@@ -147,9 +162,12 @@ mod tests {
     /// does not catch that reordering for exactly this reason).
     #[test]
     fn an_expired_window_is_not_judged_against_its_old_count() {
+        // Given
         let limiter = RateLimiter::new();
+        // When
         let window = Duration::from_millis(50);
 
+        // Then
         // Exhaust the budget.
         assert!(limiter.check("k", 1, window).allowed);
         assert!(!limiter.check("k", 1, window).allowed);
@@ -169,9 +187,12 @@ mod tests {
     /// distinguishes them — a bounds check like `<= 60` passes either way.
     #[test]
     fn retry_after_rounds_a_partial_second_up() {
+        // Given
         let limiter = RateLimiter::new();
+        // When
         let window = Duration::from_secs(60);
 
+        // Then
         assert!(limiter.check("k", 1, window).allowed);
         let denied = limiter.check("k", 1, window);
 

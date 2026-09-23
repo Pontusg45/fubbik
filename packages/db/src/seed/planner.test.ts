@@ -11,23 +11,35 @@ const registry: SeedModuleDescriptor[] = [
 
 describe("planModules", () => {
     it("includes transitive dependencies for an only selection", () => {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(planModules(registry, { scenario: "demo", only: new Set(["plans"]) })).toEqual(["core", "tags", "chunks", "plans"]);
     });
 
     it("rejects skipping a dependency required by the scenario", () => {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(() => planModules(registry, { scenario: "demo", skip: new Set(["tags"]) })).toThrow("Cannot skip tags; required by chunks");
     });
 
     it("topologically sorts independently of registry order", () => {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(planModules([...registry].reverse(), { scenario: "demo" })).toEqual(["core", "tags", "chunks", "plans"]);
     });
 
     it("rejects dependency cycles with the participating module names", () => {
+        // Given
         const cyclic: SeedModuleDescriptor[] = [
             { name: "one", deps: ["two"], scenarios: ["demo"] },
             { name: "two", deps: ["one"], scenarios: ["demo"] }
         ];
 
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(() => planModules(cyclic, { scenario: "demo" })).toThrow("Seed module dependency cycle: one, two");
     });
 });

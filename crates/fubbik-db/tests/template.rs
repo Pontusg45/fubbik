@@ -63,8 +63,10 @@ async fn seed_builtin(pool: &sqlx::PgPool, name: &str) -> String {
 
 #[sqlx::test]
 async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
 
+    // When
     let created = template::create(
         &pool,
         &uid,
@@ -82,6 +84,7 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert_eq!(created.name, "ADR");
     assert_eq!(
         created.description.as_deref(),
@@ -116,6 +119,7 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
 /// the wire contract without failing compilation.
 #[sqlx::test]
 async fn match_rules_serialise_with_nodes_exact_json_keys(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let created = template::create(
         &pool,
@@ -134,6 +138,7 @@ async fn match_rules_serialise_with_nodes_exact_json_keys(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let raw: serde_json::Value = sqlx::query_scalar!(
         r#"SELECT match_rules AS "match_rules!: serde_json::Value" FROM chunk_template WHERE id = $1"#,
         created.id
@@ -141,6 +146,7 @@ async fn match_rules_serialise_with_nodes_exact_json_keys(pool: sqlx::PgPool) {
     .fetch_one(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(raw["minScore"], serde_json::json!(1.5));
     assert_eq!(raw["headings"][0]["match"], serde_json::json!("prefix"));
     assert_eq!(raw["headings"][0]["required"], serde_json::json!(true));
@@ -156,7 +162,9 @@ async fn match_rules_serialise_with_nodes_exact_json_keys(pool: sqlx::PgPool) {
 /// (`packages/db/src/repository/template.ts:48-49`).
 #[sqlx::test]
 async fn create_defaults_priority_and_tags_when_omitted(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
+    // When
     let created = template::create(
         &pool,
         &uid,
@@ -173,6 +181,7 @@ async fn create_defaults_priority_and_tags_when_omitted(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(created.priority, 0);
     assert_eq!(created.tags, None);
     assert_eq!(created.description, None);
@@ -185,6 +194,7 @@ async fn create_defaults_priority_and_tags_when_omitted(pool: sqlx::PgPool) {
 /// two assertions below).
 #[sqlx::test]
 async fn list_includes_builtin_and_own_but_excludes_other_users(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
 
@@ -222,8 +232,10 @@ async fn list_includes_builtin_and_own_but_excludes_other_users(pool: sqlx::PgPo
     .unwrap();
     seed_builtin(&pool, "Convention").await;
 
+    // When
     let alices_view = template::list(&pool, &alice).await.unwrap();
     let names: Vec<&str> = alices_view.iter().map(|t| t.name.as_str()).collect();
+    // Then
     assert!(names.contains(&"Alice's"), "must see own template");
     assert!(names.contains(&"Convention"), "must see built-in template");
     assert!(
@@ -241,6 +253,7 @@ async fn list_includes_builtin_and_own_but_excludes_other_users(pool: sqlx::PgPo
 /// `, id ASC` exists to resolve.
 #[sqlx::test]
 async fn list_breaks_name_ties_by_id_and_is_stable(pool: sqlx::PgPool) {
+    // Given
     sqlx::query!("DROP INDEX template_user_name_idx")
         .execute(&pool)
         .await
@@ -275,10 +288,12 @@ async fn list_breaks_name_ties_by_id_and_is_stable(pool: sqlx::PgPool) {
     .unwrap();
 
     let first = template::list(&pool, &uid).await.unwrap();
+    // When
     let second = template::list(&pool, &uid).await.unwrap();
     let first_ids: Vec<String> = first.iter().map(|t| t.id.clone()).collect();
     let second_ids: Vec<String> = second.iter().map(|t| t.id.clone()).collect();
 
+    // Then
     assert_eq!(
         first_ids, expected_ids,
         "must match Postgres's own id ASC order"
@@ -294,6 +309,7 @@ async fn list_breaks_name_ties_by_id_and_is_stable(pool: sqlx::PgPool) {
 /// byte-for-byte unchanged (not merely "still exists").
 #[sqlx::test]
 async fn update_is_scoped_to_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let created = template::create(
@@ -313,6 +329,7 @@ async fn update_is_scoped_to_owner(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let result = template::update(
         &pool,
         &bob,
@@ -324,6 +341,7 @@ async fn update_is_scoped_to_owner(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(
         result.is_none(),
         "Bob must not be able to update Alice's template"
@@ -346,6 +364,7 @@ async fn update_is_scoped_to_owner(pool: sqlx::PgPool) {
 /// spread (`packages/db/src/repository/template.ts:74-83`).
 #[sqlx::test]
 async fn update_owner_succeeds_and_tri_state_clear_vs_untouched(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let created = template::create(
         &pool,
@@ -364,6 +383,7 @@ async fn update_owner_succeeds_and_tri_state_clear_vs_untouched(pool: sqlx::PgPo
     .await
     .unwrap();
 
+    // When
     // Explicit clear of description and match_rules; content untouched
     // (`None`); name set to a new value.
     let updated = template::update(
@@ -385,6 +405,7 @@ async fn update_owner_succeeds_and_tri_state_clear_vs_untouched(pool: sqlx::PgPo
     .unwrap()
     .expect("owner update must succeed");
 
+    // Then
     assert_eq!(updated.name, "Renamed");
     assert_eq!(
         updated.description, None,
@@ -406,6 +427,7 @@ async fn update_owner_succeeds_and_tri_state_clear_vs_untouched(pool: sqlx::PgPo
 /// `update_is_scoped_to_owner`.
 #[sqlx::test]
 async fn delete_is_scoped_to_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let created = template::create(
@@ -425,7 +447,9 @@ async fn delete_is_scoped_to_owner(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let deleted = template::delete(&pool, &bob, &created.id).await.unwrap();
+    // Then
     assert!(!deleted, "Bob must not be able to delete Alice's template");
 
     let still_there = template::find_by_id(&pool, &created.id).await.unwrap();
@@ -441,6 +465,7 @@ async fn delete_is_scoped_to_owner(pool: sqlx::PgPool) {
 /// failure.
 #[sqlx::test]
 async fn delete_excludes_built_in_even_when_user_id_matches(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let id = fubbik_db::new_id();
     sqlx::query!(
@@ -453,7 +478,9 @@ async fn delete_excludes_built_in_even_when_user_id_matches(pool: sqlx::PgPool) 
     .await
     .unwrap();
 
+    // When
     let deleted = template::delete(&pool, &alice, &id).await.unwrap();
+    // Then
     assert!(
         !deleted,
         "is_built_in = true must block deletion even when user_id matches"
@@ -465,6 +492,7 @@ async fn delete_excludes_built_in_even_when_user_id_matches(pool: sqlx::PgPool) 
 /// Sanity: deleting one's own non-built-in template succeeds.
 #[sqlx::test]
 async fn delete_removes_owned_non_builtin_row(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let created = template::create(
         &pool,
@@ -483,7 +511,9 @@ async fn delete_removes_owned_non_builtin_row(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let deleted = template::delete(&pool, &uid, &created.id).await.unwrap();
+    // Then
     assert!(deleted);
     assert!(
         template::find_by_id(&pool, &created.id)
@@ -499,6 +529,7 @@ async fn delete_removes_owned_non_builtin_row(pool: sqlx::PgPool) {
 /// `WHERE user_id = $2`, not here.
 #[sqlx::test]
 async fn find_by_id_is_unscoped_by_design(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let created = template::create(
         &pool,
@@ -517,7 +548,9 @@ async fn find_by_id_is_unscoped_by_design(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     // No user_id parameter to pass at all -- this is the point.
     let found = template::find_by_id(&pool, &created.id).await.unwrap();
+    // Then
     assert!(found.is_some());
 }

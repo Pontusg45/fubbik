@@ -4,44 +4,13 @@ tags:
     - architecture
     - backend
     - errors
-description: Effect-based typed errors and the global error handler
+description: Rust domain errors and their HTTP mapping
 ---
 
 # Error Handling
 
-The backend uses Effect for typed error handling. Each error type has a `_tag` discriminator.
+Rust domain workflows and SQLx repositories return `AppResult<T>` from `fubbik-core`. The `AppError` variants distinguish validation, authentication, missing resources, conflicts, database failures, unsupported media types, and external service failures.
 
-## Error Types
+Axum handlers return `ApiResult<T>`. The local `ApiError` adapter in `crates/fubbik-api/src/error.rs` converts `AppError` to an HTTP response: validation → 400, authentication → 401, missing resource → 404, conflict → 409, unsupported media type → 415, external dependency → 502, and database failure → 500 (or 503 for pool exhaustion). Database details are logged server-side and omitted from the response body.
 
-- `ValidationError` — invalid input (400)
-- `AuthError` — not authenticated or not authorized (401)
-- `NotFoundError` — entity doesn't exist (404)
-- `DatabaseError` — database operation failed (500)
-
-## Global Error Handler
-
-The global error handler in `packages/api/src/index.ts` extracts Effect errors from `FiberFailure` and maps `_tag` to HTTP status codes:
-
-```typescript
-.onError(({ error, set }) => {
-  const effectError = extractEffectError(error);
-  if (effectError) {
-    switch (effectError._tag) {
-      case "ValidationError": set.status = 400; break;
-      case "AuthError":       set.status = 401; break;
-      case "NotFoundError":   set.status = 404; break;
-      case "DatabaseError":   set.status = 500; break;
-    }
-  }
-})
-```
-
-## Pattern
-
-Services create errors via tagged constructors:
-
-```typescript
-yield * Effect.fail(new NotFoundError({ message: "Chunk not found" }));
-```
-
-Routes call `Effect.runPromise()` — unhandled errors propagate to the global handler automatically.
+Routes use `?` to propagate errors; domain workflows return an explicit error instead of formatting HTTP responses themselves. This keeps the HTTP mapping in one place.

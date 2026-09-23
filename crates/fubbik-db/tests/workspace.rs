@@ -49,7 +49,9 @@ async fn a_workspace(pool: &sqlx::PgPool, uid: &str, name: &str) -> String {
 
 #[sqlx::test]
 async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
+    // When
     let created = workspace::create(
         &pool,
         &alice,
@@ -60,6 +62,7 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(created.name, "platform");
     assert_eq!(created.description.as_deref(), Some("everything"));
     assert_eq!(created.user_id, alice);
@@ -73,10 +76,13 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
+    // When
     let alices_ws = a_workspace(&pool, &alice, "alices").await;
 
+    // Then
     assert!(
         workspace::find_by_id(&pool, &bob, &alices_ws)
             .await
@@ -88,18 +94,22 @@ async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     a_workspace(&pool, &alice, "alices").await;
     a_workspace(&pool, &bob, "bobs").await;
 
+    // When
     let alice_list = workspace::list(&pool, &alice).await.unwrap();
+    // Then
     assert_eq!(alice_list.len(), 1);
     assert_eq!(alice_list[0].name, "alices");
 }
 
 #[sqlx::test]
 async fn update_with_no_fields_is_a_reselect_and_does_not_bump_updated_at(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let created = a_workspace(&pool, &alice, "platform").await;
     let before = workspace::find_by_id(&pool, &alice, &created)
@@ -107,10 +117,12 @@ async fn update_with_no_fields_is_a_reselect_and_does_not_bump_updated_at(pool: 
         .unwrap()
         .unwrap();
 
+    // When
     let updated = workspace::update(&pool, &alice, &created, WorkspacePatch::default())
         .await
         .unwrap()
         .expect("no-op patch must still find the row");
+    // Then
     assert_eq!(updated.updated_at, before.updated_at);
 }
 
@@ -123,13 +135,16 @@ async fn update_with_no_fields_is_a_reselect_and_does_not_bump_updated_at(pool: 
 /// through the `SELECT`-only branch instead.
 #[sqlx::test]
 async fn update_with_no_fields_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_ws = a_workspace(&pool, &alice, "alices").await;
 
+    // When
     let result = workspace::update(&pool, &bob, &alices_ws, WorkspacePatch::default())
         .await
         .unwrap();
+    // Then
     assert!(
         result.is_none(),
         "Bob's no-op patch must not find Alice's workspace"
@@ -144,6 +159,7 @@ async fn update_with_no_fields_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_description_null_clears_it(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let created = workspace::create(
         &pool,
@@ -156,6 +172,7 @@ async fn update_description_null_clears_it(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let updated = workspace::update(
         &pool,
         &alice,
@@ -168,15 +185,18 @@ async fn update_description_null_clears_it(pool: sqlx::PgPool) {
     .await
     .unwrap()
     .unwrap();
+    // Then
     assert_eq!(updated.description, None);
 }
 
 #[sqlx::test]
 async fn update_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_ws = a_workspace(&pool, &alice, "alices").await;
 
+    // When
     let result = workspace::update(
         &pool,
         &bob,
@@ -188,6 +208,7 @@ async fn update_is_user_scoped(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(
         result.is_none(),
         "Bob must not be able to update Alice's workspace"
@@ -202,11 +223,14 @@ async fn update_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn delete_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_ws = a_workspace(&pool, &alice, "alices").await;
 
+    // When
     let deleted = workspace::delete(&pool, &bob, &alices_ws).await.unwrap();
+    // Then
     assert!(!deleted, "Bob must not be able to delete Alice's workspace");
     assert!(
         workspace::find_by_id(&pool, &alice, &alices_ws)
@@ -219,6 +243,7 @@ async fn delete_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn delete_cascades_workspace_space_rows(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let ws = a_workspace(&pool, &alice, "platform").await;
     let sp = a_space(&pool, &alice, "code").await;
@@ -226,6 +251,7 @@ async fn delete_cascades_workspace_space_rows(pool: sqlx::PgPool) {
 
     workspace::delete(&pool, &alice, &ws).await.unwrap();
 
+    // When
     let remaining: i64 = sqlx::query_scalar!(
         r#"SELECT COUNT(*) AS "count!" FROM workspace_space WHERE workspace_id = $1"#,
         ws
@@ -233,6 +259,7 @@ async fn delete_cascades_workspace_space_rows(pool: sqlx::PgPool) {
     .fetch_one(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(
         remaining, 0,
         "workspace_space rows must be cascade-deleted with the workspace"
@@ -243,16 +270,19 @@ async fn delete_cascades_workspace_space_rows(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn cannot_add_another_users_space_to_my_workspace(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_ws = a_workspace(&pool, &alice, "alices-ws").await;
     let bobs_space = a_space(&pool, &bob, "bobs-space").await;
 
+    // When
     // Alice tries to attach Bob's space to her own workspace — must be
     // rejected.
     let result = workspace::add_space(&pool, &alice, &alices_ws, &bobs_space)
         .await
         .unwrap();
+    // Then
     assert!(result.is_none(), "must not attach another user's space");
     assert!(
         workspace::spaces_for_workspace(&pool, &alice, &alices_ws)
@@ -264,16 +294,19 @@ async fn cannot_add_another_users_space_to_my_workspace(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn cannot_add_my_space_to_another_users_workspace(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let bobs_ws = a_workspace(&pool, &bob, "bobs-ws").await;
     let alices_space = a_space(&pool, &alice, "alices-space").await;
 
+    // When
     // Alice tries to put her own space into Bob's workspace — must be
     // rejected.
     let result = workspace::add_space(&pool, &alice, &bobs_ws, &alices_space)
         .await
         .unwrap();
+    // Then
     assert!(
         result.is_none(),
         "must not attach a space to another user's workspace"
@@ -288,14 +321,17 @@ async fn cannot_add_my_space_to_another_users_workspace(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn own_workspace_and_own_space_succeeds(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let ws = a_workspace(&pool, &alice, "platform").await;
     let sp = a_space(&pool, &alice, "code").await;
 
+    // When
     let link = workspace::add_space(&pool, &alice, &ws, &sp)
         .await
         .unwrap()
         .expect("own workspace + own space must succeed");
+    // Then
     assert_eq!(link.workspace_id, ws);
     assert_eq!(link.space_id, sp);
 
@@ -308,6 +344,7 @@ async fn own_workspace_and_own_space_succeeds(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn add_space_is_a_silent_no_op_on_duplicate(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let ws = a_workspace(&pool, &alice, "platform").await;
     let sp = a_space(&pool, &alice, "code").await;
@@ -317,7 +354,9 @@ async fn add_space_is_a_silent_no_op_on_duplicate(pool: sqlx::PgPool) {
         .unwrap()
         .expect("first attach must succeed");
 
+    // When
     let second = workspace::add_space(&pool, &alice, &ws, &sp).await.unwrap();
+    // Then
     assert!(
         second.is_none(),
         "duplicate attach must be a silent ON CONFLICT no-op"
@@ -339,6 +378,7 @@ async fn add_space_is_a_silent_no_op_on_duplicate(pool: sqlx::PgPool) {
 /// just the service layer above it.
 #[sqlx::test]
 async fn rejected_remove_does_not_wipe_the_victims_existing_association(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_ws = a_workspace(&pool, &alice, "alices-ws").await;
@@ -350,11 +390,13 @@ async fn rejected_remove_does_not_wipe_the_victims_existing_association(pool: sq
         .unwrap()
         .expect("Alice's own attach must succeed");
 
+    // When
     // Bob then tries (and must fail) to remove that association,
     // authenticating as himself but naming Alice's workspace/space ids.
     let removed = workspace::remove_space(&pool, &bob, &alices_ws, &alices_space)
         .await
         .unwrap();
+    // Then
     assert!(!removed, "Bob's remove must be rejected");
 
     let spaces = workspace::spaces_for_workspace(&pool, &alice, &alices_ws)
@@ -370,14 +412,17 @@ async fn rejected_remove_does_not_wipe_the_victims_existing_association(pool: sq
 
 #[sqlx::test]
 async fn remove_space_removes_the_callers_own_association(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let ws = a_workspace(&pool, &alice, "platform").await;
     let sp = a_space(&pool, &alice, "code").await;
     workspace::add_space(&pool, &alice, &ws, &sp).await.unwrap();
 
+    // When
     let removed = workspace::remove_space(&pool, &alice, &ws, &sp)
         .await
         .unwrap();
+    // Then
     assert!(removed);
     assert!(
         workspace::spaces_for_workspace(&pool, &alice, &ws)
@@ -399,6 +444,7 @@ async fn remove_space_removes_the_callers_own_association(pool: sqlx::PgPool) {
 /// thing standing between this guard and a silent regression.
 #[sqlx::test]
 async fn spaces_for_workspace_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_ws = a_workspace(&pool, &alice, "alices-ws").await;
@@ -408,11 +454,13 @@ async fn spaces_for_workspace_is_user_scoped(pool: sqlx::PgPool) {
         .unwrap()
         .expect("Alice's own attach must succeed");
 
+    // When
     // Bob, naming Alice's workspace id directly, must see nothing — even
     // though the workspace genuinely has a space attached.
     let bobs_view = workspace::spaces_for_workspace(&pool, &bob, &alices_ws)
         .await
         .unwrap();
+    // Then
     assert!(
         bobs_view.is_empty(),
         "Bob must not be able to enumerate another user's workspace membership \
@@ -429,13 +477,16 @@ async fn spaces_for_workspace_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn remove_space_on_nonexistent_link_returns_false(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let ws = a_workspace(&pool, &alice, "platform").await;
     let sp = a_space(&pool, &alice, "code").await;
 
+    // When
     let removed = workspace::remove_space(&pool, &alice, &ws, &sp)
         .await
         .unwrap();
+    // Then
     assert!(!removed);
 }
 
@@ -447,6 +498,7 @@ async fn remove_space_on_nonexistent_link_returns_false(pool: sqlx::PgPool) {
 /// tiebreaker can determine order.
 #[sqlx::test]
 async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
 
     for name in [
@@ -486,6 +538,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT id FROM workspace WHERE user_id = $1 ORDER BY id ASC",
         alice
@@ -493,6 +546,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 20);
 
     let first = workspace::list(&pool, &alice).await.unwrap();
@@ -520,6 +574,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
 /// technique `space.rs`'s `spaces_for_chunk_breaks_name_ties_by_id` uses.
 #[sqlx::test]
 async fn spaces_for_workspace_breaks_name_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let ws = a_workspace(&pool, &alice, "platform").await;
 
@@ -536,6 +591,7 @@ async fn spaces_for_workspace_breaks_name_ties_by_id(pool: sqlx::PgPool) {
         .unwrap();
     }
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT space_id FROM workspace_space WHERE workspace_id = $1 ORDER BY space_id ASC",
         ws
@@ -543,6 +599,7 @@ async fn spaces_for_workspace_breaks_name_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 5);
 
     let first = workspace::spaces_for_workspace(&pool, &alice, &ws)

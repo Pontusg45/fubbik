@@ -29,13 +29,16 @@ afterEach(() => {
 
 describe("scanPatterns", () => {
     it("detects route structure when framework dep + routes/ dir exist", () => {
+        // Given
         writePkg({ elysia: "^1.0.0" });
         mkdirSync(join(tempDir, "src", "routes"), { recursive: true });
         writeFileSync(join(tempDir, "src", "routes", "users.ts"), "// users route");
 
         const { chunks, tips } = scanPatterns(tempDir);
 
+        // When
         const routingChunk = chunks.find(c => c.tags.includes("routing"));
+        // Then
         expect(routingChunk).toBeDefined();
         expect(routingChunk!.tier).toBe(3);
         expect(routingChunk!.category).toBe("conventions");
@@ -45,35 +48,44 @@ describe("scanPatterns", () => {
     });
 
     it("detects test patterns when test runner + test files exist", () => {
+        // Given
         writePkg({}, { vitest: "^1.0.0" });
         mkdirSync(join(tempDir, "src", "__tests__"), { recursive: true });
         writeFileSync(join(tempDir, "src", "__tests__", "app.test.ts"), "// test");
 
         const { chunks } = scanPatterns(tempDir);
 
+        // When
         const testChunk = chunks.find(c => c.tags.includes("testing"));
+        // Then
         expect(testChunk).toBeDefined();
         expect(testChunk!.content.toLowerCase()).toContain("vitest");
     });
 
     it("detects database when ORM dep + schema files exist", () => {
+        // Given
         writePkg({ "drizzle-orm": "^0.30.0" });
         mkdirSync(join(tempDir, "src", "db"), { recursive: true });
         writeFileSync(join(tempDir, "src", "db", "schema.ts"), "// schema");
 
         const { chunks } = scanPatterns(tempDir);
 
+        // When
         const dbChunk = chunks.find(c => c.tags.includes("database"));
+        // Then
         expect(dbChunk).toBeDefined();
     });
 
     it("emits a tip (not chunk) when only dep exists without file structure", () => {
+        // Given
         writePkg({ "drizzle-orm": "^0.30.0" });
         // No schema files, no db/ directory
 
         const { chunks, tips } = scanPatterns(tempDir);
 
+        // When
         const dbChunk = chunks.find(c => c.tags.includes("database"));
+        // Then
         expect(dbChunk).toBeUndefined();
 
         const dbTip = tips.find(t => t.title.toLowerCase().includes("database"));
@@ -81,13 +93,16 @@ describe("scanPatterns", () => {
     });
 
     it("emits a tip when only file structure exists without dep", () => {
+        // Given
         writePkg(); // empty deps
         mkdirSync(join(tempDir, "src", "routes"), { recursive: true });
         writeFileSync(join(tempDir, "src", "routes", "index.ts"), "// routes");
 
         const { chunks, tips } = scanPatterns(tempDir);
 
+        // When
         const routingChunk = chunks.find(c => c.tags.includes("routing"));
+        // Then
         expect(routingChunk).toBeUndefined();
 
         const routingTip = tips.find(t => t.title.toLowerCase().includes("rout"));
@@ -95,10 +110,13 @@ describe("scanPatterns", () => {
     });
 
     it("returns empty for project with no detectable patterns", () => {
+        // Given
         writePkg(); // package.json with no relevant deps
 
+        // When
         const { chunks, tips } = scanPatterns(tempDir);
 
+        // Then
         expect(chunks).toHaveLength(0);
         expect(tips).toHaveLength(0);
     });

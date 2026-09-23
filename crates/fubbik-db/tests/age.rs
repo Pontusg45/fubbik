@@ -3,8 +3,11 @@ use fubbik_db::age;
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unavailable_profile_degrades_without_error(pool: sqlx::PgPool) {
     if std::env::var("FUBBIK_EXPECT_NO_AGE").as_deref() != Ok("1") {
+        // Given
         return;
     }
+    // When the operation is evaluated by the assertion.
+    // Then
     assert!(!age::is_available(&pool).await);
     assert!(age::cypher(&pool, "RETURN 1").await.unwrap().is_empty());
 }
@@ -12,6 +15,9 @@ use sqlx::postgres::PgPoolOptions;
 
 #[test]
 fn esc_cypher_escapes_backslashes_before_quotes() {
+    // Given the inline inputs and test fixtures.
+    // When the operation is evaluated by the assertion.
+    // Then
     assert_eq!(age::esc_cypher(r"a\b"), r"a\\b");
     assert_eq!(age::esc_cypher("it's"), r"it\'s");
     // Order matters: escaping quotes first would double-escape the backslash.
@@ -23,10 +29,12 @@ async fn cypher_round_trips_a_real_vertex(pool: sqlx::PgPool) {
     // Migration 0001 installs AGE and creates the 'knowledge' graph, so this
     // exercises real agtype output rather than the degradation path.
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping round-trip");
         return;
     }
 
+    // When
     let created = age::cypher(
         &pool,
         "CREATE (n:chunk {title: 'from rust', code: 'a::b'}) RETURN n",
@@ -34,6 +42,7 @@ async fn cypher_round_trips_a_real_vertex(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert_eq!(created.len(), 1);
     let v = &created[0];
     assert_eq!(v["label"], "chunk");
@@ -52,15 +61,19 @@ async fn cypher_round_trips_a_real_vertex(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn cypher_returns_scalars(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         return;
     }
+    // When
     let rows = age::cypher(&pool, "RETURN 42").await.unwrap();
+    // Then
     assert_eq!(rows[0], 42);
 }
 
 #[sqlx::test]
 async fn cypher_round_trips_a_real_edge(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping edge round-trip");
         return;
     }
@@ -72,10 +85,12 @@ async fn cypher_round_trips_a_real_edge(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let rows = age::cypher(&pool, "MATCH ()-[r:REL_REV]->() RETURN r")
         .await
         .unwrap();
 
+    // Then
     assert_eq!(rows.len(), 1);
     let edge = &rows[0];
     assert_eq!(edge["label"], "REL_REV");
@@ -95,6 +110,7 @@ async fn cypher_round_trips_a_real_path(pool: sqlx::PgPool) {
     // trailing suffix (the original bug) leaves invalid JSON and the whole
     // row silently vanishes via `filter_map`.
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping path round-trip");
         return;
     }
@@ -106,6 +122,7 @@ async fn cypher_round_trips_a_real_path(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let rows = age::cypher(
         &pool,
         "MATCH p = (a:probe_rev)-[r:REL_REV]->(b:probe_rev) RETURN p",
@@ -113,6 +130,7 @@ async fn cypher_round_trips_a_real_path(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert_eq!(
         rows.len(),
         1,
@@ -134,6 +152,7 @@ async fn cypher_round_trips_a_real_path(pool: sqlx::PgPool) {
 /// `cypher()` call returns.
 #[sqlx::test]
 async fn cypher_does_not_leak_search_path_onto_the_pooled_connection(pool: sqlx::PgPool) {
+    // Given
     let opts = (*pool.connect_options()).clone();
     let single = PgPoolOptions::new()
         .max_connections(1)
@@ -146,10 +165,12 @@ async fn cypher_does_not_leak_search_path_onto_the_pooled_connection(pool: sqlx:
         return;
     }
 
+    // When
     let baseline: String = sqlx::query_scalar("SHOW search_path")
         .fetch_one(&single)
         .await
         .unwrap();
+    // Then
     assert!(
         !baseline.contains("ag_catalog"),
         "test setup invariant: search_path must not already contain ag_catalog, got: {baseline}"
@@ -176,6 +197,7 @@ async fn cypher_does_not_leak_search_path_onto_the_pooled_connection(pool: sqlx:
 #[sqlx::test]
 async fn cypher_columns_returns_named_columns(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -187,6 +209,7 @@ async fn cypher_columns_returns_named_columns(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let rows = age::cypher_columns(
         &pool,
         "MATCH (r:behavior_rule) RETURN r.id AS id, r.title AS title, r.layer AS layer",
@@ -195,6 +218,7 @@ async fn cypher_columns_returns_named_columns(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["id"], "r1");
     assert_eq!(rows[0]["layer"], "invariant");

@@ -63,9 +63,11 @@ async fn assert_json_message_body(res: axum::response::Response) -> String {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn bad_query_param_is_json_400(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::get("/api/chunks?sort=bogus")
@@ -75,15 +77,18 @@ async fn bad_query_param_is_json_400(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     assert_json_message_body(res).await;
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn malformed_json_body_is_json_400(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::post("/api/chunks")
@@ -94,6 +99,7 @@ async fn malformed_json_body_is_json_400(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     assert_json_message_body(res).await;
 }
@@ -105,9 +111,11 @@ async fn malformed_json_body_is_json_400(pool: sqlx::PgPool) {
 /// through the same extractor, so both come back 400.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn missing_required_field_is_json_400(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::post("/api/chunks")
@@ -118,6 +126,7 @@ async fn missing_required_field_is_json_400(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::BAD_REQUEST,
@@ -129,9 +138,11 @@ async fn missing_required_field_is_json_400(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn missing_content_type_is_json_415(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::post("/api/chunks")
@@ -141,6 +152,7 @@ async fn missing_content_type_is_json_415(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -152,9 +164,11 @@ async fn missing_content_type_is_json_415(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn domain_404_is_json(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::get("/api/chunks/nonexistent")
@@ -164,6 +178,7 @@ async fn domain_404_is_json(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     let message = assert_json_message_body(res).await;
     assert_eq!(message, "chunk not found");

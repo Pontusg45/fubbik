@@ -30,14 +30,17 @@ async fn a_chunk(pool: &sqlx::PgPool, uid: &str, title: &str) -> String {
 
 #[sqlx::test]
 async fn cannot_favorite_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let bobs_chunk = a_chunk(&pool, &bob, "Bob's chunk").await;
 
     let id = fubbik_db::new_id();
+    // When
     let created = favorite::add(&pool, &id, &alice, &bobs_chunk, 0)
         .await
         .unwrap();
+    // Then
     assert!(
         created.is_none(),
         "must not create a favorite pointing at another user's chunk"
@@ -52,14 +55,17 @@ async fn cannot_favorite_another_users_chunk(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn add_on_own_chunk_succeeds(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let c = a_chunk(&pool, &alice, "Alice's chunk").await;
 
     let id = fubbik_db::new_id();
+    // When
     let created = favorite::add(&pool, &id, &alice, &c, 0)
         .await
         .unwrap()
         .expect("own chunk must be favoritable");
+    // Then
     assert_eq!(created.id, id);
     assert_eq!(created.user_id, alice);
     assert_eq!(created.chunk_id, c);
@@ -68,6 +74,7 @@ async fn add_on_own_chunk_succeeds(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn add_is_a_silent_no_op_on_duplicate(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let c = a_chunk(&pool, &alice, "Alice's chunk").await;
 
@@ -76,11 +83,13 @@ async fn add_is_a_silent_no_op_on_duplicate(pool: sqlx::PgPool) {
         .unwrap()
         .expect("first insert must succeed");
 
+    // When
     // Matches Node's `.onConflictDoNothing()`: a duplicate (user_id,
     // chunk_id) pair returns `Ok(None)`, not an error.
     let second = favorite::add(&pool, &fubbik_db::new_id(), &alice, &c, 1)
         .await
         .unwrap();
+    // Then
     assert!(
         second.is_none(),
         "duplicate favorite must be a silent no-op, not an error"
@@ -94,6 +103,7 @@ async fn add_is_a_silent_no_op_on_duplicate(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's chunk").await;
@@ -106,7 +116,9 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let alice_list = favorite::list(&pool, &alice).await.unwrap();
+    // Then
     assert_eq!(alice_list.len(), 1);
     assert_eq!(alice_list[0].chunk_id, alices_chunk);
 
@@ -117,6 +129,7 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn remove_on_another_users_favorite_affects_nothing(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's chunk").await;
@@ -130,7 +143,9 @@ async fn remove_on_another_users_favorite_affects_nothing(pool: sqlx::PgPool) {
     // ever touch Bob's own (nonexistent) favorite row.
     favorite::remove(&pool, &bob, &alices_chunk).await.unwrap();
 
+    // When
     let alice_list = favorite::list(&pool, &alice).await.unwrap();
+    // Then
     assert_eq!(
         alice_list.len(),
         1,
@@ -140,26 +155,32 @@ async fn remove_on_another_users_favorite_affects_nothing(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn remove_removes_the_callers_own_favorite(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let c = a_chunk(&pool, &alice, "Alice's chunk").await;
 
     favorite::add(&pool, &fubbik_db::new_id(), &alice, &c, 0)
         .await
         .unwrap();
+    // When
     favorite::remove(&pool, &alice, &c).await.unwrap();
 
+    // Then
     assert!(favorite::list(&pool, &alice).await.unwrap().is_empty());
 }
 
 #[sqlx::test]
 async fn remove_on_nonexistent_favorite_does_not_error(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
+    // When
     // No chunk, no favorite — must not error, matching Node's unconditional
     // "Deleted" response.
     favorite::remove(&pool, &alice, "no-such-chunk-id")
         .await
         .unwrap();
 
+    // Then
     // The unconditional "success" must not have side effects either — the
     // call above must not have created or removed anything.
     assert!(
@@ -170,6 +191,7 @@ async fn remove_on_nonexistent_favorite_does_not_error(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn reorder_updates_only_the_named_entries_and_only_for_the_caller(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let c1 = a_chunk(&pool, &alice, "One").await;
@@ -202,9 +224,11 @@ async fn reorder_updates_only_the_named_entries_and_only_for_the_caller(pool: sq
     .await
     .unwrap();
 
+    // When
     let list = favorite::list(&pool, &alice).await.unwrap();
     let by_chunk: std::collections::HashMap<_, _> =
         list.iter().map(|f| (f.chunk_id.clone(), f.order)).collect();
+    // Then
     assert_eq!(by_chunk[&c1], 10);
     assert_eq!(by_chunk[&c2], 1, "unmentioned entry must keep its order");
     assert_eq!(by_chunk[&c3], 5);
@@ -223,6 +247,7 @@ async fn reorder_updates_only_the_named_entries_and_only_for_the_caller(pool: sq
 /// `"order"` value and proves the tiebreaker holds.
 #[sqlx::test]
 async fn list_breaks_order_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
 
     let mut chunk_ids = Vec::new();
@@ -234,6 +259,7 @@ async fn list_breaks_order_ties_by_id(pool: sqlx::PgPool) {
         chunk_ids.push(c);
     }
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         r#"SELECT id FROM user_favorite WHERE user_id = $1 ORDER BY id ASC"#,
         alice
@@ -241,6 +267,7 @@ async fn list_breaks_order_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 6);
 
     let first = favorite::list(&pool, &alice).await.unwrap();

@@ -9,7 +9,9 @@ async fn seed_user(pool: &sqlx::PgPool, email: &str) -> String {
 
 #[sqlx::test]
 async fn create_and_list_round_trip(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
+    // When
     let created = saved_query::create(
         &pool,
         &alice,
@@ -19,6 +21,7 @@ async fn create_and_list_round_trip(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(created.name, "my query");
     assert_eq!(created.user_id, alice);
     assert_eq!(created.space_id, None);
@@ -32,11 +35,14 @@ async fn create_and_list_round_trip(pool: sqlx::PgPool) {
 /// one, so duplicate names must be allowed.
 #[sqlx::test]
 async fn duplicate_names_are_allowed(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     saved_query::create(&pool, &alice, "same", serde_json::json!({}), None)
         .await
         .unwrap();
+    // When
     let second = saved_query::create(&pool, &alice, "same", serde_json::json!({}), None).await;
+    // Then
     assert!(
         second.is_ok(),
         "there is no unique constraint on (user_id, name)"
@@ -49,6 +55,7 @@ async fn duplicate_names_are_allowed(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     saved_query::create(&pool, &alice, "alice's", serde_json::json!({}), None)
@@ -58,7 +65,9 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let alice_list = saved_query::list(&pool, &alice, None).await.unwrap();
+    // Then
     assert_eq!(alice_list.len(), 1);
     assert_eq!(alice_list[0].name, "alice's");
 
@@ -69,6 +78,7 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_can_be_narrowed_to_a_space(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let space = fubbik_db::repo::space::create(
         &pool,
@@ -95,7 +105,9 @@ async fn list_can_be_narrowed_to_a_space(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let all = saved_query::list(&pool, &alice, None).await.unwrap();
+    // Then
     assert_eq!(all.len(), 2);
 
     let scoped = saved_query::list(&pool, &alice, Some(&space.id))
@@ -112,6 +124,7 @@ async fn list_can_be_narrowed_to_a_space(pool: sqlx::PgPool) {
 /// prove the guard is load-bearing.
 #[sqlx::test]
 async fn delete_is_user_scoped_and_leaves_the_victims_row_intact(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let alices = saved_query::create(&pool, &alice, "mine", serde_json::json!({}), None)
@@ -121,7 +134,9 @@ async fn delete_is_user_scoped_and_leaves_the_victims_row_intact(pool: sqlx::PgP
     // Bob names Alice's id.
     saved_query::delete(&pool, &bob, &alices.id).await.unwrap();
 
+    // When
     let alice_list = saved_query::list(&pool, &alice, None).await.unwrap();
+    // Then
     assert_eq!(
         alice_list.len(),
         1,
@@ -131,15 +146,18 @@ async fn delete_is_user_scoped_and_leaves_the_victims_row_intact(pool: sqlx::PgP
 
 #[sqlx::test]
 async fn delete_removes_the_callers_own_row(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let created = saved_query::create(&pool, &alice, "mine", serde_json::json!({}), None)
         .await
         .unwrap();
 
+    // When
     saved_query::delete(&pool, &alice, &created.id)
         .await
         .unwrap();
 
+    // Then
     assert!(
         saved_query::list(&pool, &alice, None)
             .await
@@ -150,7 +168,10 @@ async fn delete_removes_the_callers_own_row(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn delete_of_a_nonexistent_id_does_not_error(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
+    // When a missing saved query is deleted.
+    // Then unwrap confirms the operation succeeds.
     saved_query::delete(&pool, &alice, "no-such-id")
         .await
         .unwrap();
@@ -163,6 +184,7 @@ async fn delete_of_a_nonexistent_id_does_not_error(pool: sqlx::PgPool) {
 /// matches ascending `id`, not query-plan chance.
 #[sqlx::test]
 async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
 
     for name in [
@@ -204,6 +226,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT id FROM saved_query WHERE user_id = $1 ORDER BY id ASC",
         alice
@@ -211,6 +234,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 20);
 
     let first = saved_query::list(&pool, &alice, None).await.unwrap();

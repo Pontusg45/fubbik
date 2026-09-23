@@ -42,8 +42,11 @@ async fn import(app: &TestApp, user: &TestUser, space: &str, manifest: Value) ->
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn stable_symbols_sync_and_preserve_human_edits(pool: sqlx::PgPool) {
+    // Given
     let (app, user, space) = setup(pool.clone()).await;
+    // When
     let first = import(&app, &user, &space, manifest()).await;
+    // Then
     assert_eq!(first["created"], 2);
     let again = import(&app, &user, &space, manifest()).await;
     assert_eq!(again["documentId"], first["documentId"]);
@@ -88,11 +91,14 @@ async fn stable_symbols_sync_and_preserve_human_edits(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn partial_scans_do_not_remove_symbols_and_complete_scans_restore_them(pool: sqlx::PgPool) {
+    // Given
     let (app, user, space) = setup(pool).await;
     import(&app, &user, &space, manifest()).await;
     let mut empty = manifest();
     empty["symbols"] = json!([]);
+    // When
     empty["complete"] = json!(false);
+    // Then
     assert_eq!(
         import(&app, &user, &space, empty.clone()).await["missing"],
         0
@@ -104,8 +110,10 @@ async fn partial_scans_do_not_remove_symbols_and_complete_scans_restore_them(poo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn rejects_foreign_spaces_and_duplicate_symbols(pool: sqlx::PgPool) {
+    // Given
     let (app, user, space) = setup(pool).await;
     let other = app.signup("other@example.test", "Other").await;
+    // When
     let response = app
         .post(
             &other,
@@ -113,6 +121,7 @@ async fn rejects_foreign_spaces_and_duplicate_symbols(pool: sqlx::PgPool) {
             json!({"spaceId":space,"manifest":manifest()}),
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
     let mut duplicate = manifest();
     duplicate["symbols"][1] = duplicate["symbols"][0].clone();
@@ -128,9 +137,11 @@ async fn rejects_foreign_spaces_and_duplicate_symbols(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn late_failure_rolls_back_document_chunks_and_mapping(pool: sqlx::PgPool) {
+    // Given
     let (app, user, space) = setup(pool.clone()).await;
     sqlx::raw_sql("CREATE FUNCTION reject_source_ref() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced failure'; END; $$; CREATE TRIGGER reject_source_ref BEFORE INSERT ON chunk_file_ref FOR EACH ROW EXECUTE FUNCTION reject_source_ref();")
         .execute(&pool).await.unwrap();
+    // When
     let response = app
         .post(
             &user,
@@ -138,6 +149,7 @@ async fn late_failure_rolls_back_document_chunks_and_mapping(pool: sqlx::PgPool)
             json!({"spaceId":space,"manifest":manifest()}),
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     let count: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM document WHERE source_path LIKE 'source-docs://%'",
@@ -157,6 +169,7 @@ async fn late_failure_rolls_back_document_chunks_and_mapping(pool: sqlx::PgPool)
 async fn new_symbols_reorder_without_slot_collisions_and_missing_symbols_leave_render(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let (app, user, space) = setup(pool.clone()).await;
     let first = import(&app, &user, &space, manifest()).await;
     let document_id = first["documentId"].as_str().unwrap();
@@ -164,7 +177,9 @@ async fn new_symbols_reorder_without_slot_collisions_and_missing_symbols_leave_r
     let mut added = extended["symbols"][0].clone();
     added["key"] = json!("sample.Lookup#aaa()");
     added["title"] = json!("aaa");
+    // When
     extended["symbols"].as_array_mut().unwrap().push(added);
+    // Then
     assert_eq!(import(&app, &user, &space, extended).await["created"], 1);
     assert_eq!(import(&app, &user, &space, manifest()).await["missing"], 1);
     let rendered = TestApp::json(
@@ -185,11 +200,14 @@ async fn new_symbols_reorder_without_slot_collisions_and_missing_symbols_leave_r
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn concurrent_first_imports_share_one_document(pool: sqlx::PgPool) {
+    // Given
     let (app, user, space) = setup(pool.clone()).await;
+    // When
     let (first, second) = tokio::join!(
         import(&app, &user, &space, manifest()),
         import(&app, &user, &space, manifest())
     );
+    // Then
     assert_eq!(first["documentId"], second["documentId"]);
     assert_eq!(
         first["created"].as_u64().unwrap() + second["created"].as_u64().unwrap(),

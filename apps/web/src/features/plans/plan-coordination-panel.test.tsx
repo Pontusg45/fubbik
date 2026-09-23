@@ -5,6 +5,7 @@ import { PlanCoordinationPanel, type CoordinationBoard } from "./plan-coordinati
 
 describe("PlanCoordinationPanel", () => {
     it("shows agent identity, addressed journal entries, and pagination", () => {
+        // Given
         const board: CoordinationBoard = {
             plan: { id: "plan-id", title: "Ship", status: "in_progress" },
             tasks: [{ id: "task-id", title: "Research", status: "done", dependsOn: [] }],
@@ -28,7 +29,9 @@ describe("PlanCoordinationPanel", () => {
             cursor: { nextSequence: 7, hasMore: true }
         };
 
+        // When
         const html = renderToStaticMarkup(<PlanCoordinationPanel board={board} isLoading={false} />);
+        // Then
         expect(html).toContain("researcher");
         expect(html).toContain("handoff");
         expect(html).toContain("Research delivered");
@@ -36,7 +39,10 @@ describe("PlanCoordinationPanel", () => {
     });
 
     it("renders an explicit empty state", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const html = renderToStaticMarkup(<PlanCoordinationPanel isLoading={false} />);
+        // Then
         expect(html).toContain("No agent runs yet");
         expect(html).toContain("No journal entries yet");
     });

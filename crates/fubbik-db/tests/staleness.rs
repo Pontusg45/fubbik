@@ -62,6 +62,7 @@ async fn seed_duplicate_flag(
 
 #[sqlx::test]
 async fn list_is_user_scoped_and_excludes_dismissed_and_suppressed(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let alice_chunk = seed_chunk(&pool, &alice).await;
@@ -86,20 +87,24 @@ async fn list_is_user_scoped_and_excludes_dismissed_and_suppressed(pool: sqlx::P
     .unwrap();
     seed_flag(&pool, &bob_chunk, "age").await;
 
+    // When
     let flags = staleness::list(&pool, &alice, ListParams::default())
         .await
         .unwrap();
+    // Then
     assert_eq!(flags.len(), 1);
     assert_eq!(flags[0].id, visible);
 }
 
 #[sqlx::test]
 async fn list_filters_by_reason(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let c = seed_chunk(&pool, &alice).await;
     seed_flag(&pool, &c, "age").await;
     seed_flag(&pool, &c, "upstream_impact").await;
 
+    // When
     let flags = staleness::list(
         &pool,
         &alice,
@@ -110,6 +115,7 @@ async fn list_filters_by_reason(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(flags.len(), 1);
     assert_eq!(flags[0].reason, "age");
 }
@@ -120,6 +126,7 @@ async fn list_filters_by_reason(pool: sqlx::PgPool) {
 /// `detected_at`, so only `id ASC` can determine order.
 #[sqlx::test]
 async fn list_breaks_detected_at_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let c = seed_chunk(&pool, &alice).await;
 
@@ -139,6 +146,7 @@ async fn list_breaks_detected_at_ties_by_id(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT id FROM chunk_staleness WHERE chunk_id = $1 ORDER BY id ASC",
         c
@@ -146,6 +154,7 @@ async fn list_breaks_detected_at_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 20);
 
     let params = ListParams {
@@ -178,6 +187,7 @@ async fn list_breaks_detected_at_ties_by_id(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn count_matches_list_len_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let alice_chunk = seed_chunk(&pool, &alice).await;
@@ -186,18 +196,23 @@ async fn count_matches_list_len_and_is_user_scoped(pool: sqlx::PgPool) {
     seed_flag(&pool, &alice_chunk, "age").await;
     seed_flag(&pool, &bob_chunk, "age").await;
 
+    // When the operation is evaluated by the assertion.
+    // Then
     assert_eq!(staleness::count(&pool, &alice, None).await.unwrap(), 2);
     assert_eq!(staleness::count(&pool, &bob, None).await.unwrap(), 1);
 }
 
 #[sqlx::test]
 async fn cannot_dismiss_a_flag_on_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let chunk_id = seed_chunk(&pool, &alice).await;
     let flag = seed_flag(&pool, &chunk_id, "age").await;
 
+    // When
     let res = staleness::dismiss(&pool, &bob, &flag).await.unwrap();
+    // Then
     assert!(
         res.is_none(),
         "divergence #14: Node lets any user dismiss any flag by id"
@@ -215,14 +230,17 @@ async fn cannot_dismiss_a_flag_on_another_users_chunk(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn dismiss_by_owner_succeeds_and_returns_the_raw_update_shape(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let chunk_id = seed_chunk(&pool, &alice).await;
     let flag = seed_flag(&pool, &chunk_id, "age").await;
 
+    // When
     let res = staleness::dismiss(&pool, &alice, &flag)
         .await
         .unwrap()
         .expect("owner must be able to dismiss their own flag");
+    // Then
     assert_eq!(res.command, "UPDATE");
     assert_eq!(res.row_count, 1);
     assert_eq!(res.oid, None);
@@ -237,15 +255,19 @@ async fn dismiss_by_owner_succeeds_and_returns_the_raw_update_shape(pool: sqlx::
 
 #[sqlx::test]
 async fn dismiss_nonexistent_flag_is_none(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
+    // When
     let res = staleness::dismiss(&pool, &alice, "does-not-exist")
         .await
         .unwrap();
+    // Then
     assert!(res.is_none());
 }
 
 #[sqlx::test]
 async fn suppress_hides_the_pair_while_dismiss_hides_one_flag(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let a = seed_chunk(&pool, &alice).await;
     let b = seed_chunk(&pool, &alice).await;
@@ -256,9 +278,11 @@ async fn suppress_hides_the_pair_while_dismiss_hides_one_flag(pool: sqlx::PgPool
         .await
         .unwrap()
         .expect("owner of both chunks must be able to suppress");
+    // When
     let flags = staleness::list(&pool, &alice, ListParams::default())
         .await
         .unwrap();
+    // Then
     assert!(
         flags.is_empty(),
         "suppress must hide BOTH directions of the pair, not just one row"
@@ -271,6 +295,7 @@ async fn suppress_hides_the_pair_while_dismiss_hides_one_flag(pool: sqlx::PgPool
 /// so can't distinguish "sorted key" from "matched by accident".
 #[sqlx::test]
 async fn suppress_pair_key_is_order_independent(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let a = seed_chunk(&pool, &alice).await;
     let b = seed_chunk(&pool, &alice).await;
@@ -280,9 +305,11 @@ async fn suppress_pair_key_is_order_independent(pool: sqlx::PgPool) {
         .await
         .unwrap()
         .unwrap();
+    // When
     let flags = staleness::list(&pool, &alice, ListParams::default())
         .await
         .unwrap();
+    // Then
     assert!(flags.is_empty());
 }
 
@@ -292,6 +319,7 @@ async fn suppress_pair_key_is_order_independent(pool: sqlx::PgPool) {
 /// the pair, proven by removal-style test — Bob doesn't own either chunk.
 #[sqlx::test]
 async fn suppress_duplicate_requires_ownership_of_both_chunks(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let a = seed_chunk(&pool, &alice).await;
@@ -299,9 +327,11 @@ async fn suppress_duplicate_requires_ownership_of_both_chunks(pool: sqlx::PgPool
     seed_duplicate_flag(&pool, &a, &b).await;
     seed_duplicate_flag(&pool, &b, &a).await;
 
+    // When
     let res = staleness::suppress_duplicate(&pool, &bob, &a, &b)
         .await
         .unwrap();
+    // Then
     assert!(
         res.is_none(),
         "bob owns neither chunk in the pair and must not be able to suppress it"
@@ -321,15 +351,18 @@ async fn suppress_duplicate_requires_ownership_of_both_chunks(pool: sqlx::PgPool
 /// must be rejected — proves the guard checks *both* ids, not just one.
 #[sqlx::test]
 async fn suppress_duplicate_requires_ownership_of_the_related_chunk_too(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let alice_chunk = seed_chunk(&pool, &alice).await;
     let bob_chunk = seed_chunk(&pool, &bob).await;
     seed_duplicate_flag(&pool, &alice_chunk, &bob_chunk).await;
 
+    // When
     let res = staleness::suppress_duplicate(&pool, &alice, &alice_chunk, &bob_chunk)
         .await
         .unwrap();
+    // Then
     assert!(
         res.is_none(),
         "alice does not own bob's chunk, the pair must not be suppressible by her"
@@ -338,6 +371,7 @@ async fn suppress_duplicate_requires_ownership_of_the_related_chunk_too(pool: sq
 
 #[sqlx::test]
 async fn scan_age_is_idempotent(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let c = seed_chunk(&pool, &alice).await;
     sqlx::query("UPDATE chunk SET updated_at = now() - interval '200 days' WHERE id = $1")
@@ -349,9 +383,11 @@ async fn scan_age_is_idempotent(pool: sqlx::PgPool) {
     let first = staleness::detect_age_stale_chunks(&pool, &alice, None, 90)
         .await
         .unwrap();
+    // When
     let second = staleness::detect_age_stale_chunks(&pool, &alice, None, 90)
         .await
         .unwrap();
+    // Then
     assert_eq!(first, 1);
     assert_eq!(
         second, 0,
@@ -374,12 +410,15 @@ async fn scan_age_is_idempotent(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn detect_age_stale_chunks_ignores_chunks_within_threshold(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     seed_chunk(&pool, &alice).await; // freshly created, updated_at ~ now()
 
+    // When
     let flagged = staleness::detect_age_stale_chunks(&pool, &alice, None, 90)
         .await
         .unwrap();
+    // Then
     assert_eq!(flagged, 0);
 }
 
@@ -389,6 +428,7 @@ async fn detect_age_stale_chunks_ignores_chunks_within_threshold(pool: sqlx::PgP
 /// not a defect, matching Node's identical behaviour over the same table.
 #[sqlx::test]
 async fn detect_uncovered_chunks_flags_every_eligible_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let c = seed_chunk(&pool, &alice).await;
     sqlx::query("UPDATE chunk SET updated_at = now() - interval '60 days' WHERE id = $1")
@@ -397,9 +437,11 @@ async fn detect_uncovered_chunks_flags_every_eligible_chunk(pool: sqlx::PgPool) 
         .await
         .unwrap();
 
+    // When
     let flagged = staleness::detect_uncovered_chunks(&pool, &alice, None, 30)
         .await
         .unwrap();
+    // Then
     assert_eq!(flagged, 1);
 
     let flags = staleness::list(
@@ -421,6 +463,7 @@ async fn detect_uncovered_chunks_flags_every_eligible_chunk(pool: sqlx::PgPool) 
 /// different `reason` values.
 #[sqlx::test]
 async fn detect_uncovered_chunks_is_idempotent(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let c = seed_chunk(&pool, &alice).await;
     sqlx::query("UPDATE chunk SET updated_at = now() - interval '60 days' WHERE id = $1")
@@ -432,9 +475,11 @@ async fn detect_uncovered_chunks_is_idempotent(pool: sqlx::PgPool) {
     let first = staleness::detect_uncovered_chunks(&pool, &alice, None, 30)
         .await
         .unwrap();
+    // When
     let second = staleness::detect_uncovered_chunks(&pool, &alice, None, 30)
         .await
         .unwrap();
+    // Then
     assert_eq!(first, 1);
     assert_eq!(second, 0);
 }
@@ -456,6 +501,9 @@ async fn detect_uncovered_chunks_is_idempotent(pool: sqlx::PgPool) {
 /// (`age::compute_impact_ripple`) walks through it to get there.
 #[sqlx::test]
 async fn flag_impact_ripple_does_not_flag_a_cross_user_ripple_target(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When the operation is evaluated by the assertion.
+    // Then
     // Deliberately NOT guarded by `age::is_available`. This test IS the proof of
     // divergence #19, so a silent early return would let the guarantee lapse
     // wherever AGE happened to be missing — a security property must not rest on
@@ -514,6 +562,9 @@ async fn flag_impact_ripple_does_not_flag_a_cross_user_ripple_target(pool: sqlx:
 /// never written (and so is invisible to the `already_flagged` pre-filter).
 #[sqlx::test]
 async fn flag_impact_ripple_rerun_does_not_accumulate_duplicate_flags(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When the operation is evaluated by the assertion.
+    // Then
     // Deliberately NOT guarded by `age::is_available` — see the sibling test above.
     assert!(
         age::is_available(&pool).await,
@@ -573,13 +624,16 @@ async fn flag_impact_ripple_rerun_does_not_accumulate_duplicate_flags(pool: sqlx
 /// leave no flags written anywhere.
 #[sqlx::test]
 async fn flag_impact_ripple_requires_ownership_of_the_source_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice-ripple-owner@b.test").await;
     let bob = seed_user(&pool, "bob-ripple-owner@b.test").await;
     let alices_chunk = seed_chunk(&pool, &alice).await;
 
+    // When
     let result = staleness::flag_impact_ripple(&pool, &bob, &alices_chunk, "Alice's chunk")
         .await
         .unwrap();
+    // Then
     assert!(
         result.is_none(),
         "bob does not own the source chunk, the ripple must not run for him"
@@ -600,10 +654,12 @@ async fn flag_impact_ripple_requires_ownership_of_the_source_chunk(pool: sqlx::P
 
 #[sqlx::test]
 async fn flag_requirement_failing_flags_every_linked_chunk_once(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice-req-failing@b.test").await;
     let c1 = seed_chunk(&pool, &alice).await;
     let c2 = seed_chunk(&pool, &alice).await;
 
+    // When
     let flagged = staleness::flag_requirement_failing(
         &pool,
         &alice,
@@ -613,6 +669,7 @@ async fn flag_requirement_failing_flags_every_linked_chunk_once(pool: sqlx::PgPo
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(flagged, 2);
 
     let flags = staleness::list(&pool, &alice, ListParams::default())
@@ -642,10 +699,13 @@ async fn flag_requirement_failing_flags_every_linked_chunk_once(pool: sqlx::PgPo
 /// Node's early return before the whole function body runs.
 #[sqlx::test]
 async fn flag_requirement_failing_with_no_chunks_is_a_no_op(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice-req-failing-empty@b.test").await;
+    // When
     let flagged = staleness::flag_requirement_failing(&pool, &alice, "req-1", "Empty", &[])
         .await
         .unwrap();
+    // Then
     assert_eq!(flagged, 0);
 }
 
@@ -653,10 +713,12 @@ async fn flag_requirement_failing_with_no_chunks_is_a_no_op(pool: sqlx::PgPool) 
 /// doesn't own must not be flaggable through her call.
 #[sqlx::test]
 async fn flag_requirement_failing_requires_ownership_of_the_target_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice-req-failing-guard@b.test").await;
     let bob = seed_user(&pool, "bob-req-failing-guard@b.test").await;
     let bobs_chunk = seed_chunk(&pool, &bob).await;
 
+    // When
     let flagged = staleness::flag_requirement_failing(
         &pool,
         &alice,
@@ -666,6 +728,7 @@ async fn flag_requirement_failing_requires_ownership_of_the_target_chunk(pool: s
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(
         flagged, 0,
         "Alice must not be able to flag a chunk she doesn't own"

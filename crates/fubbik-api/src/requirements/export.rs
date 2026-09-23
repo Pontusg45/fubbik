@@ -131,12 +131,15 @@ mod tests {
 
     #[test]
     fn gherkin_matches_node_shape() {
+        // Given
         let steps = vec![
             step(StepKeyword::Given, "a user"),
             step(StepKeyword::When, "they log in"),
             step(StepKeyword::Then, "they see the dashboard"),
         ];
+        // When
         let out = to_gherkin("Login", &steps);
+        // Then
         assert_eq!(
             out,
             "Feature: Login\n\n  Scenario: Login\n    Given a user\n    When they log in\n    Then they see the dashboard"
@@ -145,17 +148,23 @@ mod tests {
 
     #[test]
     fn interpolate_leaves_unmatched_placeholder_literal() {
+        // Given
         let mut params = std::collections::HashMap::new();
         params.insert("name".to_string(), "Alice".to_string());
         let mut s = step(StepKeyword::Given, "{name} logs in as {role}");
         s.params = Some(params);
+        // When
         let out = to_markdown("T", std::slice::from_ref(&s));
+        // Then
         assert!(out.contains("Alice logs in as {role}"));
     }
 
     #[test]
     fn unknown_format_falls_back_to_markdown() {
+        // Given the inline inputs and test fixtures.
+        // When
         let steps = vec![step(StepKeyword::Given, "x")];
+        // Then
         assert_eq!(export_one("T", &steps, "bogus"), to_markdown("T", &steps));
     }
 }

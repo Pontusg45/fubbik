@@ -225,6 +225,7 @@ async fn ollama_mock_available(vector: Vec<f32>) -> wiremock::MockServer {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn semantic_search_returns_hits_ranked_by_similarity(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -235,12 +236,14 @@ async fn semantic_search_returns_hits_ranked_by_similarity(pool: sqlx::PgPool) {
     seed_chunk_with_vector(&pool, &user_id, "far", "Far", 5).await;
     seed_chunk_with_vector(&pool, &user_id, "near", "Near", 0).await;
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/chunks/search/semantic?q=whatever",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -259,6 +262,7 @@ async fn semantic_search_returns_hits_ranked_by_similarity(pool: sqlx::PgPool) {
 /// not return 100.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn semantic_search_caps_limit_at_twenty(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -270,12 +274,14 @@ async fn semantic_search_caps_limit_at_twenty(pool: sqlx::PgPool) {
         seed_chunk_with_vector(&pool, &user_id, &format!("c{i}"), &format!("C{i}"), i).await;
     }
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/chunks/search/semantic?q=whatever&limit=100",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -286,6 +292,7 @@ async fn semantic_search_caps_limit_at_twenty(pool: sqlx::PgPool) {
 /// malformed one is discarded rather than causing an error.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn semantic_search_parses_scope_pairs_and_drops_malformed_ones(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -300,6 +307,7 @@ async fn semantic_search_parses_scope_pairs_and_drops_malformed_ones(pool: sqlx:
         .await
         .unwrap();
 
+    // When
     // If the malformed "garbage" entry (no colon) caused an error instead
     // of being discarded, this request would fail rather than filter down
     // to the `env:prod` chunk.
@@ -309,6 +317,7 @@ async fn semantic_search_parses_scope_pairs_and_drops_malformed_ones(pool: sqlx:
         "/api/chunks/search/semantic?q=whatever&scope=env:prod,garbage",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -327,6 +336,7 @@ async fn semantic_search_parses_scope_pairs_and_drops_malformed_ones(pool: sqlx:
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn semantic_search_is_rate_limited_at_thirty_per_minute(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -337,12 +347,14 @@ async fn semantic_search_is_rate_limited_at_thirty_per_minute(pool: sqlx::PgPool
     seed_chunk_with_vector(&pool, &user_id, "near", "Near", 0).await;
 
     for i in 0..30 {
+        // When
         let res = get(
             app.clone(),
             &cookie,
             "/api/chunks/search/semantic?q=whatever",
         )
         .await;
+        // Then
         assert_eq!(res.status(), StatusCode::OK, "call {i}");
     }
     let res = get(
@@ -363,6 +375,7 @@ async fn semantic_search_is_rate_limited_at_thirty_per_minute(pool: sqlx::PgPool
 /// different situations and the caller must be able to tell them apart.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn semantic_search_502s_when_ollama_is_unreachable(pool: sqlx::PgPool) {
+    // Given
     // Default client in `state()` points at port 1 — nothing listens there.
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "a@b.test", "A").await;
@@ -370,12 +383,14 @@ async fn semantic_search_502s_when_ollama_is_unreachable(pool: sqlx::PgPool) {
 
     seed_chunk_with_vector(&pool, &user_id, "near", "Near", 0).await;
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/chunks/search/semantic?q=whatever",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_GATEWAY);
 }
 
@@ -385,6 +400,7 @@ async fn semantic_search_502s_when_ollama_is_unreachable(pool: sqlx::PgPool) {
 /// became the 20-cap or "all rows" instead of 5.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn semantic_search_with_non_numeric_limit_falls_back_to_default_of_five(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -396,12 +412,14 @@ async fn semantic_search_with_non_numeric_limit_falls_back_to_default_of_five(po
         seed_chunk_with_vector(&pool, &user_id, &format!("c{i}"), &format!("C{i}"), i).await;
     }
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/chunks/search/semantic?q=whatever&limit=abc",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -419,6 +437,7 @@ async fn semantic_search_with_non_numeric_limit_falls_back_to_default_of_five(po
 /// filter gone.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn semantic_search_excludes_terms_in_not_about(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -433,12 +452,14 @@ async fn semantic_search_excludes_terms_in_not_about(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/chunks/search/semantic?q=whatever&exclude=billing",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -464,6 +485,7 @@ async fn semantic_search_excludes_terms_in_not_about(pool: sqlx::PgPool) {
 /// clears it; an orthogonal one (similarity 0.0) does not.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn check_similar_returns_only_matches_at_or_above_the_threshold(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock_available(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -474,6 +496,7 @@ async fn check_similar_returns_only_matches_at_or_above_the_threshold(pool: sqlx
     seed_chunk_with_vector(&pool, &user_id, "identical", "Identical", 0).await;
     seed_chunk_with_vector(&pool, &user_id, "orthogonal", "Orthogonal", 5).await;
 
+    // When
     let res = post(
         app.clone(),
         &cookie,
@@ -481,6 +504,7 @@ async fn check_similar_returns_only_matches_at_or_above_the_threshold(pool: sqlx
         serde_json::json!({ "title": "New chunk", "content": "some content" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -502,6 +526,7 @@ async fn check_similar_returns_only_matches_at_or_above_the_threshold(pool: sqlx
 /// semantic search, and the asymmetry is Node's.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn check_similar_returns_empty_when_ollama_is_unreachable(pool: sqlx::PgPool) {
+    // Given
     // Default client in `state()` points at port 1 — nothing listens there,
     // so `is_available` returns false without a real network call ever
     // reaching an embeddings endpoint.
@@ -511,6 +536,7 @@ async fn check_similar_returns_empty_when_ollama_is_unreachable(pool: sqlx::PgPo
 
     seed_chunk_with_vector(&pool, &user_id, "identical", "Identical", 0).await;
 
+    // When
     let res = post(
         app.clone(),
         &cookie,
@@ -518,6 +544,7 @@ async fn check_similar_returns_empty_when_ollama_is_unreachable(pool: sqlx::PgPo
         serde_json::json!({ "title": "New chunk", "content": "some content" }),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -533,6 +560,7 @@ async fn check_similar_returns_empty_when_ollama_is_unreachable(pool: sqlx::PgPo
 /// three must come back.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn check_similar_caps_at_three(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock_available(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -544,6 +572,7 @@ async fn check_similar_caps_at_three(pool: sqlx::PgPool) {
         seed_chunk_with_vector(&pool, &user_id, &format!("c{i}"), &format!("C{i}"), 0).await;
     }
 
+    // When
     let res = post(
         app.clone(),
         &cookie,
@@ -551,6 +580,7 @@ async fn check_similar_caps_at_three(pool: sqlx::PgPool) {
         serde_json::json!({ "title": "New chunk", "content": "some content" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -565,6 +595,7 @@ async fn check_similar_caps_at_three(pool: sqlx::PgPool) {
 /// own similarity results even though it would otherwise match at 1.0.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn check_similar_omits_the_excluded_id(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock_available(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -575,6 +606,7 @@ async fn check_similar_omits_the_excluded_id(pool: sqlx::PgPool) {
     seed_chunk_with_vector(&pool, &user_id, "self", "Self", 0).await;
     seed_chunk_with_vector(&pool, &user_id, "other", "Other", 0).await;
 
+    // When
     let res = post(
         app.clone(),
         &cookie,
@@ -582,6 +614,7 @@ async fn check_similar_omits_the_excluded_id(pool: sqlx::PgPool) {
         serde_json::json!({ "title": "New chunk", "content": "some content", "excludeId": "self" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -611,6 +644,7 @@ async fn check_similar_omits_the_excluded_id(pool: sqlx::PgPool) {
 /// refactor adds an Ollama call to this path, this test should catch it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn neighbors_notes_a_missing_embedding_without_calling_ollama(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -620,7 +654,9 @@ async fn neighbors_notes_a_missing_embedding_without_calling_ollama(pool: sqlx::
 
     seed_chunk_no_embedding(&pool, &user_id, "unenriched", "Unenriched").await;
 
+    // When
     let res = get(app.clone(), &cookie, "/api/chunks/unenriched/neighbors").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -642,6 +678,7 @@ async fn neighbors_notes_a_missing_embedding_without_calling_ollama(pool: sqlx::
 /// `combinedScore` sort, not just set membership.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn neighbors_are_ordered_by_combined_score(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "a@b.test", "A").await;
     let user_id = user_id_by_email(&pool, "a@b.test").await;
@@ -655,7 +692,9 @@ async fn neighbors_are_ordered_by_combined_score(pool: sqlx::PgPool) {
     // Orthogonal to source: distance 1, embeddingSimilarity 0.0.
     seed_chunk_with_vector(&pool, &user_id, "farthest", "Farthest", 5).await;
 
+    // When
     let res = get(app.clone(), &cookie, "/api/chunks/source/neighbors").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -673,6 +712,7 @@ async fn neighbors_are_ordered_by_combined_score(pool: sqlx::PgPool) {
 /// `k=0` must not mean "no results" and `k=999` must not error.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn neighbors_k_is_clamped_between_one_and_fifty(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "a@b.test", "A").await;
     let user_id = user_id_by_email(&pool, "a@b.test").await;
@@ -682,7 +722,9 @@ async fn neighbors_k_is_clamped_between_one_and_fifty(pool: sqlx::PgPool) {
         seed_chunk_with_vector(&pool, &user_id, &format!("n{i}"), &format!("N{i}"), i).await;
     }
 
+    // When
     let res_zero = get(app.clone(), &cookie, "/api/chunks/source/neighbors?k=0").await;
+    // Then
     assert_eq!(res_zero.status(), StatusCode::OK);
     let body_zero = json_body(res_zero).await;
     assert_eq!(
@@ -711,6 +753,7 @@ async fn neighbors_k_is_clamped_between_one_and_fifty(pool: sqlx::PgPool) {
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn the_graph_bonus_reorders_neighbours(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -754,7 +797,9 @@ async fn the_graph_bonus_reorders_neighbours(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let res = get(app.clone(), &cookie, "/api/chunks/source/neighbors").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = json_body(res).await;
@@ -852,6 +897,7 @@ async fn wait_for_summary(pool: &sqlx::PgPool, id: &str) -> Option<String> {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn patching_the_title_triggers_a_re_enrich(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock_for_reenrich().await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -867,6 +913,7 @@ async fn patching_the_title_triggers_a_re_enrich(pool: sqlx::PgPool) {
     .await;
     let id = json_body(created).await["id"].as_str().unwrap().to_string();
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -874,6 +921,7 @@ async fn patching_the_title_triggers_a_re_enrich(pool: sqlx::PgPool) {
         serde_json::json!({ "title": "New title" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     assert_eq!(
@@ -885,6 +933,7 @@ async fn patching_the_title_triggers_a_re_enrich(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn patching_the_content_triggers_a_re_enrich(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock_for_reenrich().await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -900,6 +949,7 @@ async fn patching_the_content_triggers_a_re_enrich(pool: sqlx::PgPool) {
     .await;
     let id = json_body(created).await["id"].as_str().unwrap().to_string();
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -907,6 +957,7 @@ async fn patching_the_content_triggers_a_re_enrich(pool: sqlx::PgPool) {
         serde_json::json!({ "content": "New content" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     assert_eq!(
@@ -931,6 +982,7 @@ async fn patching_the_content_triggers_a_re_enrich(pool: sqlx::PgPool) {
 /// coming, which is exactly what "no re-enrich was triggered" means.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn patching_another_field_does_not_trigger_a_re_enrich(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock_for_reenrich().await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -946,6 +998,7 @@ async fn patching_another_field_does_not_trigger_a_re_enrich(pool: sqlx::PgPool)
     .await;
     let id = json_body(created).await["id"].as_str().unwrap().to_string();
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -953,6 +1006,7 @@ async fn patching_another_field_does_not_trigger_a_re_enrich(pool: sqlx::PgPool)
         serde_json::json!({ "rationale": "Some rationale" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     // Give a wrongly-spawned task a generous window to have made its first
@@ -983,6 +1037,7 @@ async fn patching_another_field_does_not_trigger_a_re_enrich(pool: sqlx::PgPool)
 /// The spawned task must not be able to fail the request.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPool) {
+    // Given
     // Default client in `state()` points at port 1 — nothing listens there,
     // so `enrich_chunk` returns `Ok(None)` (Ollama unavailable) without
     // ever reaching a real network call.
@@ -998,6 +1053,7 @@ async fn a_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPool) {
     .await;
     let id = json_body(created).await["id"].as_str().unwrap().to_string();
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -1005,6 +1061,7 @@ async fn a_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPool) {
         serde_json::json!({ "title": "New title" }),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -1024,6 +1081,7 @@ async fn a_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPool) {
 /// path too, not just the "unavailable" one.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_genuinely_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPool) {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/tags"))
@@ -1061,6 +1119,7 @@ async fn a_genuinely_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPoo
     .await;
     let id = json_body(created).await["id"].as_str().unwrap().to_string();
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -1068,6 +1127,7 @@ async fn a_genuinely_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPoo
         serde_json::json!({ "title": "New title" }),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -1100,6 +1160,7 @@ async fn a_genuinely_failing_re_enrich_does_not_fail_the_patch(pool: sqlx::PgPoo
 /// no legitimate scheduling jitter could trip it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn patching_the_title_returns_before_the_re_enrich_completes(pool: sqlx::PgPool) {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/tags"))
@@ -1141,6 +1202,7 @@ async fn patching_the_title_returns_before_the_re_enrich_completes(pool: sqlx::P
     let id = json_body(created).await["id"].as_str().unwrap().to_string();
 
     let start = std::time::Instant::now();
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -1150,6 +1212,7 @@ async fn patching_the_title_returns_before_the_re_enrich_completes(pool: sqlx::P
     .await;
     let elapsed = start.elapsed();
 
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert!(
         elapsed < std::time::Duration::from_secs(1),

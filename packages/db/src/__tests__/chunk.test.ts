@@ -5,7 +5,10 @@ import { chunk, chunkConnection } from "../schema/chunk";
 
 describe("chunk table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(chunk);
+        // Then
         expect(columns).toHaveProperty("id");
         expect(columns).toHaveProperty("title");
         expect(columns).toHaveProperty("content");
@@ -18,7 +21,10 @@ describe("chunk table", () => {
 
 describe("chunkConnection table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(chunkConnection);
+        // Then
         expect(columns).toHaveProperty("id");
         expect(columns).toHaveProperty("sourceId");
         expect(columns).toHaveProperty("targetId");

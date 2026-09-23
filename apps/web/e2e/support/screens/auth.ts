@@ -1,4 +1,5 @@
-import { test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { reportStep } from "../reporting";
 
 import { defineForm, type FubbikUI } from "../ui";
 
@@ -14,7 +15,8 @@ export class AuthScreen {
     readonly signUpForm;
     constructor(
         private readonly page: Page,
-        private readonly ui: FubbikUI
+        private readonly ui: FubbikUI,
+        private readonly apiOrigin: string
     ) {
         const form = ui.within(page.locator("form"));
         this.signInForm = defineForm({ email: form.input("Email"), password: form.input("Password") });
@@ -26,7 +28,7 @@ export class AuthScreen {
         await this.page.waitForLoadState("networkidle");
     }
     async signUp(user: Registration) {
-        await test.step("Register Fubbik account", async () => {
+        await reportStep("Register Fubbik account", this.page, async () => {
             await this.openSignUp();
             await this.signUpForm.fill({ name: user.name, email: user.email, password: user.password });
             await this.ui.within(this.page.locator("form")).button("Sign Up").click();
@@ -34,7 +36,7 @@ export class AuthScreen {
         });
     }
     async signIn(user: Credentials) {
-        await test.step("Sign in to Fubbik", async () => {
+        await reportStep("Sign in to Fubbik", this.page, async () => {
             await this.openSignUp();
             await this.ui.button("Already have an account? Sign In").click();
             await this.signInForm.fill({ email: user.email, password: user.password });
@@ -42,8 +44,14 @@ export class AuthScreen {
             await this.page.waitForURL("**/dashboard", { timeout: 15_000 });
         });
     }
+    async session() {
+        return this.page.evaluate(async origin => {
+            const response = await fetch(`${origin}/api/auth/get-session`, { credentials: "include" });
+            return { status: response.status, body: await response.json() };
+        }, this.apiOrigin);
+    }
     async signOut(name: string) {
-        await test.step("Sign out of Fubbik", async () => {
+        await reportStep("Sign out of Fubbik", this.page, async () => {
             await this.ui.dropdownMenu(name).choose("Sign Out");
             await this.page.waitForURL("/");
         });

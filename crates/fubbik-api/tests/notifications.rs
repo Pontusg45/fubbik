@@ -160,6 +160,7 @@ async fn delete_notification(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-list@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-list@b.test", "Bob").await;
@@ -177,7 +178,9 @@ async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
     .await;
     seed(&pool, &bob_id, "stale_chunks", "Bob's notification", false).await;
 
+    // When
     let res = list_notifications(app.clone(), &alice_cookie, "").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert!(
@@ -205,6 +208,7 @@ async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_unread_only_query_param_filters(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-unread@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-unread@b.test").await;
@@ -212,7 +216,9 @@ async fn list_unread_only_query_param_filters(pool: sqlx::PgPool) {
     seed(&pool, &user_id, "stale_chunks", "Unread one", false).await;
     seed(&pool, &user_id, "stale_chunks", "Already read", true).await;
 
+    // When
     let body = json_body(list_notifications(app.clone(), &cookie, "").await).await;
+    // Then
     assert_eq!(body.as_array().unwrap().len(), 2);
 
     let body = json_body(list_notifications(app.clone(), &cookie, "?unreadOnly=true").await).await;
@@ -227,11 +233,14 @@ async fn list_unread_only_query_param_filters(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn count_returns_bare_count_object(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-count@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-count@b.test").await;
 
+    // When
     let res = unread_count(app.clone(), &cookie).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(
@@ -250,13 +259,16 @@ async fn count_returns_bare_count_object(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn mark_read_returns_the_notification_and_persists(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-mark@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-mark@b.test").await;
 
     let id = seed(&pool, &user_id, "stale_chunks", "Mark me", false).await;
 
+    // When
     let res = mark_read(app.clone(), &cookie, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["id"], id);
@@ -272,6 +284,7 @@ async fn mark_read_returns_the_notification_and_persists(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_mark_read_is_404_and_leaves_victim_unread(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-crossmark@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-crossmark@b.test", "Bob").await;
@@ -279,7 +292,9 @@ async fn cross_user_mark_read_is_404_and_leaves_victim_unread(pool: sqlx::PgPool
 
     let id = seed(&pool, &alice_id, "stale_chunks", "Alice's", false).await;
 
+    // When
     let res = mark_read(app.clone(), &bob_cookie, &id).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -309,10 +324,13 @@ async fn cross_user_mark_read_is_404_and_leaves_victim_unread(pool: sqlx::PgPool
 /// red, not just a status-code check.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn not_found_message_is_titlecase(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-404msg@b.test", "Alice").await;
 
+    // When
     let res = mark_read(app.clone(), &cookie, "no-such-id").await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
     let body = json_body(res).await;
     assert_eq!(body["message"], "Notification not found");
@@ -325,6 +343,7 @@ async fn not_found_message_is_titlecase(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn mark_all_read_marks_only_the_callers_notifications(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-markall@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-markall@b.test", "Bob").await;
@@ -335,7 +354,9 @@ async fn mark_all_read_marks_only_the_callers_notifications(pool: sqlx::PgPool) 
     seed(&pool, &alice_id, "stale_chunks", "Alice two", false).await;
     let bob_notification_id = seed(&pool, &bob_id, "stale_chunks", "Bob's untouched", false).await;
 
+    // When
     let res = mark_all_read(app.clone(), &alice_cookie).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body, serde_json::json!({ "message": "All marked as read" }));
@@ -369,13 +390,16 @@ async fn mark_all_read_marks_only_the_callers_notifications(pool: sqlx::PgPool) 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_removes_the_notification(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-delete@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-delete@b.test").await;
 
     let id = seed(&pool, &user_id, "stale_chunks", "Delete me", false).await;
 
+    // When
     let res = delete_notification(app.clone(), &cookie, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body, serde_json::json!({ "message": "Deleted" }));
@@ -392,6 +416,7 @@ async fn delete_removes_the_notification(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_delete_is_404_and_leaves_victim_row_in_place(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-crossdel@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-crossdel@b.test", "Bob").await;
@@ -399,7 +424,9 @@ async fn cross_user_delete_is_404_and_leaves_victim_row_in_place(pool: sqlx::PgP
 
     let id = seed(&pool, &alice_id, "stale_chunks", "Alice's", false).await;
 
+    // When
     let res = delete_notification(app.clone(), &bob_cookie, &id).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -424,6 +451,7 @@ async fn cross_user_delete_is_404_and_leaves_victim_row_in_place(pool: sqlx::PgP
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn notification_type_round_trips_arbitrary_strings(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-type@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-type@b.test").await;
@@ -437,7 +465,9 @@ async fn notification_type_round_trips_arbitrary_strings(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let body = json_body(list_notifications(app.clone(), &cookie, "").await).await;
+    // Then
     assert_eq!(
         body[0]["type"], "some-totally-unconstrained-value",
         "notification.type must round-trip any string — it is unconstrained free text in Node"
@@ -446,8 +476,10 @@ async fn notification_type_round_trips_arbitrary_strings(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_requests_are_401(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -457,6 +489,7 @@ async fn unauthenticated_requests_are_401(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
     let res = app

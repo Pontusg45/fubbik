@@ -32,59 +32,98 @@ function h(text: string, level = 2): ParsedHeading {
 describe("matchHeading", () => {
     describe("exact mode", () => {
         it("matches when heading text equals pattern (same case)", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("Decision", h("Decision"), "exact")).toBe(true);
         });
 
         it("matches case-insensitively", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("Decision", h("decision"), "exact")).toBe(true);
             expect(matchHeading("decision", h("Decision"), "exact")).toBe(true);
         });
 
         it("does NOT match when heading has extra text", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("Decision", h("Decision Record"), "exact")).toBe(false);
         });
 
         it("does NOT match an unrelated heading", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("Decision", h("Context"), "exact")).toBe(false);
         });
     });
 
     describe("prefix mode", () => {
         it("matches when heading starts with the pattern", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("Decision", h("Decision: Use Postgres"), "prefix")).toBe(true);
         });
 
         it("matches exact heading text as a prefix", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("Decision", h("Decision"), "prefix")).toBe(true);
         });
 
         it("does NOT match when pattern appears mid-string but not at start", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("decision", h("Indecision"), "prefix")).toBe(false);
         });
 
         it("is case-insensitive", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("decision", h("Decision: Use Postgres"), "prefix")).toBe(true);
         });
     });
 
     describe("contains mode", () => {
         it("matches when pattern appears anywhere in the heading", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("decision", h("Our Final Decision"), "contains")).toBe(true);
         });
 
         it("matches at the start", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("decision", h("Decision Record"), "contains")).toBe(true);
         });
 
         it("matches in the middle", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("final", h("Our Final Decision"), "contains")).toBe(true);
         });
 
         it("is case-insensitive", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("DECISION", h("Our Final Decision"), "contains")).toBe(true);
         });
 
         it("does NOT match when pattern is absent", () => {
+            // Given the inline inputs and test fixtures.
+            // When the operation is evaluated by the assertion.
+            // Then
             expect(matchHeading("context", h("Our Final Decision"), "contains")).toBe(false);
         });
     });
@@ -96,6 +135,7 @@ describe("matchHeading", () => {
 
 describe("scoreTemplate", () => {
     it("scores 2 required headings found = 2 pts, 1 optional found = 0.5 pts → total 2.5", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 1,
             headings: [
@@ -105,11 +145,14 @@ describe("scoreTemplate", () => {
             ],
             frontmatter: []
         };
+        // When
         const headings: ParsedHeading[] = [h("Context"), h("Decision"), h("Consequences")];
+        // Then
         expect(scoreTemplate(rules, headings, {})).toBe(2.5);
     });
 
     it("returns 0 if any required heading is missing", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 1,
             headings: [
@@ -118,95 +161,125 @@ describe("scoreTemplate", () => {
             ],
             frontmatter: []
         };
+        // When
         // Only "Context" is present, "Decision" is absent
         const headings: ParsedHeading[] = [h("Context")];
+        // Then
         expect(scoreTemplate(rules, headings, {})).toBe(0);
     });
 
     it("scores frontmatter exact match (+1 point)", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
             frontmatter: [{ key: "type", match: "exact", value: "adr" }]
         };
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(scoreTemplate(rules, [], { type: "adr" })).toBe(1);
     });
 
     it("does NOT score frontmatter exact match when value differs", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
             frontmatter: [{ key: "type", match: "exact", value: "adr" }]
         };
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(scoreTemplate(rules, [], { type: "runbook" })).toBe(0);
     });
 
     it("scores frontmatter oneOf match (+1 point)", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
             frontmatter: [{ key: "type", match: "oneOf", values: ["adr", "decision", "record"] }]
         };
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(scoreTemplate(rules, [], { type: "decision" })).toBe(1);
     });
 
     it("does NOT score frontmatter oneOf when value not in list", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
             frontmatter: [{ key: "type", match: "oneOf", values: ["adr", "decision", "record"] }]
         };
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(scoreTemplate(rules, [], { type: "runbook" })).toBe(0);
     });
 
     it("scores frontmatter exists match (+1) when key is present", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
             frontmatter: [{ key: "author", match: "exists" }]
         };
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(scoreTemplate(rules, [], { author: "alice" })).toBe(1);
     });
 
     it("scores 0 for frontmatter exists when key is absent", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 0,
             headings: [],
             frontmatter: [{ key: "author", match: "exists" }]
         };
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(scoreTemplate(rules, [], {})).toBe(0);
     });
 
     it("respects heading level filter — level 3 rule does NOT match a level 2 heading", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 1,
             headings: [{ patterns: ["Decision"], match: "exact", required: true, level: 3 }],
             frontmatter: []
         };
+        // When the operation is evaluated by the assertion.
+        // Then
         // Heading "Decision" at level 2 should NOT satisfy a level-3 rule
         expect(scoreTemplate(rules, [h("Decision", 2)], {})).toBe(0);
     });
 
     it("matches when heading level matches the rule level", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 1,
             headings: [{ patterns: ["Decision"], match: "exact", required: true, level: 3 }],
             frontmatter: []
         };
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(scoreTemplate(rules, [h("Decision", 3)], {})).toBe(1);
     });
 
     it("returns 0 when total score is below minScore", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 3,
             headings: [{ patterns: ["Context"], match: "exact", required: false }],
             frontmatter: []
         };
+        // When the operation is evaluated by the assertion.
+        // Then
         // Only 0.5 score from one optional heading → below minScore 3
         expect(scoreTemplate(rules, [h("Context")], {})).toBe(0);
     });
 
     it("matches alternative patterns — any pattern in the list counts", () => {
+        // Given
         const rules: MatchRules = {
             minScore: 1,
             headings: [
@@ -218,6 +291,8 @@ describe("scoreTemplate", () => {
             ],
             frontmatter: []
         };
+        // When the operation is evaluated by the assertion.
+        // Then
         expect(scoreTemplate(rules, [h("Resolution")], {})).toBe(1);
         expect(scoreTemplate(rules, [h("Outcome")], {})).toBe(1);
     });
@@ -229,6 +304,7 @@ describe("scoreTemplate", () => {
 
 describe("matchTemplates", () => {
     it("returns the highest scoring template", () => {
+        // Given
         const lowScorer = makeTemplate({
             id: "t1",
             name: "Low",
@@ -256,13 +332,16 @@ describe("matchTemplates", () => {
             frontmatter: {}
         };
 
+        // When
         const result = matchTemplates(doc, [lowScorer, highScorer]);
+        // Then
         expect(result).not.toBeNull();
         expect(result!.templateId).toBe("t2");
         expect(result!.score).toBe(2);
     });
 
     it("breaks ties by priority (higher priority wins)", () => {
+        // Given
         const lowPriority = makeTemplate({
             id: "t1",
             name: "Low Priority",
@@ -286,12 +365,15 @@ describe("matchTemplates", () => {
 
         const doc = { headings: [h("Context")], frontmatter: {} };
 
+        // When
         const result = matchTemplates(doc, [lowPriority, highPriority]);
+        // Then
         expect(result).not.toBeNull();
         expect(result!.templateId).toBe("t2");
     });
 
     it("returns null when no templates match", () => {
+        // Given
         const template = makeTemplate({
             id: "t1",
             name: "ADR",
@@ -301,16 +383,22 @@ describe("matchTemplates", () => {
                 frontmatter: []
             }
         });
+        // When
         const doc = { headings: [h("Introduction")], frontmatter: {} };
+        // Then
         expect(matchTemplates(doc, [template])).toBeNull();
     });
 
     it("returns null for an empty templates list", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const doc = { headings: [h("Context"), h("Decision")], frontmatter: {} };
+        // Then
         expect(matchTemplates(doc, [])).toBeNull();
     });
 
     it("returns the correct templateName, type, and tags in the result", () => {
+        // Given
         const template = makeTemplate({
             id: "adr-1",
             name: "Architecture Decision Record",
@@ -323,7 +411,9 @@ describe("matchTemplates", () => {
             }
         });
         const doc = { headings: [h("Decision")], frontmatter: {} };
+        // When
         const result = matchTemplates(doc, [template]);
+        // Then
         expect(result).not.toBeNull();
         expect(result!.templateId).toBe("adr-1");
         expect(result!.templateName).toBe("Architecture Decision Record");
@@ -333,6 +423,7 @@ describe("matchTemplates", () => {
     });
 
     it("returns empty tags array when template has null tags", () => {
+        // Given
         const template = makeTemplate({
             id: "t1",
             name: "Template",
@@ -344,7 +435,9 @@ describe("matchTemplates", () => {
             }
         });
         const doc = { headings: [h("Context")], frontmatter: {} };
+        // When
         const result = matchTemplates(doc, [template]);
+        // Then
         expect(result!.tags).toEqual([]);
     });
 });

@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop -- Selection changes share one overlay and must settle sequentially. */
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, type Locator } from "@playwright/test";
+import { reportStep } from "../reporting";
 
 import { Radio, WritableControl, named, type Name } from "./core";
 import { Overlay } from "./overlay";
@@ -31,7 +32,7 @@ export class SingleSelect<Options extends OptionMap> extends WritableControl<Opt
     }
     async set(value: OptionKey<Options>) {
         const key = this.validate(value);
-        await test.step(`Choose select option: ${key}`, async () => {
+        await reportStep(`Choose select option: ${key}`, this.root, async () => {
             const content = await this.overlay.open();
             await content.root.getByRole("option", named(optionName(this.options.options, key))).click();
         });
@@ -62,7 +63,7 @@ export class MultiSelect<Options extends OptionMap> extends WritableControl<read
     }
     async set(values: readonly OptionKey<Options>[]) {
         const selected = new Set(this.validate(values));
-        await test.step("Set multiselect options", async () => {
+        await reportStep("Set multiselect options", this.root, async () => {
             for (const key of Object.keys(this.options.options))
                 await this.setSelected(optionKey(this.options.options, key), selected.has(optionKey(this.options.options, key)));
             await this.overlay.close();
@@ -102,5 +103,28 @@ export class RadioGroup<Options extends OptionMap> extends WritableControl<Optio
     }
     async expectValue(key: OptionKey<Options>) {
         await this.option(key).expectChecked();
+    }
+}
+
+// Bind native option values, not their display labels.
+export class NativeSelect<Options extends Readonly<Record<string, string>>> extends WritableControl<OptionKey<Options>> {
+    constructor(
+        root: Locator,
+        private readonly options: Options
+    ) {
+        super(root, value => optionKey(options, value));
+    }
+    async set(value: OptionKey<Options>) {
+        const key = this.validate(value);
+        await reportStep(`Choose native select option: ${key}`, this.root, async () => {
+            await this.root.selectOption({ value: this.options[key]! });
+            await this.expectValue(key);
+        });
+    }
+    async choose(value: OptionKey<Options>) {
+        await this.set(value);
+    }
+    async expectValue(value: OptionKey<Options>) {
+        await expect(this.root).toHaveValue(this.options[this.validate(value)]!);
     }
 }

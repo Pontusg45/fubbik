@@ -69,12 +69,15 @@ mod tests {
 
     #[test]
     fn serialises_as_utc_iso8601_with_trailing_z_and_millis() {
+        // Given
         let naive =
             NaiveDateTime::parse_from_str("2026-06-21 11:40:08.252381", "%Y-%m-%d %H:%M:%S%.f")
                 .unwrap();
         let ts = UtcTimestamp(naive);
 
+        // When
         let json = serde_json::to_string(&ts).unwrap();
+        // Then
         assert!(
             json.ends_with("Z\""),
             "expected a trailing Z before the closing quote, got {json}"
@@ -89,6 +92,7 @@ mod tests {
     /// discards.
     #[test]
     fn round_trips_to_the_same_instant() {
+        // Given
         let naive =
             NaiveDateTime::parse_from_str("2026-06-21 11:40:08.252", "%Y-%m-%d %H:%M:%S%.f")
                 .unwrap();
@@ -96,8 +100,10 @@ mod tests {
 
         let json = serde_json::to_string(&ts).unwrap();
         let s: String = serde_json::from_str(&json).unwrap();
+        // When
         let parsed = DateTime::parse_from_rfc3339(&s).unwrap();
 
+        // Then
         assert_eq!(parsed.with_timezone(&Utc), ts.to_utc());
     }
 }

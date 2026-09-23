@@ -1,4 +1,5 @@
-import { expect, test, type FrameLocator, type Locator, type Page } from "@playwright/test";
+import { expect, type FrameLocator, type Locator, type Page } from "@playwright/test";
+import { reportStep } from "../reporting";
 
 export type Name = string | RegExp;
 export type Target = Name | Locator;
@@ -19,6 +20,7 @@ export const fieldValue: unique symbol = Symbol("fieldValue");
 export const validateField: unique symbol = Symbol("validateField");
 export const writeField: unique symbol = Symbol("writeField");
 export interface FormField {
+    readonly root: Locator;
     readonly [fieldValue]: unknown;
     [validateField](value: unknown): void;
     [writeField](value: unknown): Promise<void>;
@@ -149,7 +151,7 @@ export class Disclosure extends Surface {
         this.trigger = new Button(root);
     }
     async expand() {
-        await test.step("Expand disclosure", async () => {
+        await reportStep("Expand disclosure", this.root, async () => {
             await this.expectVisible();
             if ((await this.root.getAttribute("aria-expanded")) !== "true") await this.trigger.click();
             await this.expectExpanded();

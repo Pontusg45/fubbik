@@ -30,9 +30,12 @@ async fn get(app: &axum::Router, path: &str) -> axum::response::Response {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn implicit_dev_session_creates_the_dev_user_on_an_empty_database(pool: PgPool) {
+    // Given
     // The ONLY state in which the current bug appears. With a seeded DB it passes either way.
     let app = test_app_with_implicit_dev(pool.clone()).await;
+    // When
     let res = get(&app, "/api/chunks").await;
+    // Then
     assert_eq!(
         res.status(),
         200,

@@ -43,8 +43,10 @@ fn bare(id: &str, label: &str) -> NewConnectionRelation {
 
 #[sqlx::test]
 async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
 
+    // When
     let created = connection_relation::create(
         &pool,
         &uid,
@@ -63,6 +65,7 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert_eq!(created.id, "mirrors");
     assert_eq!(created.arrow_style, "dotted");
     assert_eq!(created.direction, "bidirectional");
@@ -85,11 +88,14 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
 /// is `100`, Node passes `500`.
 #[sqlx::test]
 async fn create_applies_nodes_defaults_not_the_column_defaults(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
+    // When
     let created = connection_relation::create(&pool, &uid, bare("plain", "Plain"))
         .await
         .unwrap();
 
+    // Then
     assert_eq!(created.arrow_style, "solid");
     assert_eq!(created.direction, "forward");
     assert_eq!(created.color, "#64748b");
@@ -100,12 +106,14 @@ async fn create_applies_nodes_defaults_not_the_column_defaults(pool: sqlx::PgPoo
 
 #[sqlx::test]
 async fn list_includes_builtin_and_own_but_excludes_other_users(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
 
     connection_relation::create(&pool, &alice, bare("alices", "Alice's"))
         .await
         .unwrap();
+    // When
     connection_relation::create(&pool, &bob, bare("bobs", "Bob's"))
         .await
         .unwrap();
@@ -116,6 +124,7 @@ async fn list_includes_builtin_and_own_but_excludes_other_users(pool: sqlx::PgPo
         .into_iter()
         .map(|r| r.id)
         .collect();
+    // Then
     assert!(ids.contains(&"alices".to_string()));
     assert!(
         ids.contains(&"depends_on".to_string()),
@@ -128,6 +137,7 @@ async fn list_includes_builtin_and_own_but_excludes_other_users(pool: sqlx::PgPo
 /// both halves of the flagged Node quirk are covered.
 #[sqlx::test]
 async fn list_space_id_widens_rather_than_filters(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let space_id = fubbik_db::new_id();
@@ -140,6 +150,7 @@ async fn list_space_id_widens_rather_than_filters(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     sqlx::query!(
         r#"INSERT INTO connection_relation (id, label, user_id, space_id)
            VALUES ('bobs_spaced', 'Bob''s', $1, $2)"#,
@@ -156,6 +167,7 @@ async fn list_space_id_widens_rather_than_filters(pool: sqlx::PgPool) {
         .into_iter()
         .map(|r| r.id)
         .collect();
+    // Then
     assert!(!without.contains(&"bobs_spaced".to_string()));
 
     let with: Vec<String> = connection_relation::list(&pool, &alice, Some(&space_id))
@@ -176,8 +188,10 @@ async fn list_space_id_widens_rather_than_filters(pool: sqlx::PgPool) {
 /// these rows the tiebreaker would never be reached.
 #[sqlx::test]
 async fn list_breaks_display_order_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     for id in ["zeta", "mu", "alpha", "sigma", "beta"] {
+        // When
         connection_relation::create(
             &pool,
             &uid,
@@ -197,6 +211,7 @@ async fn list_breaks_display_order_ties_by_id(pool: sqlx::PgPool) {
         .filter(|r| r.display_order == 42)
         .map(|r| r.id)
         .collect();
+    // Then
     assert_eq!(tied, vec!["alpha", "beta", "mu", "sigma", "zeta"]);
 
     let orders: Vec<i32> = connection_relation::list(&pool, &uid, None)
@@ -213,6 +228,7 @@ async fn list_breaks_display_order_ties_by_id(pool: sqlx::PgPool) {
 /// `update`'s `WHERE user_id = $2` guard — removing it turns this red.
 #[sqlx::test]
 async fn update_is_scoped_to_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     connection_relation::create(
@@ -226,6 +242,7 @@ async fn update_is_scoped_to_owner(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let result = connection_relation::update(
         &pool,
         &bob,
@@ -237,6 +254,7 @@ async fn update_is_scoped_to_owner(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(result.is_none(), "Bob must not update Alice's relation");
 
     let untouched = connection_relation::find_by_id(&pool, "alices")
@@ -249,7 +267,9 @@ async fn update_is_scoped_to_owner(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_cannot_touch_a_seeded_builtin_even_at_the_repo_layer(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
+    // When
     let result = connection_relation::update(
         &pool,
         &uid,
@@ -261,6 +281,7 @@ async fn update_cannot_touch_a_seeded_builtin_even_at_the_repo_layer(pool: sqlx:
     )
     .await
     .unwrap();
+    // Then
     assert!(result.is_none());
     assert_eq!(
         connection_relation::find_by_id(&pool, "depends_on")
@@ -276,6 +297,7 @@ async fn update_cannot_touch_a_seeded_builtin_even_at_the_repo_layer(pool: sqlx:
 /// moving.
 #[sqlx::test]
 async fn update_owner_succeeds_with_tri_state_and_touches_updated_at(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let created = connection_relation::create(
         &pool,
@@ -290,6 +312,7 @@ async fn update_owner_succeeds_with_tri_state_and_touches_updated_at(pool: sqlx:
     .await
     .unwrap();
 
+    // When
     let updated = connection_relation::update(
         &pool,
         &uid,
@@ -308,6 +331,7 @@ async fn update_owner_succeeds_with_tri_state_and_touches_updated_at(pool: sqlx:
     .unwrap()
     .expect("owner update must succeed");
 
+    // Then
     assert_eq!(updated.label, "Renamed");
     assert_eq!(updated.description, None, "explicit null must clear");
     assert_eq!(updated.arrow_style, "dashed");
@@ -339,15 +363,18 @@ async fn update_owner_succeeds_with_tri_state_and_touches_updated_at(pool: sqlx:
 
 #[sqlx::test]
 async fn delete_is_scoped_to_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     connection_relation::create(&pool, &alice, bare("alices", "Alice's"))
         .await
         .unwrap();
 
+    // When
     let deleted = connection_relation::delete(&pool, &bob, "alices")
         .await
         .unwrap();
+    // Then
     assert!(!deleted, "Bob must not delete Alice's relation");
     assert!(
         connection_relation::find_by_id(&pool, "alices")
@@ -362,7 +389,9 @@ async fn delete_is_scoped_to_owner(pool: sqlx::PgPool) {
 /// equivalent test in `chunk_type.rs` for the full reasoning.
 #[sqlx::test]
 async fn delete_has_no_built_in_clause_matching_node(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
+    // When
     sqlx::query!(
         r#"INSERT INTO connection_relation (id, label, built_in, user_id)
            VALUES ('adversarial', 'A', true, $1)"#,
@@ -372,6 +401,7 @@ async fn delete_has_no_built_in_clause_matching_node(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert!(
         connection_relation::delete(&pool, &alice, "adversarial")
             .await
@@ -383,11 +413,14 @@ async fn delete_has_no_built_in_clause_matching_node(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn delete_removes_owned_row(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
+    // When
     connection_relation::create(&pool, &uid, bare("disposable", "Disposable"))
         .await
         .unwrap();
 
+    // Then
     assert!(
         connection_relation::delete(&pool, &uid, "disposable")
             .await
@@ -403,11 +436,14 @@ async fn delete_removes_owned_row(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn find_by_id_is_unscoped_by_design(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
+    // When
     connection_relation::create(&pool, &alice, bare("alices", "Alice's"))
         .await
         .unwrap();
 
+    // Then
     // No user_id parameter to pass at all -- that is the point.
     assert!(
         connection_relation::find_by_id(&pool, "alices")

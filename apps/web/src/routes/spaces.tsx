@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { FolderGit2, GitBranch, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
@@ -14,7 +14,7 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/spaces")({
-    component: SpacesPage,
+    component: SpacesRoute,
     beforeLoad: async () => {
         let session = null;
         try {
@@ -23,6 +23,11 @@ export const Route = createFileRoute("/spaces")({
         return { session };
     }
 });
+
+function SpacesRoute() {
+    const pathname = useRouterState({ select: state => state.location.pathname });
+    return pathname === "/spaces" || pathname === "/spaces/" ? <SpacesPage /> : <Outlet />;
+}
 
 type ConfirmAction = {
     type: "reset" | "delete";

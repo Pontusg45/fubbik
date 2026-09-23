@@ -15,7 +15,7 @@ Domain-specific components live in `apps/web/src/features/`:
 
 - `features/auth/` — login, session management
 - `features/graph/` — graph visualization components
-- `features/codebases/` — codebase switcher, management
+- `features/spaces/` — space switcher and management
 - `features/plans/` — plan creation, detail, task management
 - `features/chunks/` — chunk list, detail, editing
 
@@ -35,5 +35,5 @@ Reusable components in `apps/web/src/components/ui/`:
 | Framework  | TanStack Start (SSR) |
 | Styling    | Tailwind CSS         |
 | UI Library | shadcn-ui (base-ui)  |
-| API Client | Eden treaty          |
+| API Client | Rust OpenAPI client  |
 | State/Data | React Query          |

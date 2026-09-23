@@ -48,6 +48,7 @@ fn unreachable_ai() -> fubbik_ai::OllamaClient {
 /// the result would not catch that.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn file_ref_match_outranks_applies_to_match(pool: sqlx::PgPool) {
+    // Given
     let user_id = seed_user(&pool, "bonus-order@b.test").await;
 
     let file_ref_chunk = chunk::create(&pool, &user_id, new_chunk("File-ref chunk"))
@@ -76,6 +77,7 @@ async fn file_ref_match_outranks_applies_to_match(pool: sqlx::PgPool) {
 
     let ai = unreachable_ai();
     let background = Default::default();
+    // When
     let result = get_context_for_file(
         &pool,
         &ai,
@@ -99,6 +101,7 @@ async fn file_ref_match_outranks_applies_to_match(pool: sqlx::PgPool) {
         .find(|c| c.id == applies_to_chunk.id)
         .expect("applies-to chunk must be in the result");
 
+    // Then
     assert_eq!(file_ref_result.match_reason, MatchReason::FileRef);
     assert_eq!(applies_to_result.match_reason, MatchReason::AppliesTo);
 
@@ -142,6 +145,7 @@ async fn file_ref_match_outranks_applies_to_match(pool: sqlx::PgPool) {
 /// format silently.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn each_result_carries_its_match_reason(pool: sqlx::PgPool) {
+    // Given
     let user_id = seed_user(&pool, "match-reason@b.test").await;
 
     let file_ref_chunk = chunk::create(&pool, &user_id, new_chunk("File-ref chunk"))
@@ -170,6 +174,7 @@ async fn each_result_carries_its_match_reason(pool: sqlx::PgPool) {
 
     let ai = unreachable_ai();
     let background = Default::default();
+    // When
     let result = get_context_for_file(
         &pool,
         &ai,
@@ -185,6 +190,7 @@ async fn each_result_carries_its_match_reason(pool: sqlx::PgPool) {
     let by_id = |id: &str| result.chunks.iter().find(|c| c.id == id).unwrap();
 
     let file_ref_json = serde_json::to_value(by_id(&file_ref_chunk.id)).unwrap();
+    // Then
     assert_eq!(file_ref_json["matchReason"], "file-ref");
 
     let applies_to_json = serde_json::to_value(by_id(&applies_to_chunk.id)).unwrap();
@@ -203,6 +209,7 @@ async fn each_result_carries_its_match_reason(pool: sqlx::PgPool) {
 /// HTTP route: 200, not 502, with the file-ref/applies-to results intact.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn semantic_strategy_is_skipped_when_ollama_is_unreachable(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "semantic-down@b.test", "Semantic Down").await;
     let user_id = user_id_for_email(&pool, "semantic-down@b.test").await;
@@ -219,12 +226,14 @@ async fn semantic_strategy_is_skipped_when_ollama_is_unreachable(pool: sqlx::PgP
     .await
     .unwrap();
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/context/for-file?path=src/widget.rs&format=json-legacy",
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         axum::http::StatusCode::OK,
@@ -254,8 +263,11 @@ async fn semantic_strategy_is_skipped_when_ollama_is_unreachable(pool: sqlx::PgP
 /// `glob-match.test.ts` exercises, at the seam this task actually touches.
 #[test]
 fn glob_matching_handles_star_and_double_star() {
+    // Given
     use fubbik_core::glob::glob_match;
 
+    // When the operation is evaluated by the assertion.
+    // Then
     assert!(
         glob_match("src/*.rs", "src/main.rs"),
         "a single `*` must match one path segment"
@@ -295,6 +307,7 @@ fn glob_matching_handles_star_and_double_star() {
 /// doc comment).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn dependency_detection_matches_a_space_name(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "dep-match@b.test", "Dep Match").await;
     let user_id = user_id_for_email(&pool, "dep-match@b.test").await;
@@ -324,6 +337,7 @@ async fn dependency_detection_matches_a_space_name(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     // `@acme/auth` matches the `auth` space via the scoped-package
     // last-segment rule, not an exact-string match.
     let res = get(
@@ -332,6 +346,7 @@ async fn dependency_detection_matches_a_space_name(pool: sqlx::PgPool) {
         "/api/context/for-file?path=irrelevant/path.rs&format=json-legacy&deps=%40acme%2Fauth",
     )
     .await;
+    // Then
     assert_eq!(res.status(), axum::http::StatusCode::OK);
     let body = json_body(res).await;
     let matches: Vec<(&str, &str)> = body["chunks"]
@@ -368,6 +383,7 @@ async fn dependency_detection_matches_a_space_name(pool: sqlx::PgPool) {
 /// space/dependency) would never have appeared here.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn for_files_finds_a_chunk_via_the_semantic_strategy(pool: sqlx::PgPool) {
+    // Given
     let mut query_vector = vec![0.0f32; 768];
     query_vector[0] = 1.0;
     let server = wiremock::MockServer::start().await;
@@ -411,12 +427,14 @@ async fn for_files_finds_a_chunk_via_the_semantic_strategy(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/context/for-files?paths=some/unrelated/path.rs&maxTokens=50000",
     )
     .await;
+    // Then
     assert_eq!(res.status(), axum::http::StatusCode::OK);
     let body = json_body(res).await;
     let content = body["content"].as_str().unwrap();
@@ -445,6 +463,7 @@ async fn for_files_finds_a_chunk_via_the_semantic_strategy(pool: sqlx::PgPool) {
 /// applies-to, even with a matching glob pattern.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn applies_to_strategy_considers_more_than_100_qualifying_chunks(pool: sqlx::PgPool) {
+    // Given
     let user_id = seed_user(&pool, "applies-to-wide@b.test").await;
 
     // 150 filler chunks, ids "filler-0001".."filler-0150", all inserted (and
@@ -485,6 +504,7 @@ async fn applies_to_strategy_considers_more_than_100_qualifying_chunks(pool: sql
 
     let ai = unreachable_ai();
     let background = Default::default();
+    // When
     let result = get_context_for_file(
         &pool,
         &ai,
@@ -498,6 +518,7 @@ async fn applies_to_strategy_considers_more_than_100_qualifying_chunks(pool: sql
     .unwrap();
 
     let found = result.chunks.iter().find(|c| c.id == target.id);
+    // Then
     assert!(
         found.is_some(),
         "a chunk ranked 151st must still be reachable via the applies-to strategy \
@@ -524,6 +545,7 @@ async fn applies_to_strategy_considers_more_than_100_qualifying_chunks(pool: sql
 ///    empty heading section) even when there is nothing to append.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn for_file_appends_governing_behaviors_to_markdown(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "behaviors-md@b.test", "Behaviors Md").await;
     let user_id = user_id_for_email(&pool, "behaviors-md@b.test").await;
@@ -578,6 +600,7 @@ async fn for_file_appends_governing_behaviors_to_markdown(pool: sqlx::PgPool) {
     .unwrap()
     .unwrap();
 
+    // When
     // Half one: the governed path gets the section.
     let governed = get(
         app.clone(),
@@ -585,6 +608,7 @@ async fn for_file_appends_governing_behaviors_to_markdown(pool: sqlx::PgPool) {
         "/api/context/for-file?path=src/governed.rs",
     )
     .await;
+    // Then
     assert_eq!(governed.status(), StatusCode::OK);
     let governed_body = json_body(governed).await;
     let governed_content = governed_body["content"].as_str().unwrap();

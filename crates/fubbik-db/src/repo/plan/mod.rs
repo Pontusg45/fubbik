@@ -84,8 +84,8 @@ pub struct Plan {
 // annotation needed — same pattern as `chunk::list`'s `QueryBuilder` query.
 const PLAN_COLUMNS: &str = "id, title, description, status, user_id, space_id, created_at, updated_at, completed_at, metadata";
 
-pub async fn create(
-    pool: &PgPool,
+pub async fn create<'e, E: sqlx::PgExecutor<'e>>(
+    executor: E,
     user_id: &str,
     title: &str,
     description: Option<&str>,
@@ -107,7 +107,7 @@ pub async fn create(
         user_id,
         space_id
     )
-    .fetch_one(pool)
+    .fetch_one(executor)
     .await?;
     Ok(p)
 }
@@ -670,8 +670,8 @@ pub enum CompletedAtPatch {
 /// `AND user_id = $2` on the `UPDATE` — divergence #13 again, same guard
 /// shape as `plan::update`.
 #[allow(clippy::too_many_arguments)]
-pub async fn apply_patch(
-    pool: &PgPool,
+pub async fn apply_patch<'e, E: sqlx::PgExecutor<'e>>(
+    executor: E,
     user_id: &str,
     id: &str,
     title: Option<&str>,
@@ -734,7 +734,7 @@ pub async fn apply_patch(
             completed_set,
             completed_clear
         )
-        .fetch_optional(pool)
+        .fetch_optional(executor)
         .await?
     } else {
         sqlx::query_as!(
@@ -748,7 +748,7 @@ pub async fn apply_patch(
             id,
             user_id
         )
-        .fetch_optional(pool)
+        .fetch_optional(executor)
         .await?
     };
     Ok(p)

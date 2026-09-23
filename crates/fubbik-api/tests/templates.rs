@@ -138,6 +138,7 @@ fn create_body(name: &str) -> serde_json::Value {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_returns_bare_array_with_builtin_and_own_only(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-list@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-list@b.test", "Bob").await;
@@ -146,7 +147,9 @@ async fn list_returns_bare_array_with_builtin_and_own_only(pool: sqlx::PgPool) {
     create_template(app.clone(), &bob_cookie, create_body("Bob's")).await;
     seed_builtin(&pool, "Convention").await;
 
+    // When
     let res = list_templates(app.clone(), &alice_cookie).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert!(
@@ -169,10 +172,13 @@ async fn list_returns_bare_array_with_builtin_and_own_only(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_returns_201_with_created_template(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-create@b.test", "Alice").await;
 
+    // When
     let res = create_template(app.clone(), &cookie, create_body("New Template")).await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let body = json_body(res).await;
     assert_eq!(body["name"], "New Template");
@@ -186,6 +192,7 @@ async fn create_returns_201_with_created_template(pool: sqlx::PgPool) {
 /// keys Node's Elysia schema uses.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_with_match_rules_round_trips_camel_case_shape(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-mr@b.test", "Alice").await;
 
@@ -201,7 +208,9 @@ async fn create_with_match_rules_round_trips_camel_case_shape(pool: sqlx::PgPool
     body["tags"] = serde_json::json!(["adr"]);
     body["priority"] = serde_json::json!(3);
 
+    // When
     let res = create_template(app.clone(), &cookie, body).await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let resp = json_body(res).await;
     assert_eq!(resp["matchRules"]["minScore"], 1.5);
@@ -213,6 +222,7 @@ async fn create_with_match_rules_round_trips_camel_case_shape(pool: sqlx::PgPool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_owner_succeeds_and_returns_updated_template(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-update@b.test", "Alice").await;
 
@@ -220,6 +230,7 @@ async fn update_owner_succeeds_and_returns_updated_template(pool: sqlx::PgPool) 
         json_body(create_template(app.clone(), &cookie, create_body("Original")).await).await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let res = update_template(
         app.clone(),
         &cookie,
@@ -227,6 +238,7 @@ async fn update_owner_succeeds_and_returns_updated_template(pool: sqlx::PgPool) 
         serde_json::json!({ "name": "Renamed" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["name"], "Renamed");
@@ -242,6 +254,7 @@ async fn update_owner_succeeds_and_returns_updated_template(pool: sqlx::PgPool) 
 /// correctly end to end, not just at the repo layer directly.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_null_description_clears_it_and_omitted_leaves_it_untouched(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-null@b.test", "Alice").await;
 
@@ -250,6 +263,7 @@ async fn update_null_description_clears_it_and_omitted_leaves_it_untouched(pool:
     let created = json_body(create_template(app.clone(), &cookie, body).await).await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let res = update_template(
         app.clone(),
         &cookie,
@@ -257,6 +271,7 @@ async fn update_null_description_clears_it_and_omitted_leaves_it_untouched(pool:
         serde_json::json!({ "description": null }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["description"], serde_json::Value::Null);
@@ -286,10 +301,12 @@ async fn update_null_description_clears_it_and_omitted_leaves_it_untouched(pool:
 /// to 404, so this assertion on `StatusCode::BAD_REQUEST` catches it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_rejects_built_in_template_with_400(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-builtin@b.test", "Alice").await;
     let builtin_id = seed_builtin(&pool, "Convention").await;
 
+    // When
     let res = update_template(
         app.clone(),
         &cookie,
@@ -297,6 +314,7 @@ async fn update_rejects_built_in_template_with_400(pool: sqlx::PgPool) {
         serde_json::json!({ "name": "hijacked" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let body = json_body(res).await;
     // `AppError::Validation`'s `Display` prepends "validation failed: " to
@@ -323,11 +341,14 @@ async fn update_rejects_built_in_template_with_400(pool: sqlx::PgPool) {
 /// (`packages/api/src/templates/service.ts:73-75`) is replicated.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_rejects_built_in_template_with_400(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-builtin-del@b.test", "Alice").await;
     let builtin_id = seed_builtin(&pool, "Convention").await;
 
+    // When
     let res = delete_template(app.clone(), &cookie, &builtin_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let body = json_body(res).await;
     assert!(
@@ -349,6 +370,7 @@ async fn delete_rejects_built_in_template_with_400(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_cross_user_is_404_and_leaves_victim_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-x@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-x@b.test", "Bob").await;
@@ -357,6 +379,7 @@ async fn update_cross_user_is_404_and_leaves_victim_unchanged(pool: sqlx::PgPool
         json_body(create_template(app.clone(), &alice_cookie, create_body("Alice's")).await).await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let res = update_template(
         app.clone(),
         &bob_cookie,
@@ -364,6 +387,7 @@ async fn update_cross_user_is_404_and_leaves_victim_unchanged(pool: sqlx::PgPool
         serde_json::json!({ "name": "hijacked" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let still_named: String =
@@ -379,6 +403,7 @@ async fn update_cross_user_is_404_and_leaves_victim_unchanged(pool: sqlx::PgPool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_cross_user_is_404_and_leaves_victim_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-y@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-y@b.test", "Bob").await;
@@ -387,7 +412,9 @@ async fn delete_cross_user_is_404_and_leaves_victim_unchanged(pool: sqlx::PgPool
         json_body(create_template(app.clone(), &alice_cookie, create_body("Alice's")).await).await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let res = delete_template(app.clone(), &bob_cookie, id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let still_there: i64 = sqlx::query_scalar!(
@@ -405,6 +432,7 @@ async fn delete_cross_user_is_404_and_leaves_victim_unchanged(pool: sqlx::PgPool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_returns_message_deleted_and_removes_row(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-del@b.test", "Alice").await;
 
@@ -412,7 +440,9 @@ async fn delete_returns_message_deleted_and_removes_row(pool: sqlx::PgPool) {
         json_body(create_template(app.clone(), &cookie, create_body("Disposable")).await).await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let res = delete_template(app.clone(), &cookie, id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body, serde_json::json!({ "message": "Deleted" }));

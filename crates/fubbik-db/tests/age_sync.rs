@@ -33,6 +33,7 @@ async fn seed_chunk(pool: &sqlx::PgPool, user_id: &str) -> String {
 #[sqlx::test]
 async fn creating_a_connection_projects_an_edge(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -40,6 +41,7 @@ async fn creating_a_connection_projects_an_edge(pool: sqlx::PgPool) {
     let a = seed_chunk(&pool, &alice).await;
     let b = seed_chunk(&pool, &alice).await;
 
+    // When
     connection::create(
         &pool,
         &fubbik_db::new_id(),
@@ -54,6 +56,7 @@ async fn creating_a_connection_projects_an_edge(pool: sqlx::PgPool) {
     .unwrap()
     .expect("both endpoints belong to the caller, so the insert must succeed");
 
+    // Then
     assert_eq!(projection::pending_count(&pool).await.unwrap(), 1);
     let projected = projection::process_batch(&pool, 10).await.unwrap();
     assert_eq!(projected.completed, 1);
@@ -74,6 +77,7 @@ async fn creating_a_connection_projects_an_edge(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn deleting_a_connection_removes_the_edge(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -94,7 +98,9 @@ async fn deleting_a_connection_removes_the_edge(pool: sqlx::PgPool) {
     .await
     .unwrap()
     .expect("both endpoints belong to the caller, so the insert must succeed");
+    // When
     let projected = projection::process_batch(&pool, 10).await.unwrap();
+    // Then
     assert_eq!(projected.completed, 1);
     assert_eq!(projected.failed, 0);
     assert_eq!(age::count_edges_between(&pool, &a, &b).await.unwrap(), 1);
@@ -126,12 +132,14 @@ async fn deleting_a_connection_removes_the_edge(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn backfill_is_idempotent(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
     let alice = seed_user(&pool, "alice-sync-backfill@b.test").await;
     let a = seed_chunk(&pool, &alice).await;
     let b = seed_chunk(&pool, &alice).await;
+    // When
     // Insert a row directly, bypassing write-time projection, to simulate
     // data that existed before this port started projecting connections.
     sqlx::query!(
@@ -143,6 +151,7 @@ async fn backfill_is_idempotent(pool: sqlx::PgPool) {
     .execute(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(
         age::count_edges_between(&pool, &a, &b).await.unwrap(),
         0,
@@ -166,6 +175,7 @@ async fn backfill_is_idempotent(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn backfill_projects_every_preexisting_row_without_duplication(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -192,7 +202,9 @@ async fn backfill_projects_every_preexisting_row_without_duplication(pool: sqlx:
     .await
     .unwrap();
 
+    // When
     let first = age::backfill_connections(&pool).await.unwrap();
+    // Then
     assert_eq!(first, 2, "both pre-existing rows must be walked");
     age::backfill_connections(&pool).await.unwrap();
 

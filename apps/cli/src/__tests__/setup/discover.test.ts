@@ -17,6 +17,7 @@ afterEach(() => {
 
 describe("discover", () => {
     it("combines all tiers into a single result", () => {
+        // Given
         writeFileSync(join(TMP_DIR, "README.md"), "# My App\n\nHello world");
         writeFileSync(
             join(TMP_DIR, "package.json"),
@@ -29,8 +30,10 @@ describe("discover", () => {
         mkdirSync(join(TMP_DIR, "src", "__tests__"), { recursive: true });
         writeFileSync(join(TMP_DIR, "src", "__tests__", "app.test.ts"), "test('works', () => {})");
 
+        // When
         const result = discover(TMP_DIR, { name: "my-app", remoteUrl: null, localPath: TMP_DIR });
 
+        // Then
         expect(result.chunks.length).toBeGreaterThanOrEqual(3);
         expect(result.chunks.some(c => c.tier === 1)).toBe(true);
         expect(result.chunks.some(c => c.tier === 2)).toBe(true);
@@ -40,7 +43,10 @@ describe("discover", () => {
     });
 
     it("returns empty result for empty directory", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = discover(TMP_DIR, { name: "empty", remoteUrl: null, localPath: TMP_DIR });
+        // Then
         expect(result.chunks).toEqual([]);
         expect(result.connections).toEqual([]);
         expect(result.tips).toEqual([]);

@@ -51,8 +51,15 @@ jobs:
             - name: Type check
               run: pnpm check-types
 
+            - name: Start database test adapter
+              run: ./scripts/rust-test-db.sh start
+
             - name: Test
               run: pnpm test
+
+            - name: Stop database test adapter
+              if: always()
+              run: ./scripts/rust-test-db.sh stop
 
     component-tests:
         runs-on: ubuntu-latest
@@ -65,7 +72,7 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - run: pnpm --filter web exec playwright install --with-deps chromium
+            - run: pnpm --filter web exec playwright install --with-deps chromium firefox webkit
             - run: pnpm --filter web run check-types:e2e
             - run: pnpm --filter web run test:components
             - uses: actions/upload-artifact@v4
@@ -120,3 +127,9 @@ jobs:
             - run: pnpm install --frozen-lockfile
             - run: pnpm --filter web exec playwright install --with-deps chromium
             - run: pnpm run test:e2e
+            - uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: e2e-test-report
+                  path: apps/web/playwright-report/e2e/
+                  retention-days: 14

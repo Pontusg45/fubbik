@@ -34,14 +34,17 @@ describe("unblockDependentsOf", () => {
     });
 
     it("unblocks tasks whose dependency is marked done", async () => {
+        // Given
         const [t1] = await db.insert(planTask).values({ planId: testPlanId, title: "Dep" }).returning();
         const [t2] = await db.insert(planTask).values({ planId: testPlanId, title: "Dependent", status: "blocked" }).returning();
         if (!t1 || !t2) throw new Error("task insert failed");
 
         await db.insert(planTaskDependency).values({ taskId: t2.id, dependsOnTaskId: t1.id });
 
+        // When
         const unblocked = await Effect.runPromise(planRepo.unblockDependentsOf(t1.id));
 
+        // Then
         expect(unblocked).toContain(t2.id);
 
         const [refreshed] = await db.select().from(planTask).where(eq(planTask.id, t2.id));
@@ -49,15 +52,18 @@ describe("unblockDependentsOf", () => {
     });
 
     it("does not touch tasks already in in_progress", async () => {
+        // Given
         const [t1] = await db.insert(planTask).values({ planId: testPlanId, title: "Dep" }).returning();
         const [t2] = await db.insert(planTask).values({ planId: testPlanId, title: "Dependent", status: "in_progress" }).returning();
         if (!t1 || !t2) throw new Error("task insert failed");
 
         await db.insert(planTaskDependency).values({ taskId: t2.id, dependsOnTaskId: t1.id });
 
+        // When
         await Effect.runPromise(planRepo.unblockDependentsOf(t1.id));
 
         const [refreshed] = await db.select().from(planTask).where(eq(planTask.id, t2.id));
+        // Then
         expect(refreshed?.status).toBe("in_progress");
     });
 });

@@ -72,20 +72,26 @@ async fn send(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn graph_requires_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
+    // When
     let res = app
         .oneshot(Request::get("/api/graph").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn graph_returns_the_seven_documented_fields(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "A").await;
 
+    // When
     let res = send(app, &cookie, "GET", "/api/graph", serde_json::Value::Null).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
 
@@ -121,6 +127,7 @@ async fn graph_returns_the_seven_documented_fields(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn graph_space_scoping_actually_filters(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "a@b.test", "A").await;
 
@@ -134,6 +141,7 @@ async fn graph_space_scoping_actually_filters(pool: sqlx::PgPool) {
     .await;
     let space_id = json_body(space).await["id"].as_str().unwrap().to_string();
 
+    // When
     let scoped = send(
         app.clone(),
         &cookie,
@@ -143,6 +151,7 @@ async fn graph_space_scoping_actually_filters(pool: sqlx::PgPool) {
                             "spaceIds": [space_id] }),
     )
     .await;
+    // Then
     assert_eq!(scoped.status(), StatusCode::CREATED);
 
     let other_space = send(
@@ -196,6 +205,7 @@ async fn graph_space_scoping_actually_filters(pool: sqlx::PgPool) {
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn behavior_sync_projects_rules_for_every_user_and_is_idempotent(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -291,7 +301,9 @@ async fn behavior_sync_projects_rules_for_every_user_and_is_idempotent(pool: sql
         }
     }
 
+    // When
     let first = fubbik_api::graph::sync::sync_once(&pool).await.unwrap();
+    // Then
     assert_eq!(first, 2, "both users' rules must be projected");
 
     let second = fubbik_api::graph::sync::sync_once(&pool).await.unwrap();
@@ -364,6 +376,7 @@ async fn behavior_sync_accepts_titles_containing_the_old_dollar_quote_delimiter(
     pool: sqlx::PgPool,
 ) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -420,6 +433,7 @@ async fn behavior_sync_accepts_titles_containing_the_old_dollar_quote_delimiter(
         )
     };
 
+    // When
     let patch = send(
         app.clone(),
         &cookie,
@@ -428,6 +442,7 @@ async fn behavior_sync_accepts_titles_containing_the_old_dollar_quote_delimiter(
         serde_json::json!({ "title": delimiter_title }),
     )
     .await;
+    // Then
     assert_eq!(patch.status(), StatusCode::OK);
 
     let patch = send(
@@ -472,6 +487,7 @@ async fn behavior_sync_accepts_titles_containing_the_old_dollar_quote_delimiter(
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn graph_does_not_leak_another_users_behavior_rules(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -566,7 +582,9 @@ async fn graph_does_not_leak_another_users_behavior_rules(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let synced = fubbik_api::graph::sync::sync_once(&pool).await.unwrap();
+    // Then
     assert_eq!(synced, 2, "both users' rules must be swept into AGE");
 
     // Sanity check at the AGE layer: both titles really are there,
@@ -630,6 +648,7 @@ async fn graph_does_not_leak_another_users_behavior_rules(pool: sqlx::PgPool) {
 /// arrays rather than an error.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn graph_degrades_to_empty_behavior_fields_when_the_graph_is_missing(pool: sqlx::PgPool) {
+    // Given
     use sqlx::{Acquire, Executor};
 
     if !fubbik_db::age::is_available(&pool).await {
@@ -640,6 +659,7 @@ async fn graph_degrades_to_empty_behavior_fields_when_the_graph_is_missing(pool:
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "a@b.test", "A").await;
 
+    // When
     // A chunk (plain SQL, unaffected by AGE) so we can also assert the rest
     // of the payload still comes back populated — this must be a targeted
     // degradation, not the whole endpoint going empty.
@@ -651,6 +671,7 @@ async fn graph_degrades_to_empty_behavior_fields_when_the_graph_is_missing(pool:
         serde_json::json!({ "title": "Survives", "content": "x", "type": "note" }),
     )
     .await;
+    // Then
     assert_eq!(chunk.status(), StatusCode::CREATED);
 
     {

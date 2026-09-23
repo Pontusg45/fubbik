@@ -210,9 +210,10 @@ async fn check_connect_against_legacy_drizzle_database(scratch_url: &str) -> Res
         .fetch_one(&pool)
         .await
         .map_err(|e| format!("read adopted SQLx migration history: {e}"))?;
-    if migration_count != 8 {
+    let expected_count = sqlx::migrate!("./migrations").iter().count() as i64;
+    if migration_count != expected_count {
         return Err(format!(
-            "expected all 8 SQLx migrations after adoption, found {migration_count}"
+            "expected all {expected_count} SQLx migrations after adoption, found {migration_count}"
         ));
     }
 
@@ -248,9 +249,9 @@ async fn check_connect_against_legacy_drizzle_database(scratch_url: &str) -> Res
         .fetch_one(&restarted)
         .await
         .map_err(|e| format!("read migration history after restart: {e}"))?;
-    if restarted_count != 8 {
+    if restarted_count != expected_count {
         return Err(format!(
-            "expected 7 migrations after adoption restart, found {restarted_count}"
+            "expected {expected_count} migrations after adoption restart, found {restarted_count}"
         ));
     }
     restarted.close().await;
@@ -304,6 +305,7 @@ async fn check_connect_rejects_incomplete_drizzle_database(
 
 #[tokio::test]
 async fn connect_installs_hook_runs_migrations_and_is_restart_safe() {
+    // Given
     let database_url = std::env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set to run this test against a real Postgres cluster");
 
@@ -326,6 +328,7 @@ async fn connect_installs_hook_runs_migrations_and_is_restart_safe() {
         .expect("create scratch database");
 
     let scratch_url = url_for_database(&database_url, &db_name);
+    // When
     let result = check_connect_against(&scratch_url).await;
 
     // Clean up regardless of whether the checks above passed, so a failing
@@ -342,11 +345,13 @@ async fn connect_installs_hook_runs_migrations_and_is_restart_safe() {
         .await
         .expect("drop scratch database");
 
+    // Then
     result.expect("connect() checks");
 }
 
 #[tokio::test]
 async fn connect_adopts_a_legacy_drizzle_database_and_preserves_data() {
+    // Given
     let database_url = std::env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set to run this test against a real Postgres cluster");
     let admin_url = url_for_database(&database_url, "postgres");
@@ -363,6 +368,7 @@ async fn connect_adopts_a_legacy_drizzle_database_and_preserves_data() {
         .expect("create scratch database");
 
     let scratch_url = url_for_database(&database_url, &db_name);
+    // When
     let result = check_connect_against_legacy_drizzle_database(&scratch_url).await;
 
     let _ = sqlx::query(
@@ -377,11 +383,13 @@ async fn connect_adopts_a_legacy_drizzle_database_and_preserves_data() {
         .await
         .expect("drop scratch database");
 
+    // Then
     result.expect("legacy Drizzle adoption checks");
 }
 
 #[tokio::test]
 async fn connect_refuses_to_adopt_an_incomplete_drizzle_database() {
+    // Given
     let database_url = std::env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set to run this test against a real Postgres cluster");
     let admin_url = url_for_database(&database_url, "postgres");
@@ -398,6 +406,7 @@ async fn connect_refuses_to_adopt_an_incomplete_drizzle_database() {
         .expect("create scratch database");
 
     let scratch_url = url_for_database(&database_url, &db_name);
+    // When
     let result = check_connect_rejects_incomplete_drizzle_database(&scratch_url).await;
 
     let _ = sqlx::query(
@@ -412,5 +421,6 @@ async fn connect_refuses_to_adopt_an_incomplete_drizzle_database() {
         .await
         .expect("drop scratch database");
 
+    // Then
     result.expect("incomplete Drizzle refusal checks");
 }

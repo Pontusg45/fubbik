@@ -118,9 +118,12 @@ mod tests {
 
     #[test]
     fn round_trips_frontmatter_through_split_render_split() {
+        // Given
         let md = "---\ntitle: Auth Guide\ntype: reference\ntags:\n  - security\n  - backend\n---\n\n## Setup\n\nInstall the auth library.\n\n## Configuration\n\nEdit config.json.";
 
+        // When
         let first = split_markdown(md, "docs/auth.md");
+        // Then
         assert_eq!(first.title, "Auth Guide");
         assert_eq!(first.sections.len(), 2);
 
@@ -146,9 +149,12 @@ mod tests {
 
     #[test]
     fn round_trips_decision_context() {
+        // Given
         let md = "---\ntitle: Decisions\n---\n\n## Token Strategy\n\nWe use JWT.\n\n> **Rationale:** Stateless auth.\n\n> **Alternatives:**\n> - Sessions\n> - OAuth\n\n> **Consequences:** Need refresh tokens.";
 
+        // When
         let first = split_markdown_with_level(md, "test.md", None);
+        // Then
         assert_eq!(
             first.sections[0].rationale.as_deref(),
             Some("Stateless auth.")

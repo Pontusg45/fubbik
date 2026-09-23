@@ -46,11 +46,14 @@ async fn seed_req(pool: &sqlx::PgPool, user_id: &str, title: &str) -> String {
 
 #[sqlx::test]
 async fn add_and_get_round_trips_both_directions(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let a = seed_req(&pool, &alice, "A").await;
     let b = seed_req(&pool, &alice, "B").await;
 
+    // When
     let inserted = dep::add(&pool, &a, &b).await.unwrap();
+    // Then
     assert!(inserted);
 
     let a_deps = dep::get(&pool, &a).await.unwrap();
@@ -67,10 +70,13 @@ async fn add_and_get_round_trips_both_directions(pool: sqlx::PgPool) {
 /// matching Node's `.onConflictDoNothing()`.
 #[sqlx::test]
 async fn add_is_idempotent(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let a = seed_req(&pool, &alice, "A").await;
     let b = seed_req(&pool, &alice, "B").await;
 
+    // When the operation is evaluated by the assertion.
+    // Then
     assert!(dep::add(&pool, &a, &b).await.unwrap());
     assert!(
         !dep::add(&pool, &a, &b).await.unwrap(),
@@ -87,12 +93,15 @@ async fn add_is_idempotent(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn remove_deletes_the_edge(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let a = seed_req(&pool, &alice, "A").await;
     let b = seed_req(&pool, &alice, "B").await;
     dep::add(&pool, &a, &b).await.unwrap();
 
+    // When
     let removed = dep::remove(&pool, &a, &b).await.unwrap();
+    // Then
     assert!(removed);
     assert_eq!(dep::get(&pool, &a).await.unwrap().depends_on.len(), 0);
 }
@@ -103,10 +112,13 @@ async fn remove_deletes_the_edge(pool: sqlx::PgPool) {
 /// rejects the insert.
 #[sqlx::test]
 async fn self_dependency_is_rejected_by_the_database_check_constraint(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let a = seed_req(&pool, &alice, "A").await;
 
+    // When
     let result = dep::add(&pool, &a, &a).await;
+    // Then
     assert!(
         result.is_err(),
         "the DB's no_self_dependency CHECK must reject requirement_id == depends_on_id"
@@ -115,6 +127,7 @@ async fn self_dependency_is_rejected_by_the_database_check_constraint(pool: sqlx
 
 #[sqlx::test]
 async fn check_circular_detects_a_would_be_cycle(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let a = seed_req(&pool, &alice, "A").await;
     let b = seed_req(&pool, &alice, "B").await;
@@ -124,10 +137,12 @@ async fn check_circular_detects_a_would_be_cycle(pool: sqlx::PgPool) {
     dep::add(&pool, &a, &b).await.unwrap();
     dep::add(&pool, &b, &c).await.unwrap();
 
+    // When
     // `a` already (transitively) depends on `c` (a -> b -> c), so adding
     // `c -> a` (check_circular(requirement_id=c, depends_on_id=a)) would
     // close the cycle a -> b -> c -> a and must be flagged.
     let would_cycle = dep::check_circular(&pool, &c, &a).await.unwrap();
+    // Then
     assert!(
         would_cycle,
         "adding c -> a must be detected as closing the a -> b -> c -> a cycle"
@@ -141,6 +156,7 @@ async fn check_circular_detects_a_would_be_cycle(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn transitive_walks_ancestors_descendants_and_edges(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let a = seed_req(&pool, &alice, "A").await;
     let b = seed_req(&pool, &alice, "B").await;
@@ -150,9 +166,11 @@ async fn transitive_walks_ancestors_descendants_and_edges(pool: sqlx::PgPool) {
     dep::add(&pool, &a, &b).await.unwrap();
     dep::add(&pool, &b, &c).await.unwrap();
 
+    // When
     let from_b = dep::transitive(&pool, &b).await.unwrap();
     let ancestor_ids: Vec<String> = from_b.ancestors.iter().map(|r| r.id.clone()).collect();
     let descendant_ids: Vec<String> = from_b.descendants.iter().map(|r| r.id.clone()).collect();
+    // Then
     assert_eq!(
         ancestor_ids,
         vec![c.clone()],

@@ -52,8 +52,8 @@ pub async fn list_requirements(
 /// Links an existing requirement to a plan the caller owns, appending at
 /// `maxOrder + 1`, matching Node's `addPlanRequirement` (`plan.ts:300-311`).
 /// `None` means the plan isn't the caller's.
-pub async fn add_requirement(
-    pool: &PgPool,
+pub async fn add_requirement<'e, E: sqlx::PgExecutor<'e>>(
+    executor: E,
     user_id: &str,
     plan_id: &str,
     requirement_id: &str,
@@ -72,7 +72,7 @@ pub async fn add_requirement(
         requirement_id,
         user_id
     )
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await?;
     Ok(row)
 }

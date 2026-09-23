@@ -32,6 +32,7 @@ async fn a_chunk(pool: &sqlx::PgPool, uid: &str, title: &str) -> String {
 
 #[sqlx::test]
 async fn cannot_connect_from_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let bobs_chunk = a_chunk(&pool, &bob, "Bob's source").await;
@@ -39,6 +40,7 @@ async fn cannot_connect_from_another_users_chunk(pool: sqlx::PgPool) {
 
     // Alice tries to wire Bob's chunk (as source) to her own chunk.
     let id = fubbik_db::new_id();
+    // When
     let created = connection::create(
         &pool,
         &id,
@@ -51,6 +53,7 @@ async fn cannot_connect_from_another_users_chunk(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(
         created.is_none(),
         "must not create a connection from another user's chunk"
@@ -63,6 +66,7 @@ async fn cannot_connect_from_another_users_chunk(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn cannot_connect_to_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's source").await;
@@ -70,6 +74,7 @@ async fn cannot_connect_to_another_users_chunk(pool: sqlx::PgPool) {
 
     // Alice tries to wire her own chunk (as source) to Bob's chunk.
     let id = fubbik_db::new_id();
+    // When
     let created = connection::create(
         &pool,
         &id,
@@ -82,6 +87,7 @@ async fn cannot_connect_to_another_users_chunk(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(
         created.is_none(),
         "must not create a connection to another user's chunk"
@@ -94,11 +100,13 @@ async fn cannot_connect_to_another_users_chunk(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn own_source_and_own_target_succeeds(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let source = a_chunk(&pool, &alice, "Source").await;
     let target = a_chunk(&pool, &alice, "Target").await;
 
     let id = fubbik_db::new_id();
+    // When
     let created = connection::create(
         &pool,
         &id,
@@ -113,6 +121,7 @@ async fn own_source_and_own_target_succeeds(pool: sqlx::PgPool) {
     .unwrap()
     .expect("both chunks belong to the caller, so this must succeed");
 
+    // Then
     assert_eq!(created.source_id, source);
     assert_eq!(created.target_id, target);
     assert_eq!(created.relation, "related_to");
@@ -125,11 +134,13 @@ async fn own_source_and_own_target_succeeds(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn creating_a_connection_persists_projection_intent(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "projection@b.test").await;
     let source = a_chunk(&pool, &alice, "Source").await;
     let target = a_chunk(&pool, &alice, "Target").await;
 
     let connection_id = fubbik_db::new_id();
+    // When
     connection::create(
         &pool,
         &connection_id,
@@ -144,6 +155,7 @@ async fn creating_a_connection_persists_projection_intent(pool: sqlx::PgPool) {
     .unwrap()
     .unwrap();
 
+    // Then
     assert_eq!(projection::pending_count(&pool).await.unwrap(), 1);
 
     assert!(
@@ -160,6 +172,7 @@ async fn creating_a_connection_persists_projection_intent(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn duplicate_source_target_relation_is_unique_violation_not_a_panic(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let source = a_chunk(&pool, &alice, "Source").await;
     let target = a_chunk(&pool, &alice, "Target").await;
@@ -178,6 +191,7 @@ async fn duplicate_source_target_relation_is_unique_violation_not_a_panic(pool: 
     .unwrap()
     .expect("first insert must succeed");
 
+    // When
     let err = connection::create(
         &pool,
         &fubbik_db::new_id(),
@@ -191,6 +205,7 @@ async fn duplicate_source_target_relation_is_unique_violation_not_a_panic(pool: 
     .await
     .expect_err("duplicate (source_id, target_id, relation) must surface as an error");
 
+    // Then
     match err {
         AppError::Database(sqlx::Error::Database(db_err)) => {
             assert!(
@@ -204,10 +219,12 @@ async fn duplicate_source_target_relation_is_unique_violation_not_a_panic(pool: 
 
 #[sqlx::test]
 async fn invalid_relation_is_foreign_key_violation_not_a_panic(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let source = a_chunk(&pool, &alice, "Source").await;
     let target = a_chunk(&pool, &alice, "Target").await;
 
+    // When
     let err = connection::create(
         &pool,
         &fubbik_db::new_id(),
@@ -221,6 +238,7 @@ async fn invalid_relation_is_foreign_key_violation_not_a_panic(pool: sqlx::PgPoo
     .await
     .expect_err("an unrecognized relation must fail, not silently succeed");
 
+    // Then
     match err {
         AppError::Database(sqlx::Error::Database(db_err)) => {
             assert!(
@@ -234,6 +252,7 @@ async fn invalid_relation_is_foreign_key_violation_not_a_panic(pool: sqlx::PgPoo
 
 #[sqlx::test]
 async fn delete_requires_at_least_one_endpoint_owned_by_caller(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
@@ -261,8 +280,10 @@ async fn delete_requires_at_least_one_endpoint_owned_by_caller(pool: sqlx::PgPoo
         .unwrap()
         .expect("row was just inserted");
 
+    // When
     // Carol owns neither endpoint: must not be able to delete it.
     let deleted = connection::delete(&pool, &carol, &conn.id).await.unwrap();
+    // Then
     assert!(
         !deleted,
         "a user owning neither endpoint must not be able to delete the connection"
@@ -294,6 +315,7 @@ async fn delete_requires_at_least_one_endpoint_owned_by_caller(pool: sqlx::PgPoo
 
 #[sqlx::test]
 async fn count_for_chunks_counts_both_directions_and_zero_fills_missing(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let a = a_chunk(&pool, &alice, "A").await;
     let b = a_chunk(&pool, &alice, "B").await;
@@ -324,11 +346,13 @@ async fn count_for_chunks_counts_both_directions_and_zero_fills_missing(pool: sq
     .await
     .unwrap();
 
+    // When
     let rows = connection::count_for_chunks(&pool, &[a.clone(), b.clone(), c.clone()])
         .await
         .unwrap();
     let by_id: std::collections::HashMap<String, i64> =
         rows.into_iter().map(|r| (r.chunk_id, r.count)).collect();
+    // Then
     assert_eq!(by_id[&a], 2);
     assert_eq!(by_id[&b], 1);
     assert_eq!(by_id[&c], 1);
@@ -336,12 +360,15 @@ async fn count_for_chunks_counts_both_directions_and_zero_fills_missing(pool: sq
 
 #[sqlx::test]
 async fn count_for_chunks_of_a_chunk_with_no_connections_is_zero(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let lonely = a_chunk(&pool, &alice, "Lonely").await;
 
+    // When
     let rows = connection::count_for_chunks(&pool, std::slice::from_ref(&lonely))
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1, "the id must still appear, with count 0");
     assert_eq!(rows[0].chunk_id, lonely);
     assert_eq!(rows[0].count, 0);
@@ -349,7 +376,10 @@ async fn count_for_chunks_of_a_chunk_with_no_connections_is_zero(pool: sqlx::PgP
 
 #[sqlx::test]
 async fn count_for_chunks_of_empty_input_returns_empty_without_querying(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When
     let rows = connection::count_for_chunks(&pool, &[]).await.unwrap();
+    // Then
     assert!(rows.is_empty());
 }
 
@@ -386,6 +416,7 @@ async fn connect(pool: &sqlx::PgPool, uid: &str, source: &str, target: &str) -> 
 async fn connections_for_chunk_returns_both_directions_with_the_other_ends_title(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let uid = seed(&pool, "a@b.test").await;
     let subject = a_chunk(&pool, &uid, "Subject").await;
     let outgoing = a_chunk(&pool, &uid, "Outgoing neighbour").await;
@@ -397,9 +428,11 @@ async fn connections_for_chunk_returns_both_directions_with_the_other_ends_title
     let mut rows = connection::connections_for_chunk(&pool, &subject, &uid)
         .await
         .unwrap();
+    // When
     // The query has no ORDER BY (matching Node), so sort before asserting.
     rows.sort_by(|a, b| a.title.cmp(&b.title));
 
+    // Then
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].title.as_deref(), Some("Incoming neighbour"));
     assert_eq!(rows[0].source_id, incoming);
@@ -419,6 +452,7 @@ async fn connections_for_chunk_returns_both_directions_with_the_other_ends_title
 /// rather than silently diverging.
 #[sqlx::test]
 async fn connections_for_chunk_multiplies_rows_per_space(pool: sqlx::PgPool) {
+    // Given
     use fubbik_db::repo::space;
 
     let uid = seed(&pool, "a@b.test").await;
@@ -442,9 +476,11 @@ async fn connections_for_chunk_multiplies_rows_per_space(pool: sqlx::PgPool) {
     space::set_chunk_spaces(&pool, &uid, &neighbour, std::slice::from_ref(&s1.id))
         .await
         .unwrap();
+    // When
     let rows = connection::connections_for_chunk(&pool, &subject, &uid)
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].codebase_name.as_deref(), Some("alpha"));
 
@@ -491,13 +527,16 @@ async fn connections_for_chunk_multiplies_rows_per_space(pool: sqlx::PgPool) {
 /// through an HTTP status code.
 #[sqlx::test]
 async fn connections_for_chunk_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
 
     let subject = a_chunk(&pool, &alice, "Alice's subject").await;
     let neighbour = a_chunk(&pool, &alice, "Alice's neighbour").await;
+    // When
     connect(&pool, &alice, &subject, &neighbour).await;
 
+    // Then
     assert_eq!(
         connection::connections_for_chunk(&pool, &subject, &alice)
             .await
@@ -521,6 +560,7 @@ async fn connections_for_chunk_is_user_scoped(pool: sqlx::PgPool) {
 /// detail page's connection list has to cope with it.
 #[sqlx::test]
 async fn connections_for_chunk_keeps_a_dangling_edge_with_a_null_title(pool: sqlx::PgPool) {
+    // Given
     let uid = seed(&pool, "a@b.test").await;
     let subject = a_chunk(&pool, &uid, "Subject").await;
     let neighbour = a_chunk(&pool, &uid, "Doomed").await;
@@ -528,9 +568,11 @@ async fn connections_for_chunk_keeps_a_dangling_edge_with_a_null_title(pool: sql
 
     chunk::delete(&pool, &uid, &neighbour).await.unwrap();
 
+    // When
     let rows = connection::connections_for_chunk(&pool, &subject, &uid)
         .await
         .unwrap();
+    // Then
     // The edge itself cascades with the chunk, so the expected result is
     // no rows at all — asserted here so the cascade is documented rather
     // than assumed.

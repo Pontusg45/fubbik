@@ -40,6 +40,7 @@ async fn seed_user(pool: &sqlx::PgPool, email: &str) -> String {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn resolve_for_plan_returns_chunks_linked_through_tasks(pool: sqlx::PgPool) {
+    // Given
     let user_id = seed_user(&pool, "plan-owner@b.test").await;
 
     let p = plan::create(&pool, &user_id, "A plan", None, None)
@@ -77,10 +78,12 @@ async fn resolve_for_plan_returns_chunks_linked_through_tasks(pool: sqlx::PgPool
         .unwrap()
         .expect("chunk b should link");
 
+    // When
     let ids = fubbik_api::context::resolvers::resolve_for_plan(&pool, &user_id, &p.id)
         .await
         .unwrap();
 
+    // Then
     assert!(
         ids.contains(&linked_a.id),
         "linked chunk A must be resolved: {ids:?}"
@@ -103,6 +106,7 @@ async fn resolve_for_plan_returns_chunks_linked_through_tasks(pool: sqlx::PgPool
 /// chunk filter in `enrich_chunks`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn resolve_for_plan_is_scoped_to_the_owner(pool: sqlx::PgPool) {
+    // Given
     let owner_id = seed_user(&pool, "owner@b.test").await;
     let other_id = seed_user(&pool, "other@b.test").await;
 
@@ -129,10 +133,12 @@ async fn resolve_for_plan_is_scoped_to_the_owner(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     // Half one: a foreign user resolving the plan gets NotFound, not an
     // empty candidate list and not someone else's data.
     let foreign_attempt =
         fubbik_api::context::resolvers::resolve_for_plan(&pool, &other_id, &p.id).await;
+    // Then
     assert!(
         matches!(foreign_attempt, Err(AppError::NotFound(_))),
         "a foreign user must get NotFound, got {foreign_attempt:?}"
@@ -182,6 +188,7 @@ async fn resolve_for_plan_is_scoped_to_the_owner(pool: sqlx::PgPool) {
 async fn resolve_for_plan_preserves_first_encounter_order_across_all_three_sources(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let user_id = seed_user(&pool, "order@b.test").await;
     let p = plan::create(&pool, &user_id, "Ordered plan", None, None)
         .await
@@ -286,9 +293,11 @@ async fn resolve_for_plan_preserves_first_encounter_order_across_all_three_sourc
 
     const RUNS: usize = 5;
     for run in 0..RUNS {
+        // When
         let ids = fubbik_api::context::resolvers::resolve_for_plan(&pool, &user_id, &p.id)
             .await
             .unwrap();
+        // Then
         assert_eq!(
             ids, expected,
             "run {run}: resolve_for_plan must return ids in first-encounter order \
@@ -343,6 +352,7 @@ async fn ollama_embeddings_mock(vector: Vec<f32>) -> wiremock::MockServer {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn resolve_for_concept_combines_semantic_and_text_matches(pool: sqlx::PgPool) {
+    // Given
     let user_id = seed_user(&pool, "concept@b.test").await;
 
     // A chunk whose embedding is near the mocked query embedding, but whose
@@ -373,11 +383,13 @@ async fn resolve_for_concept_combines_semantic_and_text_matches(pool: sqlx::PgPo
     .await;
     let ai = fubbik_ai::OllamaClient::new(server.uri());
 
+    // When
     let ids =
         fubbik_api::context::resolvers::resolve_for_concept(&pool, &ai, &user_id, "widget", None)
             .await
             .unwrap();
 
+    // Then
     assert!(
         ids.contains(&"semantic-hit".to_string()),
         "the semantically-near chunk must appear: {ids:?}"
@@ -394,6 +406,7 @@ async fn resolve_for_concept_combines_semantic_and_text_matches(pool: sqlx::PgPo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn resolve_for_files_matches_file_refs_and_applies_to_globs(pool: sqlx::PgPool) {
+    // Given
     let user_id = seed_user(&pool, "files@b.test").await;
 
     let file_ref_chunk = chunk::create(&pool, &user_id, new_chunk("File-ref chunk"))
@@ -427,6 +440,7 @@ async fn resolve_for_files_matches_file_refs_and_applies_to_globs(pool: sqlx::Pg
     let paths = vec!["src/foo.rs".to_string(), "src/nested/bar.rs".to_string()];
     let ai = fubbik_ai::OllamaClient::new("http://127.0.0.1:1");
     let background = Default::default();
+    // When
     let ids = fubbik_api::context::resolvers::resolve_for_files(
         &pool,
         &ai,
@@ -438,6 +452,7 @@ async fn resolve_for_files_matches_file_refs_and_applies_to_globs(pool: sqlx::Pg
     .await
     .unwrap();
 
+    // Then
     assert!(
         ids.contains(&file_ref_chunk.id),
         "file-ref match must be resolved: {ids:?}"
@@ -458,6 +473,7 @@ async fn resolve_for_files_matches_file_refs_and_applies_to_globs(pool: sqlx::Pg
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn enrich_chunks_computes_health_and_flags_stale(pool: sqlx::PgPool) {
+    // Given
     let user_id = seed_user(&pool, "enrich@b.test").await;
     let c = chunk::create(&pool, &user_id, new_chunk("Stale chunk"))
         .await
@@ -471,10 +487,12 @@ async fn enrich_chunks_computes_health_and_flags_stale(pool: sqlx::PgPool) {
         .unwrap();
 
     let ids = vec![c.id.clone()];
+    // When
     let enriched = fubbik_api::context::service::enrich_chunks(&pool, &user_id, &ids)
         .await
         .unwrap();
 
+    // Then
     assert_eq!(enriched.len(), 1);
     let meta = &enriched[0];
     assert!(
@@ -600,6 +618,7 @@ async fn delete(app: axum::Router, cookie: &str, path: &str) -> axum::response::
 /// not just that both requests return 200 (Step 5's mutation target).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn for_plan_returns_the_plans_chunks_within_budget(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "plan-budget@b.test", "Plan Budget").await;
     let user_id = user_id_for_email(&pool, "plan-budget@b.test").await;
@@ -630,12 +649,14 @@ async fn for_plan_returns_the_plans_chunks_within_budget(pool: sqlx::PgPool) {
         .unwrap()
         .expect("chunk should link to the task");
 
+    // When
     let small = get(
         app.clone(),
         &cookie,
         &format!("/api/context/for-plan?planId={}&maxTokens=50", p.id),
     )
     .await;
+    // Then
     assert_eq!(small.status(), StatusCode::OK);
     let small_body = json_body(small).await;
     let small_total = small_body["totalChunks"].as_u64().unwrap();
@@ -666,6 +687,7 @@ async fn for_plan_returns_the_plans_chunks_within_budget(pool: sqlx::PgPool) {
 /// resolver itself. This pins that behaviour through the HTTP route.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn for_plan_404s_for_another_users_plan(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let _owner_cookie = signup(app.clone(), "plan-owner-http@b.test", "Owner").await;
     let owner_id = user_id_for_email(&pool, "plan-owner-http@b.test").await;
@@ -675,12 +697,14 @@ async fn for_plan_404s_for_another_users_plan(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let res = get(
         app.clone(),
         &intruder_cookie,
         &format!("/api/context/for-plan?planId={}", p.id),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -689,6 +713,7 @@ async fn for_plan_404s_for_another_users_plan(pool: sqlx::PgPool) {
 /// neither the embedding nor the search text does not.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn about_finds_a_chunk_by_concept(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_embeddings_mock({
         let mut v = vec![0.0f32; 768];
         v[0] = 1.0;
@@ -709,12 +734,14 @@ async fn about_finds_a_chunk_by_concept(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/context/about?q=widget&maxTokens=50000",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let content = body["content"].as_str().unwrap();
@@ -732,6 +759,7 @@ async fn about_finds_a_chunk_by_concept(pool: sqlx::PgPool) {
 /// `paths=a,b` resolves chunks for both paths, not just the first.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn for_files_accepts_a_csv_of_paths(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "files-http@b.test", "Files").await;
     let user_id = user_id_for_email(&pool, "files-http@b.test").await;
@@ -760,12 +788,14 @@ async fn for_files_accepts_a_csv_of_paths(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/context/for-files?paths=src/a.rs,src/b.rs&maxTokens=50000",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let content = body["content"].as_str().unwrap();
@@ -785,6 +815,7 @@ async fn for_files_accepts_a_csv_of_paths(pool: sqlx::PgPool) {
 /// bodies must genuinely differ, not just both return 200.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn format_defaults_to_structured_md_and_json_is_selectable(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "format-http@b.test", "Format").await;
     let user_id = user_id_for_email(&pool, "format-http@b.test").await;
@@ -801,12 +832,14 @@ async fn format_defaults_to_structured_md_and_json_is_selectable(pool: sqlx::PgP
     .await
     .unwrap();
 
+    // When
     let default_res = get(
         app.clone(),
         &cookie,
         "/api/context/for-files?paths=src/formatted.rs&maxTokens=50000",
     )
     .await;
+    // Then
     assert_eq!(default_res.status(), StatusCode::OK);
     let default_body = json_body(default_res).await;
     assert_eq!(default_body["format"], "structured-md");
@@ -886,6 +919,7 @@ async fn seed_plan_with_chunk(pool: &sqlx::PgPool, user_id: &str, title: &str) -
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn snapshot_round_trips_its_frozen_content(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "snap-roundtrip@b.test", "Snap").await;
     let user_id = user_id_for_email(&pool, "snap-roundtrip@b.test").await;
@@ -893,6 +927,7 @@ async fn snapshot_round_trips_its_frozen_content(pool: sqlx::PgPool) {
     let (plan_id, _chunk_id) =
         seed_plan_with_chunk(&pool, &user_id, "Snapshot Round Trip Chunk").await;
 
+    // When
     let create_res = post(
         app.clone(),
         &cookie,
@@ -900,6 +935,7 @@ async fn snapshot_round_trips_its_frozen_content(pool: sqlx::PgPool) {
         serde_json::json!({ "planId": plan_id, "maxTokens": 50000 }),
     )
     .await;
+    // Then
     assert_eq!(create_res.status(), StatusCode::OK, "create must succeed");
     let create_body = json_body(create_res).await;
     let snapshot_id = create_body["snapshotId"]
@@ -941,6 +977,7 @@ async fn snapshot_round_trips_its_frozen_content(pool: sqlx::PgPool) {
 /// rejected, not the row damaged.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn snapshot_retrieval_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie_a = signup(app.clone(), "snap-scope-a@b.test", "Alice").await;
     let user_a = user_id_for_email(&pool, "snap-scope-a@b.test").await;
@@ -960,6 +997,7 @@ async fn snapshot_retrieval_is_user_scoped(pool: sqlx::PgPool) {
     .await;
     let snapshot_id = create_body["snapshotId"].as_str().unwrap().to_string();
 
+    // When
     // Half one: a foreign user gets 404, not Alice's frozen content.
     let foreign_res = get(
         app.clone(),
@@ -967,6 +1005,7 @@ async fn snapshot_retrieval_is_user_scoped(pool: sqlx::PgPool) {
         &format!("/api/context/snapshot/{snapshot_id}"),
     )
     .await;
+    // Then
     assert_eq!(
         foreign_res.status(),
         StatusCode::NOT_FOUND,
@@ -992,6 +1031,7 @@ async fn snapshot_retrieval_is_user_scoped(pool: sqlx::PgPool) {
 /// succeed) — again proving rejection, not silent damage.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn snapshot_deletion_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie_a = signup(app.clone(), "snap-del-a@b.test", "Alice").await;
     let user_a = user_id_for_email(&pool, "snap-del-a@b.test").await;
@@ -1012,6 +1052,7 @@ async fn snapshot_deletion_is_user_scoped(pool: sqlx::PgPool) {
     .await;
     let snapshot_id = create_body["snapshotId"].as_str().unwrap().to_string();
 
+    // When
     // Half one: a foreign delete is rejected with 404.
     let foreign_delete = delete(
         app.clone(),
@@ -1019,6 +1060,7 @@ async fn snapshot_deletion_is_user_scoped(pool: sqlx::PgPool) {
         &format!("/api/context/snapshot/{snapshot_id}"),
     )
     .await;
+    // Then
     assert_eq!(
         foreign_delete.status(),
         StatusCode::NOT_FOUND,
@@ -1064,6 +1106,7 @@ async fn snapshot_deletion_is_user_scoped(pool: sqlx::PgPool) {
 /// snapshots — not a foreign user's, even though both exist in the table.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn snapshots_list_only_returns_the_callers_own(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie_a = signup(app.clone(), "snap-list-a@b.test", "Alice").await;
     let user_a = user_id_for_email(&pool, "snap-list-a@b.test").await;
@@ -1097,7 +1140,9 @@ async fn snapshots_list_only_returns_the_callers_own(pool: sqlx::PgPool) {
     .await;
     let snap_b_id = snap_b["snapshotId"].as_str().unwrap().to_string();
 
+    // When
     let list_res = get(app.clone(), &cookie_a, "/api/context/snapshots").await;
+    // Then
     assert_eq!(list_res.status(), StatusCode::OK);
     let list_body = json_body(list_res).await;
     let ids: Vec<&str> = list_body

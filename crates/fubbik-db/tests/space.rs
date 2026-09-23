@@ -47,11 +47,14 @@ fn new_code_space(name: &str) -> NewSpace {
 
 #[sqlx::test]
 async fn create_then_list_then_detail_round_trip(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
 
+    // When
     let created = space::create(&pool, &alice, new_wiki_space("notes"), None)
         .await
         .unwrap();
+    // Then
     assert_eq!(created.name, "notes");
     assert_eq!(created.kind, "wiki");
     assert_eq!(created.description, None);
@@ -73,6 +76,7 @@ async fn create_then_list_then_detail_round_trip(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn code_kind_space_round_trips_remote_url_and_local_paths(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
 
     let created = space::create(
@@ -91,7 +95,9 @@ async fn code_kind_space_round_trips_remote_url_and_local_paths(pool: sqlx::PgPo
         .await
         .unwrap()
         .expect("must find own space");
+    // When
     let code = detail.code.expect("code-kind space must have metadata");
+    // Then
     assert_eq!(code.remote_url.as_deref(), Some("github.com/acme/fubbik"));
     assert_eq!(code.local_paths.0, vec!["/Users/alice/fubbik".to_string()]);
 
@@ -105,6 +111,7 @@ async fn code_kind_space_round_trips_remote_url_and_local_paths(pool: sqlx::PgPo
 async fn code_kind_space_with_no_remote_url_or_local_paths_still_gets_a_metadata_row(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
 
     // Matches Node: `code: kind === "code" ? {...} : undefined` keys off
@@ -126,13 +133,16 @@ async fn code_kind_space_with_no_remote_url_or_local_paths_still_gets_a_metadata
         .await
         .unwrap()
         .unwrap();
+    // When
     let code = detail.code.expect("must still get a metadata row");
+    // Then
     assert_eq!(code.remote_url, None);
     assert_eq!(code.local_paths.0, Vec::<String>::new());
 }
 
 #[sqlx::test]
 async fn detect_finds_code_space_by_remote_url_and_local_path(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
 
     let created = space::create(
@@ -147,10 +157,12 @@ async fn detect_finds_code_space_by_remote_url_and_local_path(pool: sqlx::PgPool
     .await
     .unwrap();
 
+    // When
     let by_url = space::find_by_remote_url(&pool, &alice, "github.com/acme/fubbik")
         .await
         .unwrap()
         .expect("must find by exact normalized remote url");
+    // Then
     assert_eq!(by_url.id, created.id);
 
     let by_path = space::find_by_local_path(&pool, &alice, "/Users/alice/fubbik")
@@ -175,9 +187,11 @@ async fn detect_finds_code_space_by_remote_url_and_local_path(pool: sqlx::PgPool
 
 #[sqlx::test]
 async fn detect_is_scoped_to_the_caller(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
 
+    // When
     space::create(
         &pool,
         &alice,
@@ -190,6 +204,7 @@ async fn detect_is_scoped_to_the_caller(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert!(
         space::find_by_remote_url(&pool, &bob, "github.com/acme/fubbik")
             .await
@@ -208,11 +223,13 @@ async fn detect_is_scoped_to_the_caller(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_name_and_description_round_trips(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let created = space::create(&pool, &alice, new_wiki_space("notes"), None)
         .await
         .unwrap();
 
+    // When
     let updated = space::update(
         &pool,
         &alice,
@@ -226,6 +243,7 @@ async fn update_name_and_description_round_trips(pool: sqlx::PgPool) {
     .await
     .unwrap()
     .expect("must find and update own space");
+    // Then
     assert_eq!(updated.name, "renamed");
     assert_eq!(updated.description.as_deref(), Some("a description"));
     assert!(
@@ -236,24 +254,29 @@ async fn update_name_and_description_round_trips(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_with_no_fields_present_is_a_plain_select_not_a_no_op_update(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let created = space::create(&pool, &alice, new_wiki_space("notes"), None)
         .await
         .unwrap();
 
+    // When
     // Neither name nor description present in the patch: Node falls back to
     // a plain SELECT and does NOT bump updated_at.
     let untouched = space::update(&pool, &alice, &created.id, SpacePatch::default(), None)
         .await
         .unwrap()
         .expect("must still return the row");
+    // Then
     assert_eq!(untouched.name, created.name);
     assert_eq!(untouched.updated_at.0, created.updated_at.0);
 }
 
 #[sqlx::test]
 async fn update_description_explicit_null_clears_it(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
+    // When
     let created = space::create(
         &pool,
         &alice,
@@ -266,6 +289,7 @@ async fn update_description_explicit_null_clears_it(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(created.description.as_deref(), Some("original"));
 
     // Omitted description must leave it untouched.
@@ -307,6 +331,7 @@ async fn update_description_explicit_null_clears_it(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_upserts_code_metadata_for_code_kind_space(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let created = space::create(
         &pool,
@@ -337,7 +362,9 @@ async fn update_upserts_code_metadata_for_code_kind_space(pool: sqlx::PgPool) {
         .await
         .unwrap()
         .unwrap();
+    // When
     let code = detail.code.unwrap();
+    // Then
     assert_eq!(code.remote_url.as_deref(), Some("github.com/acme/renamed"));
     assert_eq!(code.local_paths.0, vec!["/Users/alice/renamed".to_string()]);
 }
@@ -349,6 +376,7 @@ async fn update_upserts_code_metadata_for_code_kind_space(pool: sqlx::PgPool) {
 /// to pass `None` vs. `Some(CodeUpdate{..})`.
 #[sqlx::test]
 async fn update_with_no_code_param_leaves_code_metadata_untouched(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let created = space::create(
         &pool,
@@ -375,10 +403,12 @@ async fn update_with_no_code_param_leaves_code_metadata_untouched(pool: sqlx::Pg
     .await
     .unwrap();
 
+    // When
     let detail = space::find_by_id(&pool, &alice, &created.id)
         .await
         .unwrap()
         .unwrap();
+    // Then
     assert_eq!(detail.space.name, "renamed");
     let code = detail.code.unwrap();
     assert_eq!(code.remote_url.as_deref(), Some("github.com/acme/fubbik"));
@@ -389,6 +419,7 @@ async fn update_with_no_code_param_leaves_code_metadata_untouched(pool: sqlx::Pg
 /// one must not clobber the other back to `null`/`[]`.
 #[sqlx::test]
 async fn update_code_metadata_fields_are_independently_settable(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let created = space::create(
         &pool,
@@ -420,7 +451,9 @@ async fn update_code_metadata_fields_are_independently_settable(pool: sqlx::PgPo
         .await
         .unwrap()
         .unwrap();
+    // When
     let code = detail.code.unwrap();
+    // Then
     assert_eq!(code.remote_url.as_deref(), Some("github.com/acme/renamed"));
     assert_eq!(code.local_paths.0, vec!["/Users/alice/fubbik".to_string()]);
 
@@ -456,6 +489,7 @@ async fn update_code_metadata_fields_are_independently_settable(pool: sqlx::PgPo
 /// still works.
 #[sqlx::test]
 async fn update_code_metadata_remote_url_explicit_none_clears_it(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let created = space::create(
         &pool,
@@ -486,7 +520,9 @@ async fn update_code_metadata_remote_url_explicit_none_clears_it(pool: sqlx::PgP
         .await
         .unwrap()
         .unwrap();
+    // When
     let code = detail.code.unwrap();
+    // Then
     assert_eq!(code.remote_url, None);
     assert_eq!(
         code.local_paths.0,
@@ -497,12 +533,15 @@ async fn update_code_metadata_remote_url_explicit_none_clears_it(pool: sqlx::PgP
 
 #[sqlx::test]
 async fn cross_user_cannot_see_update_or_delete_a_space(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
+    // When
     let created = space::create(&pool, &alice, new_wiki_space("notes"), None)
         .await
         .unwrap();
 
+    // Then
     assert!(
         space::find_by_id(&pool, &bob, &created.id)
             .await
@@ -542,12 +581,15 @@ async fn cross_user_cannot_see_update_or_delete_a_space(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn delete_removes_the_space(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let created = space::create(&pool, &alice, new_wiki_space("notes"), None)
         .await
         .unwrap();
 
+    // When
     let deleted = space::delete(&pool, &alice, &created.id).await.unwrap();
+    // Then
     assert!(deleted);
     assert!(
         space::find_by_id(&pool, &alice, &created.id)
@@ -561,6 +603,7 @@ async fn delete_removes_the_space(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn cannot_put_another_users_chunk_into_a_space(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
@@ -568,6 +611,7 @@ async fn cannot_put_another_users_chunk_into_a_space(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     // Bob attempts to put Alice's chunk into his own space — must be
     // rejected.
     let n = space::set_chunk_spaces(
@@ -578,6 +622,7 @@ async fn cannot_put_another_users_chunk_into_a_space(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(n, 0, "must not attach another user's chunk to a space");
     assert!(
         space::spaces_for_chunk(&pool, &alice, &alices_chunk)
@@ -589,6 +634,7 @@ async fn cannot_put_another_users_chunk_into_a_space(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn cannot_put_a_chunk_into_another_users_space(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
@@ -596,6 +642,7 @@ async fn cannot_put_a_chunk_into_another_users_space(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     // Alice attempts to put her own chunk into Bob's space — must be
     // rejected.
     let n = space::set_chunk_spaces(
@@ -606,6 +653,7 @@ async fn cannot_put_a_chunk_into_another_users_space(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(n, 0, "must not attach a chunk to another user's space");
     assert!(
         space::spaces_for_chunk(&pool, &alice, &alices_chunk)
@@ -623,6 +671,7 @@ async fn cannot_put_a_chunk_into_another_users_space(pool: sqlx::PgPool) {
 /// insert are guarded independently in the SQL.
 #[sqlx::test]
 async fn rejected_attach_does_not_wipe_the_victim_chunks_existing_spaces(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
@@ -633,6 +682,7 @@ async fn rejected_attach_does_not_wipe_the_victim_chunks_existing_spaces(pool: s
         .await
         .unwrap();
 
+    // When
     // Alice legitimately puts her chunk in her own space first.
     let n = space::set_chunk_spaces(
         &pool,
@@ -642,6 +692,7 @@ async fn rejected_attach_does_not_wipe_the_victim_chunks_existing_spaces(pool: s
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(n, 1);
 
     // Bob then tries (and must fail) to overwrite Alice's chunk's space set
@@ -670,6 +721,7 @@ async fn rejected_attach_does_not_wipe_the_victim_chunks_existing_spaces(pool: s
 
 #[sqlx::test]
 async fn own_chunk_and_own_space_succeeds_and_set_replaces_the_whole_set(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
     let space_one = space::create(&pool, &alice, new_wiki_space("one"), None)
@@ -687,6 +739,7 @@ async fn own_chunk_and_own_space_succeeds_and_set_replaces_the_whole_set(pool: s
     )
     .await
     .unwrap();
+    // When
     let n = space::set_chunk_spaces(
         &pool,
         &alice,
@@ -695,6 +748,7 @@ async fn own_chunk_and_own_space_succeeds_and_set_replaces_the_whole_set(pool: s
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(n, 1);
 
     let spaces = space::spaces_for_chunk(&pool, &alice, &alices_chunk)
@@ -712,6 +766,7 @@ async fn own_chunk_and_own_space_succeeds_and_set_replaces_the_whole_set(pool: s
 
 #[sqlx::test]
 async fn reset_deletes_exclusive_chunks_but_spares_shared_ones(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let space_a = space::create(&pool, &alice, new_wiki_space("a"), None)
         .await
@@ -742,7 +797,9 @@ async fn reset_deletes_exclusive_chunks_but_spares_shared_ones(pool: sqlx::PgPoo
     .await
     .unwrap();
 
+    // When
     let result = space::reset(&pool, &alice, &space_a.id).await.unwrap();
+    // Then
     assert_eq!(result.chunks_deleted, 1, "only the exclusive chunk counts");
 
     assert!(
@@ -779,6 +836,7 @@ async fn reset_deletes_exclusive_chunks_but_spares_shared_ones(pool: sqlx::PgPoo
 
 #[sqlx::test]
 async fn reset_deletes_space_scoped_documents_plans_and_requirements(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let space = space::create(&pool, &alice, new_wiki_space("a"), None)
         .await
@@ -819,7 +877,9 @@ async fn reset_deletes_space_scoped_documents_plans_and_requirements(pool: sqlx:
     .await
     .unwrap();
 
+    // When
     let result = space::reset(&pool, &alice, &space.id).await.unwrap();
+    // Then
     assert_eq!(result.docs_deleted, 1);
     assert_eq!(result.plans_deleted, 1);
     assert_eq!(result.requirements_deleted, 1);
@@ -836,6 +896,7 @@ async fn reset_deletes_space_scoped_documents_plans_and_requirements(pool: sqlx:
 
 #[sqlx::test]
 async fn reset_of_another_users_space_is_a_no_op(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_space = space::create(&pool, &alice, new_wiki_space("a"), None)
@@ -851,7 +912,9 @@ async fn reset_of_another_users_space_is_a_no_op(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let result = space::reset(&pool, &bob, &alices_space.id).await.unwrap();
+    // Then
     assert_eq!(result.chunks_deleted, 0);
     assert_eq!(result.docs_deleted, 0);
     assert_eq!(result.plans_deleted, 0);
@@ -880,6 +943,7 @@ async fn reset_of_another_users_space_is_a_no_op(pool: sqlx::PgPool) {
 /// the `id ASC` tiebreaker can determine order.
 #[sqlx::test]
 async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
 
     for name in ["one", "two", "three", "four", "five"] {
@@ -896,6 +960,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT id FROM space WHERE user_id = $1 ORDER BY id ASC",
         alice
@@ -903,6 +968,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 5);
 
     let first = space::list(&pool, &alice).await.unwrap();
@@ -938,6 +1004,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
 /// this cross-user state is reachable through the guarded API.
 #[sqlx::test]
 async fn spaces_for_chunk_breaks_name_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
 
@@ -956,6 +1023,7 @@ async fn spaces_for_chunk_breaks_name_ties_by_id(pool: sqlx::PgPool) {
         .unwrap();
     }
 
+    // When
     // Ground truth from Postgres directly, so this test does not depend on
     // Rust's default string ordering happening to agree with the
     // database's collation.
@@ -966,6 +1034,7 @@ async fn spaces_for_chunk_breaks_name_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 5);
 
     let first = space::spaces_for_chunk(&pool, &alice, &alices_chunk)

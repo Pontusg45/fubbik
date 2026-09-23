@@ -34,6 +34,7 @@ async fn seed(
 
 #[sqlx::test]
 async fn list_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -46,7 +47,9 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
     seed(&pool, &alice, "stale_chunks", "Alice's notification", false).await;
     seed(&pool, &bob, "stale_chunks", "Bob's notification", false).await;
 
+    // When
     let alice_list = notification::list(&pool, &alice, false, 50).await.unwrap();
+    // Then
     assert_eq!(alice_list.len(), 1);
     assert_eq!(alice_list[0].title, "Alice's notification");
 
@@ -57,6 +60,7 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_unread_only_filters_out_read_rows(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -65,7 +69,9 @@ async fn list_unread_only_filters_out_read_rows(pool: sqlx::PgPool) {
     seed(&pool, &alice, "stale_chunks", "Unread one", false).await;
     seed(&pool, &alice, "stale_chunks", "Already read", true).await;
 
+    // When
     let all = notification::list(&pool, &alice, false, 50).await.unwrap();
+    // Then
     assert_eq!(all.len(), 2);
 
     let unread = notification::list(&pool, &alice, true, 50).await.unwrap();
@@ -75,10 +81,12 @@ async fn list_unread_only_filters_out_read_rows(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn count_unread_counts_only_unread_and_only_the_caller(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
         .id;
+    // When
     let bob = user::create(&pool, "c@d.test", "Bob", None)
         .await
         .unwrap()
@@ -89,6 +97,7 @@ async fn count_unread_counts_only_unread_and_only_the_caller(pool: sqlx::PgPool)
     seed(&pool, &alice, "stale_chunks", "Already read", true).await;
     seed(&pool, &bob, "stale_chunks", "Bob's unread", false).await;
 
+    // Then
     assert_eq!(notification::count_unread(&pool, &alice).await.unwrap(), 2);
     assert_eq!(notification::count_unread(&pool, &bob).await.unwrap(), 1);
 }
@@ -97,6 +106,7 @@ async fn count_unread_counts_only_unread_and_only_the_caller(pool: sqlx::PgPool)
 async fn mark_read_on_another_users_notification_affects_nothing_and_returns_none(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -108,7 +118,9 @@ async fn mark_read_on_another_users_notification_affects_nothing_and_returns_non
 
     let id = seed(&pool, &alice, "stale_chunks", "Alice's notification", false).await;
 
+    // When
     let result = notification::mark_read(&pool, &bob, &id).await.unwrap();
+    // Then
     assert!(
         result.is_none(),
         "marking another user's notification must return None, not succeed"
@@ -123,6 +135,7 @@ async fn mark_read_on_another_users_notification_affects_nothing_and_returns_non
 
 #[sqlx::test]
 async fn mark_read_marks_the_callers_own_notification(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -130,10 +143,12 @@ async fn mark_read_marks_the_callers_own_notification(pool: sqlx::PgPool) {
 
     let id = seed(&pool, &alice, "stale_chunks", "Alice's notification", false).await;
 
+    // When
     let updated = notification::mark_read(&pool, &alice, &id)
         .await
         .unwrap()
         .expect("own notification must be found and updated");
+    // Then
     assert!(updated.read);
 
     assert_eq!(notification::count_unread(&pool, &alice).await.unwrap(), 0);
@@ -147,6 +162,7 @@ async fn mark_read_marks_the_callers_own_notification(pool: sqlx::PgPool) {
 /// Bob's are still unread.
 #[sqlx::test]
 async fn mark_all_read_does_not_touch_another_users_rows(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -161,8 +177,10 @@ async fn mark_all_read_does_not_touch_another_users_rows(pool: sqlx::PgPool) {
     seed(&pool, &bob, "stale_chunks", "Bob one", false).await;
     seed(&pool, &bob, "stale_chunks", "Bob two", false).await;
 
+    // When
     notification::mark_all_read(&pool, &alice).await.unwrap();
 
+    // Then
     assert_eq!(
         notification::count_unread(&pool, &alice).await.unwrap(),
         0,
@@ -177,10 +195,12 @@ async fn mark_all_read_does_not_touch_another_users_rows(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn delete_on_another_users_notification_returns_false_and_leaves_it(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
         .id;
+    // When
     let bob = user::create(&pool, "c@d.test", "Bob", None)
         .await
         .unwrap()
@@ -188,6 +208,7 @@ async fn delete_on_another_users_notification_returns_false_and_leaves_it(pool: 
 
     let id = seed(&pool, &alice, "stale_chunks", "Alice's notification", false).await;
 
+    // Then
     assert!(!notification::delete(&pool, &bob, &id).await.unwrap());
 
     let still_there = notification::list(&pool, &alice, false, 50).await.unwrap();
@@ -197,6 +218,8 @@ async fn delete_on_another_users_notification_returns_false_and_leaves_it(pool: 
 
 #[sqlx::test]
 async fn delete_removes_the_callers_own_notification(pool: sqlx::PgPool) {
+    // Given the inline inputs and test fixtures.
+    // When
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -204,6 +227,7 @@ async fn delete_removes_the_callers_own_notification(pool: sqlx::PgPool) {
 
     let id = seed(&pool, &alice, "stale_chunks", "Alice's notification", false).await;
 
+    // Then
     assert!(notification::delete(&pool, &alice, &id).await.unwrap());
     assert!(
         notification::list(&pool, &alice, false, 50)
@@ -219,6 +243,7 @@ async fn delete_removes_the_callers_own_notification(pool: sqlx::PgPool) {
 /// rejecting or coercing it.
 #[sqlx::test]
 async fn notification_type_is_free_text(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -226,7 +251,9 @@ async fn notification_type_is_free_text(pool: sqlx::PgPool) {
 
     seed(&pool, &alice, "totally-made-up-type", "Freeform", false).await;
 
+    // When
     let listed = notification::list(&pool, &alice, false, 50).await.unwrap();
+    // Then
     assert_eq!(listed[0].notification_type, "totally-made-up-type");
 }
 
@@ -237,6 +264,7 @@ async fn notification_type_is_free_text(pool: sqlx::PgPool) {
 /// `id ASC` tiebreaker can determine order.
 #[sqlx::test]
 async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -279,6 +307,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT id FROM notification WHERE user_id = $1 ORDER BY id ASC",
         alice
@@ -286,6 +315,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 20);
 
     let first = notification::list(&pool, &alice, false, 50).await.unwrap();

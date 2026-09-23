@@ -13,6 +13,7 @@ fn rule(id: &str, title: &str) -> BehaviorRuleVertex {
 #[sqlx::test]
 async fn upsert_behavior_rule_is_idempotent_and_updates_props(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -24,7 +25,9 @@ async fn upsert_behavior_rule_is_idempotent_and_updates_props(pool: sqlx::PgPool
         .await
         .unwrap();
 
+    // When
     let rules = age::list_behavior_rule_vertices(&pool).await.unwrap();
+    // Then
     // MERGE on id, not CREATE: running twice must not stack a second vertex.
     assert_eq!(rules.len(), 1);
     assert_eq!(rules[0].title, "Renamed");
@@ -35,6 +38,7 @@ async fn upsert_behavior_rule_is_idempotent_and_updates_props(pool: sqlx::PgPool
 #[sqlx::test]
 async fn behavior_rule_title_survives_quotes_and_apostrophes(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -43,7 +47,9 @@ async fn behavior_rule_title_survives_quotes_and_apostrophes(pool: sqlx::PgPool)
         .await
         .unwrap();
 
+    // When
     let rules = age::list_behavior_rule_vertices(&pool).await.unwrap();
+    // Then
     assert_eq!(
         rules.len(),
         1,
@@ -55,6 +61,7 @@ async fn behavior_rule_title_survives_quotes_and_apostrophes(pool: sqlx::PgPool)
 #[sqlx::test]
 async fn governs_edges_rebuild_without_duplicating(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -73,7 +80,9 @@ async fn governs_edges_rebuild_without_duplicating(pool: sqlx::PgPool) {
             .unwrap();
     }
 
+    // When
     let edges = age::list_governs_edges(&pool).await.unwrap();
+    // Then
     assert_eq!(
         edges.len(),
         1,
@@ -87,6 +96,7 @@ async fn governs_edges_rebuild_without_duplicating(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn link_governs_is_a_noop_when_no_code_vertex_matches(pool: sqlx::PgPool) {
     if !age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -94,6 +104,7 @@ async fn link_governs_is_a_noop_when_no_code_vertex_matches(pool: sqlx::PgPool) 
     age::upsert_behavior_rule(&pool, &rule("r1", "Orphan"))
         .await
         .unwrap();
+    // When
     // No code_file vertices exist at all — the normal state of this system,
     // since code-index is not ported (see the spec). MATCH finds nothing and
     // MERGE never runs; this must not error.
@@ -101,5 +112,6 @@ async fn link_governs_is_a_noop_when_no_code_vertex_matches(pool: sqlx::PgPool) 
         .await
         .unwrap();
 
+    // Then
     assert!(age::list_governs_edges(&pool).await.unwrap().is_empty());
 }

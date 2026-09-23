@@ -10,6 +10,7 @@ import { Card, CardPanel } from "@/components/ui/card";
 import { Dialog, DialogPopup, DialogHeader, DialogTitle, DialogDescription, DialogPanel } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { isValidGlob, validateChunkContent, type ApplyToRow, type FileRefRow } from "@/features/chunks/chunk-form-model";
 import { DraftIndicator } from "@/features/chunks/draft-indicator";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
@@ -35,24 +36,6 @@ export const Route = createFileRoute("/chunks/$chunkId_/edit")({
         }
     }
 });
-
-interface ApplyToRow {
-    pattern: string;
-    note: string;
-}
-
-interface FileRefRow {
-    path: string;
-    anchor: string;
-    relation: "documents" | "configures" | "tests" | "implements";
-}
-
-function isValidGlob(pattern: string): boolean {
-    if (!pattern.trim()) return true;
-    const unmatched = (pattern.match(/\[/g) || []).length !== (pattern.match(/\]/g) || []).length;
-    const emptyBraces = /\{\s*\}/.test(pattern);
-    return !unmatched && !emptyBraces;
-}
 
 interface EditChunkDraft {
     title: string;
@@ -169,7 +152,7 @@ function EditChunk() {
             setTitle(chunk.title);
             setContent(chunk.content);
             setType(chunk.type);
-            setTags([]);
+            setTags(data.tags.map(tag => tag.name));
 
             // Initialize decision context fields
             const chunkAny = chunk as Record<string, unknown>;
@@ -221,10 +204,7 @@ function EditChunk() {
     const { clearDraft, lastSaved } = useAutosave(draftKey, formState, initialized);
 
     function validate() {
-        const e: Record<string, string> = {};
-        if (!title.trim()) e.title = "Title is required";
-        else if (title.length > 200) e.title = "Title must be 200 characters or less";
-        if (content.length > 50000) e.content = "Content must be 50,000 characters or less";
+        const e = validateChunkContent(title, content);
         setErrors(e);
         return Object.keys(e).length === 0;
     }

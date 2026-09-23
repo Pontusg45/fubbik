@@ -18,7 +18,7 @@ interface AnalyzeItem {
     metadata: Record<string, unknown>;
 }
 
-interface AnalyzeGroups {
+export interface AnalyzeGroups {
     chunk: AnalyzeItem[];
     file: AnalyzeItem[];
     risk: AnalyzeItem[];

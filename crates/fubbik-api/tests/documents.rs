@@ -156,10 +156,13 @@ const DOC_MD: &str = "# Guide\n\n## Setup\n\nInstall it.\n\n## Usage\n\nRun it.\
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn import_creates_document_and_sections(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-import@b.test", "Alice").await;
 
+    // When
     let res = import(app.clone(), &cookie, "docs/guide.md", DOC_MD).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["status"], "created");
@@ -171,11 +174,14 @@ async fn import_creates_document_and_sections(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn reimporting_identical_content_is_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-unchanged@b.test", "Alice").await;
 
     import(app.clone(), &cookie, "docs/guide.md", DOC_MD).await;
+    // When
     let res = import(app.clone(), &cookie, "docs/guide.md", DOC_MD).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["status"], "unchanged");
@@ -196,11 +202,14 @@ async fn reimporting_identical_content_is_unchanged(pool: sqlx::PgPool) {
 /// so it can isolate the stale-snapshot assertion).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn reimporting_changed_content_syncs_and_returns_stale_document_snapshot(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-sync@b.test", "Alice").await;
 
     let created = json_body(import(app.clone(), &cookie, "docs/guide.md", DOC_MD).await).await;
+    // When
     let id = created["document"]["id"].as_str().unwrap().to_string();
+    // Then
     assert_eq!(created["document"]["title"], "Guide");
 
     let changed_md = "# Renamed Guide\n\n## Setup\n\nInstall it differently.\n\n## Usage\n\nRun it.\n\n## Extra\n\nMore info.\n";
@@ -239,6 +248,7 @@ async fn reimporting_changed_content_syncs_and_returns_stale_document_snapshot(p
 async fn resyncing_after_a_section_is_removed_and_a_later_one_reuses_its_slot_500s(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-slot-collision@b.test", "Alice").await;
 
@@ -248,7 +258,9 @@ async fn resyncing_after_a_section_is_removed_and_a_later_one_reuses_its_slot_50
 
     // Usage's heading is gone -> its chunk goes stale, order 1 left set.
     let step2 = "# Guide\n\n## Setup\n\nStill here.\n";
+    // When
     let res = sync(app.clone(), &cookie, &id, step2).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -268,9 +280,11 @@ async fn resyncing_after_a_section_is_removed_and_a_later_one_reuses_its_slot_50
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn import_dir_imports_every_file(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-dir@b.test", "Alice").await;
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -290,6 +304,7 @@ async fn import_dir_imports_every_file(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let arr = body.as_array().unwrap();
@@ -300,13 +315,16 @@ async fn import_dir_imports_every_file(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn render_round_trips_markdown(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-render@b.test", "Alice").await;
 
     let created = json_body(import(app.clone(), &cookie, "docs/guide.md", DOC_MD).await).await;
     let id = created["document"]["id"].as_str().unwrap();
 
+    // When
     let res = render(app.clone(), &cookie, id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let markdown = body["markdown"].as_str().unwrap();
@@ -318,13 +336,16 @@ async fn render_round_trips_markdown(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_document_returns_flattened_shape_with_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-detail@b.test", "Alice").await;
 
     let created = json_body(import(app.clone(), &cookie, "docs/guide.md", DOC_MD).await).await;
     let id = created["document"]["id"].as_str().unwrap();
 
+    // When
     let res = get_document(app.clone(), &cookie, id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     // Flattened: document fields sit at the top level, not nested under
@@ -340,6 +361,7 @@ async fn get_document_returns_flattened_shape_with_chunks(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_returns_bare_array_scoped_to_caller(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-list@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-list@b.test", "Bob").await;
@@ -347,7 +369,9 @@ async fn list_returns_bare_array_scoped_to_caller(pool: sqlx::PgPool) {
     import(app.clone(), &alice_cookie, "docs/a.md", "# A\n\nContent.\n").await;
     import(app.clone(), &bob_cookie, "docs/b.md", "# B\n\nContent.\n").await;
 
+    // When
     let res = list(app.clone(), &alice_cookie).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert!(body.is_array());
@@ -366,15 +390,19 @@ async fn list_returns_bare_array_scoped_to_caller(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn search_rejects_short_queries_with_400(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-search@b.test", "Alice").await;
 
+    // When
     let res = search(app.clone(), &cookie, "a").await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn search_finds_matching_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-search2@b.test", "Alice").await;
 
@@ -386,7 +414,9 @@ async fn search_finds_matching_chunks(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = search(app.clone(), &cookie, "auth").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert!(!body.as_array().unwrap().is_empty());
@@ -397,13 +427,16 @@ async fn search_finds_matching_chunks(pool: sqlx::PgPool) {
 /// doc comment).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_returns_deleted_row_and_orphans_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-delete@b.test", "Alice").await;
 
     let created = json_body(import(app.clone(), &cookie, "docs/guide.md", DOC_MD).await).await;
     let id = created["document"]["id"].as_str().unwrap().to_string();
 
+    // When
     let res = delete(app.clone(), &cookie, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["id"], id);
@@ -430,14 +463,17 @@ async fn delete_returns_deleted_row_and_orphans_chunks(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_get_sync_render_delete_all_404_and_leave_victim_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-x@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-x@b.test", "Bob").await;
 
     let created =
         json_body(import(app.clone(), &alice_cookie, "docs/guide.md", DOC_MD).await).await;
+    // When
     let id = created["document"]["id"].as_str().unwrap().to_string();
 
+    // Then
     assert_eq!(
         get_document(app.clone(), &bob_cookie, &id).await.status(),
         StatusCode::NOT_FOUND

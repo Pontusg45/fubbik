@@ -153,13 +153,16 @@ mod tests {
 
     #[test]
     fn full_marks_are_100() {
+        // Given
         let content = "A".repeat(200);
         let alts = vec!["alt1".to_string(), "alt2".to_string()];
         let input = ChunkHealthInput {
             alternatives: Some(&alts),
             ..full_input(&content)
         };
+        // When
         let score = compute_health_score(&input);
+        // Then
         assert_eq!(score.total, 100);
         assert_eq!(score.breakdown.freshness, 20);
         assert_eq!(score.breakdown.completeness, 20);
@@ -171,11 +174,14 @@ mod tests {
 
     #[test]
     fn thin_content_is_penalized() {
+        // Given
         let input = ChunkHealthInput {
             content: "Short",
             ..full_input("Short")
         };
+        // When
         let score = compute_health_score(&input);
+        // Then
         assert!(score.total < 100);
         assert!(score.breakdown.richness < 20);
         assert!(
@@ -187,13 +193,16 @@ mod tests {
 
     #[test]
     fn missing_enrichment_is_penalized() {
+        // Given
         let content = "A".repeat(200);
         let input = ChunkHealthInput {
             summary: None,
             has_embedding: false,
             ..full_input(&content)
         };
+        // When
         let score = compute_health_score(&input);
+        // Then
         assert!(score.total < 90);
         assert!(score.issues.contains(&"Missing AI summary".to_string()));
         assert!(
@@ -205,12 +214,15 @@ mod tests {
 
     #[test]
     fn orphan_chunks_are_penalized() {
+        // Given
         let content = "A".repeat(200);
         let input = ChunkHealthInput {
             connection_count: 0,
             ..full_input(&content)
         };
+        // When
         let score = compute_health_score(&input);
+        // Then
         assert!(score.total < 90);
         assert_eq!(score.breakdown.connectivity, 0);
         assert!(
@@ -222,46 +234,58 @@ mod tests {
 
     #[test]
     fn base_connectivity_without_centrality() {
+        // Given
         let content = "A".repeat(200);
+        // When
         let input = ChunkHealthInput {
             connection_count: 2,
             centrality_degree: 0,
             ..full_input(&content)
         };
+        // Then
         assert_eq!(compute_health_score(&input).breakdown.connectivity, 8);
     }
 
     #[test]
     fn connectivity_boosted_by_centrality() {
+        // Given
         let content = "A".repeat(200);
+        // When
         let input = ChunkHealthInput {
             connection_count: 2,
             centrality_degree: 10,
             ..full_input(&content)
         };
+        // Then
         // base 8 + min(floor(10/2), 8) = 8 + 5 = 13
         assert_eq!(compute_health_score(&input).breakdown.connectivity, 13);
     }
 
     #[test]
     fn medium_content_gets_partial_richness() {
+        // Given
         let content = "A".repeat(150);
+        // When
         let input = ChunkHealthInput {
             content: &content,
             ..full_input(&content)
         };
+        // Then
         assert_eq!(compute_health_score(&input).breakdown.richness, 16); // 4 + 6 + 6
     }
 
     #[test]
     fn coverage_tiers() {
+        // Given
         let content = "A".repeat(200);
 
         let no_reqs = ChunkHealthInput {
             requirement_count: 0,
             ..full_input(&content)
         };
+        // When
         let score = compute_health_score(&no_reqs);
+        // Then
         assert_eq!(score.breakdown.coverage, 0);
         assert!(score.issues.contains(&"No requirements linked".to_string()));
 

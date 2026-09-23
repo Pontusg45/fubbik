@@ -7,9 +7,11 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 test("Javadoc extracts overloads, tags and source locations while excluding private members", () => {
+    // Given
     const temporary = mkdtempSync(join(tmpdir(), "fubbik-doclet-test-"));
     try {
         copyFileSync(new URL("../src/source-docs/FubbikDoclet.java", import.meta.url), join(temporary, "FubbikDoclet.java"));
+        // When
         const result = spawnSync(
             "node",
             [
@@ -21,6 +23,7 @@ test("Javadoc extracts overloads, tags and source locations while excluding priv
             ],
             { encoding: "utf8" }
         );
+        // Then
         assert.equal(result.status, 0, result.stderr);
         const manifest = JSON.parse(result.stdout);
         const methods = manifest.symbols.filter(s => s.key.includes("#find("));
@@ -35,8 +38,10 @@ test("Javadoc extracts overloads, tags and source locations while excluding priv
 
 for (const language of ["javascript", "typescript"]) {
     test(`${language} preserves parameters, returns and examples`, () => {
+        // Given
         const temporary = mkdtempSync(join(tmpdir(), "fubbik-docs-test-"));
         try {
+            // When
             const result = spawnSync(
                 "node",
                 [
@@ -48,6 +53,7 @@ for (const language of ["javascript", "typescript"]) {
                 ],
                 { encoding: "utf8" }
             );
+            // Then
             assert.equal(result.status, 0, result.stderr);
             const manifest = JSON.parse(result.stdout);
             assert.equal(manifest.symbols.length, 1);
@@ -63,14 +69,17 @@ for (const language of ["javascript", "typescript"]) {
 }
 
 test("failed source parsing never produces a complete manifest", () => {
+    // Given
     const temporary = mkdtempSync(join(tmpdir(), "fubbik-docs-invalid-"));
     try {
         writeFileSync(join(temporary, "invalid.js"), "/** Broken declaration. */\nexport function (");
+        // When
         const result = spawnSync(
             "node",
             [fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)), temporary, "javascript", "fixture", temporary],
             { encoding: "utf8" }
         );
+        // Then
         assert.notEqual(result.status, 0);
         assert.equal(result.stdout, "");
         assert.match(result.stderr, /failed/);

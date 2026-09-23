@@ -27,12 +27,15 @@ fn new_doc(id: &str, title: &str, source_path: &str) -> NewDocument {
 
 #[sqlx::test]
 async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let id = fubbik_db::new_id();
 
+    // When
     let created = document::create(&pool, &uid, new_doc(&id, "Doc Title", "docs/a.md"))
         .await
         .unwrap();
+    // Then
     assert_eq!(created.title, "Doc Title");
     assert_eq!(created.source_path, "docs/a.md");
     assert_eq!(created.content_hash, "hash-1");
@@ -50,13 +53,16 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
 /// is no redundant caller-side check behind it in `documents::service`.
 #[sqlx::test]
 async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let id = fubbik_db::new_id();
+    // When
     document::create(&pool, &alice, new_doc(&id, "Alice's", "docs/a.md"))
         .await
         .unwrap();
 
+    // Then
     assert!(
         document::find_by_id(&pool, &bob, &id)
             .await
@@ -68,6 +74,7 @@ async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn find_by_source_path_none_space_id_matches_only_global_documents(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let space_id = fubbik_db::repo::space::create(
         &pool,
@@ -93,10 +100,12 @@ async fn find_by_source_path_none_space_id_matches_only_global_documents(pool: s
     scoped_doc.space_id = Some(space_id.clone());
     document::create(&pool, &uid, scoped_doc).await.unwrap();
 
+    // When
     let found_global = document::find_by_source_path(&pool, &uid, "docs/a.md", None)
         .await
         .unwrap()
         .expect("must find the global (no-space) document");
+    // Then
     assert_eq!(found_global.id, global_id);
 
     let found_scoped =
@@ -109,6 +118,7 @@ async fn find_by_source_path_none_space_id_matches_only_global_documents(pool: s
 
 #[sqlx::test]
 async fn list_is_scoped_to_caller(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     document::create(
@@ -126,7 +136,9 @@ async fn list_is_scoped_to_caller(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let alices = document::list(&pool, &alice, None).await.unwrap();
+    // Then
     assert_eq!(alices.len(), 1);
     assert_eq!(alices[0].title, "Alice's");
     assert_eq!(alices[0].chunk_count, 0);
@@ -141,6 +153,7 @@ async fn list_is_scoped_to_caller(pool: sqlx::PgPool) {
 /// this port adds can determine a stable order.
 #[sqlx::test]
 async fn list_breaks_title_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     for i in 0..15 {
         document::create(
@@ -152,6 +165,7 @@ async fn list_breaks_title_ties_by_id(pool: sqlx::PgPool) {
         .unwrap();
     }
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT id FROM document WHERE user_id = $1 ORDER BY id ASC",
         uid
@@ -159,6 +173,7 @@ async fn list_breaks_title_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 15);
 
     let first = document::list(&pool, &uid, None).await.unwrap();
@@ -179,6 +194,7 @@ async fn list_breaks_title_ties_by_id(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_with_tags_defaults_type_and_splits_tags(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let doc_id = fubbik_db::new_id();
     document::create(&pool, &uid, new_doc(&doc_id, "With Chunks", "docs/a.md"))
@@ -197,7 +213,9 @@ async fn list_with_tags_defaults_type_and_splits_tags(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let list = document::list_with_tags(&pool, &uid, None).await.unwrap();
+    // Then
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].chunk_count, 1);
     assert_eq!(list[0].doc_type, "document");
@@ -222,6 +240,7 @@ async fn list_with_tags_defaults_type_and_splits_tags(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_changes_only_given_fields_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let id = fubbik_db::new_id();
@@ -229,6 +248,7 @@ async fn update_changes_only_given_fields_and_is_user_scoped(pool: sqlx::PgPool)
         .await
         .unwrap();
 
+    // When
     // Cross-user update must be rejected and must not touch Bob's row.
     let hijack = document::update(
         &pool,
@@ -241,6 +261,7 @@ async fn update_changes_only_given_fields_and_is_user_scoped(pool: sqlx::PgPool)
     )
     .await
     .unwrap();
+    // Then
     assert!(hijack.is_none(), "another user's update must return None");
 
     let unchanged = document::find_by_id(&pool, &bob, &id)
@@ -274,6 +295,7 @@ async fn update_changes_only_given_fields_and_is_user_scoped(pool: sqlx::PgPool)
 
 #[sqlx::test]
 async fn delete_orphans_chunks_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let doc_id = fubbik_db::new_id();
@@ -285,8 +307,10 @@ async fn delete_orphans_chunks_and_is_user_scoped(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     // Alice cannot delete Bob's document.
     let rejected = document::delete(&pool, &alice, &doc_id).await.unwrap();
+    // Then
     assert!(rejected.is_none(), "another user's delete must return None");
     assert!(
         document::find_by_id(&pool, &bob, &doc_id)
@@ -324,6 +348,7 @@ async fn delete_orphans_chunks_and_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn document_chunks_orders_by_document_order_then_id_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let doc_id = fubbik_db::new_id();
@@ -340,9 +365,11 @@ async fn document_chunks_orders_by_document_order_then_id_and_is_user_scoped(poo
         .await
         .unwrap();
 
+    // When
     let chunks = document::document_chunks(&pool, &alice, &doc_id)
         .await
         .unwrap();
+    // Then
     assert_eq!(chunks.len(), 2);
     assert_eq!(chunks[0].id, c1);
     assert_eq!(chunks[1].id, c2);
@@ -356,6 +383,7 @@ async fn document_chunks_orders_by_document_order_then_id_and_is_user_scoped(poo
 
 #[sqlx::test]
 async fn update_section_chunk_sets_content_and_order(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let doc_id = fubbik_db::new_id();
     document::create(&pool, &uid, new_doc(&doc_id, "Doc", "docs/a.md"))
@@ -370,9 +398,11 @@ async fn update_section_chunk_sets_content_and_order(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let chunks = document::document_chunks(&pool, &uid, &doc_id)
         .await
         .unwrap();
+    // Then
     assert_eq!(chunks[0].content, "new content");
     assert_eq!(chunks[0].document_order, Some(3));
 }
@@ -382,6 +412,7 @@ async fn update_section_chunk_sets_content_and_order(pool: sqlx::PgPool) {
 /// fixing it.
 #[sqlx::test]
 async fn touch_chunk_bumps_updated_at_but_leaves_document_order_alone(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let doc_id = fubbik_db::new_id();
     document::create(&pool, &uid, new_doc(&doc_id, "Doc", "docs/a.md"))
@@ -400,9 +431,11 @@ async fn touch_chunk_bumps_updated_at_but_leaves_document_order_alone(pool: sqlx
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     document::touch_chunk(&pool, &uid, &chunk_id).await.unwrap();
 
+    // When
     let after = &document::document_chunks(&pool, &uid, &doc_id)
         .await
         .unwrap()[0];
+    // Then
     assert_eq!(
         after.document_order,
         Some(5),
@@ -413,11 +446,13 @@ async fn touch_chunk_bumps_updated_at_but_leaves_document_order_alone(pool: sqlx
 
 #[sqlx::test]
 async fn resolve_tag_ids_reuses_existing_tags_and_creates_missing_ones(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let existing = fubbik_db::repo::tag::create(&pool, &uid, "existing", None)
         .await
         .unwrap();
 
+    // When
     let ids = document::resolve_tag_ids(
         &pool,
         &uid,
@@ -425,6 +460,7 @@ async fn resolve_tag_ids_reuses_existing_tags_and_creates_missing_ones(pool: sql
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(ids.len(), 2);
     assert_eq!(ids[0], existing.id, "must reuse the existing tag's id");
 
@@ -440,6 +476,7 @@ async fn resolve_tag_ids_reuses_existing_tags_and_creates_missing_ones(pool: sql
 
 #[sqlx::test]
 async fn search_chunks_matches_title_or_content_and_is_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let doc_id = fubbik_db::new_id();
@@ -480,9 +517,11 @@ async fn search_chunks_matches_title_or_content_and_is_scoped(pool: sqlx::PgPool
     .await
     .unwrap();
 
+    // When
     let results = document::search_chunks(&pool, &alice, "auth", 20, None)
         .await
         .unwrap();
+    // Then
     assert_eq!(results.len(), 2);
 
     let bobs_results = document::search_chunks(&pool, &bob, "auth", 20, None)

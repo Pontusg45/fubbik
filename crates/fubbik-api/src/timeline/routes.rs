@@ -114,6 +114,9 @@ mod tests {
     /// match arm and a wrong multiplier is invisible from testing another.
     #[test]
     fn range_parsing() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(parse_range("7d"), 7);
         assert_eq!(parse_range("2w"), 14);
         assert_eq!(parse_range("6m"), 180);

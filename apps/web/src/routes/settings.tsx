@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { Settings as SettingsIcon } from "lucide-react";
 import { useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -18,7 +18,7 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/settings")({
-    component: SettingsPage,
+    component: SettingsRoute,
     beforeLoad: async () => {
         let session = null;
         try {
@@ -29,6 +29,11 @@ export const Route = createFileRoute("/settings")({
         return { session };
     }
 });
+
+function SettingsRoute() {
+    const pathname = useRouterState({ select: state => state.location.pathname });
+    return pathname === "/settings" || pathname === "/settings/" ? <SettingsPage /> : <Outlet />;
+}
 
 function useDebounce(fn: (...args: any[]) => void, delay: number) {
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

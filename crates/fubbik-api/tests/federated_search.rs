@@ -31,6 +31,7 @@ async fn create_chunk(app: &TestApp, user: &TestUser, title: &str, space_id: &st
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn federated_search_returns_space_name_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let owner = app.signup("federated@example.com", "Owner").await;
     let outsider = app.signup("federated-other@example.com", "Other").await;
@@ -52,12 +53,14 @@ async fn federated_search_returns_space_name_and_is_user_scoped(pool: sqlx::PgPo
     )
     .await;
 
+    // When
     let response = app
         .get(
             &owner,
             "/api/chunks/search/federated?search=Federated%20authentication&limit=8",
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     let body = TestApp::json(response).await;
 
@@ -68,6 +71,7 @@ async fn federated_search_returns_space_name_and_is_user_scoped(pool: sqlx::PgPo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn federated_search_enforces_its_fifty_row_cap(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let owner = app.signup("federated-cap@example.com", "Owner").await;
     let space_id = create_space(&app, &owner, "Platform").await;
@@ -75,9 +79,11 @@ async fn federated_search_enforces_its_fifty_row_cap(pool: sqlx::PgPool) {
         create_chunk(&app, &owner, &format!("Chunk {index:02}"), &space_id).await;
     }
 
+    // When
     let response = app
         .get(&owner, "/api/chunks/search/federated?limit=999")
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     let body = TestApp::json(response).await;
     assert_eq!(body["total"], 55);

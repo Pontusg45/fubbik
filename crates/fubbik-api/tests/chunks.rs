@@ -26,9 +26,11 @@ async fn seed_dev_user(pool: &sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_then_fetch_chunk(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -39,6 +41,7 @@ async fn create_then_fetch_chunk(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
 
     let body = res.into_body().collect().await.unwrap().to_bytes();
@@ -59,9 +62,11 @@ async fn create_then_fetch_chunk(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn missing_chunk_is_404(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::get("/api/chunks/nonexistent")
@@ -70,11 +75,13 @@ async fn missing_chunk_is_404(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(fubbik_api::AppState {
         pool,
         implicit_dev_session: false,
@@ -84,18 +91,22 @@ async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
         background: Default::default(),
     });
 
+    // When
     let res = app
         .oneshot(Request::get("/api/chunks").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn blank_title_is_400(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::post("/api/chunks")
@@ -105,6 +116,7 @@ async fn blank_title_is_400(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
@@ -133,10 +145,12 @@ async fn create_chunk(app: &axum::Router, title: &str) -> String {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn blank_title_on_update_is_400(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
     let id = create_chunk(&app, "Original").await;
 
+    // When
     let res = app
         .oneshot(
             Request::patch(format!("/api/chunks/{id}"))
@@ -146,15 +160,18 @@ async fn blank_title_on_update_is_400(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn whitespace_only_title_on_update_is_400(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
     let id = create_chunk(&app, "Original").await;
 
+    // When
     let res = app
         .oneshot(
             Request::patch(format!("/api/chunks/{id}"))
@@ -164,16 +181,19 @@ async fn whitespace_only_title_on_update_is_400(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn over_length_title_on_update_is_400(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
     let id = create_chunk(&app, "Original").await;
 
     let too_long = "x".repeat(201);
+    // When
     let res = app
         .oneshot(
             Request::patch(format!("/api/chunks/{id}"))
@@ -185,11 +205,13 @@ async fn over_length_title_on_update_is_400(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_records_history(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
@@ -219,6 +241,7 @@ async fn update_records_history(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let res = app
         .oneshot(
             Request::get(format!("/api/chunks/{id}/history"))
@@ -229,6 +252,7 @@ async fn update_records_history(pool: sqlx::PgPool) {
         .unwrap();
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let history: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    // Then
     assert_eq!(history.as_array().unwrap().len(), 1);
     assert_eq!(
         history[0]["title"], "V1",
@@ -242,6 +266,7 @@ async fn update_records_history(pool: sqlx::PgPool) {
 /// current page.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_returns_envelope_with_uncapped_total(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
@@ -257,6 +282,7 @@ async fn list_returns_envelope_with_uncapped_total(pool: sqlx::PgPool) {
             .unwrap();
     }
 
+    // When
     let res = app
         .oneshot(
             Request::get("/api/chunks?limit=2&offset=0")
@@ -265,6 +291,7 @@ async fn list_returns_envelope_with_uncapped_total(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = res.into_body().collect().await.unwrap().to_bytes();
@@ -288,9 +315,11 @@ async fn list_returns_envelope_with_uncapped_total(pool: sqlx::PgPool) {
 /// page.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_envelope_echoes_clamped_limit(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::get("/api/chunks?limit=999999&offset=-5")
@@ -299,6 +328,7 @@ async fn list_envelope_echoes_clamped_limit(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = res.into_body().collect().await.unwrap().to_bytes();
@@ -317,9 +347,11 @@ async fn list_envelope_echoes_clamped_limit(pool: sqlx::PgPool) {
 /// unset (nullable columns), and `scope` defaults to `{}`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn created_chunk_exposes_all_fields_with_nodes_null_semantics(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
+    // When
     let res = app
         .oneshot(
             Request::post("/api/chunks")
@@ -329,6 +361,7 @@ async fn created_chunk_exposes_all_fields_with_nodes_null_semantics(pool: sqlx::
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
 
     let body = res.into_body().collect().await.unwrap().to_bytes();
@@ -352,6 +385,7 @@ async fn created_chunk_exposes_all_fields_with_nodes_null_semantics(pool: sqlx::
 /// produces — not as a string or the raw pgvector text form.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn populated_embedding_round_trips_as_a_json_number_array(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool.clone()));
 
@@ -388,6 +422,7 @@ async fn populated_embedding_round_trips_as_a_json_number_array(pool: sqlx::PgPo
         .await
         .unwrap();
 
+    // When
     let res = app
         .oneshot(
             Request::get(format!("/api/chunks/{id}"))
@@ -405,6 +440,7 @@ async fn populated_embedding_round_trips_as_a_json_number_array(pool: sqlx::PgPo
     let embedding = detail["chunk"]["embedding"]
         .as_array()
         .expect("embedding must serialise as a JSON array, not a string or null");
+    // Then
     assert_eq!(embedding.len(), 768);
     assert!((embedding[1].as_f64().unwrap() - 0.001).abs() < 1e-6);
 }
@@ -418,6 +454,7 @@ async fn populated_embedding_round_trips_as_a_json_number_array(pool: sqlx::PgPo
 /// byte-identical to before — same rows, same envelope shape.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_is_unchanged_when_the_new_filter_params_are_absent(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool));
 
@@ -425,10 +462,12 @@ async fn list_is_unchanged_when_the_new_filter_params_are_absent(pool: sqlx::PgP
         create_chunk(&app, &format!("T{i}")).await;
     }
 
+    // When
     let res = app
         .oneshot(Request::get("/api/chunks").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
@@ -444,6 +483,7 @@ async fn list_is_unchanged_when_the_new_filter_params_are_absent(pool: sqlx::PgP
 /// space at all" semantics this mirrors from Node.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_accepts_space_id_query_param(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool.clone()));
     let dev_id: String =
@@ -500,6 +540,7 @@ async fn list_accepts_space_id_query_param(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let res = app
         .oneshot(
             Request::get(format!("/api/chunks?spaceId={space_id}"))
@@ -508,6 +549,7 @@ async fn list_accepts_space_id_query_param(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
@@ -529,6 +571,7 @@ async fn list_accepts_space_id_query_param(pool: sqlx::PgPool) {
 /// above.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_accepts_the_new_query_params(pool: sqlx::PgPool) {
+    // Given
     seed_dev_user(&pool).await;
     let app = fubbik_api::router(dev_state(pool.clone()));
     let dev_id: String =
@@ -548,6 +591,7 @@ async fn list_accepts_the_new_query_params(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -557,6 +601,7 @@ async fn list_accepts_the_new_query_params(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();

@@ -103,6 +103,7 @@ async fn ollama_mock() -> wiremock::MockServer {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn enrich_writes_all_four_columns(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock().await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -119,6 +120,7 @@ async fn enrich_writes_all_four_columns(pool: sqlx::PgPool) {
     .await;
     let id = json_body(created).await["id"].as_str().unwrap().to_string();
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -127,6 +129,7 @@ async fn enrich_writes_all_four_columns(pool: sqlx::PgPool) {
         serde_json::Value::Null,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let row = sqlx::query!(
@@ -156,6 +159,7 @@ async fn enrich_writes_all_four_columns(pool: sqlx::PgPool) {
 /// an error.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn enrich_is_a_no_op_when_ollama_is_unreachable(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone())); // default client points at port 1
     let cookie = signup(app.clone(), "a@b.test", "A").await;
 
@@ -169,6 +173,7 @@ async fn enrich_is_a_no_op_when_ollama_is_unreachable(pool: sqlx::PgPool) {
     .await;
     let id = json_body(created).await["id"].as_str().unwrap().to_string();
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -177,6 +182,7 @@ async fn enrich_is_a_no_op_when_ollama_is_unreachable(pool: sqlx::PgPool) {
         serde_json::Value::Null,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert!(json_body(res).await.is_null());
 
@@ -192,12 +198,14 @@ async fn enrich_is_a_no_op_when_ollama_is_unreachable(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn enrich_404s_for_a_missing_chunk(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock().await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
     let app = fubbik_api::router(st);
     let cookie = signup(app.clone(), "a@b.test", "A").await;
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -206,6 +214,7 @@ async fn enrich_404s_for_a_missing_chunk(pool: sqlx::PgPool) {
         serde_json::Value::Null,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -216,6 +225,7 @@ async fn enrich_404s_for_a_missing_chunk(pool: sqlx::PgPool) {
 /// tightening.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn enrich_404s_and_leaves_another_users_chunk_untouched(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock().await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -234,6 +244,7 @@ async fn enrich_404s_and_leaves_another_users_chunk_untouched(pool: sqlx::PgPool
     .await;
     let id = json_body(created).await["id"].as_str().unwrap().to_string();
 
+    // When
     let res = send(
         app.clone(),
         &cookie_b,
@@ -242,6 +253,7 @@ async fn enrich_404s_and_leaves_another_users_chunk_untouched(pool: sqlx::PgPool
         serde_json::Value::Null,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let row = sqlx::query!("SELECT summary FROM chunk WHERE id = $1", id)
@@ -256,6 +268,7 @@ async fn enrich_404s_and_leaves_another_users_chunk_untouched(pool: sqlx::PgPool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn enrich_is_rate_limited_at_ten_per_minute(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock().await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -273,6 +286,7 @@ async fn enrich_is_rate_limited_at_ten_per_minute(pool: sqlx::PgPool) {
     let id = json_body(created).await["id"].as_str().unwrap().to_string();
 
     for i in 0..10 {
+        // When
         let res = send(
             app.clone(),
             &cookie,
@@ -281,6 +295,7 @@ async fn enrich_is_rate_limited_at_ten_per_minute(pool: sqlx::PgPool) {
             serde_json::Value::Null,
         )
         .await;
+        // Then
         assert_eq!(res.status(), StatusCode::OK, "call {i}");
     }
     let res = send(
@@ -299,6 +314,7 @@ async fn enrich_is_rate_limited_at_ten_per_minute(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn enrich_all_enriches_every_chunk_and_counts_them(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock().await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -316,6 +332,7 @@ async fn enrich_all_enriches_every_chunk_and_counts_them(pool: sqlx::PgPool) {
         .await;
     }
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -324,6 +341,7 @@ async fn enrich_all_enriches_every_chunk_and_counts_them(pool: sqlx::PgPool) {
         serde_json::Value::Null,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await["enriched"], 3);
 
@@ -337,6 +355,7 @@ async fn enrich_all_enriches_every_chunk_and_counts_them(pool: sqlx::PgPool) {
 /// One user's chunks must not be enriched by another user's sweep.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn enrich_all_is_scoped_to_the_caller(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock().await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -353,6 +372,7 @@ async fn enrich_all_is_scoped_to_the_caller(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = send(
         app.clone(),
         &cookie_a,
@@ -361,6 +381,7 @@ async fn enrich_all_is_scoped_to_the_caller(pool: sqlx::PgPool) {
         serde_json::Value::Null,
     )
     .await;
+    // Then
     assert_eq!(json_body(res).await["enriched"], 0);
 
     let count = sqlx::query_scalar!("SELECT count(*) FROM chunk WHERE summary IS NOT NULL")
@@ -379,6 +400,7 @@ async fn enrich_all_is_scoped_to_the_caller(pool: sqlx::PgPool) {
 /// populated), not just the decremented count.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn enrich_all_continues_past_a_single_chunk_failure(pool: sqlx::PgPool) {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/tags"))
@@ -429,6 +451,7 @@ async fn enrich_all_continues_past_a_single_chunk_failure(pool: sqlx::PgPool) {
         ids.insert(title, id);
     }
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -437,6 +460,7 @@ async fn enrich_all_continues_past_a_single_chunk_failure(pool: sqlx::PgPool) {
         serde_json::Value::Null,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await["enriched"], 2);
 
@@ -470,6 +494,7 @@ async fn enrich_all_continues_past_a_single_chunk_failure(pool: sqlx::PgPool) {
 /// would eat into the sweep's 1000-row budget.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn enrich_all_skips_archived_chunks(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock().await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -490,6 +515,7 @@ async fn enrich_all_skips_archived_chunks(pool: sqlx::PgPool) {
     }
 
     let archived_id = ids[0].clone();
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -498,6 +524,7 @@ async fn enrich_all_skips_archived_chunks(pool: sqlx::PgPool) {
         serde_json::Value::Null,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = send(

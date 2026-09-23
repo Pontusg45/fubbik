@@ -124,16 +124,19 @@ async fn reject_chunk_tag_inserts(pool: &sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_rolls_back_chunk_and_new_tags_when_linking_fails(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "rollback-create@b.test", "Alice").await;
     reject_chunk_tag_inserts(&pool).await;
 
+    // When
     let response = create(
         app,
         &cookie,
         serde_json::json!({ "title": "must roll back", "tags": ["also-rolls-back"] }),
     )
     .await;
+    // Then
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
     let chunk_count: i64 = sqlx::query_scalar("SELECT count(*) FROM chunk WHERE title = $1")
@@ -152,6 +155,7 @@ async fn create_rolls_back_chunk_and_new_tags_when_linking_fails(pool: sqlx::PgP
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_rolls_back_row_history_and_tags_when_linking_fails(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "rollback-update@b.test", "Alice").await;
     let id = json_body(
@@ -168,6 +172,7 @@ async fn update_rolls_back_row_history_and_tags_when_linking_fails(pool: sqlx::P
         .to_owned();
     reject_chunk_tag_inserts(&pool).await;
 
+    // When
     let response = send(
         app.clone(),
         &cookie,
@@ -176,6 +181,7 @@ async fn update_rolls_back_row_history_and_tags_when_linking_fails(pool: sqlx::P
         serde_json::json!({ "title": "changed", "tags": ["new-tag"] }),
     )
     .await;
+    // Then
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
     let body = detail(app, &cookie, &id).await;
@@ -196,6 +202,7 @@ async fn update_rolls_back_row_history_and_tags_when_linking_fails(pool: sqlx::P
 /// before, and checking two of them would have left the rest live.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_persists_every_documented_field(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
 
@@ -214,6 +221,7 @@ async fn create_persists_every_documented_field(pool: sqlx::PgPool) {
         .unwrap()
         .to_string();
 
+    // When
     let res = create(
         app.clone(),
         &cookie,
@@ -229,6 +237,7 @@ async fn create_persists_every_documented_field(pool: sqlx::PgPool) {
         }),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::CREATED,
@@ -275,6 +284,7 @@ async fn create_persists_every_documented_field(pool: sqlx::PgPool) {
 /// asserted, so the test cannot pass on a hardcoded default.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_derives_review_status_from_origin(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
 
@@ -287,7 +297,9 @@ async fn create_derives_review_status_from_origin(pool: sqlx::PgPool) {
         if let Some(o) = origin {
             body["origin"] = serde_json::json!(o);
         }
+        // When
         let created = json_body(create(app.clone(), &cookie, body).await).await;
+        // Then
         assert_eq!(
             created["reviewStatus"], expected,
             "origin {origin:?} must produce reviewStatus {expected}"
@@ -300,15 +312,18 @@ async fn create_derives_review_status_from_origin(pool: sqlx::PgPool) {
 /// unlinked chunk. A blank one is treated as absent, matching Node.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_rejects_an_unknown_document_id_but_ignores_a_blank_one(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
 
+    // When
     let res = create(
         app.clone(),
         &cookie,
         serde_json::json!({ "title": "T", "documentId": "no-such-document" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
     let res = create(
@@ -328,6 +343,7 @@ async fn create_rejects_an_unknown_document_id_but_ignores_a_blank_one(pool: sql
 /// Every field `PATCH /api/chunks/{id}` documents actually lands.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn patch_persists_every_documented_field(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = json_body(create(app.clone(), &cookie, serde_json::json!({ "title": "T" })).await)
@@ -336,6 +352,7 @@ async fn patch_persists_every_documented_field(pool: sqlx::PgPool) {
         .unwrap()
         .to_string();
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -358,6 +375,7 @@ async fn patch_persists_every_documented_field(pool: sqlx::PgPool) {
         }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let body = detail(app, &cookie, &id).await;
@@ -403,6 +421,7 @@ async fn patch_persists_every_documented_field(pool: sqlx::PgPool) {
 /// checking only "set" would pass against a two-state implementation.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn patch_summary_is_tri_state(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = json_body(create(app.clone(), &cookie, serde_json::json!({ "title": "T" })).await)
@@ -412,6 +431,7 @@ async fn patch_summary_is_tri_state(pool: sqlx::PgPool) {
         .to_string();
     let path = format!("/api/chunks/{id}");
 
+    // When
     // set
     send(
         app.clone(),
@@ -421,6 +441,7 @@ async fn patch_summary_is_tri_state(pool: sqlx::PgPool) {
         serde_json::json!({ "summary": "first" }),
     )
     .await;
+    // Then
     assert_eq!(
         detail(app.clone(), &cookie, &id).await["chunk"]["summary"],
         "first"
@@ -462,6 +483,7 @@ async fn patch_summary_is_tri_state(pool: sqlx::PgPool) {
 /// makes "remove every tag" unreachable from the UI.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn patch_distinguishes_empty_tags_from_absent_tags(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = json_body(
@@ -478,6 +500,7 @@ async fn patch_distinguishes_empty_tags_from_absent_tags(pool: sqlx::PgPool) {
         .to_string();
     let path = format!("/api/chunks/{id}");
 
+    // When
     send(
         app.clone(),
         &cookie,
@@ -486,6 +509,7 @@ async fn patch_distinguishes_empty_tags_from_absent_tags(pool: sqlx::PgPool) {
         serde_json::json!({ "title": "unrelated" }),
     )
     .await;
+    // Then
     assert_eq!(
         detail(app.clone(), &cookie, &id).await["tags"]
             .as_array()
@@ -517,16 +541,19 @@ async fn patch_distinguishes_empty_tags_from_absent_tags(pool: sqlx::PgPool) {
 /// otherwise `tag_user_name_idx` would reject the second chunk outright.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn tags_are_reused_across_chunks_rather_than_duplicated(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
 
     for title in ["first", "second"] {
+        // When
         let res = create(
             app.clone(),
             &cookie,
             serde_json::json!({ "title": title, "tags": ["shared"] }),
         )
         .await;
+        // Then
         assert_eq!(res.status(), StatusCode::CREATED);
     }
 
@@ -547,6 +574,7 @@ async fn tags_are_reused_across_chunks_rather_than_duplicated(pool: sqlx::PgPool
 /// them regardless of the chunk's contents.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn history_records_alternatives_scope_and_update_tag(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = json_body(
@@ -587,8 +615,10 @@ async fn history_records_alternatives_scope_and_update_tag(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let history = json_body(get(app, &cookie, &format!("/api/chunks/{id}/history")).await).await;
     let latest = &history[0];
+    // Then
     assert_eq!(
         latest["title"], "Original",
         "the snapshot is the pre-edit state"
@@ -620,15 +650,18 @@ async fn history_records_alternatives_scope_and_update_tag(pool: sqlx::PgPool) {
 /// the same test so the "it works over there" half is not just claimed.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_accepts_scope_and_drops_it_like_node(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
 
+    // When
     let res = create(
         app.clone(),
         &cookie,
         serde_json::json!({ "title": "T", "scope": { "env": "prod" } }),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::CREATED,
@@ -665,6 +698,7 @@ async fn create_accepts_scope_and_drops_it_like_node(pool: sqlx::PgPool) {
 /// silent-acceptance bug for another.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn write_bodies_enforce_nodes_route_schema_limits(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = json_body(create(app.clone(), &cookie, serde_json::json!({ "title": "T" })).await)
@@ -675,6 +709,7 @@ async fn write_bodies_enforce_nodes_route_schema_limits(pool: sqlx::PgPool) {
     let path = format!("/api/chunks/{id}");
 
     let long = |n: usize| "x".repeat(n);
+    // When
     let many = |n: usize| (0..n).map(|i| format!("t{i}")).collect::<Vec<_>>();
 
     for (label, body) in [
@@ -704,6 +739,7 @@ async fn write_bodies_enforce_nodes_route_schema_limits(pool: sqlx::PgPool) {
             serde_json::json!({ "title": "T", "tags": [long(51)] }),
         ),
     ] {
+        // Then
         assert_eq!(
             create(app.clone(), &cookie, body).await.status(),
             StatusCode::BAD_REQUEST,

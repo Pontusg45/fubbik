@@ -96,6 +96,7 @@ async fn get(app: axum::Router, cookie: &str, path: &str) -> axum::response::Res
 /// is the equivalent pin for the export/context endpoint).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn export_context_respects_max_tokens(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "export-budget@b.test", "Export Budget").await;
     let user_id = user_id_for_email(&pool, "export-budget@b.test").await;
@@ -108,12 +109,14 @@ async fn export_context_respects_max_tokens(pool: sqlx::PgPool) {
         chunk::create(&pool, &user_id, c).await.unwrap();
     }
 
+    // When
     let small = get(
         app.clone(),
         &cookie,
         "/api/chunks/export/context?maxTokens=50&format=json",
     )
     .await;
+    // Then
     assert_eq!(small.status(), StatusCode::OK);
     let small_body = json_body(small).await;
     let small_chunks = small_body["chunks"].as_array().unwrap().len();
@@ -147,6 +150,7 @@ async fn export_context_respects_max_tokens(pool: sqlx::PgPool) {
 /// way this test can pass.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn export_context_boosts_chunks_relevant_to_for_path(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "export-forpath@b.test", "Export ForPath").await;
     let user_id = user_id_for_email(&pool, "export-forpath@b.test").await;
@@ -172,6 +176,7 @@ async fn export_context_boosts_chunks_relevant_to_for_path(pool: sqlx::PgPool) {
     other.review_status = "draft".to_string();
     chunk::create(&pool, &user_id, other).await.unwrap();
 
+    // When
     // Control: with no `forPath`, the intrinsically higher-scored chunk
     // (`Chunk Other`) wins a budget that fits exactly one ~650-token chunk.
     let control = get(
@@ -180,6 +185,7 @@ async fn export_context_boosts_chunks_relevant_to_for_path(pool: sqlx::PgPool) {
         "/api/chunks/export/context?maxTokens=700&format=json",
     )
     .await;
+    // Then
     assert_eq!(control.status(), StatusCode::OK);
     let control_body = json_body(control).await;
     let control_chunks = control_body["chunks"].as_array().unwrap();
@@ -223,6 +229,7 @@ async fn export_context_boosts_chunks_relevant_to_for_path(pool: sqlx::PgPool) {
 /// generated document; an untagged chunk owned by the same user must not.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn claude_md_includes_tagged_chunks_and_excludes_untagged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "claude-md-tags@b.test", "Claude Tags").await;
     let user_id = user_id_for_email(&pool, "claude-md-tags@b.test").await;
@@ -241,7 +248,9 @@ async fn claude_md_includes_tagged_chunks_and_excludes_untagged(pool: sqlx::PgPo
         .await
         .unwrap();
 
+    // When
     let res = get(app.clone(), &cookie, "/api/chunks/export/claude-md").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let content = body["content"].as_str().unwrap();
@@ -264,6 +273,7 @@ async fn claude_md_includes_tagged_chunks_and_excludes_untagged(pool: sqlx::PgPo
 /// present-but-unused query param.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn claude_md_defaults_to_a_32000_token_budget(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "claude-md-budget@b.test", "Claude Budget").await;
     let user_id = user_id_for_email(&pool, "claude-md-budget@b.test").await;
@@ -281,7 +291,9 @@ async fn claude_md_defaults_to_a_32000_token_budget(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let default_res = get(app.clone(), &cookie, "/api/chunks/export/claude-md").await;
+    // Then
     assert_eq!(default_res.status(), StatusCode::OK);
     let default_body = json_body(default_res).await;
     let default_content = default_body["content"].as_str().unwrap();
@@ -315,6 +327,7 @@ async fn claude_md_defaults_to_a_32000_token_budget(pool: sqlx::PgPool) {
 /// BDD steps and linked chunks).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn claude_md_includes_active_plans_and_requirements(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "claude-md-plans@b.test", "Claude Plans").await;
     let user_id = user_id_for_email(&pool, "claude-md-plans@b.test").await;
@@ -397,7 +410,9 @@ async fn claude_md_includes_active_plans_and_requirements(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let res = get(app.clone(), &cookie, "/api/chunks/export/claude-md").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let content = body["content"].as_str().unwrap();
@@ -451,6 +466,7 @@ async fn claude_md_includes_active_plans_and_requirements(pool: sqlx::PgPool) {
 /// would silently drop before enrichment/scoring/budgeting ever see it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn export_context_considers_more_than_100_qualifying_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "export-wide@b.test", "Export Wide").await;
     let user_id = user_id_for_email(&pool, "export-wide@b.test").await;
@@ -483,12 +499,14 @@ async fn export_context_considers_more_than_100_qualifying_chunks(pool: sqlx::Pg
     .await
     .unwrap();
 
+    // When
     let res = get(
         app.clone(),
         &cookie,
         "/api/chunks/export/context?maxTokens=1000000&format=json",
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let titles: Vec<&str> = body["chunks"]
@@ -510,6 +528,7 @@ async fn export_context_considers_more_than_100_qualifying_chunks(pool: sqlx::Pg
 /// title, which a 100-row cap would silently drop.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn claude_md_considers_more_than_100_tagged_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "claude-md-wide@b.test", "Claude Wide").await;
     let user_id = user_id_for_email(&pool, "claude-md-wide@b.test").await;
@@ -551,7 +570,9 @@ async fn claude_md_considers_more_than_100_tagged_chunks(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let res = get(app.clone(), &cookie, "/api/chunks/export/claude-md").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let content = body["content"].as_str().unwrap();

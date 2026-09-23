@@ -239,9 +239,11 @@ mod tests {
     /// by chance on a rerun of the old, buggy implementation.
     #[test]
     fn budget_and_format_preserves_enrichment_order_among_tied_scores() {
+        // Given
         let ids = ["c0", "c1", "c2", "c3", "c4", "c5"];
         let input: Vec<ChunkWithMetadata> = ids.iter().map(|id| tied_chunk(id)).collect();
 
+        // When
         let structured = budget_and_format(input, 100_000);
 
         let all_chunks: Vec<&ChunkWithMetadata> = structured
@@ -250,6 +252,7 @@ mod tests {
             .flat_map(|s| s.chunks.iter())
             .collect();
 
+        // Then
         assert_eq!(
             all_chunks.len(),
             ids.len(),
@@ -290,6 +293,7 @@ mod tests {
     /// instead of score order cannot pass by coincidence.
     #[test]
     fn budget_and_format_orders_survivors_by_score_descending() {
+        // Given
         let input = vec![
             scored_chunk("c0", 1.0),
             scored_chunk("c1", 2.0),
@@ -297,6 +301,7 @@ mod tests {
             scored_chunk("c3", 4.0),
         ];
 
+        // When
         let structured = budget_and_format(input, 100_000);
 
         let all_chunks: Vec<&ChunkWithMetadata> = structured
@@ -305,6 +310,7 @@ mod tests {
             .flat_map(|s| s.chunks.iter())
             .collect();
 
+        // Then
         assert_eq!(
             all_chunks.len(),
             4,

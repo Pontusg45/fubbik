@@ -101,6 +101,7 @@ async fn a_chunk(app: axum::Router, cookie: &str, title: &str) -> String {
 /// first wildcard — `src/**/*.ts` becomes the directory `src`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn density_builds_a_tree_from_globs_and_file_refs(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let a = a_chunk(app.clone(), &cookie, "A").await;
@@ -123,7 +124,9 @@ async fn density_builds_a_tree_from_globs_and_file_refs(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let body = json_body(get(app, &cookie, "/api/density").await).await;
+    // Then
     assert_eq!(body["totals"]["chunksCovered"], 2);
     assert_eq!(body["totals"]["pathsTracked"], 2);
 
@@ -146,6 +149,7 @@ async fn density_builds_a_tree_from_globs_and_file_refs(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn density_excludes_archived_and_other_users_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
@@ -171,7 +175,9 @@ async fn density_excludes_archived_and_other_users_chunks(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let body = json_body(get(app.clone(), &alice, "/api/density").await).await;
+    // Then
     assert_eq!(
         body["totals"]["chunksCovered"], 1,
         "an archived chunk drops out of the density view"
@@ -190,11 +196,14 @@ async fn density_excludes_archived_and_other_users_chunks(pool: sqlx::PgPool) {
 /// because "updated" means a version snapshot was written.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn timeline_reports_creates_and_edits(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = a_chunk(app.clone(), &cookie, "Tracked").await;
 
+    // When
     let body = json_body(get(app.clone(), &cookie, "/api/timeline").await).await;
+    // Then
     assert_eq!(body["totals"]["created"], 1);
     assert_eq!(body["totals"]["updated"], 0);
     assert_eq!(body["range"]["days"], 30, "the default window");
@@ -236,6 +245,7 @@ async fn timeline_reports_creates_and_edits(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn timeline_filters_by_tag_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
@@ -250,7 +260,9 @@ async fn timeline_filters_by_tag_and_is_user_scoped(pool: sqlx::PgPool) {
     .await;
     a_chunk(app.clone(), &alice, "Untagged").await;
 
+    // When
     let all = json_body(get(app.clone(), &alice, "/api/timeline").await).await;
+    // Then
     assert_eq!(all["totals"]["created"], 2);
 
     let filtered = json_body(get(app.clone(), &alice, "/api/timeline?tag=keeper").await).await;
@@ -267,6 +279,7 @@ async fn timeline_filters_by_tag_and_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn file_ref_lookup_and_list_are_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
@@ -281,8 +294,10 @@ async fn file_ref_lookup_and_list_are_user_scoped(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let hits =
         json_body(get(app.clone(), &alice, "/api/file-refs/lookup?path=src/lib.rs").await).await;
+    // Then
     assert_eq!(hits.as_array().unwrap().len(), 1);
     assert_eq!(hits[0]["chunkTitle"], "Documented");
     assert_eq!(hits[0]["anchor"], "fn run");
@@ -325,10 +340,12 @@ async fn file_ref_lookup_and_list_are_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn scope_keys_round_trip_and_are_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
 
+    // When
     let res = send(
         app.clone(),
         &alice,
@@ -337,6 +354,7 @@ async fn scope_keys_round_trip_and_are_user_scoped(pool: sqlx::PgPool) {
         serde_json::json!({ "key": "env", "valueType": "enum", "allowedValues": ["dev", "prod"] }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let created = json_body(res).await;
     assert_eq!(created["key"], "env");
@@ -413,6 +431,7 @@ async fn scope_keys_round_trip_and_are_user_scoped(pool: sqlx::PgPool) {
 /// deliberate divergence.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn scope_key_validation(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
 
@@ -431,7 +450,9 @@ async fn scope_key_validation(pool: sqlx::PgPool) {
             serde_json::json!({ "key": "k", "valueType": "enum", "allowedValues": [] }),
         ),
     ] {
+        // When
         let res = send(app.clone(), &cookie, "POST", "/api/scope-keys", body).await;
+        // Then
         assert_eq!(
             res.status(),
             StatusCode::BAD_REQUEST,

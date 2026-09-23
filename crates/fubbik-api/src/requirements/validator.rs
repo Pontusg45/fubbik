@@ -121,7 +121,10 @@ mod tests {
 
     #[test]
     fn empty_steps_is_the_only_error() {
+        // Given the inline inputs and test fixtures.
+        // When
         let errors = validate_steps(&[]);
+        // Then
         assert_eq!(
             errors,
             vec![StepError {
@@ -133,18 +136,24 @@ mod tests {
 
     #[test]
     fn valid_given_when_then_has_no_errors() {
+        // Given the inline inputs and test fixtures.
+        // When
         let steps = [
             step(StepKeyword::Given),
             step(StepKeyword::When),
             step(StepKeyword::Then),
         ];
+        // Then
         assert!(validate_steps(&steps).is_empty());
     }
 
     #[test]
     fn first_step_must_be_given() {
+        // Given
         let steps = [step(StepKeyword::When), step(StepKeyword::Then)];
+        // When
         let errors = validate_steps(&steps);
+        // Then
         assert!(
             errors
                 .iter()
@@ -154,12 +163,15 @@ mod tests {
 
     #[test]
     fn first_step_cannot_be_and_or_but() {
+        // Given
         let steps = [
             step(StepKeyword::And),
             step(StepKeyword::When),
             step(StepKeyword::Then),
         ];
+        // When
         let errors = validate_steps(&steps);
+        // Then
         assert!(
             errors
                 .iter()
@@ -169,13 +181,16 @@ mod tests {
 
     #[test]
     fn given_after_when_is_rejected() {
+        // Given
         let steps = [
             step(StepKeyword::Given),
             step(StepKeyword::When),
             step(StepKeyword::Given),
             step(StepKeyword::Then),
         ];
+        // When
         let errors = validate_steps(&steps);
+        // Then
         assert!(
             errors
                 .iter()
@@ -185,13 +200,16 @@ mod tests {
 
     #[test]
     fn when_after_then_is_rejected() {
+        // Given
         let steps = [
             step(StepKeyword::Given),
             step(StepKeyword::When),
             step(StepKeyword::Then),
             step(StepKeyword::When),
         ];
+        // When
         let errors = validate_steps(&steps);
+        // Then
         assert!(
             errors
                 .iter()
@@ -201,8 +219,11 @@ mod tests {
 
     #[test]
     fn then_before_when_is_rejected() {
+        // Given
         let steps = [step(StepKeyword::Given), step(StepKeyword::Then)];
+        // When
         let errors = validate_steps(&steps);
+        // Then
         assert!(
             errors
                 .iter()
@@ -212,8 +233,11 @@ mod tests {
 
     #[test]
     fn missing_when_and_then_are_both_reported() {
+        // Given
         let steps = [step(StepKeyword::Given)];
+        // When
         let errors = validate_steps(&steps);
+        // Then
         assert!(
             errors
                 .iter()
@@ -228,6 +252,8 @@ mod tests {
 
     #[test]
     fn and_but_inherit_phase_without_transition() {
+        // Given the inline inputs and test fixtures.
+        // When
         let steps = [
             step(StepKeyword::Given),
             step(StepKeyword::And),
@@ -235,6 +261,7 @@ mod tests {
             step(StepKeyword::But),
             step(StepKeyword::Then),
         ];
+        // Then
         assert!(validate_steps(&steps).is_empty());
     }
 }

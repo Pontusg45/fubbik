@@ -22,6 +22,11 @@
             "dependsOn": ["build"],
             "cache": false
         },
+        "@fubbik/db#test": {
+            "dependsOn": ["^build"],
+            "cache": false,
+            "passThroughEnv": ["FUBBIK_TEST_DATABASE_URL"]
+        },
         "gen:api": {
             "cache": false
         },

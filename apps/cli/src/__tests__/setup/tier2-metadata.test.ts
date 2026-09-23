@@ -18,6 +18,7 @@ afterEach(() => {
 
 describe("scanMetadata", () => {
     it("extracts tech stack from package.json", () => {
+        // Given
         writeFileSync(
             join(tempDir, "package.json"),
             JSON.stringify({
@@ -34,8 +35,10 @@ describe("scanMetadata", () => {
         );
 
         const { chunks } = scanMetadata(tempDir);
+        // When
         const techChunk = chunks.find(c => c.title.includes("Tech Stack"));
 
+        // Then
         expect(techChunk).toBeDefined();
         expect(techChunk!.tier).toBe(2);
         expect(techChunk!.category).toBe("tech-stack");
@@ -45,6 +48,7 @@ describe("scanMetadata", () => {
     });
 
     it("detects monorepo from workspaces field", () => {
+        // Given
         // Create workspace package directories
         mkdirSync(join(tempDir, "apps", "web"), { recursive: true });
         mkdirSync(join(tempDir, "packages", "shared"), { recursive: true });
@@ -59,13 +63,16 @@ describe("scanMetadata", () => {
         );
 
         const { chunks } = scanMetadata(tempDir);
+        // When
         const structureChunk = chunks.find(c => c.category === "structure");
 
+        // Then
         expect(structureChunk).toBeDefined();
         expect(structureChunk!.content.toLowerCase()).toContain("monorepo");
     });
 
     it("extracts tsconfig info", () => {
+        // Given
         writeFileSync(
             join(tempDir, "tsconfig.json"),
             JSON.stringify({
@@ -80,14 +87,17 @@ describe("scanMetadata", () => {
         );
 
         const { chunks } = scanMetadata(tempDir);
+        // When
         const tsChunk = chunks.find(c => c.title.includes("TypeScript"));
 
+        // Then
         expect(tsChunk).toBeDefined();
         expect(tsChunk!.content.toLowerCase()).toContain("strict");
         expect(tsChunk!.category).toBe("config");
     });
 
     it("extracts env vars from .env.example (never .env)", () => {
+        // Given
         writeFileSync(
             join(tempDir, ".env.example"),
             ["DATABASE_URL=postgres://localhost/mydb", "API_KEY=your-api-key-here", "PORT=3000"].join("\n")
@@ -99,8 +109,10 @@ describe("scanMetadata", () => {
         );
 
         const { chunks } = scanMetadata(tempDir);
+        // When
         const envChunk = chunks.find(c => c.type === "schema");
 
+        // Then
         expect(envChunk).toBeDefined();
         expect(envChunk!.content).toContain("DATABASE_URL");
         expect(envChunk!.content).not.toContain("secret");
@@ -108,11 +120,15 @@ describe("scanMetadata", () => {
     });
 
     it("returns empty for project with no package.json", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const { chunks } = scanMetadata(tempDir);
+        // Then
         expect(chunks).toHaveLength(0);
     });
 
     it("detects CI from github workflows", () => {
+        // Given
         const workflowsDir = join(tempDir, ".github", "workflows");
         mkdirSync(workflowsDir, { recursive: true });
         writeFileSync(
@@ -129,8 +145,10 @@ describe("scanMetadata", () => {
         );
 
         const { chunks } = scanMetadata(tempDir);
+        // When
         const ciChunk = chunks.find(c => c.tags.includes("ci"));
 
+        // Then
         expect(ciChunk).toBeDefined();
         expect(ciChunk!.category).toBe("config");
     });

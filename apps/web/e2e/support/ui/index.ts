@@ -2,8 +2,9 @@ import type { Locator } from "@playwright/test";
 
 import { Button, Checkbox, Disclosure, Input, Link, Surface, Switch, byLabel, byRole, type Scope, type Target } from "./core";
 import { Dialog, DropdownMenu, Overlay, type OverlayOptions } from "./overlay";
-import { MultiSelect, RadioGroup, SingleSelect, type OptionMap, type SelectOptions } from "./selection";
+import { MultiSelect, NativeSelect, RadioGroup, SingleSelect, type OptionMap, type SelectOptions } from "./selection";
 import { Table, type Columns, type TableOptions } from "./table";
+import { TagInput, type TagInputOptions } from "./tags";
 
 export class FubbikUI {
     constructor(readonly scope: Scope) {}
@@ -37,6 +38,12 @@ export class FubbikUI {
     multiSelect<const Options extends OptionMap>(target: Target, options: SelectOptions<Options>) {
         return new MultiSelect(byRole(this.scope, "combobox", target), options);
     }
+    nativeSelect<const Options extends Readonly<Record<string, string>>>(target: Target, options: Options) {
+        return new NativeSelect(byLabel(this.scope, target), options);
+    }
+    tagInput(target: Target, options: TagInputOptions) {
+        return new TagInput(byLabel(this.scope, target), options);
+    }
     dialog(target: Target) {
         return new Dialog(byRole(this.scope, "dialog", target));
     }
@@ -67,3 +74,5 @@ export type { Name, Scope, Target } from "./core";
 export type { OverlayOptions } from "./overlay";
 export type { OptionKey, OptionMap, SelectOptions } from "./selection";
 export type { Column, ColumnKey, Columns, RowKey, TableOptions } from "./table";
+
+export type { TagInputOptions } from "./tags";

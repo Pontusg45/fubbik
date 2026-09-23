@@ -154,6 +154,7 @@ async fn a_cell(app: axum::Router, cookie: &str, name: &str) -> (String, String)
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn matrix_crud_and_detail_shape(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = a_matrix(app.clone(), &cookie, "Invariants").await;
@@ -175,8 +176,10 @@ async fn matrix_crud_and_detail_shape(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     // `GET /matrices/{id}` is `{matrix, dimensions, rules}`, not a flat row.
     let detail = json_body(get(app.clone(), &cookie, &format!("/api/matrices/{id}")).await).await;
+    // Then
     assert_eq!(detail["matrix"]["name"], "Invariants");
     assert_eq!(detail["dimensions"].as_array().unwrap().len(), 1);
     assert_eq!(detail["rules"][0]["title"], "No orphans");
@@ -206,8 +209,10 @@ async fn matrix_crud_and_detail_shape(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_rejects_an_unknown_layer(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
+    // When
     let res = send(
         app,
         &cookie,
@@ -216,6 +221,7 @@ async fn create_rejects_an_unknown_layer(pool: sqlx::PgPool) {
         serde_json::json!({ "name": "M", "layer": "vibes" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
@@ -224,6 +230,7 @@ async fn create_rejects_an_unknown_layer(pool: sqlx::PgPool) {
 /// passes the session at all.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn every_matrix_route_is_404_for_another_user(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
@@ -323,7 +330,9 @@ async fn every_matrix_route_is_404_for_another_user(pool: sqlx::PgPool) {
             serde_json::Value::Null,
         ),
     ] {
+        // When
         let res = send(app.clone(), &bob, method, &path, body).await;
+        // Then
         assert_eq!(
             res.status(),
             StatusCode::NOT_FOUND,
@@ -346,6 +355,7 @@ async fn every_matrix_route_is_404_for_another_user(pool: sqlx::PgPool) {
 /// seven fields — not just the ones that changed.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn updating_a_rule_snapshots_the_previous_version(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let m = a_matrix(app.clone(), &cookie, "M").await;
@@ -369,6 +379,7 @@ async fn updating_a_rule_snapshots_the_previous_version(pool: sqlx::PgPool) {
         .unwrap()
         .to_string();
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -377,6 +388,7 @@ async fn updating_a_rule_snapshots_the_previous_version(pool: sqlx::PgPool) {
         serde_json::json!({ "title": "Revised", "rationale": null }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let updated = json_body(res).await;
     assert_eq!(updated["title"], "Revised");
@@ -413,6 +425,7 @@ async fn updating_a_rule_snapshots_the_previous_version(pool: sqlx::PgPool) {
 /// snapshot.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_rejected_rule_patch_writes_no_history(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let m = a_matrix(app.clone(), &cookie, "M").await;
@@ -431,6 +444,7 @@ async fn a_rejected_rule_patch_writes_no_history(pool: sqlx::PgPool) {
         .unwrap()
         .to_string();
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -439,6 +453,7 @@ async fn a_rejected_rule_patch_writes_no_history(pool: sqlx::PgPool) {
         serde_json::json!({ "title": "x".repeat(201) }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
     let history = json_body(
@@ -459,6 +474,7 @@ async fn a_rejected_rule_patch_writes_no_history(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn reordering_rules_renumbers_them(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let m = a_matrix(app.clone(), &cookie, "M").await;
@@ -483,6 +499,7 @@ async fn reordering_rules_renumbers_them(pool: sqlx::PgPool) {
         );
     }
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -491,6 +508,7 @@ async fn reordering_rules_renumbers_them(pool: sqlx::PgPool) {
         serde_json::json!({ "ruleIds": [ids[2], ids[0], ids[1]] }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await["message"], "Reordered");
 
@@ -511,6 +529,7 @@ async fn reordering_rules_renumbers_them(pool: sqlx::PgPool) {
 /// Toggling twice creates then deletes; the response says which happened.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn toggling_a_cell_creates_then_deletes(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let (m, cell) = a_cell(app.clone(), &cookie, "M").await;
@@ -519,6 +538,7 @@ async fn toggling_a_cell_creates_then_deletes(pool: sqlx::PgPool) {
     let rule = detail["rules"][0]["id"].as_str().unwrap().to_string();
     let dim = detail["dimensions"][0]["id"].as_str().unwrap().to_string();
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -527,6 +547,7 @@ async fn toggling_a_cell_creates_then_deletes(pool: sqlx::PgPool) {
         serde_json::json!({ "ruleId": rule, "dimensionId": dim }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let toggled = json_body(res).await;
     assert_eq!(toggled["action"], "deleted");
@@ -537,6 +558,7 @@ async fn toggling_a_cell_creates_then_deletes(pool: sqlx::PgPool) {
 /// names the count.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_cell_with_requirements_cannot_be_toggled_off(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let (m, cell) = a_cell(app.clone(), &cookie, "M").await;
@@ -563,6 +585,7 @@ async fn a_cell_with_requirements_cannot_be_toggled_off(pool: sqlx::PgPool) {
         .unwrap()
         .to_string();
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -571,6 +594,7 @@ async fn a_cell_with_requirements_cannot_be_toggled_off(pool: sqlx::PgPool) {
         serde_json::json!({ "requirementId": req }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
 
     let detail = json_body(get(app.clone(), &cookie, &format!("/api/matrices/{m}")).await).await;
@@ -624,11 +648,13 @@ async fn a_cell_with_requirements_cannot_be_toggled_off(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn code_links_round_trip_and_reject_a_bad_kind(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let (m, cell) = a_cell(app.clone(), &cookie, "M").await;
     let path = format!("/api/matrices/{m}/cells/{cell}/code");
 
+    // When
     let res = send(
         app.clone(),
         &cookie,
@@ -637,6 +663,7 @@ async fn code_links_round_trip_and_reject_a_bad_kind(pool: sqlx::PgPool) {
         serde_json::json!({ "kind": "vandalises", "ref": "src/x.rs" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
     let res = send(
@@ -676,6 +703,7 @@ async fn code_links_round_trip_and_reject_a_bad_kind(pool: sqlx::PgPool) {
 /// rather than the unit test's synthetic rows.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn the_view_derives_cell_status_from_evidence(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let (m, cell) = a_cell(app.clone(), &cookie, "M").await;
@@ -688,8 +716,10 @@ async fn the_view_derives_cell_status_from_evidence(pool: sqlx::PgPool) {
         detail["dimensions"][0]["id"].as_str().unwrap()
     );
 
+    // When
     // No evidence at all.
     let view = json_body(get(app.clone(), &cookie, &view_path).await).await;
+    // Then
     assert_eq!(view["cells"][&key]["status"], "unspecified");
     assert_eq!(view["summary"]["unspecified"], 1);
     assert_eq!(view["summary"]["total"], 1);
@@ -741,10 +771,12 @@ async fn the_view_derives_cell_status_from_evidence(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn recording_a_test_result_rejects_an_unknown_status(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let (m, cell) = a_cell(app.clone(), &cookie, "M").await;
 
+    // When
     let res = send(
         app,
         &cookie,
@@ -753,6 +785,7 @@ async fn recording_a_test_result_rejects_an_unknown_status(pool: sqlx::PgPool) {
         serde_json::json!({ "testRef": "t", "status": "skipped" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 }
 
@@ -760,17 +793,20 @@ async fn recording_a_test_result_rejects_an_unknown_status(pool: sqlx::PgPool) {
 /// pass its `{id}` through, not just the session.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_cell_id_from_another_of_your_own_matrices_is_rejected(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let (mine, _) = a_cell(app.clone(), &cookie, "Mine").await;
     let (_, other_cell) = a_cell(app.clone(), &cookie, "Other").await;
 
+    // When
     let res = get(
         app,
         &cookie,
         &format!("/api/matrices/{mine}/cells/{other_cell}/code"),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,

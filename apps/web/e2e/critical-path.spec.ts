@@ -1,45 +1,29 @@
-import { expect, test } from "./support/test";
+import { expect, test, testAccount } from "./support/test";
 
-// This suite proves the Rust slice end-to-end along the path a real user
-// takes: sign in through Node (which still owns Better Auth), then exercise
-// dashboard, chunk, and feature domains through the Rust API. Node and Rust
-// share the scratch database so Rust must also honour Node's session cookie.
+// Exercise authentication, dashboard, Chunk and Feature workflows through Rust.
 
-const TEST_USER = {
-    name: "Critical Path User",
-    email: `critical-path-${Date.now()}@example.com`,
-    password: "testpassword123"
-};
-
-// Rust's own port — see playwright.config.ts's first `webServer` entry.
-// `GET /api/auth/get-session` only exists on Rust (Node's equivalent is
-// `GET /api/me` on :3000), so a 200 here can only mean Rust independently
-// verified the better-auth cookie Node set and looked up the same user.
-const RUST_ORIGIN = "http://localhost:3100";
+const TEST_USER = testAccount({ name: "Critical Path User" });
 
 test.describe.serial("Critical path (Rust backend)", () => {
-    test("sign up through Node, and Rust honours the session it issued", async ({ page, screens }) => {
+    test("sign up through Rust and verify the authenticated session", async ({ screens }) => {
+        // Given a new account and the Rust-backed application.
+        // When the user signs up and requests the browser session.
         await screens.auth.signUp(TEST_USER);
 
-        // The whole point of this slice: Node issued the session cookie
-        // above, and now we hand it to Rust directly. If Rust can't verify
-        // the cookie's HMAC (wrong secret, cookie format mismatch, etc.)
-        // this 401s instead of returning the real user.
-        const response = await page.evaluate(async origin => {
-            const res = await fetch(`${origin}/api/auth/get-session`, { credentials: "include" });
-            return { status: res.status, body: await res.json().catch(() => null) };
-        }, RUST_ORIGIN);
+        // Verify the actual authenticated user, not just a successful redirect.
+        const response = await screens.auth.session();
 
+        // Then Rust returns the new authenticated user.
         expect(response.status).toBe(200);
-        expect(response.body.email).toBe(TEST_USER.email);
-        expect(response.body.name).toBe(TEST_USER.name);
+        expect(response.body.user.email).toBe(TEST_USER.email);
+        expect(response.body.user.name).toBe(TEST_USER.name);
     });
 
-    test("dashboard renders live Rust-backed data", async ({ page, screens }) => {
-        const rustStats = page.waitForResponse(response => response.url().startsWith(RUST_ORIGIN) && response.url().includes("/api/stats"));
-        await screens.auth.signIn(TEST_USER);
-        await page.waitForLoadState("networkidle");
-        expect((await rustStats).status()).toBe(200);
+    test("dashboard renders live Rust-backed data", async ({ page, screens, network }) => {
+        // Given an existing account with no chunks or plans.
+        // When the user signs in and loads the dashboard.
+        await network.perform({ method: "GET", path: "/api/stats", status: 200 }, () => screens.auth.signIn(TEST_USER));
+        // Then Rust-backed counts and empty states render successfully.
 
         // StatsBar: past the loading skeleton, showing a real (Rust /api/stats)
         // count rather than blank/stuck-loading.
@@ -63,6 +47,7 @@ test.describe.serial("Critical path (Rust backend)", () => {
     });
 
     test("create and edit a chunk, and it persists across a reload", async ({ page, screens }) => {
+        // Given an authenticated user and a new chunk with extended metadata.
         await screens.auth.signIn(TEST_USER);
 
         const chunkTitle = `Critical path chunk ${Date.now()}`;
@@ -74,65 +59,60 @@ test.describe.serial("Critical path (Rust backend)", () => {
 
         // Exercise the extended Rust DTO, including fields that used to be
         // silently dropped during the migration.
+        // When the user creates a document with tags and decision context.
         await screens.chunks.openNew();
         await screens.chunks.form.fill({ title: chunkTitle, content: chunkContent });
-        await screens.chunks.addTag(tagName);
+        await screens.chunks.tags.add(tagName);
+        await screens.chunks.type.choose("document");
         await screens.chunks.setDecisionContext({ alternatives: [alternativeA, alternativeB], consequences: consequencesText });
 
-        const createChunk = page.waitForResponse(
-            response =>
-                response.url().startsWith(RUST_ORIGIN) && response.url().endsWith("/api/chunks") && response.request().method() === "POST"
-        );
-        await screens.chunks.create();
-        expect((await createChunk).status()).toBe(201);
-        await page.waitForURL(/\/chunks\/[^/]+$/, { timeout: 15000 });
-
-        await expect(page.getByRole("heading", { level: 1, name: chunkTitle })).toBeVisible();
-        await expect(page.getByText(chunkContent)).toBeVisible();
+        await screens.chunks.createAndOpen();
+        // Then Rust creates the chunk and the detail page displays it.
+        await screens.chunks.expectDetails({ title: chunkTitle, content: chunkContent });
         await expect(page.getByText(tagName, { exact: true })).toBeVisible();
 
         // Alternatives/consequences live behind the "More context" drawer's
         // "Context" tab (chunks.$chunkId.tsx / more-context-context-tab.tsx).
-        await page.getByRole("button", { name: /More context/ }).click();
-        await page.getByRole("button", { name: "Context" }).click();
-        await expect(page.getByText(alternativeA)).toBeVisible();
-        await expect(page.getByText(alternativeB)).toBeVisible();
-        await expect(page.getByText(consequencesText)).toBeVisible();
-        await page.keyboard.press("Escape");
+        await screens.chunks.expectDecisionContext({ alternatives: [alternativeA, alternativeB], consequences: consequencesText });
+        await screens.chunks.contextDrawer.dismiss();
 
         // Edit through Rust and verify the response before checking the UI.
+        // When the persisted chunk is reopened and edited.
         const updatedTitle = `${chunkTitle} (edited)`;
         const updatedContent = "Updated content, saved through the edit page.";
-        await page.getByRole("link", { name: "Edit" }).click();
-        await page.waitForLoadState("networkidle");
+        await screens.chunks.openEdit();
+        // Then the editor loads its existing tag and type.
+        await screens.chunks.tags.expectTag(tagName);
+        await screens.chunks.type.expectValue("document");
+        // When tags, type, title and content are changed and saved.
+        await screens.chunks.tags.add(" Temporary ");
+        await screens.chunks.tags.remove("temporary");
+        await screens.chunks.tags.add(`${tagName}-edited`);
+        await screens.chunks.type.choose("reference");
         await screens.chunks.form.fill({ title: updatedTitle, content: updatedContent });
-        const updateChunk = page.waitForResponse(
-            response => response.url().startsWith(RUST_ORIGIN) && response.request().method() === "PATCH"
-        );
-        await screens.chunks.save();
-        expect((await updateChunk).status()).toBe(200);
-        await page.waitForURL(/\/chunks\/[^/]+$/, { timeout: 15000 });
-
-        await expect(page.getByRole("heading", { level: 1, name: updatedTitle })).toBeVisible();
-        await expect(page.getByText(updatedContent)).toBeVisible();
+        await screens.chunks.saveAndOpen();
+        // Then Rust accepts the changes and the detail page displays them.
+        const updated = { title: updatedTitle, content: updatedContent };
+        await screens.chunks.expectDetails(updated);
 
         // Persistence: reload wipes any client-only state; content, tags,
         // and decision-context fields must come back from the server, not
         // just React Query's cache.
-        await page.reload();
-        await page.waitForLoadState("networkidle");
-        await expect(page.getByRole("heading", { level: 1, name: updatedTitle })).toBeVisible();
-        await expect(page.getByText(updatedContent)).toBeVisible();
+        // When the page is reloaded.
+        await screens.chunks.reloadAndExpect(updated);
         await expect(page.getByText(tagName, { exact: true })).toBeVisible();
 
-        await page.getByRole("button", { name: /More context/ }).click();
-        await page.getByRole("button", { name: "Context" }).click();
-        await expect(page.getByText(alternativeA)).toBeVisible();
-        await expect(page.getByText(alternativeB)).toBeVisible();
-        await expect(page.getByText(consequencesText)).toBeVisible();
+        // Then added tags persist and removed tags stay absent.
+        await expect(page.getByText(`${tagName}-edited`, { exact: true })).toBeVisible();
+        await expect(page.getByText("temporary", { exact: true })).toHaveCount(0);
+        await screens.chunks.openEdit();
+        await screens.chunks.type.expectValue("reference");
+        await page.goBack();
+        await screens.chunks.expectDecisionContext({ alternatives: [alternativeA, alternativeB], consequences: consequencesText });
     });
 
     test("features page shows content round-tripped through Rust", async ({ page, screens }) => {
+        // Given an authenticated user on the features page.
         await screens.auth.signIn(TEST_USER);
 
         const featureName = `critical-path-feature-${Date.now()}`;
@@ -140,14 +120,9 @@ test.describe.serial("Critical path (Rust backend)", () => {
         await page.goto("/features");
         await page.waitForLoadState("networkidle");
 
-        await screens.feature.open();
-        await screens.feature.form.fill({ name: featureName });
-        const createFeature = page.waitForResponse(
-            response =>
-                response.url().startsWith(RUST_ORIGIN) && response.url().endsWith("/api/features") && response.request().method() === "POST"
-        );
-        await screens.feature.submit();
-        expect((await createFeature).status()).toBe(201);
+        // When the user creates a named feature.
+        await screens.feature.createFeature(featureName);
+        // Then Rust persists it and the page shows zero deltas.
 
         // Real content, not merely "the page didn't crash": the feature we
         // just created, round-tripped through Rust and back,

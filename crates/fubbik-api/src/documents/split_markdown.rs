@@ -361,8 +361,11 @@ mod tests {
 
     #[test]
     fn splits_on_h2_headings() {
+        // Given
         let md = "# My Document\n\nIntro paragraph.\n\n## First Section\n\nFirst content.\n\n## Second Section\n\nSecond content.\n";
+        // When
         let result = split_markdown(md, "docs/test.md");
+        // Then
         assert_eq!(result.title, "My Document");
         assert_eq!(result.sections.len(), 3);
         assert_eq!(
@@ -381,8 +384,11 @@ mod tests {
 
     #[test]
     fn skips_empty_preamble() {
+        // Given
         let md = "# Title\n\n## Only Section\n\nContent here.\n";
+        // When
         let result = split_markdown(md, "test.md");
+        // Then
         assert_eq!(result.sections.len(), 1);
         assert_eq!(result.sections[0].title, "Only Section");
         assert_eq!(result.sections[0].order, 0);
@@ -390,15 +396,21 @@ mod tests {
 
     #[test]
     fn falls_back_to_filename_for_title() {
+        // Given
         let md = "## Section One\n\nContent.\n";
+        // When
         let result = split_markdown(md, "docs/my-cool-guide.md");
+        // Then
         assert_eq!(result.title, "my cool guide");
     }
 
     #[test]
     fn preserves_h3_plus_subheadings_within_sections() {
+        // Given
         let md = "# Doc\n\n## Main\n\n### Sub\n\nDetails.\n\n#### Deep\n\nMore.\n";
+        // When
         let result = split_markdown(md, "test.md");
+        // Then
         assert_eq!(result.sections.len(), 1);
         assert!(result.sections[0].content.contains("### Sub"));
         assert!(result.sections[0].content.contains("#### Deep"));
@@ -406,8 +418,11 @@ mod tests {
 
     #[test]
     fn extracts_frontmatter_tags_and_description() {
+        // Given
         let md = "---\ntags:\n  - backend\n  - auth\ndescription: A guide to auth\n---\n\n# Auth Guide\n\n## Setup\n\nSteps here.\n";
+        // When
         let result = split_markdown(md, "docs/auth.md");
+        // Then
         assert_eq!(result.title, "Auth Guide");
         assert_eq!(result.tags, vec!["backend", "auth", "docs"]);
         assert_eq!(result.description.as_deref(), Some("A guide to auth"));
@@ -415,8 +430,11 @@ mod tests {
 
     #[test]
     fn treats_whole_file_as_single_section_when_no_h2s() {
+        // Given
         let md = "# Simple Note\n\nJust some content with no H2 headings.\n";
+        // When
         let result = split_markdown(md, "note.md");
+        // Then
         assert_eq!(result.sections.len(), 1);
         assert_eq!(
             result.sections[0].title,
@@ -430,8 +448,11 @@ mod tests {
 
     #[test]
     fn auto_detects_h3_as_split_level_when_no_h2s_exist() {
+        // Given
         let md = "# Title\n\n### First\n\nContent one.\n\n### Second\n\nContent two.\n";
+        // When
         let result = split_markdown(md, "test.md");
+        // Then
         assert_eq!(result.split_level, 3);
         assert_eq!(result.sections.len(), 2);
         assert_eq!(result.sections[0].title, "First");
@@ -440,8 +461,11 @@ mod tests {
 
     #[test]
     fn uses_explicit_split_level_override() {
+        // Given
         let md = "# Title\n\n## H2 Section\n\nContent.\n\n### H3 Section\n\nMore.\n";
+        // When
         let result = split_markdown_with_level(md, "test.md", Some(3));
+        // Then
         assert_eq!(result.split_level, 3);
         assert_eq!(result.sections.len(), 1);
         assert_eq!(result.sections[0].title, "H3 Section");
@@ -449,15 +473,21 @@ mod tests {
 
     #[test]
     fn returns_split_level_2_for_existing_h2_documents() {
+        // Given
         let md = "# My Document\n\nIntro.\n\n## First Section\n\nFirst content.\n";
+        // When
         let result = split_markdown(md, "test.md");
+        // Then
         assert_eq!(result.split_level, 2);
     }
 
     #[test]
     fn defaults_split_level_to_2_when_no_headings_found() {
+        // Given
         let md = "# Title\n\nJust content with no sub-headings.\n";
+        // When
         let result = split_markdown(md, "test.md");
+        // Then
         assert_eq!(result.split_level, 2);
         assert_eq!(result.sections.len(), 1);
         assert_eq!(result.sections[0].title, "Title \u{2014} Introduction");
@@ -465,8 +495,11 @@ mod tests {
 
     #[test]
     fn extracts_decision_context_from_trailing_blockquotes() {
+        // Given
         let md = "# Doc\n\n## Auth\n\nWe use JWT for authentication.\n\n> **Rationale:** Stateless, no server-side sessions needed.\n\n> **Alternatives:**\n> - Session cookies\n> - OAuth tokens\n\n> **Consequences:** Requires token refresh logic.";
+        // When
         let result = split_markdown(md, "test.md");
+        // Then
         assert_eq!(result.sections.len(), 1);
         assert_eq!(result.sections[0].content, "We use JWT for authentication.");
         assert_eq!(
@@ -488,8 +521,11 @@ mod tests {
 
     #[test]
     fn does_not_extract_blockquotes_that_are_not_decision_context() {
+        // Given
         let md = "# Doc\n\n## Notes\n\n> This is a regular blockquote in the middle.\n\nMore content after the blockquote.";
+        // When
         let result = split_markdown(md, "test.md");
+        // Then
         assert!(
             result.sections[0]
                 .content
@@ -505,8 +541,11 @@ mod tests {
 
     #[test]
     fn handles_partial_decision_context_only_rationale() {
+        // Given
         let md = "# Doc\n\n## Design\n\nWe chose X.\n\n> **Rationale:** Because Y.";
+        // When
         let result = split_markdown(md, "test.md");
+        // Then
         assert_eq!(result.sections[0].content, "We chose X.");
         assert_eq!(result.sections[0].rationale.as_deref(), Some("Because Y."));
         assert_eq!(result.sections[0].alternatives, None);
@@ -515,8 +554,11 @@ mod tests {
 
     #[test]
     fn handles_markdown_with_only_frontmatter_and_content() {
+        // Given
         let md = "---\ntitle: Quick Reference\ntags:\n  - reference\ndescription: A quick ref card\n---\n\nJust a simple reference document with no sections.\n";
+        // When
         let result = split_markdown(md, "ref.md");
+        // Then
         assert_eq!(result.title, "Quick Reference");
         assert_eq!(result.description.as_deref(), Some("A quick ref card"));
         assert_eq!(result.sections.len(), 1);
@@ -528,7 +570,10 @@ mod tests {
 
     #[test]
     fn handles_empty_file_gracefully() {
+        // Given the inline inputs and test fixtures.
+        // When
         let result = split_markdown("", "empty.md");
+        // Then
         assert_eq!(result.title, "empty");
         assert_eq!(result.sections.len(), 0);
     }

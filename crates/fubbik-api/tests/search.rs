@@ -125,10 +125,13 @@ async fn delete_at(app: axum::Router, path: &str, cookie: &str) -> axum::respons
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn parse_returns_the_raw_clause_array(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "parse@b.test", "P").await;
 
+    // When
     let res = get(app, "/api/search/parse?q=type%3Areference", &cookie).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(
@@ -144,7 +147,9 @@ async fn parse_returns_the_raw_clause_array(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn parse_requires_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
+    // When
     let res = app
         .oneshot(
             Request::get("/api/search/parse?q=type:note")
@@ -153,6 +158,7 @@ async fn parse_requires_a_session(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
@@ -160,6 +166,7 @@ async fn parse_requires_a_session(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn query_filters_by_type_tag_and_text(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "query-filters@b.test", "Q").await;
     let uid = user_id_for_email(&pool, "query-filters@b.test").await;
@@ -171,6 +178,7 @@ async fn query_filters_by_type_tag_and_text(pool: sqlx::PgPool) {
         .unwrap();
     seed_chunk(&pool, &uid, "Unrelated", "something else entirely").await;
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -182,6 +190,7 @@ async fn query_filters_by_type_tag_and_text(pool: sqlx::PgPool) {
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let chunks = body["chunks"].as_array().unwrap();
@@ -201,6 +210,7 @@ async fn query_filters_by_type_tag_and_text(pool: sqlx::PgPool) {
 /// with an unfiltered query.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn query_never_returns_another_users_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "query-cross-alice@b.test", "Alice").await;
     let alice_id = user_id_for_email(&pool, "query-cross-alice@b.test").await;
@@ -211,6 +221,7 @@ async fn query_never_returns_another_users_chunks(pool: sqlx::PgPool) {
     seed_chunk(&pool, &alice_id, "Alice's chunk", "alice content").await;
     seed_chunk(&pool, &bob_id, "Bob's chunk", "bob content").await;
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -225,6 +236,7 @@ async fn query_never_returns_another_users_chunks(pool: sqlx::PgPool) {
         .iter()
         .map(|c| c["title"].as_str().unwrap())
         .collect();
+    // Then
     assert_eq!(titles, vec!["Alice's chunk"]);
 }
 
@@ -239,6 +251,7 @@ async fn query_never_returns_another_users_chunks(pool: sqlx::PgPool) {
 /// divergence going forward: Node returns every matching row, this port 100.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn query_limit_is_clamped_to_100(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "query-limit-cap@b.test", "L").await;
     let uid = user_id_for_email(&pool, "query-limit-cap@b.test").await;
@@ -247,6 +260,7 @@ async fn query_limit_is_clamped_to_100(pool: sqlx::PgPool) {
         seed_chunk(&pool, &uid, &format!("Chunk {i}"), "content").await;
     }
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -254,6 +268,7 @@ async fn query_limit_is_clamped_to_100(pool: sqlx::PgPool) {
         serde_json::json!({"clauses": [], "limit": 1000}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(
@@ -265,6 +280,7 @@ async fn query_limit_is_clamped_to_100(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn query_connections_gte_filters_by_connection_count(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "query-conn@b.test", "Q").await;
     let uid = user_id_for_email(&pool, "query-conn@b.test").await;
@@ -285,6 +301,7 @@ async fn query_connections_gte_filters_by_connection_count(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -301,6 +318,7 @@ async fn query_connections_gte_filters_by_connection_count(pool: sqlx::PgPool) {
         .iter()
         .map(|c| c["id"].as_str().unwrap())
         .collect();
+    // Then
     assert!(ids.contains(&connected.as_str()));
     assert!(ids.contains(&other.as_str()));
     assert!(
@@ -316,11 +334,13 @@ async fn query_connections_gte_filters_by_connection_count(pool: sqlx::PgPool) {
 /// connections) still comes back.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn query_connections_with_a_non_numeric_value_applies_no_filter(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "query-conn-nan@b.test", "Q").await;
     let uid = user_id_for_email(&pool, "query-conn-nan@b.test").await;
     let lonely = seed_chunk(&pool, &uid, "Lonely", "no connections at all").await;
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -330,6 +350,7 @@ async fn query_connections_with_a_non_numeric_value_applies_no_filter(pool: sqlx
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let ids: Vec<&str> = body["chunks"]
@@ -348,6 +369,7 @@ async fn query_connections_with_a_non_numeric_value_applies_no_filter(pool: sqlx
 /// `executeSearch`. `and` and `or` must produce byte-identical results.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn join_or_is_accepted_and_produces_identical_results_to_and(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "query-join@b.test", "Q").await;
     let uid = user_id_for_email(&pool, "query-join@b.test").await;
@@ -361,6 +383,7 @@ async fn join_or_is_accepted_and_produces_identical_results_to_and(pool: sqlx::P
         serde_json::json!({"clauses": [], "join": "and"}),
     )
     .await;
+    // When
     let or_res = post(
         app,
         "/api/search/query",
@@ -368,6 +391,7 @@ async fn join_or_is_accepted_and_produces_identical_results_to_and(pool: sqlx::P
         serde_json::json!({"clauses": [], "join": "or"}),
     )
     .await;
+    // Then
     assert_eq!(and_res.status(), StatusCode::OK);
     assert_eq!(or_res.status(), StatusCode::OK);
     assert_eq!(
@@ -386,11 +410,13 @@ async fn join_or_is_accepted_and_produces_identical_results_to_and(pool: sqlx::P
 /// clause runs, not the moment it finds something).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn query_with_a_near_clause_that_resolves_to_no_ids_returns_empty(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "query-graph@b.test", "Q").await;
     let uid = user_id_for_email(&pool, "query-graph@b.test").await;
     seed_chunk(&pool, &uid, "Some chunk", "content").await;
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -400,6 +426,7 @@ async fn query_with_a_near_clause_that_resolves_to_no_ids_returns_empty(pool: sq
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["chunks"], serde_json::json!([]));
@@ -416,6 +443,7 @@ async fn query_with_a_near_clause_that_resolves_to_no_ids_returns_empty(pool: sq
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn near_clause_resolves_a_connected_chunk_and_sets_graph_meta(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -430,6 +458,7 @@ async fn near_clause_resolves_a_connected_chunk_and_sets_graph_meta(pool: sqlx::
         .await
         .unwrap();
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -439,6 +468,7 @@ async fn near_clause_resolves_a_connected_chunk_and_sets_graph_meta(pool: sqlx::
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let ids: Vec<&str> = body["chunks"]
@@ -468,6 +498,7 @@ async fn near_clause_resolves_a_connected_chunk_and_sets_graph_meta(pool: sqlx::
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn near_clause_must_not_leak_another_users_chunk_across_a_graph_edge(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -492,6 +523,7 @@ async fn near_clause_must_not_leak_another_users_chunk_across_a_graph_edge(pool:
         .await
         .unwrap();
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -501,6 +533,7 @@ async fn near_clause_must_not_leak_another_users_chunk_across_a_graph_edge(pool:
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let ids: Vec<&str> = body["chunks"]
@@ -521,6 +554,7 @@ async fn near_clause_must_not_leak_another_users_chunk_across_a_graph_edge(pool:
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn affected_by_clause_resolves_chunks_covered_by_a_requirement(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -553,6 +587,7 @@ async fn affected_by_clause_resolves_chunks_covered_by_a_requirement(pool: sqlx:
     .await
     .unwrap();
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -562,6 +597,7 @@ async fn affected_by_clause_resolves_chunks_covered_by_a_requirement(pool: sqlx:
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let ids: Vec<&str> = body["chunks"]
@@ -581,6 +617,7 @@ async fn affected_by_clause_resolves_chunks_covered_by_a_requirement(pool: sqlx:
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn path_clause_resolves_the_chunk_chain_and_edges(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -595,6 +632,7 @@ async fn path_clause_resolves_the_chunk_chain_and_edges(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -604,6 +642,7 @@ async fn path_clause_resolves_the_chunk_chain_and_edges(pool: sqlx::PgPool) {
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let ids: Vec<&str> = body["chunks"]
@@ -635,6 +674,7 @@ async fn affected_by_clause_must_not_leak_another_users_chunk_across_a_graph_edg
     pool: sqlx::PgPool,
 ) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -672,6 +712,7 @@ async fn affected_by_clause_must_not_leak_another_users_chunk_across_a_graph_edg
     .await
     .unwrap();
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -681,6 +722,7 @@ async fn affected_by_clause_must_not_leak_another_users_chunk_across_a_graph_edg
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(
@@ -705,6 +747,7 @@ async fn affected_by_clause_must_not_leak_another_users_chunk_across_a_graph_edg
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn path_clause_must_not_leak_another_users_chunk_in_graph_meta(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -729,6 +772,7 @@ async fn path_clause_must_not_leak_another_users_chunk_in_graph_meta(pool: sqlx:
         .await
         .unwrap();
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -738,6 +782,7 @@ async fn path_clause_must_not_leak_another_users_chunk_in_graph_meta(pool: sqlx:
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
 
@@ -789,9 +834,11 @@ async fn path_clause_must_not_leak_another_users_chunk_in_graph_meta(pool: sqlx:
 /// Ollama is running in this environment.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn similar_to_clause_degrades_to_empty_but_sets_graph_meta_type_semantic(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "similar-basic@b.test", "S").await;
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -801,6 +848,7 @@ async fn similar_to_clause_degrades_to_empty_but_sets_graph_meta_type_semantic(p
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["chunks"], serde_json::json!([]));
@@ -811,7 +859,9 @@ async fn similar_to_clause_degrades_to_empty_but_sets_graph_meta_type_semantic(p
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn query_requires_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
+    // When
     let res = app
         .oneshot(
             Request::post("/api/search/query")
@@ -821,6 +871,7 @@ async fn query_requires_a_session(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
@@ -832,12 +883,14 @@ async fn query_requires_a_session(pool: sqlx::PgPool) {
 /// same pool), conflating "the query failed" with "auth failed".
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn a_failing_query_degrades_to_empty_results_not_a_500(pool: sqlx::PgPool) {
+    // Given
     let uid = user::create(&pool, "degrade@b.test", "D", None)
         .await
         .unwrap()
         .id;
     pool.close().await;
 
+    // When
     let result = fubbik_api::search::service::execute_search(
         &pool,
         &fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
@@ -859,6 +912,7 @@ async fn a_failing_query_degrades_to_empty_results_not_a_500(pool: sqlx::PgPool)
     )
     .await;
 
+    // Then
     assert_eq!(result.chunks, vec![]);
     assert_eq!(result.total, 0);
 }
@@ -867,6 +921,7 @@ async fn a_failing_query_degrades_to_empty_results_not_a_500(pool: sqlx::PgPool)
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn autocomplete_tag_is_case_insensitive_prefix_and_capped_at_10(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "autotag@b.test", "A").await;
     let uid = user_id_for_email(&pool, "autotag@b.test").await;
@@ -888,12 +943,14 @@ async fn autocomplete_tag_is_case_insensitive_prefix_and_capped_at_10(pool: sqlx
         tag::create(&pool, &uid, name, None).await.unwrap();
     }
 
+    // When
     let res = get(
         app,
         "/api/search/autocomplete?field=tag&prefix=aut",
         &cookie,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let names: Vec<&str> = body
@@ -924,6 +981,7 @@ async fn autocomplete_tag_is_case_insensitive_prefix_and_capped_at_10(pool: sqlx
 /// task 8b).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn autocomplete_tag_never_returns_another_users_tags(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "autotag-cross-alice@b.test", "Alice").await;
     let alice_id = user_id_for_email(&pool, "autotag-cross-alice@b.test").await;
@@ -936,6 +994,7 @@ async fn autocomplete_tag_never_returns_another_users_tags(pool: sqlx::PgPool) {
         .unwrap();
     tag::create(&pool, &bob_id, "auth-bob", None).await.unwrap();
 
+    // When
     let res = get(
         app,
         "/api/search/autocomplete?field=tag&prefix=auth",
@@ -949,6 +1008,7 @@ async fn autocomplete_tag_never_returns_another_users_tags(pool: sqlx::PgPool) {
         .iter()
         .map(|v| v.as_str().unwrap())
         .collect();
+    // Then
     assert_eq!(names, vec!["auth-alice"]);
 }
 
@@ -956,18 +1016,21 @@ async fn autocomplete_tag_never_returns_another_users_tags(pool: sqlx::PgPool) {
 /// a prefix match, matching Node's `searchChunkTitles`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn autocomplete_chunk_matches_contains_not_prefix(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "autochunk@b.test", "A").await;
     let uid = user_id_for_email(&pool, "autochunk@b.test").await;
     seed_chunk(&pool, &uid, "The Great Authentication Flow", "content").await;
     seed_chunk(&pool, &uid, "Unrelated Title", "content").await;
 
+    // When
     let res = get(
         app,
         "/api/search/autocomplete?field=chunk&prefix=Authentication",
         &cookie,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     let titles: Vec<&str> = body
@@ -991,18 +1054,21 @@ async fn autocomplete_chunk_matches_contains_not_prefix(pool: sqlx::PgPool) {
 /// still finds it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn autocomplete_chunk_never_returns_another_users_chunk_title(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     signup(app.clone(), "autochunk-cross-alice@b.test", "Alice").await;
     let alice_id = user_id_for_email(&pool, "autochunk-cross-alice@b.test").await;
     let bob_cookie = signup(app.clone(), "autochunk-cross-bob@b.test", "Bob").await;
     seed_chunk(&pool, &alice_id, "The Great Authentication Flow", "content").await;
 
+    // When
     let res = get(
         app,
         "/api/search/autocomplete?field=chunk&prefix=Authentication",
         &bob_cookie,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         json_body(res).await,
@@ -1015,37 +1081,45 @@ async fn autocomplete_chunk_never_returns_another_users_chunk_title(pool: sqlx::
 /// port yet, so it's always empty — matching Node against an empty table.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn autocomplete_requirement_is_empty(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "autoreq@b.test", "A").await;
 
+    // When
     let res = get(
         app,
         "/api/search/autocomplete?field=requirement&prefix=any",
         &cookie,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await, serde_json::json!([]));
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn autocomplete_of_an_unknown_field_is_empty(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "autounknown@b.test", "A").await;
 
+    // When
     let res = get(
         app,
         "/api/search/autocomplete?field=bogus&prefix=x",
         &cookie,
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await, serde_json::json!([]));
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn autocomplete_requires_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
+    // When
     let res = app
         .oneshot(
             Request::get("/api/search/autocomplete?field=tag&prefix=a")
@@ -1054,6 +1128,7 @@ async fn autocomplete_requires_a_session(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
@@ -1061,9 +1136,11 @@ async fn autocomplete_requires_a_session(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_then_list_saved_query_round_trips(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "saved-crud@b.test", "S").await;
 
+    // When
     let res = post(
         app.clone(),
         "/api/search/saved",
@@ -1074,6 +1151,7 @@ async fn create_then_list_saved_query_round_trips(pool: sqlx::PgPool) {
         }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let created = json_body(res).await;
     assert!(created.is_object(), "POST must return a bare object");
@@ -1089,11 +1167,14 @@ async fn create_then_list_saved_query_round_trips(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn duplicate_saved_query_names_are_allowed_over_http(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "saved-dup@b.test", "S").await;
     let body = serde_json::json!({"name": "same", "query": {"clauses": []}});
 
+    // When
     let first = post(app.clone(), "/api/search/saved", &cookie, body.clone()).await;
+    // Then
     assert_eq!(first.status(), StatusCode::OK);
     let second = post(app.clone(), "/api/search/saved", &cookie, body).await;
     assert_eq!(
@@ -1108,6 +1189,7 @@ async fn duplicate_saved_query_names_are_allowed_over_http(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_saved_queries_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "saved-alice@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "saved-bob@b.test", "Bob").await;
@@ -1127,7 +1209,9 @@ async fn list_saved_queries_is_user_scoped(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let alice_list = json_body(get(app.clone(), "/api/search/saved", &alice_cookie).await).await;
+    // Then
     assert_eq!(alice_list.as_array().unwrap().len(), 1);
     assert_eq!(alice_list[0]["name"], "alice's");
 
@@ -1139,10 +1223,13 @@ async fn list_saved_queries_is_user_scoped(pool: sqlx::PgPool) {
 /// Node ignores the delete result and always answers `{"message":"Deleted"}`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn deleting_a_nonexistent_saved_query_still_returns_200_deleted(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "saved-del-none@b.test", "S").await;
 
+    // When
     let res = delete_at(app, "/api/search/saved/does-not-exist", &cookie).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         json_body(res).await,
@@ -1156,6 +1243,7 @@ async fn deleting_a_nonexistent_saved_query_still_returns_200_deleted(pool: sqlx
 /// surviving-row assertion rather than a status code.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn deleting_another_users_saved_query_returns_200_but_deletes_nothing(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "saved-del-alice@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "saved-del-bob@b.test", "Bob").await;
@@ -1164,12 +1252,14 @@ async fn deleting_another_users_saved_query_returns_200_but_deletes_nothing(pool
         .await
         .unwrap();
 
+    // When
     let res = delete_at(
         app,
         &format!("/api/search/saved/{}", alices.id),
         &bob_cookie,
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -1205,8 +1295,10 @@ async fn deleting_another_users_saved_query_returns_200_but_deletes_nothing(pool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn saved_requires_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -1216,6 +1308,7 @@ async fn saved_requires_a_session(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
     let res = app
@@ -1338,6 +1431,7 @@ async fn ollama_mock(vector: Vec<f32>) -> wiremock::MockServer {
 /// nothing) would fail this, unlike a membership-only check.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn similar_to_resolves_real_ids(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -1362,6 +1456,7 @@ async fn similar_to_resolves_real_ids(pool: sqlx::PgPool) {
     }
     seed_chunk_with_opposite_vector(&pool, &user_id, "far", "Far", 0).await;
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -1371,6 +1466,7 @@ async fn similar_to_resolves_real_ids(pool: sqlx::PgPool) {
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["graphMeta"]["type"], "semantic");
@@ -1400,12 +1496,14 @@ async fn similar_to_resolves_real_ids(pool: sqlx::PgPool) {
 /// rather than depending on network timing.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn similar_to_degrades_to_empty_when_ollama_is_down(pool: sqlx::PgPool) {
+    // Given
     let uid = user::create(&pool, "similar-down@b.test", "S", None)
         .await
         .unwrap()
         .id;
     seed_chunk(&pool, &uid, "Some chunk", "content").await;
 
+    // When
     let result = fubbik_api::search::service::execute_search(
         &pool,
         &fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
@@ -1427,6 +1525,7 @@ async fn similar_to_degrades_to_empty_when_ollama_is_down(pool: sqlx::PgPool) {
     )
     .await;
 
+    // Then
     assert_eq!(result.chunks, vec![]);
     assert_eq!(result.total, 0);
     assert_eq!(
@@ -1498,6 +1597,7 @@ async fn seed_chunk_with_graded_vector(pool: &sqlx::PgPool, user_id: &str, id: &
 /// unambiguous: exactly ranks 1..=20 must come back, never 21..=25.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn similar_to_clause_caps_resolved_ids_at_twenty(pool: sqlx::PgPool) {
+    // Given
     let server = ollama_mock(one_hot(0)).await;
     let mut st = state(pool.clone());
     st.ai = fubbik_ai::OllamaClient::new(server.uri());
@@ -1509,6 +1609,7 @@ async fn similar_to_clause_caps_resolved_ids_at_twenty(pool: sqlx::PgPool) {
         seed_chunk_with_graded_vector(&pool, &user_id, &format!("g{rank}"), rank).await;
     }
 
+    // When
     let res = post(
         app,
         "/api/search/query",
@@ -1518,6 +1619,7 @@ async fn similar_to_clause_caps_resolved_ids_at_twenty(pool: sqlx::PgPool) {
         ]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
 

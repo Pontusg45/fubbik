@@ -14,18 +14,18 @@ description: File-based routing and React Query data fetching
 Routes live in `apps/web/src/routes/`. Each file maps to a URL path:
 
 - `routes/index.tsx` → `/`
-- `routes/chunks/index.tsx` → `/chunks`
-- `routes/chunks/$id.tsx` → `/chunks/:id`
-- `routes/plans/new.tsx` → `/plans/new`
+- `routes/chunks.index.tsx` → `/chunks`
+- `routes/chunks.$chunkId.tsx` → `/chunks/:chunkId`
+- `routes/plans.new.tsx` → `/plans/new`
 
 ## Data Fetching
 
-API calls use Eden treaty for type-safe requests:
+API calls use the client generated from the Rust OpenAPI contract:
 
 ```typescript
 const { data } = useQuery({
     queryKey: ["chunks", filters],
-    queryFn: () => api.chunks.index.get({ query: filters })
+    queryFn: async () => unwrapEden(await api.api.chunks.get({ query: filters }))
 });
 ```
 

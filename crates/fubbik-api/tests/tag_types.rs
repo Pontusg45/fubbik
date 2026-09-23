@@ -128,10 +128,13 @@ async fn delete_tag_type(app: axum::Router, cookie: &str, id: &str) -> axum::res
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_then_list_round_trip(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-create@b.test", "Alice").await;
 
+    // When
     let res = create_tag_type(app.clone(), &cookie, "Topic", Some("#ff0000")).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::CREATED,
@@ -162,10 +165,13 @@ async fn create_then_list_round_trip(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_without_color_falls_back_to_default(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-default@b.test", "Alice").await;
 
+    // When
     let res = create_tag_type(app.clone(), &cookie, "Topic", None).await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let created = json_body(res).await;
     assert_eq!(created["color"], "#8b5cf6");
@@ -173,6 +179,7 @@ async fn create_without_color_falls_back_to_default(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_patch_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-patch@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-patch@b.test", "Bob").await;
@@ -180,7 +187,9 @@ async fn cross_user_patch_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
     let created = json_body(create_tag_type(app.clone(), &alice_cookie, "Topic", None).await).await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = patch_tag_type(app.clone(), &bob_cookie, &id, "Hijacked").await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -205,6 +214,7 @@ async fn cross_user_patch_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn cross_user_delete_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-delete@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-delete@b.test", "Bob").await;
@@ -212,7 +222,9 @@ async fn cross_user_delete_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
     let created = json_body(create_tag_type(app.clone(), &alice_cookie, "Topic", None).await).await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = delete_tag_type(app.clone(), &bob_cookie, &id).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -236,17 +248,21 @@ async fn cross_user_delete_is_404_and_leaves_row_unchanged(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .oneshot(Request::get("/api/tag-types").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_with_referencing_tags_nulls_tag_type_id_via_db_fk(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-fk@b.test", "Alice").await;
 
@@ -272,7 +288,9 @@ async fn delete_with_referencing_tags_nulls_tag_type_id_via_db_fk(pool: sqlx::Pg
     .await
     .unwrap();
 
+    // When
     let res = delete_tag_type(app.clone(), &cookie, &tag_type_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["message"], "Deleted");
@@ -309,11 +327,14 @@ async fn delete_with_referencing_tags_nulls_tag_type_id_via_db_fk(pool: sqlx::Pg
 /// returned 200 with a response body that looked plausible.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_icon_tri_state(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-icon@b.test", "Alice").await;
 
     let created = json_body(create_tag_type(app.clone(), &cookie, "Topic", None).await).await;
+    // When
     let id = created["id"].as_str().unwrap().to_string();
+    // Then
     assert_eq!(created["icon"], serde_json::Value::Null);
 
     async fn read_icon(pool: &sqlx::PgPool, id: &str) -> Option<String> {

@@ -11,9 +11,12 @@ const committedTypesPath = path.join(here, "api-types.ts");
 
 describe("generated API types", () => {
     it("match the committed OpenAPI schema", async () => {
+        // Given
         const generated = COMMENT_HEADER + astToString(await openapiTS(new URL(`file://${schemaPath}`)));
+        // When
         const committed = readFileSync(committedTypesPath, "utf8");
 
+        // Then
         expect(committed, "src/api-types.ts is stale; run `pnpm gen:api`").toBe(generated);
     });
 });

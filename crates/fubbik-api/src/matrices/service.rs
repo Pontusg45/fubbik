@@ -692,6 +692,9 @@ mod tests {
     /// "if passing then verified" check placed first.
     #[test]
     fn cell_status_precedence() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(cell_status(&cell(0, 0, 0, 0)), CellStatus::Unspecified);
         assert_eq!(cell_status(&cell(2, 0, 0, 0)), CellStatus::Specified);
         assert_eq!(cell_status(&cell(2, 0, 3, 0)), CellStatus::Verified);

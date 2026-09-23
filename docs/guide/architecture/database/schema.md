@@ -12,12 +12,12 @@ description: Core database tables and relationships
 ## Core Tables
 
 - **chunk** — the central entity with title, content, type, scope, embedding
-- **connection** — directed edges between chunks with relation types
+- **chunk_connection** — directed edges between chunks with relation types
 - **tag** / **tag_type** — tag management with colored categories
 - **chunk_tag** — many-to-many chunk-tag associations
-- **codebase** — project identification by git remote URL
-- **chunk_codebase** — many-to-many chunk-codebase associations
-- **workspace** / **workspace_codebase** — workspace grouping
+- **space** / **space_code_metadata** — knowledge scope and associated repository metadata
+- **chunk_space** — many-to-many chunk-space associations
+- **workspace** / **workspace_space** — workspace grouping
 
 ## Knowledge Metadata
 
@@ -40,4 +40,4 @@ description: Core database tables and relationships
 
 ## Schema Management
 
-Migrations use `drizzle-kit push` in development. The Docker entrypoint runs `drizzle-kit migrate` on startup for production.
+The Rust server applies SQLx migrations from `crates/fubbik-db/migrations/` on startup in development and deployment. Do not use Drizzle migrations for new live schema changes.

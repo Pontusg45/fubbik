@@ -4,15 +4,20 @@ import { layoutNeighborhood } from "./neighborhood-layout";
 
 describe("layoutNeighborhood", () => {
     it("places focus chunk at origin", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = layoutNeighborhood({
             focusChunkId: "c1",
             chunks: [{ id: "c1" }, { id: "c2" }],
             connections: [{ sourceId: "c1", targetId: "c2", relation: "depends_on" }]
         });
+        // Then
         expect(result.positions.c1).toEqual({ x: 0, y: 0 });
     });
 
     it("places 1-hop neighbors in inner ring", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = layoutNeighborhood({
             focusChunkId: "c1",
             chunks: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
@@ -21,6 +26,7 @@ describe("layoutNeighborhood", () => {
                 { sourceId: "c1", targetId: "c3", relation: "part_of" }
             ]
         });
+        // Then
         expect(result.hops.get("c2")).toBe(1);
         expect(result.hops.get("c3")).toBe(1);
         const dist2 = Math.hypot(result.positions.c2!.x, result.positions.c2!.y);
@@ -29,6 +35,8 @@ describe("layoutNeighborhood", () => {
     });
 
     it("places 2-hop neighbors in outer ring", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = layoutNeighborhood({
             focusChunkId: "c1",
             chunks: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
@@ -37,6 +45,7 @@ describe("layoutNeighborhood", () => {
                 { sourceId: "c2", targetId: "c3", relation: "part_of" }
             ]
         });
+        // Then
         expect(result.hops.get("c3")).toBe(2);
         const dist2 = Math.hypot(result.positions.c2!.x, result.positions.c2!.y);
         const dist3 = Math.hypot(result.positions.c3!.x, result.positions.c3!.y);
@@ -44,6 +53,8 @@ describe("layoutNeighborhood", () => {
     });
 
     it("returns only chunks within 2 hops", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = layoutNeighborhood({
             focusChunkId: "c1",
             chunks: [{ id: "c1" }, { id: "c2" }, { id: "c3" }, { id: "c4" }],
@@ -53,6 +64,7 @@ describe("layoutNeighborhood", () => {
                 { sourceId: "c3", targetId: "c4", relation: "references" }
             ]
         });
+        // Then
         expect(result.positions).toHaveProperty("c1");
         expect(result.positions).toHaveProperty("c2");
         expect(result.positions).toHaveProperty("c3");
@@ -60,11 +72,14 @@ describe("layoutNeighborhood", () => {
     });
 
     it("handles focus chunk with no connections", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const result = layoutNeighborhood({
             focusChunkId: "c1",
             chunks: [{ id: "c1" }],
             connections: []
         });
+        // Then
         expect(result.positions).toEqual({ c1: { x: 0, y: 0 } });
         expect(result.hops.get("c1")).toBe(0);
     });

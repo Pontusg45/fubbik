@@ -129,21 +129,30 @@ mod tests {
 
     #[test]
     fn finds_nearest_parent_config() {
+        // Given
         let root = std::env::temp_dir().join(format!("fubbik-config-{}", std::process::id()));
         let nested = root.join("a/b");
         std::fs::create_dir_all(&nested).unwrap();
+        // When
         std::fs::write(root.join(FILE_NAME), "{}").unwrap();
+        // Then
         assert_eq!(find_from(&nested), Some(root.join(FILE_NAME)));
         std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
     fn rejects_unknown_keys() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(set(&mut Config::default(), "wat", "x").is_err());
     }
 
     #[test]
     fn rejects_zero_token_budgets() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(set(&mut Config::default(), "context.max-tokens", "0").is_err());
     }
 }

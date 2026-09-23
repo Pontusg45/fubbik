@@ -41,6 +41,7 @@ async fn seed_space(pool: &sqlx::PgPool, user_id: &str, name: &str) -> String {
 
 #[sqlx::test]
 async fn user_settings_are_scoped_by_user(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
 
@@ -63,7 +64,9 @@ async fn user_settings_are_scoped_by_user(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let alice_rows = settings::list_user_settings(&pool, &alice).await.unwrap();
+    // Then
     assert_eq!(alice_rows.len(), 1);
     assert_eq!(alice_rows[0].value.0, serde_json::json!("dark"));
 
@@ -74,6 +77,7 @@ async fn user_settings_are_scoped_by_user(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn user_setting_upsert_overwrites_value_not_duplicates(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
 
     let first = settings::set_user_setting(
@@ -86,6 +90,7 @@ async fn user_setting_upsert_overwrites_value_not_duplicates(pool: sqlx::PgPool)
     .await
     .unwrap();
 
+    // When
     let second = settings::set_user_setting(
         &pool,
         &fubbik_db::new_id(),
@@ -96,6 +101,7 @@ async fn user_setting_upsert_overwrites_value_not_duplicates(pool: sqlx::PgPool)
     .await
     .unwrap();
 
+    // Then
     // Same row (same id, same unique (user_id, key)), value overwritten.
     assert_eq!(first.id, second.id);
     assert_eq!(second.value.0, serde_json::json!("light"));
@@ -107,8 +113,10 @@ async fn user_setting_upsert_overwrites_value_not_duplicates(pool: sqlx::PgPool)
 
 #[sqlx::test]
 async fn user_setting_value_is_stored_as_is_with_no_shape_validation(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
 
+    // When
     // `theme` is documented as `"light" | "dark" | "system"` in Node's
     // (TS-only, never enforced) `UserSettingsMap` — this stores a bare
     // number under that key with no error, matching Node exactly.
@@ -121,6 +129,7 @@ async fn user_setting_value_is_stored_as_is_with_no_shape_validation(pool: sqlx:
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(row.value.0, serde_json::json!(42));
 }
 
@@ -132,6 +141,7 @@ async fn user_setting_value_is_stored_as_is_with_no_shape_validation(pool: sqlx:
 /// and stable across repeated calls.
 #[sqlx::test]
 async fn list_orders_by_key_and_is_stable(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
 
     for key in ["zeta", "alpha", "mu", "beta", "omega"] {
@@ -147,9 +157,11 @@ async fn list_orders_by_key_and_is_stable(pool: sqlx::PgPool) {
     }
 
     let first = settings::list_user_settings(&pool, &alice).await.unwrap();
+    // When
     let second = settings::list_user_settings(&pool, &alice).await.unwrap();
 
     let keys: Vec<&str> = first.iter().map(|r| r.key.as_str()).collect();
+    // Then
     assert_eq!(keys, vec!["alpha", "beta", "mu", "omega", "zeta"]);
 
     let second_keys: Vec<&str> = second.iter().map(|r| r.key.as_str()).collect();
@@ -163,9 +175,11 @@ async fn list_orders_by_key_and_is_stable(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn codebase_setting_written_for_own_space_succeeds(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let space_id = seed_space(&pool, &alice, "alices-space").await;
 
+    // When
     let row = settings::set_codebase_setting(
         &pool,
         &fubbik_db::new_id(),
@@ -177,6 +191,7 @@ async fn codebase_setting_written_for_own_space_succeeds(pool: sqlx::PgPool) {
     .await
     .unwrap()
     .expect("writing to one's own space must succeed");
+    // Then
     assert_eq!(row.space_id, space_id);
     assert_eq!(row.value.0, serde_json::json!("note"));
 }
@@ -189,10 +204,12 @@ async fn codebase_setting_written_for_own_space_succeeds(pool: sqlx::PgPool) {
 /// would pass even if the rejected write partially mutated something.
 #[sqlx::test]
 async fn cannot_write_codebase_setting_for_another_users_space(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let alices_space = seed_space(&pool, &alice, "alices-space").await;
 
+    // When
     let result = settings::set_codebase_setting(
         &pool,
         &fubbik_db::new_id(),
@@ -203,6 +220,7 @@ async fn cannot_write_codebase_setting_for_another_users_space(pool: sqlx::PgPoo
     )
     .await
     .unwrap();
+    // Then
     assert!(
         result.is_none(),
         "write against another user's space must be rejected"
@@ -219,6 +237,7 @@ async fn cannot_write_codebase_setting_for_another_users_space(pool: sqlx::PgPoo
 
 #[sqlx::test]
 async fn cannot_read_codebase_settings_for_another_users_space(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let bob = seed_user(&pool, "c@d.test").await;
     let alices_space = seed_space(&pool, &alice, "alices-space").await;
@@ -234,9 +253,11 @@ async fn cannot_read_codebase_settings_for_another_users_space(pool: sqlx::PgPoo
     .await
     .unwrap();
 
+    // When
     let bob_view = settings::list_codebase_settings(&pool, &alices_space, &bob)
         .await
         .unwrap();
+    // Then
     assert!(
         bob_view.is_empty(),
         "another user must not be able to read this space's settings"
@@ -250,6 +271,7 @@ async fn cannot_read_codebase_settings_for_another_users_space(pool: sqlx::PgPoo
 
 #[sqlx::test]
 async fn codebase_setting_upsert_overwrites_value_for_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "a@b.test").await;
     let space_id = seed_space(&pool, &alice, "alices-space").await;
 
@@ -274,9 +296,11 @@ async fn codebase_setting_upsert_overwrites_value_for_owner(pool: sqlx::PgPool) 
     .await
     .unwrap();
 
+    // When
     let rows = settings::list_codebase_settings(&pool, &space_id, &alice)
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1, "upsert must not duplicate rows");
     assert_eq!(rows[0].value.0, serde_json::json!("reference"));
 }
@@ -285,6 +309,7 @@ async fn codebase_setting_upsert_overwrites_value_for_owner(pool: sqlx::PgPool) 
 
 #[sqlx::test]
 async fn instance_settings_are_global_with_no_owner_scoping(pool: sqlx::PgPool) {
+    // Given
     // No user in sight at all — `set_instance_setting` and
     // `list_instance_settings` take no user_id/space_id parameter because
     // `instance_settings` has no owner column. Any caller that can reach
@@ -293,7 +318,9 @@ async fn instance_settings_are_global_with_no_owner_scoping(pool: sqlx::PgPool) 
         .await
         .unwrap();
 
+    // When
     let rows = settings::list_instance_settings(&pool).await.unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].key, "aiEnabled");
     assert_eq!(rows[0].value.0, serde_json::json!(false));
@@ -301,6 +328,7 @@ async fn instance_settings_are_global_with_no_owner_scoping(pool: sqlx::PgPool) 
 
 #[sqlx::test]
 async fn instance_setting_upsert_overwrites_value(pool: sqlx::PgPool) {
+    // Given
     settings::set_instance_setting(&pool, "aiEnabled", serde_json::json!(true))
         .await
         .unwrap();
@@ -308,7 +336,9 @@ async fn instance_setting_upsert_overwrites_value(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let rows = settings::list_instance_settings(&pool).await.unwrap();
+    // Then
     assert_eq!(rows.len(), 1, "upsert must not duplicate rows");
     assert_eq!(rows[0].value.0, serde_json::json!(false));
 }
@@ -319,12 +349,15 @@ async fn instance_setting_upsert_overwrites_value(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn instance_settings_list_orders_by_key(pool: sqlx::PgPool) {
     for key in ["zeta", "alpha", "mu"] {
+        // Given
         settings::set_instance_setting(&pool, key, serde_json::json!(true))
             .await
             .unwrap();
     }
 
+    // When
     let rows = settings::list_instance_settings(&pool).await.unwrap();
     let keys: Vec<&str> = rows.iter().map(|r| r.key.as_str()).collect();
+    // Then
     assert_eq!(keys, vec!["alpha", "mu", "zeta"]);
 }

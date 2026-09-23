@@ -125,12 +125,15 @@ async fn create_chunk(app: axum::Router, cookie: &str, title: &str, content: &st
 /// reading `data.chunk.title` got `undefined`, silently.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_chunk_returns_the_enriched_detail_shape(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = create_chunk(app.clone(), &cookie, "Subject", "some content").await;
 
+    // When
     let body = json_body(get_detail(app, &cookie, &id).await).await;
 
+    // Then
     assert_eq!(body["chunk"]["id"], id.as_str());
     assert_eq!(body["chunk"]["title"], "Subject");
 
@@ -201,11 +204,13 @@ async fn get_chunk_returns_the_enriched_detail_shape(pool: sqlx::PgPool) {
 /// enriching nothing.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detail_populates_connections_applies_to_and_file_refs(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let subject = create_chunk(app.clone(), &cookie, "Subject", "content").await;
     let neighbour = create_chunk(app.clone(), &cookie, "Neighbour", "content").await;
 
+    // When
     let res = post(
         app.clone(),
         &cookie,
@@ -215,6 +220,7 @@ async fn detail_populates_connections_applies_to_and_file_refs(pool: sqlx::PgPoo
         }),
     )
     .await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::CREATED,
@@ -261,12 +267,15 @@ async fn detail_populates_connections_applies_to_and_file_refs(pool: sqlx::PgPoo
 /// passing for a chunk whose score was already at the asserted value.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn health_score_connectivity_reflects_real_connections(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let subject = create_chunk(app.clone(), &cookie, "Subject", "content").await;
     let neighbour = create_chunk(app.clone(), &cookie, "Neighbour", "content").await;
 
+    // When
     let before = json_body(get_detail(app.clone(), &cookie, &subject).await).await;
+    // Then
     assert_eq!(
         before["healthScore"]["breakdown"]["connectivity"], 0,
         "an unconnected chunk scores zero for connectivity"
@@ -309,6 +318,7 @@ async fn health_score_connectivity_reflects_real_connections(pool: sqlx::PgPool)
 /// reported in `_appliedFeatures`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detail_applies_active_feature_overlays_in_priority_order(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = create_chunk(app.clone(), &cookie, "Base title", "base content").await;
@@ -360,9 +370,11 @@ async fn detail_applies_active_feature_overlays_in_priority_order(pool: sqlx::Pg
     )
     .await;
 
+    // When
     // With no features active, the base chunk is served — but `_hasDeltas`
     // still reports that deltas exist.
     let inactive = json_body(get_detail(app.clone(), &cookie, &id).await).await;
+    // Then
     assert_eq!(inactive["chunk"]["title"], "Base title");
     assert_eq!(inactive["chunk"]["content"], "base content");
     assert_eq!(
@@ -417,11 +429,14 @@ async fn detail_applies_active_feature_overlays_in_priority_order(pool: sqlx::Pg
 /// half of the health score.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detail_reports_linked_requirements_and_their_coverage(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "a@b.test", "Alice").await;
     let id = create_chunk(app.clone(), &cookie, "Subject", "content").await;
 
+    // When
     let before = json_body(get_detail(app.clone(), &cookie, &id).await).await;
+    // Then
     assert_eq!(before["healthScore"]["breakdown"]["coverage"], 0);
 
     // `POST /api/requirements` answers 201 with
@@ -477,11 +492,14 @@ async fn detail_reports_linked_requirements_and_their_coverage(pool: sqlx::PgPoo
 /// Another user's chunk is a 404, not an enriched body.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detail_is_404_for_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "a@b.test", "Alice").await;
     let bob = signup(app.clone(), "c@d.test", "Bob").await;
+    // When
     let id = create_chunk(app.clone(), &alice, "Alice's chunk", "content").await;
 
+    // Then
     assert_eq!(
         get_detail(app.clone(), &alice, &id).await.status(),
         StatusCode::OK,

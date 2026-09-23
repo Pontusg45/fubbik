@@ -133,6 +133,7 @@ fn message(body: &serde_json::Value) -> &str {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_chunk_types_returns_bare_array_of_builtins_and_own_only(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "alice-ct-list@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-ct-list@b.test", "Bob").await;
@@ -152,7 +153,9 @@ async fn list_chunk_types_returns_bare_array_of_builtins_and_own_only(pool: sqlx
     )
     .await;
 
+    // When
     let res = get(app.clone(), &alice, "/api/chunk-types").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert!(body.is_array(), "must return a bare array");
@@ -187,6 +190,7 @@ async fn list_chunk_types_returns_bare_array_of_builtins_and_own_only(pool: sqlx
 /// only appears when the parameter genuinely reaches the SQL.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_chunk_types_reads_space_id_under_its_camel_case_wire_name(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-ct-space@b.test", "Alice").await;
     let uid: String = sqlx::query_scalar!("SELECT id FROM \"user\" LIMIT 1")
@@ -212,12 +216,14 @@ async fn list_chunk_types_reads_space_id_under_its_camel_case_wire_name(pool: sq
     .unwrap();
 
     let without = json_body(get(app.clone(), &cookie, "/api/chunk-types").await).await;
+    // When
     let has = |b: &serde_json::Value| {
         b.as_array()
             .unwrap()
             .iter()
             .any(|t| t["id"] == serde_json::json!("spaced"))
     };
+    // Then
     assert!(!has(&without), "absent spaceId must not surface the row");
 
     let with = json_body(
@@ -242,9 +248,11 @@ async fn list_chunk_types_reads_space_id_under_its_camel_case_wire_name(pool: sq
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_chunk_type_returns_201_with_nodes_defaults(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-ct-create@b.test", "Alice").await;
 
+    // When
     let res = post(
         app.clone(),
         &cookie,
@@ -252,6 +260,7 @@ async fn create_chunk_type_returns_201_with_nodes_defaults(pool: sqlx::PgPool) {
         serde_json::json!({ "id": "runbook", "label": "Runbook" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let body = json_body(res).await;
     assert_eq!(body["id"], "runbook");
@@ -268,9 +277,11 @@ async fn create_chunk_type_returns_201_with_nodes_defaults(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_chunk_type_round_trips_every_optional_field(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-ct-full@b.test", "Alice").await;
 
+    // When
     let res = post(
         app.clone(),
         &cookie,
@@ -286,6 +297,7 @@ async fn create_chunk_type_round_trips_every_optional_field(pool: sqlx::PgPool) 
         }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let body = json_body(res).await;
     assert_eq!(body["description"], "Ops steps");
@@ -299,10 +311,12 @@ async fn create_chunk_type_round_trips_every_optional_field(pool: sqlx::PgPool) 
 /// not just an Elysia schema cap (`packages/api/src/vocabularies/service.ts:42-46`).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_chunk_type_rejects_a_non_slug_id_with_400(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-ct-slug@b.test", "Alice").await;
 
     for bad in ["Upper", "_leading", "has space", "", &"a".repeat(42)] {
+        // When
         let res = post(
             app.clone(),
             &cookie,
@@ -310,6 +324,7 @@ async fn create_chunk_type_rejects_a_non_slug_id_with_400(pool: sqlx::PgPool) {
             serde_json::json!({ "id": bad, "label": "X" }),
         )
         .await;
+        // Then
         assert_eq!(res.status(), StatusCode::BAD_REQUEST, "id {bad:?}");
         let body = json_body(res).await;
         assert!(
@@ -324,10 +339,12 @@ async fn create_chunk_type_rejects_a_non_slug_id_with_400(pool: sqlx::PgPool) {
 /// so a built-in's id is taken for everyone.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_chunk_type_rejects_a_duplicate_id_with_400(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "alice-ct-dup@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-ct-dup@b.test", "Bob").await;
 
+    // When
     // Against a seeded built-in.
     let res = post(
         app.clone(),
@@ -336,6 +353,7 @@ async fn create_chunk_type_rejects_a_duplicate_id_with_400(pool: sqlx::PgPool) {
         serde_json::json!({ "id": "convention", "label": "Mine" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     assert!(
         message(&json_body(res).await).contains(r#"chunk type "convention" already exists"#),
@@ -366,6 +384,7 @@ async fn create_chunk_type_rejects_a_duplicate_id_with_400(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_chunk_type_applies_patch_and_leaves_omitted_fields_alone(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-ct-patch@b.test", "Alice").await;
     post(
@@ -376,6 +395,7 @@ async fn update_chunk_type_applies_patch_and_leaves_omitted_fields_alone(pool: s
     )
     .await;
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -383,6 +403,7 @@ async fn update_chunk_type_applies_patch_and_leaves_omitted_fields_alone(pool: s
         serde_json::json!({ "label": "Renamed", "description": null }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["label"], "Renamed");
@@ -400,9 +421,11 @@ async fn update_chunk_type_applies_patch_and_leaves_omitted_fields_alone(pool: s
 /// on 400 is what pins the check.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_chunk_type_rejects_built_in_with_400(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-ct-bi@b.test", "Alice").await;
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -410,6 +433,7 @@ async fn update_chunk_type_rejects_built_in_with_400(pool: sqlx::PgPool) {
         serde_json::json!({ "label": "hijacked" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     assert!(
         message(&json_body(res).await).contains("builtin chunk types cannot be edited"),
@@ -428,10 +452,13 @@ async fn update_chunk_type_rejects_built_in_with_400(pool: sqlx::PgPool) {
 /// indistinguishable from "no such id".
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_chunk_type_rejects_built_in_with_400(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-ct-bid@b.test", "Alice").await;
 
+    // When
     let res = delete(app.clone(), &cookie, "/api/chunk-types/convention").await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     assert!(message(&json_body(res).await).contains("builtin chunk types cannot be deleted"));
 
@@ -446,6 +473,7 @@ async fn delete_chunk_type_rejects_built_in_with_400(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn chunk_type_cross_user_mutations_are_404_and_leave_the_row_alone(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-ct-x@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-ct-x@b.test", "Bob").await;
@@ -457,6 +485,7 @@ async fn chunk_type_cross_user_mutations_are_404_and_leave_the_row_alone(pool: s
     )
     .await;
 
+    // When
     let res = patch(
         app.clone(),
         &bob,
@@ -464,6 +493,7 @@ async fn chunk_type_cross_user_mutations_are_404_and_leave_the_row_alone(pool: s
         serde_json::json!({ "label": "hijacked" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let res = delete(app.clone(), &bob, "/api/chunk-types/alices").await;
@@ -478,9 +508,12 @@ async fn chunk_type_cross_user_mutations_are_404_and_leave_the_row_alone(pool: s
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unknown_chunk_type_id_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
+    // When
     let cookie = signup(app.clone(), "alice-ct-404@b.test", "Alice").await;
 
+    // Then
     assert_eq!(
         patch(
             app.clone(),
@@ -502,6 +535,7 @@ async fn unknown_chunk_type_id_is_404(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_chunk_type_returns_message_deleted_and_removes_row(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-ct-del@b.test", "Alice").await;
     post(
@@ -512,7 +546,9 @@ async fn delete_chunk_type_returns_message_deleted_and_removes_row(pool: sqlx::P
     )
     .await;
 
+    // When
     let res = delete(app.clone(), &cookie, "/api/chunk-types/disposable").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         json_body(res).await,
@@ -532,6 +568,7 @@ async fn delete_chunk_type_returns_message_deleted_and_removes_row(pool: sqlx::P
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_connection_relations_returns_bare_array_of_builtins_and_own_only(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice = signup(app.clone(), "alice-cr-list@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-cr-list@b.test", "Bob").await;
@@ -551,7 +588,9 @@ async fn list_connection_relations_returns_bare_array_of_builtins_and_own_only(p
     )
     .await;
 
+    // When
     let res = get(app.clone(), &alice, "/api/connection-relations").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert!(body.is_array());
@@ -588,6 +627,7 @@ async fn list_connection_relations_returns_bare_array_of_builtins_and_own_only(p
 async fn list_connection_relations_reads_space_id_under_its_camel_case_wire_name(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-cr-space@b.test", "Alice").await;
     let uid: String = sqlx::query_scalar!("SELECT id FROM \"user\" LIMIT 1")
@@ -619,7 +659,9 @@ async fn list_connection_relations_reads_space_id_under_its_camel_case_wire_name
             .any(|r| r["id"] == serde_json::json!("spaced"))
     };
 
+    // When
     let without = json_body(get(app.clone(), &cookie, "/api/connection-relations").await).await;
+    // Then
     assert!(!has(&without));
 
     let with = json_body(
@@ -636,9 +678,11 @@ async fn list_connection_relations_reads_space_id_under_its_camel_case_wire_name
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_connection_relation_returns_201_with_nodes_defaults(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cr-create@b.test", "Alice").await;
 
+    // When
     let res = post(
         app.clone(),
         &cookie,
@@ -646,6 +690,7 @@ async fn create_connection_relation_returns_201_with_nodes_defaults(pool: sqlx::
         serde_json::json!({ "id": "mirrors", "label": "Mirrors" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let body = json_body(res).await;
     assert_eq!(body["id"], "mirrors");
@@ -663,11 +708,13 @@ async fn create_connection_relation_returns_201_with_nodes_defaults(pool: sqlx::
 /// actually free text" fields elsewhere in this port.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_connection_relation_accepts_every_literal_and_rejects_others(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cr-enum@b.test", "Alice").await;
 
     for (i, style) in ["solid", "dashed", "dotted"].iter().enumerate() {
         for (j, dir) in ["forward", "bidirectional"].iter().enumerate() {
+            // When
             let res = post(
                 app.clone(),
                 &cookie,
@@ -680,6 +727,7 @@ async fn create_connection_relation_accepts_every_literal_and_rejects_others(poo
                 }),
             )
             .await;
+            // Then
             assert_eq!(res.status(), StatusCode::CREATED, "{style}/{dir}");
             let body = json_body(res).await;
             assert_eq!(body["arrowStyle"], *style);
@@ -701,9 +749,11 @@ async fn create_connection_relation_accepts_every_literal_and_rejects_others(poo
 async fn create_connection_relation_rejects_non_slug_and_duplicate_ids_with_400(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cr-val@b.test", "Alice").await;
 
+    // When
     let res = post(
         app.clone(),
         &cookie,
@@ -711,6 +761,7 @@ async fn create_connection_relation_rejects_non_slug_and_duplicate_ids_with_400(
         serde_json::json!({ "id": "Not A Slug", "label": "R" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     assert!(message(&json_body(res).await).contains("id must be a lowercase slug"));
 
@@ -732,6 +783,7 @@ async fn create_connection_relation_rejects_non_slug_and_duplicate_ids_with_400(
 async fn update_connection_relation_applies_patch_including_tri_state_inverse_of_id(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-cr-patch@b.test", "Alice").await;
     post(
@@ -745,6 +797,7 @@ async fn update_connection_relation_applies_patch_including_tri_state_inverse_of
     )
     .await;
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -752,6 +805,7 @@ async fn update_connection_relation_applies_patch_including_tri_state_inverse_of
         serde_json::json!({ "label": "Renamed", "arrowStyle": "dotted" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["label"], "Renamed");
@@ -776,9 +830,11 @@ async fn update_connection_relation_applies_patch_including_tri_state_inverse_of
 /// separately so a copy-paste between the two would be caught.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn built_in_connection_relation_cannot_be_edited_or_deleted(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-cr-bi@b.test", "Alice").await;
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -786,6 +842,7 @@ async fn built_in_connection_relation_cannot_be_edited_or_deleted(pool: sqlx::Pg
         serde_json::json!({ "label": "hijacked" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     assert!(message(&json_body(res).await).contains("builtin relations cannot be edited"));
 
@@ -807,9 +864,11 @@ async fn built_in_connection_relation_cannot_be_edited_or_deleted(pool: sqlx::Pg
 async fn connection_relation_cross_user_mutations_are_404_and_leave_the_row_alone(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-cr-x@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-cr-x@b.test", "Bob").await;
+    // When
     post(
         app.clone(),
         &alice,
@@ -818,6 +877,7 @@ async fn connection_relation_cross_user_mutations_are_404_and_leave_the_row_alon
     )
     .await;
 
+    // Then
     assert_eq!(
         patch(
             app.clone(),
@@ -846,6 +906,7 @@ async fn connection_relation_cross_user_mutations_are_404_and_leave_the_row_alon
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_connection_relation_returns_message_deleted_and_removes_row(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-cr-del@b.test", "Alice").await;
     post(
@@ -856,7 +917,9 @@ async fn delete_connection_relation_returns_message_deleted_and_removes_row(pool
     )
     .await;
 
+    // When
     let res = delete(app.clone(), &cookie, "/api/connection-relations/disposable").await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         json_body(res).await,
@@ -879,6 +942,7 @@ async fn delete_connection_relation_returns_message_deleted_and_removes_row(pool
 /// an anonymous caller.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn every_endpoint_requires_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
     let cases: Vec<(&str, &str)> = vec![
@@ -893,6 +957,7 @@ async fn every_endpoint_requires_a_session(pool: sqlx::PgPool) {
     ];
 
     for (method, path) in cases {
+        // When
         let res = app
             .clone()
             .oneshot(
@@ -905,6 +970,7 @@ async fn every_endpoint_requires_a_session(pool: sqlx::PgPool) {
             )
             .await
             .unwrap();
+        // Then
         assert_eq!(
             res.status(),
             StatusCode::UNAUTHORIZED,

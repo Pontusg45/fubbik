@@ -45,20 +45,24 @@ async fn a_space(pool: &sqlx::PgPool, uid: &str, name: &str) -> String {
 
 #[sqlx::test]
 async fn chunk_meta_unscoped_returns_only_this_users_chunks(pool: sqlx::PgPool) {
+    // Given
     let mine = user::create(&pool, "a@b.test", "A", None).await.unwrap().id;
     let theirs = user::create(&pool, "c@d.test", "C", None).await.unwrap().id;
     a_chunk(&pool, &mine, "Mine").await;
     a_chunk(&pool, &theirs, "Theirs").await;
 
+    // When
     let rows = graph::list_chunk_meta(&pool, &mine, None, None)
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].title, "Mine");
 }
 
 #[sqlx::test]
 async fn chunk_meta_space_scope_includes_global_chunks(pool: sqlx::PgPool) {
+    // Given
     let uid = user::create(&pool, "a@b.test", "A", None).await.unwrap().id;
     let target = a_space(&pool, &uid, "Target").await;
     let other = a_space(&pool, &uid, "Other").await;
@@ -69,11 +73,13 @@ async fn chunk_meta_space_scope_includes_global_chunks(pool: sqlx::PgPool) {
     link_space(&pool, &in_target, &target).await;
     link_space(&pool, &in_other, &other).await;
 
+    // When
     let rows = graph::list_chunk_meta(&pool, &uid, Some(&target), None)
         .await
         .unwrap();
     let titles: Vec<&str> = rows.iter().map(|r| r.title.as_str()).collect();
 
+    // Then
     // The rule that is easiest to lose in translation from Drizzle's
     // `OR id NOT IN (SELECT chunk_id FROM chunk_space)`: a chunk belonging to
     // NO space is global and appears under every scope.
@@ -87,6 +93,7 @@ async fn chunk_meta_space_scope_includes_global_chunks(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn chunk_meta_workspace_scope_spans_member_spaces_and_wins_over_space_id(pool: sqlx::PgPool) {
+    // Given
     let uid = user::create(&pool, "a@b.test", "A", None).await.unwrap().id;
     let a = a_space(&pool, &uid, "A").await;
     let b = a_space(&pool, &uid, "B").await;
@@ -113,6 +120,7 @@ async fn chunk_meta_workspace_scope_spans_member_spaces_and_wins_over_space_id(p
     link_space(&pool, &in_b, &b).await;
     link_space(&pool, &in_outside, &outside).await;
 
+    // When
     // `outside` passed as space_id AND a workspace passed: Node's else-if
     // (packages/db/src/repository/graph.ts:13-25) means workspace wins and
     // space_id is ignored entirely.
@@ -121,6 +129,7 @@ async fn chunk_meta_workspace_scope_spans_member_spaces_and_wins_over_space_id(p
         .unwrap();
     let titles: Vec<&str> = rows.iter().map(|r| r.title.as_str()).collect();
 
+    // Then
     assert!(titles.contains(&"In A"));
     assert!(titles.contains(&"In B"));
     assert!(
@@ -131,6 +140,7 @@ async fn chunk_meta_workspace_scope_spans_member_spaces_and_wins_over_space_id(p
 
 #[sqlx::test]
 async fn connections_include_edges_pointing_at_my_chunks(pool: sqlx::PgPool) {
+    // Given
     let mine = user::create(&pool, "a@b.test", "A", None).await.unwrap().id;
     let theirs = user::create(&pool, "c@d.test", "C", None).await.unwrap().id;
     let m = a_chunk(&pool, &mine, "Mine").await;
@@ -148,13 +158,16 @@ async fn connections_include_edges_pointing_at_my_chunks(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let rows = graph::list_connections(&pool, &mine).await.unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].relation, "related_to");
 }
 
 #[sqlx::test]
 async fn chunk_tags_keep_untyped_tags(pool: sqlx::PgPool) {
+    // Given
     let uid = user::create(&pool, "a@b.test", "A", None).await.unwrap().id;
     let c = a_chunk(&pool, &uid, "T").await;
 
@@ -179,9 +192,11 @@ async fn chunk_tags_keep_untyped_tags(pool: sqlx::PgPool) {
         .unwrap();
     }
 
+    // When
     let rows = graph::list_chunk_tags_with_types(&pool, &uid)
         .await
         .unwrap();
+    // Then
     // A LEFT join, not an inner one: an untyped tag must still appear.
     assert_eq!(rows.len(), 2);
     let loose = rows.iter().find(|r| r.tag_name == "loose").unwrap();
@@ -191,6 +206,7 @@ async fn chunk_tags_keep_untyped_tags(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn chunk_space_mappings_are_scoped_by_space_owner(pool: sqlx::PgPool) {
+    // Given
     let mine = user::create(&pool, "a@b.test", "A", None).await.unwrap().id;
     let theirs = user::create(&pool, "c@d.test", "C", None).await.unwrap().id;
 
@@ -201,9 +217,11 @@ async fn chunk_space_mappings_are_scoped_by_space_owner(pool: sqlx::PgPool) {
     link_space(&pool, &mc, &my_space).await;
     link_space(&pool, &tc, &their_space).await;
 
+    // When
     let rows = graph::list_chunk_space_mappings(&pool, &mine)
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].space_name, "Mine");
 }

@@ -132,7 +132,9 @@ mod tests {
 
     #[test]
     fn type_points_are_three_one_two() {
+        // Given
         let h = health_for("x", None, 0);
+        // When
         let base = |t: &str| {
             score_chunk(&ScoreInput {
                 chunk_type: t,
@@ -142,12 +144,14 @@ mod tests {
                 health: &h,
             })
         };
+        // Then
         assert_eq!(base("document") - base("reference"), 1.0);
         assert_eq!(base("reference") - base("note"), 1.0);
     }
 
     #[test]
     fn rationale_adds_exactly_two() {
+        // Given
         let h = health_for("x", None, 0);
         let without = score_chunk(&ScoreInput {
             chunk_type: "note",
@@ -156,6 +160,7 @@ mod tests {
             connection_count: 0,
             health: &h,
         });
+        // When
         let with = score_chunk(&ScoreInput {
             chunk_type: "note",
             rationale: Some("because"),
@@ -163,6 +168,7 @@ mod tests {
             connection_count: 0,
             health: &h,
         });
+        // Then
         assert_eq!(with - without, 2.0);
     }
 
@@ -172,6 +178,7 @@ mod tests {
     /// `None`, not 2.
     #[test]
     fn empty_rationale_scores_the_same_as_no_rationale() {
+        // Given
         let h = health_for("x", None, 0);
         let without = score_chunk(&ScoreInput {
             chunk_type: "note",
@@ -180,6 +187,7 @@ mod tests {
             connection_count: 0,
             health: &h,
         });
+        // When
         let empty = score_chunk(&ScoreInput {
             chunk_type: "note",
             rationale: Some(""),
@@ -187,6 +195,7 @@ mod tests {
             connection_count: 0,
             health: &h,
         });
+        // Then
         assert_eq!(
             empty, without,
             "Some(\"\") must score 0 rationale points, same as None"
@@ -195,7 +204,9 @@ mod tests {
 
     #[test]
     fn connection_points_cap_at_ten() {
+        // Given
         let h = health_for("x", None, 0);
+        // When
         let at = |n: i64| {
             score_chunk(&ScoreInput {
                 chunk_type: "note",
@@ -205,6 +216,7 @@ mod tests {
                 health: &h,
             })
         };
+        // Then
         assert_eq!(at(5) - at(0), 10.0);
         assert_eq!(
             at(50),
@@ -215,7 +227,9 @@ mod tests {
 
     #[test]
     fn review_points_are_two_one_zero() {
+        // Given
         let h = health_for("x", None, 0);
+        // When
         let at = |s: &str| {
             score_chunk(&ScoreInput {
                 chunk_type: "note",
@@ -225,6 +239,7 @@ mod tests {
                 health: &h,
             })
         };
+        // Then
         assert_eq!(at("approved") - at("draft"), 2.0);
         assert_eq!(at("reviewed") - at("draft"), 1.0);
     }
@@ -235,8 +250,11 @@ mod tests {
     /// adds a freshness bonus on top, the difference stops matching.
     #[test]
     fn health_contributes_exactly_total_over_ten_and_nothing_else() {
+        // Given
         let lean = health_for("x", None, 0);
+        // When
         let rich = health_for(&"y".repeat(2000), Some("because"), 0);
+        // Then
         assert_ne!(
             lean.total, rich.total,
             "fixture must produce differing health totals"
@@ -266,11 +284,13 @@ mod tests {
     /// absolute assertion catches it.
     #[test]
     fn score_is_exactly_the_sum_of_its_five_documented_terms() {
+        // Given
         // content len 200 -> richness +8; rationale present -> completeness +4
         // (base 8); no summary/embedding; 0 connections -> orphan (connectivity 0);
         // 0 requirements -> coverage 0.
         // h.total = 20 (freshness) + 12 (completeness) + 8 (richness) + 0 + 0 = 40
         let h = health_for(&"y".repeat(200), Some("because"), 0);
+        // When
         let score = score_chunk(&ScoreInput {
             chunk_type: "document",
             rationale: Some("because"),
@@ -281,6 +301,7 @@ mod tests {
         // health.total/10 + type(document=3) + rationale(2) + connections(min(6,10)=6) + review(approved=2)
         // = 40/10 + 3.0 + 2.0 + 6.0 + 2.0 = 4.0 + 13.0 = 17.0
         let expected = h.total as f64 / 10.0 + 3.0 + 2.0 + 6.0 + 2.0;
+        // Then
         assert_eq!(
             score, expected,
             "score must be exactly the five documented terms"
@@ -292,13 +313,16 @@ mod tests {
     /// result fits the budget" passes with a `break` in place of `continue`.
     #[test]
     fn budget_skips_an_oversized_chunk_rather_than_truncating() {
+        // Given
         let huge = scored("huge", 100.0, &"word ".repeat(5000));
         let small_a = scored("a", 50.0, "small");
         let small_b = scored("b", 40.0, "small");
 
+        // When
         let kept = budget_chunks(vec![huge, small_a, small_b], 200);
         let ids: Vec<&str> = kept.iter().map(|c| c.id.as_str()).collect();
 
+        // Then
         assert!(
             !ids.contains(&"huge"),
             "the oversized chunk must be skipped"
@@ -312,6 +336,8 @@ mod tests {
 
     #[test]
     fn budget_returns_highest_scored_first() {
+        // Given the inline inputs and test fixtures.
+        // When
         let kept = budget_chunks(
             vec![
                 scored("low", 1.0, "x"),
@@ -320,6 +346,7 @@ mod tests {
             ],
             10_000,
         );
+        // Then
         assert_eq!(
             kept.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(),
             vec!["high", "mid", "low"]
@@ -330,7 +357,10 @@ mod tests {
     /// budget smaller than the header admits nothing.
     #[test]
     fn budget_accounts_for_the_header_seed() {
+        // Given the inline inputs and test fixtures.
+        // When
         let kept = budget_chunks(vec![scored("a", 1.0, "x")], 1);
+        // Then
         assert!(
             kept.is_empty(),
             "a budget below the header's own cost admits nothing"

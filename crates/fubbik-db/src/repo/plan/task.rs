@@ -133,8 +133,8 @@ pub async fn find_task_by_id(
 /// defaults to `{}` when omitted, matching the column's own `NOT NULL
 /// DEFAULT '{}'`. `None` means the plan isn't the caller's. Proven
 /// load-bearing in `tests/plan.rs::cannot_create_a_task_for_another_users_plan`.
-pub async fn create_task(
-    pool: &PgPool,
+pub async fn create_task<'e, E: sqlx::PgExecutor<'e>>(
+    executor: E,
     user_id: &str,
     plan_id: &str,
     title: &str,
@@ -166,7 +166,7 @@ pub async fn create_task(
         user_id,
         metadata
     )
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await?;
     Ok(row)
 }

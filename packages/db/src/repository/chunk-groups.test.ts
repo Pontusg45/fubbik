@@ -63,6 +63,7 @@ describe("getGroupedCounts", () => {
     });
 
     it("returns grouped counts for groupBy: type", async () => {
+        // Given
         const mockData = [
             { groupName: "note", count: 5 },
             { groupName: "document", count: 3 }
@@ -70,6 +71,7 @@ describe("getGroupedCounts", () => {
         // The terminal call in the chain resolves to mockData
         mockGroupBy.mockResolvedValueOnce(mockData);
 
+        // When
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "type",
@@ -77,6 +79,7 @@ describe("getGroupedCounts", () => {
             })
         );
 
+        // Then
         expect(result).toEqual(mockData);
         expect(result).toHaveLength(2);
         expect(result[0]).toHaveProperty("groupName");
@@ -86,12 +89,14 @@ describe("getGroupedCounts", () => {
     });
 
     it("returns grouped counts for groupBy: status", async () => {
+        // Given
         const mockData = [
             { groupName: "approved", count: 10 },
             { groupName: "draft", count: 2 }
         ];
         mockGroupBy.mockResolvedValueOnce(mockData);
 
+        // When
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "status",
@@ -99,16 +104,19 @@ describe("getGroupedCounts", () => {
             })
         );
 
+        // Then
         expect(result).toEqual(mockData);
     });
 
     it("returns grouped counts for groupBy: origin", async () => {
+        // Given
         const mockData = [
             { groupName: "human", count: 7 },
             { groupName: "ai", count: 4 }
         ];
         mockGroupBy.mockResolvedValueOnce(mockData);
 
+        // When
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "origin",
@@ -116,10 +124,12 @@ describe("getGroupedCounts", () => {
             })
         );
 
+        // Then
         expect(result).toEqual(mockData);
     });
 
     it("returns grouped counts for groupBy: freshness", async () => {
+        // Given
         const mockData = [
             { groupName: "This week", count: 3 },
             { groupName: "This month", count: 5 },
@@ -128,6 +138,7 @@ describe("getGroupedCounts", () => {
         ];
         mockGroupBy.mockResolvedValueOnce(mockData);
 
+        // When
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "freshness",
@@ -135,16 +146,19 @@ describe("getGroupedCounts", () => {
             })
         );
 
+        // Then
         expect(result).toEqual(mockData);
     });
 
     it("returns grouped counts for groupBy: tagtype with tagTypeId", async () => {
+        // Given
         const mockData = [
             { groupName: "frontend", count: 4 },
             { groupName: "backend", count: 6 }
         ];
         mockGroupBy.mockResolvedValueOnce(mockData);
 
+        // When
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "tagtype",
@@ -153,12 +167,15 @@ describe("getGroupedCounts", () => {
             })
         );
 
+        // Then
         expect(result).toEqual(mockData);
     });
 
     it("returns an empty array when no data", async () => {
+        // Given
         mockGroupBy.mockResolvedValueOnce([]);
 
+        // When
         const result = await Effect.runPromise(
             getGroupedCounts({
                 groupBy: "type",
@@ -166,12 +183,15 @@ describe("getGroupedCounts", () => {
             })
         );
 
+        // Then
         expect(result).toEqual([]);
     });
 
     it("wraps database errors as DatabaseError", async () => {
+        // Given
         mockGroupBy.mockRejectedValueOnce(new Error("connection refused"));
 
+        // When
         const result = await Effect.runPromiseExit(
             getGroupedCounts({
                 groupBy: "type",
@@ -179,6 +199,7 @@ describe("getGroupedCounts", () => {
             })
         );
 
+        // Then
         expect(result._tag).toBe("Failure");
     });
 });
@@ -192,6 +213,7 @@ describe("getChunksInGroup", () => {
     });
 
     it("returns chunks and total for a type group", async () => {
+        // Given
         const mockChunks = [
             { id: "c1", title: "Chunk 1", type: "note" },
             { id: "c2", title: "Chunk 2", type: "note" }
@@ -218,6 +240,7 @@ describe("getChunksInGroup", () => {
             return chainMethods;
         });
 
+        // When
         const result = await Effect.runPromise(
             getChunksInGroup({
                 groupBy: "type",
@@ -228,6 +251,7 @@ describe("getChunksInGroup", () => {
             })
         );
 
+        // Then
         expect(result).toHaveProperty("chunks");
         expect(result).toHaveProperty("total");
         expect(result.chunks).toEqual(mockChunks);
@@ -235,9 +259,11 @@ describe("getChunksInGroup", () => {
     });
 
     it("wraps database errors as DatabaseError", async () => {
+        // Given
         // Make the first query (offset) throw
         mockOffset.mockRejectedValueOnce(new Error("connection refused"));
 
+        // When
         const result = await Effect.runPromiseExit(
             getChunksInGroup({
                 groupBy: "type",
@@ -248,6 +274,7 @@ describe("getChunksInGroup", () => {
             })
         );
 
+        // Then
         expect(result._tag).toBe("Failure");
     });
 });

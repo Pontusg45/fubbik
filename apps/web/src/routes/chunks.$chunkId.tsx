@@ -353,7 +353,7 @@ function ChunkDetail() {
                 <button
                     type="button"
                     onClick={() => setDrawerOpen(true)}
-                    className="fixed right-6 bottom-6 z-30 inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/15 px-4 py-2 text-xs font-semibold text-indigo-400 shadow-lg backdrop-blur transition-colors hover:bg-indigo-500/25 print:hidden"
+                    className="fixed bottom-6 left-6 z-30 inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/15 px-4 py-2 text-xs font-semibold text-indigo-400 shadow-lg backdrop-blur transition-colors hover:bg-indigo-500/25 print:hidden"
                     data-focus-hide="true"
                     title="More context (m)"
                 >

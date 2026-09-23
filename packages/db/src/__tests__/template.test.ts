@@ -5,7 +5,10 @@ import { chunkTemplate } from "../schema/template";
 
 describe("chunkTemplate table", () => {
     it("has expected columns", () => {
+        // Given the inline inputs and test fixtures.
+        // When
         const columns = getTableColumns(chunkTemplate);
+        // Then
         expect(columns).toHaveProperty("id");
         expect(columns).toHaveProperty("name");
         expect(columns).toHaveProperty("description");

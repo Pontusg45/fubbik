@@ -28,7 +28,10 @@ function SpaceDashboard() {
         queryFn: async () => unwrapEden(await api.api.spaces({ id: spaceId }).get())
     });
 
-    const space = spaceQuery.data as any;
+    const spaceDetail = spaceQuery.data as
+        | { space?: { name: string; updatedAt: string }; code?: { remoteUrl?: string | null } }
+        | undefined;
+    const space = spaceDetail?.space;
     const stats = statsQuery.data as any;
     const chunks = ((chunksQuery.data as any)?.chunks ?? []) as Array<{ id: string; title: string; type: string; updatedAt: string }>;
 
@@ -36,7 +39,9 @@ function SpaceDashboard() {
         <div className="container mx-auto max-w-6xl px-4 py-8">
             <div className="mb-8">
                 <h1 className="text-2xl font-bold tracking-tight">{space?.name ?? "Space"}</h1>
-                {space?.remoteUrl && <p className="text-muted-foreground mt-1 font-mono text-xs">{space.remoteUrl}</p>}
+                {spaceDetail?.code?.remoteUrl && (
+                    <p className="text-muted-foreground mt-1 font-mono text-xs">{spaceDetail.code.remoteUrl}</p>
+                )}
             </div>
 
             {/* Stats */}

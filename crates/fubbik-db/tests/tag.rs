@@ -28,11 +28,13 @@ async fn a_chunk(pool: &sqlx::PgPool, uid: &str, title: &str) -> String {
 
 #[sqlx::test]
 async fn cannot_tag_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
     let bobs_tag = tag::create(&pool, &bob, "bobs-tag", None).await.unwrap();
 
+    // When
     // Bob attaches his own tag to Alice's chunk — must be rejected.
     let n = tag::set_chunk_tags(
         &pool,
@@ -42,6 +44,7 @@ async fn cannot_tag_another_users_chunk(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(n, 0, "must not tag another user's chunk");
     assert!(
         tag::tags_for_chunk(&pool, &alice, &alices_chunk)
@@ -53,11 +56,13 @@ async fn cannot_tag_another_users_chunk(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn cannot_attach_another_users_tag(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
     let bobs_tag = tag::create(&pool, &bob, "bobs-tag", None).await.unwrap();
 
+    // When
     // Alice attaches Bob's tag to her own chunk — must be rejected.
     let n = tag::set_chunk_tags(
         &pool,
@@ -67,6 +72,7 @@ async fn cannot_attach_another_users_tag(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(n, 0, "must not attach another user's tag");
     assert!(
         tag::tags_for_chunk(&pool, &alice, &alices_chunk)
@@ -78,12 +84,14 @@ async fn cannot_attach_another_users_tag(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn own_chunk_and_own_tag_succeeds(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
     let alices_tag = tag::create(&pool, &alice, "alices-tag", None)
         .await
         .unwrap();
 
+    // When
     let n = tag::set_chunk_tags(
         &pool,
         &alice,
@@ -92,6 +100,7 @@ async fn own_chunk_and_own_tag_succeeds(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(n, 1);
     let tags = tag::tags_for_chunk(&pool, &alice, &alices_chunk)
         .await
@@ -102,6 +111,7 @@ async fn own_chunk_and_own_tag_succeeds(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn set_chunk_tags_replaces_the_whole_set(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
     let tag_one = tag::create(&pool, &alice, "one", None).await.unwrap();
@@ -115,6 +125,7 @@ async fn set_chunk_tags_replaces_the_whole_set(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // When
     let n = tag::set_chunk_tags(
         &pool,
         &alice,
@@ -123,6 +134,7 @@ async fn set_chunk_tags_replaces_the_whole_set(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(n, 1);
 
     let tags = tag::tags_for_chunk(&pool, &alice, &alices_chunk)
@@ -134,6 +146,7 @@ async fn set_chunk_tags_replaces_the_whole_set(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn merge_moves_chunk_tags_from_source_to_target(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
     let source = tag::create(&pool, &alice, "source", None).await.unwrap();
@@ -148,9 +161,11 @@ async fn merge_moves_chunk_tags_from_source_to_target(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let result = tag::merge(&pool, &alice, &source.id, &target.id)
         .await
         .unwrap();
+    // Then
     assert_eq!(result.target_id, target.id);
     assert_eq!(result.chunk_count, 1);
 
@@ -166,6 +181,7 @@ async fn merge_moves_chunk_tags_from_source_to_target(pool: sqlx::PgPool) {
 /// afterwards, not a primary-key violation from a naive `UPDATE`.
 #[sqlx::test]
 async fn merge_when_chunk_already_has_both_tags_ends_with_one_row(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
     let source = tag::create(&pool, &alice, "source", None).await.unwrap();
@@ -180,9 +196,11 @@ async fn merge_when_chunk_already_has_both_tags_ends_with_one_row(pool: sqlx::Pg
     .await
     .unwrap();
 
+    // When
     let result = tag::merge(&pool, &alice, &source.id, &target.id)
         .await
         .unwrap();
+    // Then
     assert_eq!(result.chunk_count, 1);
 
     let tags = tag::tags_for_chunk(&pool, &alice, &alices_chunk)
@@ -198,6 +216,7 @@ async fn merge_when_chunk_already_has_both_tags_ends_with_one_row(pool: sqlx::Pg
 
 #[sqlx::test]
 async fn merge_deletes_the_source_tag(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let source = tag::create(&pool, &alice, "source", None).await.unwrap();
     let target = tag::create(&pool, &alice, "target", None).await.unwrap();
@@ -206,24 +225,30 @@ async fn merge_deletes_the_source_tag(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let remaining = tag::list(&pool, &alice).await.unwrap();
     let names: Vec<&str> = remaining.iter().map(|t| t.name.as_str()).collect();
+    // Then
     assert_eq!(names, vec!["target"]);
 }
 
 #[sqlx::test]
 async fn merge_of_unknown_tag_id_is_not_found(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let target = tag::create(&pool, &alice, "target", None).await.unwrap();
 
+    // When
     let err = tag::merge(&pool, &alice, "does-not-exist", &target.id)
         .await
         .unwrap_err();
+    // Then
     assert!(matches!(err, fubbik_core::error::AppError::NotFound(_)));
 }
 
 #[sqlx::test]
 async fn merge_of_another_users_tag_is_not_found(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_tag = tag::create(&pool, &alice, "alices-tag", None)
@@ -231,11 +256,13 @@ async fn merge_of_another_users_tag_is_not_found(pool: sqlx::PgPool) {
         .unwrap();
     let bobs_tag = tag::create(&pool, &bob, "bobs-tag", None).await.unwrap();
 
+    // When
     // Alice tries to merge Bob's tag into her own — must be rejected, not
     // silently merged across users.
     let err = tag::merge(&pool, &alice, &bobs_tag.id, &alices_tag.id)
         .await
         .unwrap_err();
+    // Then
     assert!(matches!(err, fubbik_core::error::AppError::NotFound(_)));
 
     // Bob's tag must survive untouched.
@@ -264,6 +291,7 @@ async fn merge_of_another_users_tag_is_not_found(pool: sqlx::PgPool) {
 /// exercises whether the tiebreaker is present.
 #[sqlx::test]
 async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
 
     for i in 0..20 {
@@ -287,6 +315,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     // the Sort-based plan that masks the missing tiebreaker.
     sqlx::query!("ANALYZE tag").execute(&pool).await.unwrap();
 
+    // When
     // Ground truth from Postgres directly, so this test does not depend on
     // Rust's default string ordering happening to agree with the
     // database's collation.
@@ -297,6 +326,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 20);
 
     let first = tag::list(&pool, &alice).await.unwrap();
@@ -333,6 +363,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
 /// this cross-user state is reachable through the guarded API.
 #[sqlx::test]
 async fn tags_for_chunk_breaks_name_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
 
@@ -351,6 +382,7 @@ async fn tags_for_chunk_breaks_name_ties_by_id(pool: sqlx::PgPool) {
         .unwrap();
     }
 
+    // When
     // Ground truth from Postgres directly, so this test does not depend on
     // Rust's default string ordering happening to agree with the
     // database's collation.
@@ -361,6 +393,7 @@ async fn tags_for_chunk_breaks_name_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 5);
 
     let first = tag::tags_for_chunk(&pool, &alice, &alices_chunk)
@@ -391,6 +424,7 @@ async fn tags_for_chunk_breaks_name_ties_by_id(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn tags_for_chunks_returns_names_grouped_by_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let c1 = a_chunk(&pool, &alice, "One").await;
     let c2 = a_chunk(&pool, &alice, "Two").await;
@@ -411,7 +445,9 @@ async fn tags_for_chunks_returns_names_grouped_by_chunk(pool: sqlx::PgPool) {
         .filter(|r| r.chunk_id == c1)
         .map(|r| r.tag_name.as_str())
         .collect();
+    // When
     c1_names.sort_unstable();
+    // Then
     assert_eq!(c1_names, vec!["alpha", "beta"]);
 
     let c2_names: Vec<&str> = rows
@@ -424,8 +460,11 @@ async fn tags_for_chunks_returns_names_grouped_by_chunk(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn tags_for_chunks_of_empty_input_returns_empty_without_querying(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
+    // When
     let rows = tag::tags_for_chunks(&pool, &alice, &[]).await.unwrap();
+    // Then
     assert!(rows.is_empty());
 }
 
@@ -433,6 +472,7 @@ async fn tags_for_chunks_of_empty_input_returns_empty_without_querying(pool: sql
 /// user contributes no rows, even when it's tagged.
 #[sqlx::test]
 async fn tags_for_chunks_excludes_another_users_chunk(pool: sqlx::PgPool) {
+    // Given
     let alice = seed(&pool, "a@b.test").await;
     let bob = seed(&pool, "c@d.test").await;
     let alices_chunk = a_chunk(&pool, &alice, "Alice's").await;
@@ -451,9 +491,11 @@ async fn tags_for_chunks_excludes_another_users_chunk(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let rows = tag::tags_for_chunks(&pool, &alice, &[alices_chunk.clone(), bobs_chunk.clone()])
         .await
         .unwrap();
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].chunk_id, alices_chunk);
     assert_eq!(rows[0].tag_name, "mine");
@@ -467,13 +509,16 @@ async fn tags_for_chunks_excludes_another_users_chunk(pool: sqlx::PgPool) {
 /// inserting a duplicate.
 #[sqlx::test]
 async fn find_or_create_reuses_an_existing_tag(pool: sqlx::PgPool) {
+    // Given
     let uid = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
         .id;
 
     let first = tag::find_or_create(&pool, &uid, "runbook").await.unwrap();
+    // When
     let second = tag::find_or_create(&pool, &uid, "runbook").await.unwrap();
+    // Then
     assert_eq!(first.id, second.id, "the same name must resolve to one row");
     assert_eq!(tag::list(&pool, &uid).await.unwrap().len(), 1);
 }
@@ -486,6 +531,7 @@ async fn find_or_create_reuses_an_existing_tag(pool: sqlx::PgPool) {
 /// at the fubbik-db layer, where the guard is observed directly.
 #[sqlx::test]
 async fn find_or_create_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -496,8 +542,10 @@ async fn find_or_create_is_user_scoped(pool: sqlx::PgPool) {
         .id;
 
     let hers = tag::find_or_create(&pool, &alice, "runbook").await.unwrap();
+    // When
     let his = tag::find_or_create(&pool, &bob, "runbook").await.unwrap();
 
+    // Then
     assert_ne!(
         hers.id, his.id,
         "each user must get their own tag row for the same name"
@@ -510,13 +558,16 @@ async fn find_or_create_is_user_scoped(pool: sqlx::PgPool) {
 /// tags, same as Node's `eq(tag.name, name)`.
 #[sqlx::test]
 async fn find_or_create_matches_case_sensitively(pool: sqlx::PgPool) {
+    // Given
     let uid = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
         .id;
 
     let lower = tag::find_or_create(&pool, &uid, "runbook").await.unwrap();
+    // When
     let upper = tag::find_or_create(&pool, &uid, "Runbook").await.unwrap();
+    // Then
     assert_ne!(lower.id, upper.id);
     assert_eq!(tag::list(&pool, &uid).await.unwrap().len(), 2);
 }

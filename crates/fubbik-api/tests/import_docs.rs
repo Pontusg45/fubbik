@@ -20,6 +20,7 @@ async fn create_space(app: &TestApp, user: &common::TestUser) -> String {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn batch_import_is_idempotent_and_connects_folder_children_to_index(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool.clone());
     let user = app.signup("docs-import@example.test", "Importer").await;
     let space_id = create_space(&app, &user).await;
@@ -31,9 +32,11 @@ async fn batch_import_is_idempotent_and_connects_folder_children_to_index(pool: 
         ]
     });
 
+    // When
     let response = app
         .post(&user, "/api/chunks/import-docs", body.clone())
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(
         TestApp::json(response).await,
@@ -52,9 +55,11 @@ async fn batch_import_is_idempotent_and_connects_folder_children_to_index(pool: 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn preview_matches_templates_and_override_extracts_fields(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool.clone());
     let user = app.signup("template-import@example.test", "Template").await;
     let space_id = create_space(&app, &user).await;
+    // When
     let template = app
         .post(
             &user,
@@ -74,6 +79,7 @@ async fn preview_matches_templates_and_override_extracts_fields(pool: sqlx::PgPo
             }),
         )
         .await;
+    // Then
     assert_eq!(template.status(), StatusCode::CREATED);
     let template_id = TestApp::json(template).await["id"]
         .as_str()
@@ -124,9 +130,11 @@ async fn preview_matches_templates_and_override_extracts_fields(pool: sqlx::PgPo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn stream_emits_file_and_done_events(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let user = app.signup("stream-import@example.test", "Stream").await;
     let space_id = create_space(&app, &user).await;
+    // When
     let response = app
         .post(
             &user,
@@ -137,6 +145,7 @@ async fn stream_emits_file_and_done_events(pool: sqlx::PgPool) {
             }),
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(response.headers()["content-type"], "text/event-stream");
     let bytes = http_body_util::BodyExt::collect(response.into_body())
@@ -152,10 +161,12 @@ async fn stream_emits_file_and_done_events(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn import_rejects_foreign_spaces_before_writing(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool.clone());
     let owner = app.signup("space-owner@example.test", "Owner").await;
     let stranger = app.signup("space-stranger@example.test", "Stranger").await;
     let space_id = create_space(&app, &owner).await;
+    // When
     let response = app
         .post(
             &stranger,
@@ -166,6 +177,7 @@ async fn import_rejects_foreign_spaces_before_writing(pool: sqlx::PgPool) {
             }),
         )
         .await;
+    // Then
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
     assert_eq!(
         sqlx::query_scalar!("SELECT COUNT(*) AS \"count!\" FROM document")
@@ -178,6 +190,7 @@ async fn import_rejects_foreign_spaces_before_writing(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn import_rate_limit_is_shared_by_batch_and_stream(pool: sqlx::PgPool) {
+    // Given
     let app = TestApp::new(pool);
     let user = app.signup("rate-import@example.test", "Rate").await;
     let space_id = create_space(&app, &user).await;
@@ -187,6 +200,7 @@ async fn import_rate_limit_is_shared_by_batch_and_stream(pool: sqlx::PgPool) {
         } else {
             "/api/chunks/import-docs"
         };
+        // When
         let response = app
             .post(
                 &user,
@@ -194,6 +208,7 @@ async fn import_rate_limit_is_shared_by_batch_and_stream(pool: sqlx::PgPool) {
                 serde_json::json!({ "spaceId": space_id, "files": [] }),
             )
             .await;
+        // Then
         assert_eq!(
             response.status(),
             if attempt < 5 {

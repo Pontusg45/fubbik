@@ -146,6 +146,7 @@ async fn reorder_favorites(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-list@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-list@b.test", "Bob").await;
@@ -157,7 +158,9 @@ async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
     add_favorite(app.clone(), &alice_cookie, &alices_chunk).await;
     add_favorite(app.clone(), &bob_cookie, &bobs_chunk).await;
 
+    // When
     let res = list_favorites(app.clone(), &alice_cookie).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert!(
@@ -187,12 +190,15 @@ async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn add_favorite_returns_201_and_the_row(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-add@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-add@b.test").await;
     let chunk_id = seed_chunk(&pool, &user_id, "Alice's chunk").await;
 
+    // When
     let res = add_favorite(app.clone(), &cookie, &chunk_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let body = json_body(res).await;
     assert_eq!(body["chunkId"], chunk_id);
@@ -205,13 +211,16 @@ async fn add_favorite_returns_201_and_the_row(pool: sqlx::PgPool) {
 /// matching Node's `addFavorite`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn add_favorite_appends_at_the_end_of_the_current_order(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-append@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-append@b.test").await;
     let c1 = seed_chunk(&pool, &user_id, "One").await;
     let c2 = seed_chunk(&pool, &user_id, "Two").await;
 
+    // When
     let body = json_body(add_favorite(app.clone(), &cookie, &c1).await).await;
+    // Then
     assert_eq!(body["order"], 0);
 
     let body = json_body(add_favorite(app.clone(), &cookie, &c2).await).await;
@@ -223,12 +232,15 @@ async fn add_favorite_appends_at_the_end_of_the_current_order(pool: sqlx::PgPool
 /// not an error and not the existing row.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn add_favorite_duplicate_returns_201_with_null_body(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-dup@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-dup@b.test").await;
     let chunk_id = seed_chunk(&pool, &user_id, "Alice's chunk").await;
 
+    // When
     let res = add_favorite(app.clone(), &cookie, &chunk_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
 
     let res = add_favorite(app.clone(), &cookie, &chunk_id).await;
@@ -251,6 +263,7 @@ async fn add_favorite_duplicate_returns_201_with_null_body(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn add_favorite_on_another_users_chunk_is_404_and_creates_nothing(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-cross@b.test", "Alice").await;
     let bob_id = {
@@ -259,7 +272,9 @@ async fn add_favorite_on_another_users_chunk_is_404_and_creates_nothing(pool: sq
     };
     let bobs_chunk = seed_chunk(&pool, &bob_id, "Bob's chunk").await;
 
+    // When
     let res = add_favorite(app.clone(), &alice_cookie, &bobs_chunk).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -288,6 +303,7 @@ async fn add_favorite_on_another_users_chunk_is_404_and_creates_nothing(pool: sq
 /// proves the victim's data is untouched — just via a 200, not a 404.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn remove_never_404s_even_cross_user_and_leaves_victim_data_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-remove@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-remove@b.test", "Bob").await;
@@ -295,8 +311,10 @@ async fn remove_never_404s_even_cross_user_and_leaves_victim_data_unchanged(pool
     let alices_chunk = seed_chunk(&pool, &alice_id, "Alice's chunk").await;
     add_favorite(app.clone(), &alice_cookie, &alices_chunk).await;
 
+    // When
     // Bob tries to remove Alice's favorite by naming her chunk id.
     let res = remove_favorite(app.clone(), &bob_cookie, &alices_chunk).await;
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::OK,
@@ -318,13 +336,16 @@ async fn remove_never_404s_even_cross_user_and_leaves_victim_data_unchanged(pool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn remove_removes_the_callers_own_favorite(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-remove-own@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-remove-own@b.test").await;
     let chunk_id = seed_chunk(&pool, &user_id, "Alice's chunk").await;
     add_favorite(app.clone(), &cookie, &chunk_id).await;
 
+    // When
     let res = remove_favorite(app.clone(), &cookie, &chunk_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let list = json_body(list_favorites(app.clone(), &cookie).await).await;
@@ -333,6 +354,7 @@ async fn remove_removes_the_callers_own_favorite(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn reorder_applies_partial_updates_and_ignores_foreign_chunk_ids(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-reorder@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-reorder@b.test", "Bob").await;
@@ -346,6 +368,7 @@ async fn reorder_applies_partial_updates_and_ignores_foreign_chunk_ids(pool: sql
     add_favorite(app.clone(), &alice_cookie, &c2).await;
     add_favorite(app.clone(), &bob_cookie, &bobs_chunk).await;
 
+    // When
     let res = reorder_favorites(
         app.clone(),
         &alice_cookie,
@@ -357,6 +380,7 @@ async fn reorder_applies_partial_updates_and_ignores_foreign_chunk_ids(pool: sql
         ]),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body, serde_json::json!({ "message": "Reordered" }));
@@ -386,13 +410,16 @@ async fn reorder_applies_partial_updates_and_ignores_foreign_chunk_ids(pool: sql
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_requests_are_401(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .clone()
         .oneshot(Request::get("/api/favorites").body(Body::empty()).unwrap())
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
     let res = app

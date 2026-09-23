@@ -11,9 +11,12 @@ const client = treaty(app);
 
 describe("Health check", () => {
     it("GET /api/health returns status and db fields", async () => {
+        // Given the inline inputs and test fixtures.
+        // When
         // The health check hits the real DB. If no DB is available it returns 503.
         const res = await client.api.health.get();
 
+        // Then
         // Either 200 (DB up) or 503 (DB down) — both are valid in CI/local
         expect([200, 503]).toContain(res.status);
 
@@ -34,11 +37,14 @@ describe("Health check", () => {
 
 describe("Effect error pipeline — FiberFailure extraction", () => {
     it("FiberFailure wraps tagged errors correctly", async () => {
+        // Given
         const FiberFailureCauseSymbol = Symbol.for("effect/Runtime/FiberFailure/Cause");
         try {
+            // When
             await Effect.runPromise(Effect.fail({ _tag: "TestError", message: "test" }));
             expect.unreachable("Should have thrown");
         } catch (e: unknown) {
+            // Then
             const error = e as Record<symbol, unknown>;
             expect(error[FiberFailureCauseSymbol]).toBeDefined();
             const cause = error[FiberFailureCauseSymbol] as Cause.Cause<{ _tag: string }>;

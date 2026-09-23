@@ -300,6 +300,9 @@ mod tests {
 
     #[test]
     fn slug_rules_match_nodes_regex() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         // Accepted.
         assert!(is_valid_slug("a"));
         assert!(is_valid_slug("0"));

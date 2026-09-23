@@ -2,7 +2,11 @@ import type { Client } from "./api-client-types";
 
 // `Client` is built from `BuildNode<"">`, so it already includes the "api"
 // segment as its root child — no synthetic wrapper needed.
+// Given the generated API client type.
 declare const api: Client;
+
+// When supported route chains and request bodies are type-checked.
+// Then valid calls compile and the negative controls report errors.
 
 // 1. plain chain (140 `.get(` sites)
 const _a = api.api.spaces.get();

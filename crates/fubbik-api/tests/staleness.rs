@@ -188,6 +188,7 @@ async fn scan_age(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-list@b.test", "Alice").await;
     signup(app.clone(), "bob-list@b.test", "Bob").await;
@@ -199,7 +200,9 @@ async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
     seed_flag(&pool, &alices_chunk, "age").await;
     seed_flag(&pool, &bobs_chunk, "age").await;
 
+    // When
     let res = get_stale(app.clone(), &alice_cookie).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert!(
@@ -217,11 +220,14 @@ async fn list_returns_bare_array_and_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn count_returns_a_bare_number_as_text_plain(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-count@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-count@b.test").await;
 
+    // When
     let res = get_stale_count(app.clone(), &cookie).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let content_type = res
         .headers()
@@ -248,13 +254,16 @@ async fn count_returns_a_bare_number_as_text_plain(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn dismiss_by_owner_succeeds(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-dismiss@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-dismiss@b.test").await;
     let chunk_id = seed_chunk(&pool, &user_id, "A chunk").await;
     let flag_id = seed_flag(&pool, &chunk_id, "age").await;
 
+    // When
     let res = dismiss(app.clone(), &cookie, &flag_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["command"], "UPDATE");
@@ -272,6 +281,7 @@ async fn dismiss_by_owner_succeeds(pool: sqlx::PgPool) {
 /// untouched.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn dismiss_on_another_users_flag_is_404_and_leaves_it_untouched(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-cross@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-cross@b.test", "Bob").await;
@@ -279,7 +289,9 @@ async fn dismiss_on_another_users_flag_is_404_and_leaves_it_untouched(pool: sqlx
     let alices_chunk = seed_chunk(&pool, &alice_id, "Alice's chunk").await;
     let flag_id = seed_flag(&pool, &alices_chunk, "age").await;
 
+    // When
     let res = dismiss(app.clone(), &bob_cookie, &flag_id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let alice_list = json_body(get_stale(app.clone(), &alice_cookie).await).await;
@@ -292,15 +304,19 @@ async fn dismiss_on_another_users_flag_is_404_and_leaves_it_untouched(pool: sqlx
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn dismiss_nonexistent_flag_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-404@b.test", "Alice").await;
 
+    // When
     let res = dismiss(app.clone(), &cookie, "no-such-flag").await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn suppress_duplicate_hides_both_directions(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-suppress@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-suppress@b.test").await;
@@ -309,7 +325,9 @@ async fn suppress_duplicate_hides_both_directions(pool: sqlx::PgPool) {
     seed_duplicate_flag(&pool, &a, &b).await;
     seed_duplicate_flag(&pool, &b, &a).await;
 
+    // When
     let res = suppress_duplicate(app.clone(), &cookie, &a, &b).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["command"], "UPDATE");
@@ -328,6 +346,7 @@ async fn suppress_duplicate_hides_both_directions(pool: sqlx::PgPool) {
 /// chunk in the pair.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn suppress_duplicate_requires_owning_both_chunks(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-guard@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-guard@b.test", "Bob").await;
@@ -337,7 +356,9 @@ async fn suppress_duplicate_requires_owning_both_chunks(pool: sqlx::PgPool) {
     seed_duplicate_flag(&pool, &a, &b).await;
     seed_duplicate_flag(&pool, &b, &a).await;
 
+    // When
     let res = suppress_duplicate(app.clone(), &bob_cookie, &a, &b).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let alice_list = json_body(get_stale(app.clone(), &alice_cookie).await).await;
@@ -354,6 +375,7 @@ async fn suppress_duplicate_requires_owning_both_chunks(pool: sqlx::PgPool) {
 /// `flagged: 2` (one `age` flag, one `requirement_uncovered` flag), not 1.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn scan_age_sums_both_detectors(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-scan@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-scan@b.test").await;
@@ -364,7 +386,9 @@ async fn scan_age_sums_both_detectors(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let res = scan_age(app.clone(), &cookie, serde_json::json!({})).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(
@@ -386,6 +410,7 @@ async fn scan_age_sums_both_detectors(pool: sqlx::PgPool) {
 /// must be 1, not 0 and not 2.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn scan_age_threshold_days_only_overrides_the_age_detector(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-threshold@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-threshold@b.test").await;
@@ -396,6 +421,7 @@ async fn scan_age_threshold_days_only_overrides_the_age_detector(pool: sqlx::PgP
         .await
         .unwrap();
 
+    // When
     let res = scan_age(
         app.clone(),
         &cookie,
@@ -403,6 +429,7 @@ async fn scan_age_threshold_days_only_overrides_the_age_detector(pool: sqlx::PgP
     )
     .await;
     let body = json_body(res).await;
+    // Then
     assert_eq!(
         body,
         serde_json::json!({ "flagged": 1 }),
@@ -432,6 +459,7 @@ async fn scan_impact(
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn scan_impact_flags_a_strongly_connected_downstream_chunk(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -448,6 +476,7 @@ async fn scan_impact_flags_a_strongly_connected_downstream_chunk(pool: sqlx::PgP
         .await
         .unwrap();
 
+    // When
     let res = scan_impact(
         app.clone(),
         &cookie,
@@ -455,6 +484,7 @@ async fn scan_impact_flags_a_strongly_connected_downstream_chunk(pool: sqlx::PgP
         serde_json::json!({ "title": "Source" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body, serde_json::json!({ "flagged": 1 }));
@@ -474,6 +504,7 @@ async fn scan_impact_flags_a_strongly_connected_downstream_chunk(pool: sqlx::PgP
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn scan_impact_is_idempotent(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -490,7 +521,9 @@ async fn scan_impact_is_idempotent(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let first = scan_impact(app.clone(), &cookie, &source, serde_json::json!({})).await;
+    // Then
     assert_eq!(json_body(first).await, serde_json::json!({ "flagged": 1 }));
 
     let second = scan_impact(app.clone(), &cookie, &source, serde_json::json!({})).await;
@@ -510,22 +543,28 @@ async fn scan_impact_is_idempotent(pool: sqlx::PgPool) {
 /// pattern as `dismiss`/`suppress_duplicate`.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn scan_impact_on_another_users_chunk_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     signup(app.clone(), "alice-impact-cross@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-impact-cross@b.test", "Bob").await;
     let alice_id = user_id_for_email(&pool, "alice-impact-cross@b.test").await;
     let alices_chunk = seed_chunk(&pool, &alice_id, "Alice's chunk").await;
 
+    // When
     let res = scan_impact(app, &bob_cookie, &alices_chunk, serde_json::json!({})).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn scan_impact_on_a_nonexistent_chunk_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-impact-404@b.test", "Alice").await;
 
+    // When
     let res = scan_impact(app, &cookie, "no-such-chunk", serde_json::json!({})).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
@@ -537,6 +576,7 @@ async fn scan_impact_on_a_nonexistent_chunk_is_404(pool: sqlx::PgPool) {
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn scan_impact_ripple_targets_are_scoped_to_the_caller(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -565,6 +605,7 @@ async fn scan_impact_ripple_targets_are_scoped_to_the_caller(pool: sqlx::PgPool)
         .await
         .unwrap();
 
+    // When
     let res = scan_impact(
         app.clone(),
         &alice_cookie,
@@ -572,6 +613,7 @@ async fn scan_impact_ripple_targets_are_scoped_to_the_caller(pool: sqlx::PgPool)
         serde_json::json!({ "title": "Source" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(
         json_body(res).await,
@@ -605,6 +647,7 @@ async fn scan_impact_ripple_targets_are_scoped_to_the_caller(pool: sqlx::PgPool)
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn scan_impact_rerun_does_not_accumulate_flags_for_cross_user_targets(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable — skipping");
         return;
     }
@@ -626,7 +669,9 @@ async fn scan_impact_rerun_does_not_accumulate_flags_for_cross_user_targets(pool
         .unwrap();
 
     for _ in 0..3 {
+        // When
         let res = scan_impact(app.clone(), &alice_cookie, &source, serde_json::json!({})).await;
+        // Then
         assert_eq!(
             json_body(res).await,
             serde_json::json!({ "flagged": 0 }),
@@ -700,6 +745,7 @@ async fn wait_for_upstream_impact_flag(pool: &sqlx::PgPool, downstream_id: &str)
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn patching_a_chunks_title_triggers_a_detached_impact_scan(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -717,6 +763,7 @@ async fn patching_a_chunks_title_triggers_a_detached_impact_scan(pool: sqlx::PgP
         .await
         .unwrap();
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -724,6 +771,7 @@ async fn patching_a_chunks_title_triggers_a_detached_impact_scan(pool: sqlx::PgP
         serde_json::json!({ "title": "Source renamed" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let detail = wait_for_upstream_impact_flag(&pool, &downstream).await;
@@ -743,6 +791,7 @@ async fn patching_a_chunks_title_triggers_a_detached_impact_scan(pool: sqlx::PgP
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn content_only_patch_uses_the_chunks_real_title_not_unknown(pool: sqlx::PgPool) {
     if !fubbik_db::age::is_available(&pool).await {
+        // Given
         eprintln!("AGE unavailable in this database — skipping");
         return;
     }
@@ -760,6 +809,7 @@ async fn content_only_patch_uses_the_chunks_real_title_not_unknown(pool: sqlx::P
         .await
         .unwrap();
 
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -767,6 +817,7 @@ async fn content_only_patch_uses_the_chunks_real_title_not_unknown(pool: sqlx::P
         serde_json::json!({ "content": "New content, title untouched" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let detail = wait_for_upstream_impact_flag(&pool, &downstream).await;
@@ -790,12 +841,14 @@ async fn content_only_patch_uses_the_chunks_real_title_not_unknown(pool: sqlx::P
 async fn patch_returns_200_promptly_even_when_the_impact_scan_has_nothing_to_walk(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-patch-noage@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-patch-noage@b.test").await;
     let source = seed_chunk(&pool, &user_id, "Source").await;
 
     let started = std::time::Instant::now();
+    // When
     let res = patch(
         app.clone(),
         &cookie,
@@ -805,6 +858,7 @@ async fn patch_returns_200_promptly_even_when_the_impact_scan_has_nothing_to_wal
     .await;
     let elapsed = started.elapsed();
 
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert!(
         elapsed < std::time::Duration::from_secs(1),

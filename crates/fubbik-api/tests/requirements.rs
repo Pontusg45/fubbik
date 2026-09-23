@@ -101,10 +101,13 @@ async fn create_chunk(app: axum::Router, cookie: &str, title: &str) -> String {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_then_get_round_trip(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-req@b.test", "Alice").await;
 
+    // When
     let res = create_requirement(app.clone(), &cookie, "Login flow").await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let created = json_body(res).await;
     assert_eq!(created["requirement"]["title"], "Login flow");
@@ -135,10 +138,12 @@ async fn create_then_get_round_trip(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_rejects_steps_that_fail_validation_with_structured_errors(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-invalid-steps@b.test", "Alice").await;
 
     let body = serde_json::json!({"title": "Bad", "steps": [{"keyword": "then", "text": "x"}]});
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -150,6 +155,7 @@ async fn create_rejects_steps_that_fail_validation_with_structured_errors(pool: 
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let payload = json_body(res).await;
     assert_eq!(payload["message"], "Invalid steps");
@@ -164,6 +170,7 @@ async fn create_rejects_steps_that_fail_validation_with_structured_errors(pool: 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-scope@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-scope@b.test", "Bob").await;
@@ -173,6 +180,7 @@ async fn get_is_user_scoped(pool: sqlx::PgPool) {
             .await;
     let id = created["requirement"]["id"].as_str().unwrap();
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -183,6 +191,7 @@ async fn get_is_user_scoped(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::NOT_FOUND,
@@ -192,11 +201,13 @@ async fn get_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_and_delete_round_trip(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-update@b.test", "Alice").await;
     let created = json_body(create_requirement(app.clone(), &cookie, "Original").await).await;
     let id = created["requirement"]["id"].as_str().unwrap().to_string();
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -210,6 +221,7 @@ async fn update_and_delete_round_trip(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let updated = json_body(res).await;
     assert_eq!(updated["requirement"]["title"], "Renamed");
@@ -245,11 +257,13 @@ async fn update_and_delete_round_trip(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_status_and_bare_number_bulk_response(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-status@b.test", "Alice").await;
     let created = json_body(create_requirement(app.clone(), &cookie, "Status target").await).await;
     let id = created["requirement"]["id"].as_str().unwrap().to_string();
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -263,6 +277,7 @@ async fn update_status_and_bare_number_bulk_response(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let updated = json_body(res).await;
     assert_eq!(
@@ -296,12 +311,14 @@ async fn update_status_and_bare_number_bulk_response(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn set_chunks_returns_join_rows_and_verifies_every_id(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-chunks@b.test", "Alice").await;
     let created = json_body(create_requirement(app.clone(), &cookie, "Chunked").await).await;
     let id = created["requirement"]["id"].as_str().unwrap().to_string();
     let chunk_id = create_chunk(app.clone(), &cookie, "A chunk").await;
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -315,6 +332,7 @@ async fn set_chunks_returns_join_rows_and_verifies_every_id(pool: sqlx::PgPool) 
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let links = json_body(res).await;
     assert_eq!(
@@ -342,11 +360,13 @@ async fn set_chunks_returns_join_rows_and_verifies_every_id(pool: sqlx::PgPool) 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn export_returns_bare_text(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-export@b.test", "Alice").await;
     let created = json_body(create_requirement(app.clone(), &cookie, "Login").await).await;
     let id = created["requirement"]["id"].as_str().unwrap().to_string();
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -357,6 +377,7 @@ async fn export_returns_bare_text(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let text = text_body(res).await;
     assert!(
@@ -367,11 +388,13 @@ async fn export_returns_bare_text(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn stats_reports_totals(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-stats@b.test", "Alice").await;
     create_requirement(app.clone(), &cookie, "One").await;
     create_requirement(app.clone(), &cookie, "Two").await;
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -382,6 +405,7 @@ async fn stats_reports_totals(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let stats = json_body(res).await;
     assert_eq!(stats["total"], 2);
@@ -390,6 +414,7 @@ async fn stats_reports_totals(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn stats_filters_by_space_using_the_camel_case_param(pool: sqlx::PgPool) {
+    // Given
     // `StatsQuery` deserializes `space_id`, but Node's route takes `spaceId`
     // (`packages/api/src/requirements/routes.ts:34`) and so does every other
     // query in this domain. Without `rename_all = "camelCase"` the param is
@@ -400,6 +425,7 @@ async fn stats_filters_by_space_using_the_camel_case_param(pool: sqlx::PgPool) {
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-stats-space@b.test", "Alice").await;
 
+    // When
     let space_res = app
         .clone()
         .oneshot(
@@ -413,6 +439,7 @@ async fn stats_filters_by_space_using_the_camel_case_param(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(space_res.status(), StatusCode::CREATED);
     let space_id = json_body(space_res).await["id"]
         .as_str()
@@ -462,6 +489,7 @@ async fn stats_filters_by_space_using_the_camel_case_param(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn batch_create_resolves_use_case_names(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let cookie = signup(app.clone(), "alice-batch@b.test", "Alice").await;
 
@@ -471,6 +499,7 @@ async fn batch_create_resolves_use_case_names(pool: sqlx::PgPool) {
             {"title": "R2", "steps": gwt_steps(), "useCaseName": "Checkout"},
         ]
     });
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -482,6 +511,7 @@ async fn batch_create_resolves_use_case_names(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let result = json_body(res).await;
     assert_eq!(result["created"], 2);
@@ -500,6 +530,7 @@ async fn batch_create_resolves_use_case_names(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn reorder_rejects_ids_not_owned_by_the_caller(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
     let alice_cookie = signup(app.clone(), "alice-reorder@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-reorder@b.test", "Bob").await;
@@ -509,6 +540,7 @@ async fn reorder_rejects_ids_not_owned_by_the_caller(pool: sqlx::PgPool) {
     let b = json_body(create_requirement(app.clone(), &bob_cookie, "B").await).await;
     let b_id = b["requirement"]["id"].as_str().unwrap().to_string();
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -522,6 +554,7 @@ async fn reorder_rejects_ids_not_owned_by_the_caller(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(
         res.status(),
         StatusCode::BAD_REQUEST,

@@ -120,19 +120,18 @@ pub async fn get_detail(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Pla
 /// rejects a whitespace-only title (trimmed before both the check and the
 /// insert, same as `workspaces::service::create`), then optionally links
 /// requirements and creates initial tasks. `metadata`, `requirementIds`,
-/// and `tasks` aren't supported by `plan::create` (Task 3's given
-/// interface) directly, so they're applied as follow-up calls against the
-/// freshly created row — each one already scoped to `user_id`, so this
-/// can't act on anyone else's plan even if `created.id` were somehow
-/// guessable.
+/// and `tasks` aren't supported by `plan::create` directly, so the workflow
+/// applies them after the plan insert. All writes, including the activity
+/// entry, share one transaction: a failed child write leaves no partial plan.
 pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppResult<Plan> {
     let title = body.title.trim();
     if title.is_empty() {
         return Err(AppError::Validation("Title is required".into()));
     }
 
+    let mut tx = pool.begin().await?;
     let mut created = plan::create(
-        pool,
+        &mut *tx,
         user_id,
         title,
         body.description.as_deref(),
@@ -142,7 +141,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
 
     if let Some(metadata) = body.metadata {
         created = plan::apply_patch(
-            pool,
+            &mut *tx,
             user_id,
             &created.id,
             None,
@@ -158,7 +157,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
 
     if let Some(requirement_ids) = &body.requirement_ids {
         for rid in requirement_ids {
-            plan::add_requirement(pool, user_id, &created.id, rid).await?;
+            plan::add_requirement(&mut *tx, user_id, &created.id, rid).await?;
         }
     }
 
@@ -167,7 +166,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
             let criteria =
                 acceptance_criteria_for_write(t.acceptance_criteria.as_deref().unwrap_or(&[]));
             plan::create_task(
-                pool,
+                &mut *tx,
                 user_id,
                 &created.id,
                 &t.title,
@@ -180,7 +179,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
     }
 
     activity::create(
-        pool,
+        &mut *tx,
         user_id,
         "plan",
         &created.id,
@@ -189,6 +188,8 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
         created.space_id.as_deref(),
     )
     .await?;
+
+    tx.commit().await?;
 
     Ok(created)
 }

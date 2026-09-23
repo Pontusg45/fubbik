@@ -2,6 +2,7 @@ use fubbik_db::repo::{tag_type, user};
 
 #[sqlx::test]
 async fn crud_round_trips_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -11,9 +12,11 @@ async fn crud_round_trips_and_is_user_scoped(pool: sqlx::PgPool) {
         .unwrap()
         .id;
 
+    // When
     let t = tag_type::create(&pool, &alice, "Topic", Some("#ff0000"), None)
         .await
         .unwrap();
+    // Then
     assert_eq!(t.name, "Topic");
     assert_eq!(t.color, "#ff0000");
 
@@ -38,14 +41,17 @@ async fn crud_round_trips_and_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn create_without_color_falls_back_to_db_default(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
         .id;
 
+    // When
     let t = tag_type::create(&pool, &alice, "Topic", None, None)
         .await
         .unwrap();
+    // Then
     assert_eq!(t.color, "#8b5cf6");
 }
 
@@ -55,6 +61,7 @@ async fn create_without_color_falls_back_to_db_default(pool: sqlx::PgPool) {
 /// `created_at`, so only the `id ASC` tiebreaker can determine order.
 #[sqlx::test]
 async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -74,6 +81,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT id FROM tag_type WHERE user_id = $1 ORDER BY id ASC",
         alice
@@ -81,6 +89,7 @@ async fn list_breaks_created_at_ties_by_id(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 5);
 
     let first = tag_type::list(&pool, &alice).await.unwrap();

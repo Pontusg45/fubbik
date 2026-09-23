@@ -65,6 +65,9 @@ mod tests {
 
     #[test]
     fn parses_bracketed_csv_like_nodes_fromdriver() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             parse_pgvector_text("[0.1,0.25,-3]").unwrap(),
             vec![0.1, 0.25, -3.0]
@@ -73,12 +76,18 @@ mod tests {
 
     #[test]
     fn empty_vector_parses_to_empty() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(parse_pgvector_text("[]").unwrap(), Vec::<f32>::new());
     }
 
     #[test]
     fn serialises_as_a_plain_json_array() {
+        // Given the inline inputs and test fixtures.
+        // When
         let v = EmbeddingVec(vec![0.5, 1.5]);
+        // Then
         assert_eq!(serde_json::to_string(&v).unwrap(), "[0.5,1.5]");
     }
 }

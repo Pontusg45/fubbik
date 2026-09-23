@@ -40,8 +40,10 @@ fn type_filter(t: &str) -> CollectionFilter {
 
 #[sqlx::test]
 async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
 
+    // When
     let created = collection::create(
         &pool,
         &uid,
@@ -55,6 +57,7 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
     .await
     .unwrap()
     .expect("no space_id means no ownership guard to fail");
+    // Then
     assert_eq!(created.name, "Conventions");
     assert_eq!(created.filter.0.filter_type.as_deref(), Some("convention"));
     assert_eq!(created.space_id, None);
@@ -73,6 +76,7 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
 /// data's stored `filter` is exactly `{"type": "convention"}`.
 #[sqlx::test]
 async fn partial_filter_round_trips_without_growing_null_keys(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let created = collection::create(
         &pool,
@@ -88,6 +92,7 @@ async fn partial_filter_round_trips_without_growing_null_keys(pool: sqlx::PgPool
     .unwrap()
     .unwrap();
 
+    // When
     let raw: serde_json::Value = sqlx::query_scalar!(
         r#"SELECT filter AS "filter!: serde_json::Value" FROM collection WHERE id = $1"#,
         created.id
@@ -95,6 +100,7 @@ async fn partial_filter_round_trips_without_growing_null_keys(pool: sqlx::PgPool
     .fetch_one(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(
         raw,
         serde_json::json!({ "type": "convention" }),
@@ -104,9 +110,11 @@ async fn partial_filter_round_trips_without_growing_null_keys(pool: sqlx::PgPool
 
 #[sqlx::test]
 async fn create_with_owned_space_succeeds(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let space_id = seed_space(&pool, &uid, "my-space").await;
 
+    // When
     let created = collection::create(
         &pool,
         &uid,
@@ -120,6 +128,7 @@ async fn create_with_owned_space_succeeds(pool: sqlx::PgPool) {
     .await
     .unwrap()
     .expect("creating in one's own space must succeed");
+    // Then
     assert_eq!(created.space_id.as_deref(), Some(space_id.as_str()));
 }
 
@@ -132,10 +141,12 @@ async fn create_with_owned_space_succeeds(pool: sqlx::PgPool) {
 /// rejected write partially mutated something.
 #[sqlx::test]
 async fn create_rejects_another_users_space_and_creates_nothing(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let alices_space = seed_space(&pool, &alice, "alices-space").await;
 
+    // When
     let result = collection::create(
         &pool,
         &bob,
@@ -148,6 +159,7 @@ async fn create_rejects_another_users_space_and_creates_nothing(pool: sqlx::PgPo
     )
     .await
     .unwrap();
+    // Then
     assert!(
         result.is_none(),
         "write against another user's space must be rejected"
@@ -168,8 +180,10 @@ async fn create_rejects_another_users_space_and_creates_nothing(pool: sqlx::PgPo
 /// ownership guard — none of them prove `find_by_id`'s guard specifically.
 #[sqlx::test]
 async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
+    // When
     let created = collection::create(
         &pool,
         &alice,
@@ -184,6 +198,7 @@ async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
     .unwrap()
     .unwrap();
 
+    // Then
     assert!(
         collection::find_by_id(&pool, &bob, &created.id)
             .await
@@ -195,6 +210,7 @@ async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_is_scoped_to_caller(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     collection::create(
@@ -222,7 +238,9 @@ async fn list_is_scoped_to_caller(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let alices = collection::list(&pool, &alice).await.unwrap();
+    // Then
     assert_eq!(alices.len(), 1);
     assert_eq!(alices[0].name, "Alice's");
 }
@@ -245,6 +263,7 @@ async fn list_is_scoped_to_caller(pool: sqlx::PgPool) {
 /// write-time guard with a direct `INSERT` purely to construct its tie.
 #[sqlx::test]
 async fn list_breaks_name_ties_by_id_and_is_stable(pool: sqlx::PgPool) {
+    // Given
     sqlx::query!("DROP INDEX collection_user_name_idx")
         .execute(&pool)
         .await
@@ -274,6 +293,7 @@ async fn list_breaks_name_ties_by_id_and_is_stable(pool: sqlx::PgPool) {
         .await
         .unwrap();
 
+    // When
     let expected_id_order: Vec<String> = sqlx::query_scalar!(
         "SELECT id FROM collection WHERE user_id = $1 ORDER BY id ASC",
         uid
@@ -281,6 +301,7 @@ async fn list_breaks_name_ties_by_id_and_is_stable(pool: sqlx::PgPool) {
     .fetch_all(&pool)
     .await
     .unwrap();
+    // Then
     assert_eq!(expected_id_order.len(), 20);
 
     let first = collection::list(&pool, &uid).await.unwrap();
@@ -304,6 +325,7 @@ async fn list_breaks_name_ties_by_id_and_is_stable(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_replaces_filter_wholesale_not_merge(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let created = collection::create(
         &pool,
@@ -323,6 +345,7 @@ async fn update_replaces_filter_wholesale_not_merge(pool: sqlx::PgPool) {
     .unwrap()
     .unwrap();
 
+    // When
     let updated = collection::update(
         &pool,
         &uid,
@@ -336,6 +359,7 @@ async fn update_replaces_filter_wholesale_not_merge(pool: sqlx::PgPool) {
     .unwrap()
     .unwrap();
 
+    // Then
     assert_eq!(updated.filter.0.filter_type.as_deref(), Some("note"));
     assert_eq!(
         updated.filter.0.tags, None,
@@ -345,6 +369,7 @@ async fn update_replaces_filter_wholesale_not_merge(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_leaves_name_and_description_untouched_when_omitted(pool: sqlx::PgPool) {
+    // Given
     let uid = seed_user(&pool, "a@b.test").await;
     let created = collection::create(
         &pool,
@@ -360,6 +385,7 @@ async fn update_leaves_name_and_description_untouched_when_omitted(pool: sqlx::P
     .unwrap()
     .unwrap();
 
+    // When
     let updated = collection::update(
         &pool,
         &uid,
@@ -373,6 +399,7 @@ async fn update_leaves_name_and_description_untouched_when_omitted(pool: sqlx::P
     .unwrap()
     .unwrap();
 
+    // Then
     assert_eq!(updated.name, "Original", "omitted name must be untouched");
     assert_eq!(
         updated.description.as_deref(),
@@ -385,6 +412,7 @@ async fn update_leaves_name_and_description_untouched_when_omitted(pool: sqlx::P
 async fn update_on_another_users_collection_returns_none_and_leaves_it_unchanged(
     pool: sqlx::PgPool,
 ) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
     let created = collection::create(
@@ -401,6 +429,7 @@ async fn update_on_another_users_collection_returns_none_and_leaves_it_unchanged
     .unwrap()
     .unwrap();
 
+    // When
     let result = collection::update(
         &pool,
         &alice,
@@ -412,6 +441,7 @@ async fn update_on_another_users_collection_returns_none_and_leaves_it_unchanged
     )
     .await
     .unwrap();
+    // Then
     assert!(result.is_none());
 
     let bobs = collection::find_by_id(&pool, &bob, &created.id)
@@ -423,8 +453,10 @@ async fn update_on_another_users_collection_returns_none_and_leaves_it_unchanged
 
 #[sqlx::test]
 async fn delete_removes_row_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool, "alice@b.test").await;
     let bob = seed_user(&pool, "bob@b.test").await;
+    // When
     let created = collection::create(
         &pool,
         &bob,
@@ -439,6 +471,7 @@ async fn delete_removes_row_and_is_user_scoped(pool: sqlx::PgPool) {
     .unwrap()
     .unwrap();
 
+    // Then
     assert!(
         !collection::delete(&pool, &alice, &created.id)
             .await

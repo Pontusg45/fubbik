@@ -36,6 +36,7 @@ async fn seed_requirement(pool: &sqlx::PgPool, user_id: &str, title: &str) -> St
 /// still sees her own row.
 #[sqlx::test]
 async fn search_titles_never_returns_another_users_requirement(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob-search-titles@b.test", "Bob", None)
         .await
@@ -44,9 +45,11 @@ async fn search_titles_never_returns_another_users_requirement(pool: sqlx::PgPoo
 
     seed_requirement(&pool, &alice, "The Great Authentication Flow").await;
 
+    // When
     let bobs_view = requirement::search_titles(&pool, &bob, "Authentication", 10)
         .await
         .unwrap();
+    // Then
     assert_eq!(
         bobs_view.len(),
         0,
@@ -103,11 +106,14 @@ fn new_req(title: &str) -> NewRequirement {
 
 #[sqlx::test]
 async fn create_and_find_by_id_round_trips(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
+    // When
     let created = requirement::create(&pool, &alice, new_req("Login"))
         .await
         .unwrap()
         .unwrap();
+    // Then
     assert_eq!(created.title, "Login");
     assert_eq!(created.status, "untested");
     assert_eq!(created.order, 0);
@@ -125,6 +131,7 @@ async fn create_and_find_by_id_round_trips(pool: sqlx::PgPool) {
 /// pointing at data the caller cannot see.
 #[sqlx::test]
 async fn create_rejects_a_space_id_the_caller_does_not_own(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob@b.test", "Bob", None)
         .await
@@ -146,7 +153,9 @@ async fn create_rejects_a_space_id_the_caller_does_not_own(pool: sqlx::PgPool) {
 
     let mut params = new_req("Cross-user");
     params.space_id = Some(bobs_space);
+    // When
     let result = requirement::create(&pool, &alice, params).await.unwrap();
+    // Then
     assert!(
         result.is_none(),
         "must reject a space_id Alice does not own"
@@ -156,6 +165,7 @@ async fn create_rejects_a_space_id_the_caller_does_not_own(pool: sqlx::PgPool) {
 /// Same guard, for `use_case_id`.
 #[sqlx::test]
 async fn create_rejects_a_use_case_id_the_caller_does_not_own(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob2@b.test", "Bob", None)
         .await
@@ -177,7 +187,9 @@ async fn create_rejects_a_use_case_id_the_caller_does_not_own(pool: sqlx::PgPool
 
     let mut params = new_req("Cross-user UC");
     params.use_case_id = Some(bobs_uc.id);
+    // When
     let result = requirement::create(&pool, &alice, params).await.unwrap();
+    // Then
     assert!(
         result.is_none(),
         "must reject a use_case_id Alice does not own"
@@ -189,6 +201,7 @@ async fn create_rejects_a_use_case_id_the_caller_does_not_own(pool: sqlx::PgPool
 /// return `Some`.
 #[sqlx::test]
 async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob3@b.test", "Bob", None)
         .await
@@ -199,9 +212,11 @@ async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let bobs_view = requirement::find_by_id(&pool, &bob, &created.id)
         .await
         .unwrap();
+    // Then
     assert!(
         bobs_view.is_none(),
         "must not leak another user's requirement"
@@ -210,12 +225,14 @@ async fn find_by_id_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_changes_only_provided_fields(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let created = requirement::create(&pool, &alice, new_req("Original"))
         .await
         .unwrap()
         .unwrap();
 
+    // When
     let updated = requirement::update(
         &pool,
         &alice,
@@ -228,6 +245,7 @@ async fn update_changes_only_provided_fields(pool: sqlx::PgPool) {
     .await
     .unwrap()
     .unwrap();
+    // Then
     assert_eq!(updated.title, "Renamed");
     assert_eq!(
         updated.steps.0.len(),
@@ -240,13 +258,16 @@ async fn update_changes_only_provided_fields(pool: sqlx::PgPool) {
 /// `Some(None)` must clear the column, not leave it untouched.
 #[sqlx::test]
 async fn update_description_tri_state_clears_on_explicit_null(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let mut params = new_req("Has description");
     params.description = Some("original".into());
+    // When
     let created = requirement::create(&pool, &alice, params)
         .await
         .unwrap()
         .unwrap();
+    // Then
     assert_eq!(created.description.as_deref(), Some("original"));
 
     let cleared = requirement::update(
@@ -268,6 +289,7 @@ async fn update_description_tri_state_clears_on_explicit_null(pool: sqlx::PgPool
 /// returns `None` AND leaves Alice's row unchanged.
 #[sqlx::test]
 async fn update_is_user_scoped_and_leaves_victim_unchanged(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob4@b.test", "Bob", None)
         .await
@@ -278,6 +300,7 @@ async fn update_is_user_scoped_and_leaves_victim_unchanged(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let bobs_attempt = requirement::update(
         &pool,
         &bob,
@@ -289,6 +312,7 @@ async fn update_is_user_scoped_and_leaves_victim_unchanged(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert!(bobs_attempt.is_none());
 
     let still_alices = requirement::find_by_id(&pool, &alice, &created.id)
@@ -303,6 +327,7 @@ async fn update_is_user_scoped_and_leaves_victim_unchanged(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn delete_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob5@b.test", "Bob", None)
         .await
@@ -313,7 +338,9 @@ async fn delete_is_user_scoped(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let bobs_delete = requirement::delete(&pool, &bob, &created.id).await.unwrap();
+    // Then
     assert!(
         !bobs_delete,
         "Bob must not be able to delete Alice's requirement"
@@ -333,6 +360,7 @@ async fn delete_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_status_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob6@b.test", "Bob", None)
         .await
@@ -343,9 +371,11 @@ async fn update_status_is_user_scoped(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let bobs_attempt = requirement::update_status(&pool, &bob, &created.id, "passing")
         .await
         .unwrap();
+    // Then
     assert!(bobs_attempt.is_none());
 
     let alices = requirement::update_status(&pool, &alice, &created.id, "passing")
@@ -375,6 +405,7 @@ fn empty_params(limit: i64) -> ListParams<'static> {
 
 #[sqlx::test]
 async fn list_and_count_are_scoped_to_the_caller(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob7@b.test", "Bob", None)
         .await
@@ -389,9 +420,11 @@ async fn list_and_count_are_scoped_to_the_caller(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let alices_list = requirement::list(&pool, &alice, &empty_params(50))
         .await
         .unwrap();
+    // Then
     assert_eq!(alices_list.len(), 1);
     assert_eq!(alices_list[0].title, "Alice's");
 
@@ -409,6 +442,7 @@ async fn list_and_count_are_scoped_to_the_caller(pool: sqlx::PgPool) {
 /// two identical calls over these exact rows could disagree.
 #[sqlx::test]
 async fn list_order_is_stable_when_order_and_created_at_tie(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let same_time =
         chrono::NaiveDateTime::parse_from_str("2024-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
@@ -432,11 +466,13 @@ async fn list_order_is_stable_when_order_and_created_at_tie(pool: sqlx::PgPool) 
     let first = requirement::list(&pool, &alice, &empty_params(50))
         .await
         .unwrap();
+    // When
     let second = requirement::list(&pool, &alice, &empty_params(50))
         .await
         .unwrap();
     let first_ids: Vec<String> = first.iter().map(|r| r.id.clone()).collect();
     let second_ids: Vec<String> = second.iter().map(|r| r.id.clone()).collect();
+    // Then
     assert_eq!(
         first_ids, second_ids,
         "identical calls over tied sort keys must return identical order"
@@ -449,6 +485,7 @@ async fn list_order_is_stable_when_order_and_created_at_tie(pool: sqlx::PgPool) 
 
 #[sqlx::test]
 async fn list_filters_by_status_and_search(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let a = requirement::create(&pool, &alice, new_req("Password reset flow"))
         .await
@@ -464,7 +501,9 @@ async fn list_filters_by_status_and_search(pool: sqlx::PgPool) {
 
     let mut params = empty_params(50);
     params.status = Some("passing");
+    // When
     let results = requirement::list(&pool, &alice, &params).await.unwrap();
+    // Then
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].id, a.id);
 
@@ -500,6 +539,7 @@ async fn seed_chunk(pool: &sqlx::PgPool, user_id: &str, title: &str) -> String {
 
 #[sqlx::test]
 async fn set_chunks_links_and_replaces(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let req = requirement::create(&pool, &alice, new_req("Linked"))
         .await
@@ -508,9 +548,11 @@ async fn set_chunks_links_and_replaces(pool: sqlx::PgPool) {
     let c1 = seed_chunk(&pool, &alice, "Chunk 1").await;
     let c2 = seed_chunk(&pool, &alice, "Chunk 2").await;
 
+    // When
     let linked = requirement::set_chunks(&pool, &alice, &req.id, std::slice::from_ref(&c1))
         .await
         .unwrap();
+    // Then
     assert_eq!(linked.len(), 1);
     assert_eq!(linked[0].chunk_id, c1);
 
@@ -541,6 +583,7 @@ async fn set_chunks_links_and_replaces(pool: sqlx::PgPool) {
 /// rows and Alice's link set stays empty.
 #[sqlx::test]
 async fn set_chunks_insert_guards_the_requirement_parent(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob8@b.test", "Bob", None)
         .await
@@ -558,9 +601,11 @@ async fn set_chunks_insert_guards_the_requirement_parent(pool: sqlx::PgPool) {
     let alices_chunk = seed_chunk(&pool, &alice, "Alice's chunk").await;
     let _ = bobs_chunk;
 
+    // When
     let result = requirement::set_chunks(&pool, &bob, &req.id, &[alices_chunk])
         .await
         .unwrap();
+    // Then
     assert_eq!(
         result.len(),
         0,
@@ -583,6 +628,7 @@ async fn set_chunks_insert_guards_the_requirement_parent(pool: sqlx::PgPool) {
 /// chunk id to their own requirement.
 #[sqlx::test]
 async fn set_chunks_insert_guards_the_chunk_parent(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob9@b.test", "Bob", None)
         .await
@@ -594,9 +640,11 @@ async fn set_chunks_insert_guards_the_chunk_parent(pool: sqlx::PgPool) {
         .unwrap();
     let bobs_chunk = seed_chunk(&pool, &bob, "Bob's chunk").await;
 
+    // When
     let result = requirement::set_chunks(&pool, &alice, &req.id, &[bobs_chunk])
         .await
         .unwrap();
+    // Then
     assert_eq!(
         result.len(),
         0,
@@ -616,6 +664,7 @@ async fn set_chunks_insert_guards_the_chunk_parent(pool: sqlx::PgPool) {
 /// would have been deleted by Bob's rejected call.
 #[sqlx::test]
 async fn set_chunks_delete_guards_the_requirement_parent_no_silent_data_loss(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob10@b.test", "Bob", None)
         .await
@@ -627,10 +676,12 @@ async fn set_chunks_delete_guards_the_requirement_parent_no_silent_data_loss(poo
         .unwrap();
     let alices_chunk = seed_chunk(&pool, &alice, "Alice's chunk").await;
 
+    // When
     let existing =
         requirement::set_chunks(&pool, &alice, &req.id, std::slice::from_ref(&alices_chunk))
             .await
             .unwrap();
+    // Then
     assert_eq!(existing.len(), 1);
 
     // Bob calls set_chunks against Alice's requirement id with an empty
@@ -658,6 +709,7 @@ async fn set_chunks_delete_guards_the_requirement_parent_no_silent_data_loss(poo
 
 #[sqlx::test]
 async fn bulk_update_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob11@b.test", "Bob", None)
         .await
@@ -672,6 +724,7 @@ async fn bulk_update_is_user_scoped(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let affected = requirement::bulk_update(
         &pool,
         &alice,
@@ -683,6 +736,7 @@ async fn bulk_update_is_user_scoped(pool: sqlx::PgPool) {
     )
     .await
     .unwrap();
+    // Then
     assert_eq!(
         affected, 1,
         "must only affect Alice's own row even though Bob's id was also in the list"
@@ -700,6 +754,7 @@ async fn bulk_update_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn bulk_delete_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob12@b.test", "Bob", None)
         .await
@@ -714,9 +769,11 @@ async fn bulk_delete_is_user_scoped(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let affected = requirement::bulk_delete(&pool, &alice, &[alices_req.id, bobs_req.id.clone()])
         .await
         .unwrap();
+    // Then
     assert_eq!(affected, 1);
     assert!(
         requirement::find_by_id(&pool, &bob, &bobs_req.id)
@@ -729,6 +786,7 @@ async fn bulk_delete_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn find_by_ids_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob13@b.test", "Bob", None)
         .await
@@ -743,9 +801,11 @@ async fn find_by_ids_is_user_scoped(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let found = requirement::find_by_ids(&pool, &alice, &[alices_req.id.clone(), bobs_req.id])
         .await
         .unwrap();
+    // Then
     assert_eq!(
         found.len(),
         1,
@@ -756,6 +816,7 @@ async fn find_by_ids_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn set_order_applies_positions_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob14@b.test", "Bob", None)
         .await
@@ -786,10 +847,12 @@ async fn set_order_applies_positions_and_is_user_scoped(pool: sqlx::PgPool) {
         .await
         .unwrap()
         .unwrap();
+    // When
     let b_after = requirement::find_by_id(&pool, &alice, &b.id)
         .await
         .unwrap()
         .unwrap();
+    // Then
     assert_eq!(b_after.order, 0);
     assert_eq!(a_after.order, 1);
 
@@ -805,6 +868,7 @@ async fn set_order_applies_positions_and_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn stats_counts_by_status_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob15@b.test", "Bob", None)
         .await
@@ -826,7 +890,9 @@ async fn stats_counts_by_status_and_is_user_scoped(pool: sqlx::PgPool) {
         .unwrap()
         .unwrap();
 
+    // When
     let stats = requirement::stats(&pool, &alice, None).await.unwrap();
+    // Then
     assert_eq!(stats.total, 2);
     assert_eq!(stats.passing, 1);
     assert_eq!(stats.untested, 1);
@@ -840,6 +906,7 @@ async fn stats_counts_by_status_and_is_user_scoped(pool: sqlx::PgPool) {
 /// `chunkId` alongside the requirement's five-field slice.
 #[sqlx::test]
 async fn requirements_for_chunks_returns_one_row_per_link(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let chunk_a = seed_chunk(&pool, &alice, "Chunk A").await;
     let chunk_b = seed_chunk(&pool, &alice, "Chunk B").await;
@@ -870,9 +937,11 @@ async fn requirements_for_chunks_returns_one_row_per_link(pool: sqlx::PgPool) {
         requirement::requirements_for_chunks(&pool, &[chunk_a.clone(), chunk_b.clone()], &alice)
             .await
             .unwrap();
+    // When
     // No ORDER BY (matching Node) — sort before asserting.
     rows.sort_by(|x, y| (&x.chunk_id, &x.title).cmp(&(&y.chunk_id, &y.title)));
 
+    // Then
     assert_eq!(rows.len(), 3, "one row per link, not per requirement");
 
     let for_a: Vec<&str> = rows
@@ -904,6 +973,7 @@ async fn requirements_for_chunks_returns_one_row_per_link(pool: sqlx::PgPool) {
 /// the guard is observed directly.
 #[sqlx::test]
 async fn requirements_for_chunks_is_scoped_through_the_chunks_owner(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
     let bob = user::create(&pool, "bob-reqs-for-chunks@b.test", "Bob", None)
         .await
@@ -915,10 +985,12 @@ async fn requirements_for_chunks_is_scoped_through_the_chunks_owner(pool: sqlx::
         .await
         .unwrap()
         .unwrap();
+    // When
     requirement::set_chunks(&pool, &alice, &req.id, std::slice::from_ref(&alices_chunk))
         .await
         .unwrap();
 
+    // Then
     assert_eq!(
         requirement::requirements_for_chunks(&pool, std::slice::from_ref(&alices_chunk), &alice)
             .await
@@ -940,7 +1012,10 @@ async fn requirements_for_chunks_is_scoped_through_the_chunks_owner(pool: sqlx::
 /// An empty id list short-circuits to an empty result without a round trip.
 #[sqlx::test]
 async fn requirements_for_chunks_with_no_ids_returns_empty(pool: sqlx::PgPool) {
+    // Given
     let alice = seed_user(&pool).await;
+    // When the operation is evaluated by the assertion.
+    // Then
     assert!(
         requirement::requirements_for_chunks(&pool, &[], &alice)
             .await

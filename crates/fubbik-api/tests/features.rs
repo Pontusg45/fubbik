@@ -156,6 +156,7 @@ async fn create_feature(
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_is_a_bare_array_of_list_rows_and_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-l@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-l@b.test", "Bob").await;
@@ -164,7 +165,9 @@ async fn list_is_a_bare_array_of_list_rows_and_is_user_scoped(pool: sqlx::PgPool
     create_feature(app.clone(), &bob, serde_json::json!({"name": "bobs"})).await;
 
     let body = json_body(get(app.clone(), &alice, "/api/features").await).await;
+    // When
     let rows = body.as_array().expect("bare array, not an envelope");
+    // Then
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["name"], "alices");
     assert_eq!(
@@ -182,15 +185,18 @@ async fn list_is_a_bare_array_of_list_rows_and_is_user_scoped(pool: sqlx::PgPool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_returns_the_full_row_and_auto_assigns_priority(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-c@b.test", "Alice").await;
 
+    // When
     let first = create_feature(
         app.clone(),
         &alice,
         serde_json::json!({"name": "first", "description": "d", "color": "#abc"}),
     )
     .await;
+    // Then
     assert_eq!(first["priority"], 1, "max(priority)=0 → first gets 1");
     assert_eq!(first["status"], "inactive", "column default");
     assert!(
@@ -216,6 +222,7 @@ async fn create_returns_the_full_row_and_auto_assigns_priority(pool: sqlx::PgPoo
 /// something.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_space_filter_is_wired_through_the_camel_case_query_key(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-sf@b.test", "Alice").await;
     let alice_id = user_id_for_email(&pool, "alice-sf@b.test").await;
@@ -236,7 +243,9 @@ async fn list_space_filter_is_wired_through_the_camel_case_query_key(pool: sqlx:
     .await;
     create_feature(app.clone(), &alice, serde_json::json!({"name": "global"})).await;
 
+    // When
     let all = json_body(get(app.clone(), &alice, "/api/features").await).await;
+    // Then
     assert_eq!(all.as_array().unwrap().len(), 3);
 
     let filtered = json_body(get(app, &alice, &format!("/api/features?spaceId={s1}")).await).await;
@@ -260,6 +269,7 @@ async fn list_space_filter_is_wired_through_the_camel_case_query_key(pool: sqlx:
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detail_is_feature_spaces_deltas_and_404s_across_users(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-d@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-d@b.test", "Bob").await;
@@ -274,7 +284,9 @@ async fn detail_is_feature_spaces_deltas_and_404s_across_users(pool: sqlx::PgPoo
     .await;
     let id = f["id"].as_str().unwrap();
 
+    // When
     let body = json_body(get(app.clone(), &alice, &format!("/api/features/{id}")).await).await;
+    // Then
     assert_eq!(body["feature"]["id"], f["id"], "nested, not flattened");
     assert_eq!(body["spaces"].as_array().unwrap().len(), 1);
     assert_eq!(body["spaces"][0]["name"], "s");
@@ -288,6 +300,7 @@ async fn detail_is_feature_spaces_deltas_and_404s_across_users(pool: sqlx::PgPoo
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn patch_updates_clears_nulls_and_rejects_a_duplicate_name(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-p@b.test", "Alice").await;
 
@@ -300,6 +313,7 @@ async fn patch_updates_clears_nulls_and_rejects_a_duplicate_name(pool: sqlx::PgP
     .await;
     let id = f["id"].as_str().unwrap();
 
+    // When
     let body = json_body(
         send(
             app.clone(),
@@ -311,6 +325,7 @@ async fn patch_updates_clears_nulls_and_rejects_a_duplicate_name(pool: sqlx::PgP
         .await,
     )
     .await;
+    // Then
     assert_eq!(body["name"], "renamed");
     assert_eq!(body["status"], "archived");
 
@@ -361,6 +376,7 @@ async fn patch_updates_clears_nulls_and_rejects_a_duplicate_name(pool: sqlx::PgP
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn patch_space_ids_alone_is_accepted(pool: sqlx::PgPool) {
+    // Given
     // Node 500s on this: `spaceIds` is stripped before the row update, so
     // Drizzle receives `.set({})` and throws `No values to set`. This port
     // short-circuits to a re-select — a deliberate, flagged divergence.
@@ -372,6 +388,7 @@ async fn patch_space_ids_alone_is_accepted(pool: sqlx::PgPool) {
     let f = create_feature(app.clone(), &alice, serde_json::json!({"name": "f"})).await;
     let id = f["id"].as_str().unwrap();
 
+    // When
     let res = send(
         app.clone(),
         &alice,
@@ -380,6 +397,7 @@ async fn patch_space_ids_alone_is_accepted(pool: sqlx::PgPool) {
         serde_json::json!({"spaceIds": [space]}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
 
     let detail = json_body(get(app, &alice, &format!("/api/features/{id}")).await).await;
@@ -388,12 +406,14 @@ async fn patch_space_ids_alone_is_accepted(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_answers_a_message_and_404s_across_users(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-del@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-del@b.test", "Bob").await;
     let f = create_feature(app.clone(), &alice, serde_json::json!({"name": "f"})).await;
     let id = f["id"].as_str().unwrap();
 
+    // When
     let res = send(
         app.clone(),
         &bob,
@@ -402,6 +422,7 @@ async fn delete_answers_a_message_and_404s_across_users(pool: sqlx::PgPool) {
         serde_json::json!({}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let res = send(
@@ -433,6 +454,7 @@ async fn delete_answers_a_message_and_404s_across_users(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn active_features_round_trip_as_bare_id_strings(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-a@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-a@b.test", "Bob").await;
@@ -441,7 +463,9 @@ async fn active_features_round_trip_as_bare_id_strings(pool: sqlx::PgPool) {
     let f2 = create_feature(app.clone(), &alice, serde_json::json!({"name": "f2"})).await;
     let bobs = create_feature(app.clone(), &bob, serde_json::json!({"name": "bobs"})).await;
 
+    // When
     let body = json_body(get(app.clone(), &alice, "/api/features/active").await).await;
+    // Then
     assert_eq!(body.as_array().unwrap().len(), 0);
 
     let res = send(
@@ -515,6 +539,7 @@ async fn active_features_round_trip_as_bare_id_strings(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn reorder_returns_the_feature_and_shifts_the_rest_up(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-r@b.test", "Alice").await;
 
@@ -531,6 +556,7 @@ async fn reorder_returns_the_feature_and_shifts_the_rest_up(pool: sqlx::PgPool) 
     )
     .await;
 
+    // When
     // Move `b` to 10: everything at or above 10 shifts up (a: 10→11,
     // b: 20→21), then b is written to 10.
     let res = send(
@@ -541,6 +567,7 @@ async fn reorder_returns_the_feature_and_shifts_the_rest_up(pool: sqlx::PgPool) 
         serde_json::json!({"priority": 10}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["id"], b["id"], "reorder returns the feature row");
@@ -586,6 +613,7 @@ async fn reorder_returns_the_feature_and_shifts_the_rest_up(pool: sqlx::PgPool) 
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delta_crud_round_trip_and_shapes(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-dl@b.test", "Alice").await;
     let alice_id = user_id_for_email(&pool, "alice-dl@b.test").await;
@@ -593,6 +621,7 @@ async fn delta_crud_round_trip_and_shapes(pool: sqlx::PgPool) {
     let f = create_feature(app.clone(), &alice, serde_json::json!({"name": "f"})).await;
     let fid = f["id"].as_str().unwrap();
 
+    // When
     let res = send(
         app.clone(),
         &alice,
@@ -601,6 +630,7 @@ async fn delta_crud_round_trip_and_shapes(pool: sqlx::PgPool) {
         serde_json::json!({"delta": {"content": "overlay content"}}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK, "PUT delta is 200, not 201");
     let created = json_body(res).await;
     assert_eq!(created["chunkId"], chunk.as_str());
@@ -662,6 +692,7 @@ async fn delta_crud_round_trip_and_shapes(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delta_validation_and_not_found_ordering(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-dv@b.test", "Alice").await;
     let alice_id = user_id_for_email(&pool, "alice-dv@b.test").await;
@@ -669,6 +700,7 @@ async fn delta_validation_and_not_found_ordering(pool: sqlx::PgPool) {
     let f = create_feature(app.clone(), &alice, serde_json::json!({"name": "f"})).await;
     let fid = f["id"].as_str().unwrap();
 
+    // When
     // Unknown fields → 400, naming the offenders.
     let res = send(
         app.clone(),
@@ -678,6 +710,7 @@ async fn delta_validation_and_not_found_ordering(pool: sqlx::PgPool) {
         serde_json::json!({"delta": {"unknownField": "bad", "tags": ["x"]}}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let msg = json_body(res).await["message"]
         .as_str()
@@ -764,6 +797,7 @@ async fn delta_validation_and_not_found_ordering(pool: sqlx::PgPool) {
 /// SQL — a deliberate, flagged divergence.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn chunk_deltas_do_not_leak_across_users(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-lk@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-lk@b.test", "Bob").await;
@@ -782,6 +816,7 @@ async fn chunk_deltas_do_not_leak_across_users(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let body = json_body(
         get(
             app.clone(),
@@ -791,6 +826,7 @@ async fn chunk_deltas_do_not_leak_across_users(pool: sqlx::PgPool) {
         .await,
     )
     .await;
+    // Then
     assert!(
         body.as_array().unwrap().is_empty(),
         "Alice must not see Bob's overlay content"
@@ -806,6 +842,7 @@ async fn chunk_deltas_do_not_leak_across_users(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn merge_applies_deltas_and_is_not_repeatable(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-m@b.test", "Alice").await;
     let alice_id = user_id_for_email(&pool, "alice-m@b.test").await;
@@ -822,6 +859,7 @@ async fn merge_applies_deltas_and_is_not_repeatable(pool: sqlx::PgPool) {
     )
     .await;
 
+    // When
     let res = send(
         app.clone(),
         &alice,
@@ -830,6 +868,7 @@ async fn merge_applies_deltas_and_is_not_repeatable(pool: sqlx::PgPool) {
         serde_json::json!({}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(json_body(res).await["message"], "Feature merged");
 
@@ -877,12 +916,14 @@ async fn merge_applies_deltas_and_is_not_repeatable(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn merge_with_no_deltas_just_flips_the_status(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice = signup(app.clone(), "alice-me@b.test", "Alice").await;
     let bob = signup(app.clone(), "bob-me@b.test", "Bob").await;
     let f = create_feature(app.clone(), &alice, serde_json::json!({"name": "f"})).await;
     let fid = f["id"].as_str().unwrap();
 
+    // When
     let res = send(
         app.clone(),
         &bob,
@@ -891,6 +932,7 @@ async fn merge_with_no_deltas_just_flips_the_status(pool: sqlx::PgPool) {
         serde_json::json!({}),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND, "merge is user-scoped");
 
     let res = send(
@@ -913,6 +955,7 @@ async fn merge_with_no_deltas_just_flips_the_status(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn every_endpoint_requires_a_session(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     for (method, path) in [
         ("GET", "/api/features"),
@@ -929,6 +972,7 @@ async fn every_endpoint_requires_a_session(pool: sqlx::PgPool) {
         ("PUT", "/api/chunks/x/deltas/y"),
         ("DELETE", "/api/chunks/x/deltas/y"),
     ] {
+        // When
         let res = app
             .clone()
             .oneshot(
@@ -941,6 +985,7 @@ async fn every_endpoint_requires_a_session(pool: sqlx::PgPool) {
             )
             .await
             .unwrap();
+        // Then
         assert_eq!(
             res.status(),
             StatusCode::UNAUTHORIZED,

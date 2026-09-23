@@ -156,9 +156,11 @@ fn a_graph_body() -> serde_json::Value {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_returns_201_defaults_layout_and_trims_name(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-create@b.test", "Alice").await;
 
+    // When
     let res = create_saved_graph(
         app.clone(),
         &cookie,
@@ -169,6 +171,7 @@ async fn create_returns_201_defaults_layout_and_trims_name(pool: sqlx::PgPool) {
         }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::CREATED);
     let body = json_body(res).await;
     assert_eq!(body["name"], "My Graph", "name must be trimmed");
@@ -186,12 +189,15 @@ async fn create_returns_201_defaults_layout_and_trims_name(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_rejects_blank_name(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-blank@b.test", "Alice").await;
 
     let mut body = a_graph_body();
     body["name"] = serde_json::json!("   ");
+    // When
     let res = create_saved_graph(app.clone(), &cookie, body).await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let json = json_body(res).await;
     assert_eq!(
@@ -202,6 +208,7 @@ async fn create_rejects_blank_name(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_is_user_scoped(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-list@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-list@b.test", "Bob").await;
@@ -213,6 +220,7 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
     bob_body["name"] = serde_json::json!("Bob's");
     create_saved_graph(app.clone(), &bob_cookie, bob_body).await;
 
+    // When
     let body = json_body(list_saved_graphs(app.clone(), &alice_cookie, "").await).await;
     let names: Vec<&str> = body
         .as_array()
@@ -220,6 +228,7 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
         .iter()
         .map(|g| g["name"].as_str().unwrap())
         .collect();
+    // Then
     assert_eq!(names, vec!["Alice's"]);
 
     // Bob's own list must also still be intact — a single-side check would
@@ -237,6 +246,7 @@ async fn list_is_user_scoped(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn list_filters_by_space_id_query_param(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-space@b.test", "Alice").await;
     let user_id = user_id_for_email(&pool, "alice-space@b.test").await;
@@ -250,7 +260,9 @@ async fn list_filters_by_space_id_query_param(pool: sqlx::PgPool) {
     no_space["name"] = serde_json::json!("No space");
     create_saved_graph(app.clone(), &cookie, no_space).await;
 
+    // When
     let body = json_body(list_saved_graphs(app.clone(), &cookie, "").await).await;
+    // Then
     assert_eq!(body.as_array().unwrap().len(), 2);
 
     let body =
@@ -267,12 +279,15 @@ async fn list_filters_by_space_id_query_param(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_returns_the_saved_graph(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-get@b.test", "Alice").await;
     let created = json_body(create_saved_graph(app.clone(), &cookie, a_graph_body()).await).await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let res = get_saved_graph(app.clone(), &cookie, id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["id"], id);
@@ -281,6 +296,7 @@ async fn get_returns_the_saved_graph(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn get_on_another_users_saved_graph_is_404(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-cross-get@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-cross-get@b.test", "Bob").await;
@@ -288,17 +304,21 @@ async fn get_on_another_users_saved_graph_is_404(pool: sqlx::PgPool) {
         json_body(create_saved_graph(app.clone(), &bob_cookie, a_graph_body()).await).await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let res = get_saved_graph(app.clone(), &alice_cookie, id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_changes_only_given_fields_and_persists(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-update@b.test", "Alice").await;
     let created = json_body(create_saved_graph(app.clone(), &cookie, a_graph_body()).await).await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let res = update_saved_graph(
         app.clone(),
         &cookie,
@@ -306,6 +326,7 @@ async fn update_changes_only_given_fields_and_persists(pool: sqlx::PgPool) {
         serde_json::json!({ "name": "Renamed" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body["name"], "Renamed");
@@ -322,12 +343,15 @@ async fn update_changes_only_given_fields_and_persists(pool: sqlx::PgPool) {
 /// explicit `null` clears it.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_description_tri_state(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-tristate@b.test", "Alice").await;
     let mut body = a_graph_body();
     body["description"] = serde_json::json!("has one");
     let created = json_body(create_saved_graph(app.clone(), &cookie, body).await).await;
+    // When
     let id = created["id"].as_str().unwrap();
+    // Then
     assert_eq!(created["description"], "has one");
 
     // Omitted: untouched.
@@ -355,11 +379,13 @@ async fn update_description_tri_state(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_rejects_blank_name_with_distinct_message(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-update-blank@b.test", "Alice").await;
     let created = json_body(create_saved_graph(app.clone(), &cookie, a_graph_body()).await).await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let res = update_saved_graph(
         app.clone(),
         &cookie,
@@ -367,6 +393,7 @@ async fn update_rejects_blank_name_with_distinct_message(pool: sqlx::PgPool) {
         serde_json::json!({ "name": "  " }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
     let body = json_body(res).await;
     assert_eq!(
@@ -377,6 +404,7 @@ async fn update_rejects_blank_name_with_distinct_message(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn update_on_another_users_saved_graph_is_404_and_leaves_it_unchanged(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-cross-update@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-cross-update@b.test", "Bob").await;
@@ -384,6 +412,7 @@ async fn update_on_another_users_saved_graph_is_404_and_leaves_it_unchanged(pool
         json_body(create_saved_graph(app.clone(), &bob_cookie, a_graph_body()).await).await;
     let id = created["id"].as_str().unwrap();
 
+    // When
     let res = update_saved_graph(
         app.clone(),
         &alice_cookie,
@@ -391,6 +420,7 @@ async fn update_on_another_users_saved_graph_is_404_and_leaves_it_unchanged(pool
         serde_json::json!({ "name": "hijacked" }),
     )
     .await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let refetched = json_body(get_saved_graph(app.clone(), &bob_cookie, id).await).await;
@@ -399,12 +429,15 @@ async fn update_on_another_users_saved_graph_is_404_and_leaves_it_unchanged(pool
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_returns_message_and_404s_on_second_call(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let cookie = signup(app.clone(), "alice-delete@b.test", "Alice").await;
     let created = json_body(create_saved_graph(app.clone(), &cookie, a_graph_body()).await).await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = delete_saved_graph(app.clone(), &cookie, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::OK);
     let body = json_body(res).await;
     assert_eq!(body, serde_json::json!({ "message": "Deleted" }));
@@ -415,6 +448,7 @@ async fn delete_returns_message_and_404s_on_second_call(pool: sqlx::PgPool) {
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_on_another_users_saved_graph_is_404_and_leaves_it_intact(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool.clone()));
     let alice_cookie = signup(app.clone(), "alice-cross-delete@b.test", "Alice").await;
     let bob_cookie = signup(app.clone(), "bob-cross-delete@b.test", "Bob").await;
@@ -422,7 +456,9 @@ async fn delete_on_another_users_saved_graph_is_404_and_leaves_it_intact(pool: s
         json_body(create_saved_graph(app.clone(), &bob_cookie, a_graph_body()).await).await;
     let id = created["id"].as_str().unwrap().to_string();
 
+    // When
     let res = delete_saved_graph(app.clone(), &alice_cookie, &id).await;
+    // Then
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     let res = get_saved_graph(app.clone(), &bob_cookie, &id).await;
@@ -435,8 +471,10 @@ async fn delete_on_another_users_saved_graph_is_404_and_leaves_it_intact(pool: s
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn unauthenticated_requests_are_401(pool: sqlx::PgPool) {
+    // Given
     let app = fubbik_api::router(state(pool));
 
+    // When
     let res = app
         .clone()
         .oneshot(
@@ -446,6 +484,7 @@ async fn unauthenticated_requests_are_401(pool: sqlx::PgPool) {
         )
         .await
         .unwrap();
+    // Then
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 
     let res = app

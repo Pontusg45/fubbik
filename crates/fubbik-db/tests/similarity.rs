@@ -53,6 +53,7 @@ async fn seed_chunk_with_vector(
 /// deleted entirely.
 #[sqlx::test]
 async fn find_similar_drops_matches_below_the_threshold(pool: sqlx::PgPool) {
+    // Given
     let user = seed_user(&pool).await;
     seed_chunk_with_vector(&pool, &user, "identical", "Identical", 0).await;
     seed_chunk_with_vector(&pool, &user, "orthogonal", "Orthogonal", 9).await;
@@ -60,11 +61,13 @@ async fn find_similar_drops_matches_below_the_threshold(pool: sqlx::PgPool) {
     let mut query = vec![0.0f32; 768];
     query[0] = 1.0;
 
+    // When
     let hits =
         fubbik_db::repo::similarity::find_similar_by_embedding(&pool, &query, &user, None, 0.75, 5)
             .await
             .unwrap();
 
+    // Then
     assert_eq!(
         hits.iter().map(|h| h.id.as_str()).collect::<Vec<_>>(),
         vec!["identical"],
@@ -74,6 +77,7 @@ async fn find_similar_drops_matches_below_the_threshold(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn find_similar_honours_exclude_id(pool: sqlx::PgPool) {
+    // Given
     let user = seed_user(&pool).await;
     seed_chunk_with_vector(&pool, &user, "self", "Self", 0).await;
     seed_chunk_with_vector(&pool, &user, "other", "Other", 0).await;
@@ -81,6 +85,7 @@ async fn find_similar_honours_exclude_id(pool: sqlx::PgPool) {
     let mut query = vec![0.0f32; 768];
     query[0] = 1.0;
 
+    // When
     let hits = fubbik_db::repo::similarity::find_similar_by_embedding(
         &pool,
         &query,
@@ -92,6 +97,7 @@ async fn find_similar_honours_exclude_id(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // Then
     assert_eq!(
         hits.iter().map(|h| h.id.as_str()).collect::<Vec<_>>(),
         vec!["other"]
@@ -100,6 +106,7 @@ async fn find_similar_honours_exclude_id(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn find_similar_is_scoped_to_the_user(pool: sqlx::PgPool) {
+    // Given
     let a = seed_user_with_email(&pool, "a@b.test").await;
     let b = seed_user_with_email(&pool, "b@c.test").await;
     seed_chunk_with_vector(&pool, &a, "mine", "Mine", 0).await;
@@ -108,11 +115,13 @@ async fn find_similar_is_scoped_to_the_user(pool: sqlx::PgPool) {
     let mut query = vec![0.0f32; 768];
     query[0] = 1.0;
 
+    // When
     let hits =
         fubbik_db::repo::similarity::find_similar_by_embedding(&pool, &query, &a, None, 0.75, 5)
             .await
             .unwrap();
 
+    // Then
     assert_eq!(
         hits.iter().map(|h| h.id.as_str()).collect::<Vec<_>>(),
         vec!["mine"]
@@ -142,6 +151,7 @@ async fn find_similar_is_scoped_to_the_user(pool: sqlx::PgPool) {
 /// done.
 #[sqlx::test]
 async fn find_similar_lets_a_below_threshold_row_consume_a_limit_slot(pool: sqlx::PgPool) {
+    // Given
     let user = seed_user(&pool).await;
     seed_chunk_with_vector(&pool, &user, "a", "A", 0).await;
     seed_chunk_with_vector(&pool, &user, "b", "B", 3).await;
@@ -150,11 +160,13 @@ async fn find_similar_lets_a_below_threshold_row_consume_a_limit_slot(pool: sqlx
     let mut query = vec![0.0f32; 768];
     query[0] = 1.0;
 
+    // When
     let hits =
         fubbik_db::repo::similarity::find_similar_by_embedding(&pool, &query, &user, None, 0.75, 3)
             .await
             .unwrap();
 
+    // Then
     assert_eq!(hits.len(), 2);
     assert!(hits.iter().all(|h| h.id != "b"));
 }

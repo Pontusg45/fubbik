@@ -201,9 +201,12 @@ mod tests {
 
     #[test]
     fn extracts_scalar_and_list_fields() {
+        // Given the inline inputs and test fixtures.
+        // When
         let (fm, body) = extract_frontmatter(
             "---\ntitle: Quick Reference\ntags:\n  - reference\ndescription: A quick ref card\n---\n\nBody here.\n",
         );
+        // Then
         assert_eq!(fm.title.as_deref(), Some("Quick Reference"));
         assert_eq!(fm.description.as_deref(), Some("A quick ref card"));
         assert_eq!(fm.tags, vec!["reference".to_string()]);
@@ -212,13 +215,19 @@ mod tests {
 
     #[test]
     fn no_frontmatter_block_returns_untouched_raw_as_body() {
+        // Given the inline inputs and test fixtures.
+        // When
         let (fm, body) = extract_frontmatter("# Just a heading\n\nSome text.\n");
+        // Then
         assert_eq!(fm, Frontmatter::default());
         assert_eq!(body, "# Just a heading\n\nSome text.\n");
     }
 
     #[test]
     fn tags_from_path_drops_index_and_readme_stems() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(tags_from_path("docs/guide/index.md"), vec!["docs", "guide"]);
         assert_eq!(tags_from_path("docs/readme.md"), vec!["docs"]);
         assert_eq!(

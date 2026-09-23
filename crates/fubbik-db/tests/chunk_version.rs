@@ -2,6 +2,7 @@ use fubbik_db::repo::{chunk, chunk_version, user};
 
 #[sqlx::test]
 async fn snapshot_records_pre_edit_state(pool: sqlx::PgPool) {
+    // Given
     let uid = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -22,9 +23,11 @@ async fn snapshot_records_pre_edit_state(pool: sqlx::PgPool) {
 
     chunk_version::snapshot(&pool, &c, None).await.unwrap();
 
+    // When
     let history = chunk_version::list_for_chunk(&pool, &c.id, &uid)
         .await
         .unwrap();
+    // Then
     assert_eq!(history.len(), 1);
     assert_eq!(history[0].title, "Original");
     assert_eq!(history[0].content, "v1");
@@ -33,6 +36,7 @@ async fn snapshot_records_pre_edit_state(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn version_numbers_increment_per_chunk(pool: sqlx::PgPool) {
+    // Given
     let uid = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -54,9 +58,11 @@ async fn version_numbers_increment_per_chunk(pool: sqlx::PgPool) {
     chunk_version::snapshot(&pool, &c, None).await.unwrap();
     chunk_version::snapshot(&pool, &c, None).await.unwrap();
 
+    // When
     let history = chunk_version::list_for_chunk(&pool, &c.id, &uid)
         .await
         .unwrap();
+    // Then
     assert_eq!(
         history.iter().map(|v| v.version).collect::<Vec<_>>(),
         [2, 1],
@@ -69,6 +75,7 @@ async fn version_numbers_increment_per_chunk(pool: sqlx::PgPool) {
 /// directly with another user's id must not see the owner's history.
 #[sqlx::test]
 async fn list_for_chunk_scoped_to_owner_at_repo_layer(pool: sqlx::PgPool) {
+    // Given
     let alice = user::create(&pool, "alice@b.test", "Alice", None)
         .await
         .unwrap()
@@ -93,9 +100,11 @@ async fn list_for_chunk_scoped_to_owner_at_repo_layer(pool: sqlx::PgPool) {
 
     chunk_version::snapshot(&pool, &c, None).await.unwrap();
 
+    // When
     let as_alice = chunk_version::list_for_chunk(&pool, &c.id, &alice)
         .await
         .unwrap();
+    // Then
     assert_eq!(as_alice.len(), 1);
 
     let as_bob = chunk_version::list_for_chunk(&pool, &c.id, &bob)
@@ -113,6 +122,7 @@ async fn list_for_chunk_scoped_to_owner_at_repo_layer(pool: sqlx::PgPool) {
 /// violation, not silently coexist.
 #[sqlx::test]
 async fn duplicate_chunk_id_version_is_rejected(pool: sqlx::PgPool) {
+    // Given
     let uid = user::create(&pool, "a@b.test", "Alice", None)
         .await
         .unwrap()
@@ -141,6 +151,7 @@ async fn duplicate_chunk_id_version_is_rejected(pool: sqlx::PgPool) {
     .await
     .unwrap();
 
+    // When
     let err = sqlx::query!(
         r#"INSERT INTO chunk_version (id, chunk_id, version, title, content, type, tags, created_at)
            VALUES ($1, $2, 1, 'T', '', 'note', '[]'::jsonb, now())"#,
@@ -152,6 +163,7 @@ async fn duplicate_chunk_id_version_is_rejected(pool: sqlx::PgPool) {
     .unwrap_err();
 
     let db_err = err.as_database_error().expect("expected a database error");
+    // Then
     assert_eq!(
         db_err.code().as_deref(),
         Some("23505"),
