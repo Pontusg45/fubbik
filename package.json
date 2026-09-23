@@ -43,6 +43,8 @@
         "scan": "turbo run scan --filter=@fubbik/db",
         "test": "turbo run test",
         "test:e2e": "turbo run test:e2e",
+        "check:rust-migration": "node scripts/check-rust-migration.mjs",
+        "test:rust-migration": "node --test scripts/check-rust-migration.test.mjs",
         "gen:api": "turbo run gen:api --filter=@fubbik/client",
         "lint": "turbo run lint",
         "lint:fix": "oxlint --fix",

@@ -18,15 +18,17 @@ Add to your AI tool's MCP settings:
 {
     "mcpServers": {
         "fubbik": {
-            "command": "npx",
-            "args": ["tsx", "packages/mcp/src/index.ts"],
+            "command": "fubbik",
+            "args": ["mcp"],
             "env": {
-                "FUBBIK_SERVER_URL": "http://localhost:3000"
+                "FUBBIK_SERVER_URL": "http://localhost:3100"
             }
         }
     }
 }
 ```
+
+The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration currently exposes the nine core knowledge tools. Plan, context, coordination, task, and matrix tools are being moved in subsequent migration slices and remain available through the legacy development package until their contract tests pass.
 
 ## Available Tools
 
@@ -38,15 +40,6 @@ Add to your AI tool's MCP settings:
 | `get_conventions`      | Get coding conventions for a file     |
 | `get_requirements`     | List requirements                     |
 | `search_vocabulary`    | Search controlled vocabulary          |
-| `create_plan`          | Create an implementation plan         |
-| `begin_implementation` | Start an implementation session       |
-| `mark_plan_step`       | Update a plan step status             |
-| `sync_claude_md`       | Regenerate CLAUDE.md                  |
-| `join_board`           | Join or reconnect to a Plan board     |
-| `read_board`           | Read task, agent, claim, and journal state |
-| `claim_task`           | Claim, renew, or release a task lease |
-| `update_board_task`    | Transition a claimed task             |
-| `write_board_entry`    | Persist a note or addressed message   |
-| `ack_board`            | Save an agent's journal cursor         |
-
-Coordination messages are durable but do not wake another agent. Callers should poll `read_board` using its `nextSequence` cursor and reuse `clientMutationId` when retrying uncertain writes. See [Agent Coordination Boards](../../features/agent-coordination.md).
+| `update_chunk`         | Update an existing chunk              |
+| `list_updates`         | List tagged knowledge updates         |
+| `propose_chunk_update` | Propose an update for review           |

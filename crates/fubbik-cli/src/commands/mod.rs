@@ -9,6 +9,7 @@ pub mod get;
 pub mod health;
 pub mod input;
 pub mod list;
+pub mod open;
 pub mod plan;
 pub mod plugin;
 pub mod requirement;

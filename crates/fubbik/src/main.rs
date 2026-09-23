@@ -232,8 +232,12 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Mcp => {
-            println!("mcp — not yet implemented");
-            Ok(())
+            let base = explicit_url
+                .or_else(|| std::env::var("FUBBIK_SERVER_URL").ok())
+                .map(Ok)
+                .unwrap_or_else(|| fubbik_cli::config::resolve_base_url(None))
+                .unwrap_or_else(|_| "http://localhost:3100".into());
+            fubbik_mcp::run(&base).await
         }
         Commands::Openapi => {
             use utoipa::OpenApi;
@@ -261,7 +265,9 @@ async fn main() -> anyhow::Result<()> {
                 Err(_)
                     if matches!(
                         cmd,
-                        fubbik_cli::Command::Doctor | fubbik_cli::Command::Init { .. }
+                        fubbik_cli::Command::Doctor
+                            | fubbik_cli::Command::Init { .. }
+                            | fubbik_cli::Command::Open { .. }
                     ) =>
                 {
                     explicit_url
@@ -315,6 +321,8 @@ mod tests {
 
     #[test]
     fn rust_cli_exposes_the_server_backed_parity_commands() {
+        // Given the inline inputs and test fixtures.
+        // When
         let command = Cli::command();
         let names: Vec<_> = command
             .get_subcommands()
@@ -324,13 +332,17 @@ mod tests {
             "space", "tag", "link", "unlink", "req", "stats", "enrich", "stale", "status", "docs",
             "chunk",
         ] {
+            // Then
             assert!(names.contains(&expected), "missing `{expected}` command");
         }
     }
 
     #[test]
     fn cors_accepts_a_comma_separated_origin_list() {
+        // Given the inline inputs and test fixtures.
+        // When
         let origins = parse_cors_origins("http://localhost:3001, https://app.fubbik.test:8443");
+        // Then
         assert_eq!(
             origins.len(),
             2,
@@ -340,7 +352,10 @@ mod tests {
 
     #[test]
     fn cors_single_origin_still_works() {
+        // Given the inline inputs and test fixtures.
+        // When
         let origins = parse_cors_origins("http://localhost:3001");
+        // Then
         assert_eq!(origins.len(), 1);
         assert_eq!(origins[0], "http://localhost:3001");
     }
@@ -352,11 +367,17 @@ mod tests {
 
     #[test]
     fn unset_environment_is_relaxed() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(resolve_implicit_dev_session(None, false), Ok(true));
     }
 
     #[test]
     fn production_is_not_relaxed() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             resolve_implicit_dev_session(Some("production"), false),
             Ok(false)
@@ -365,6 +386,9 @@ mod tests {
 
     #[test]
     fn explicit_flag_wins_even_under_production() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             resolve_implicit_dev_session(Some("production"), true),
             Ok(true)
@@ -373,6 +397,9 @@ mod tests {
 
     #[test]
     fn development_is_relaxed() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(
             resolve_implicit_dev_session(Some("development"), false),
             Ok(true)
@@ -381,31 +408,49 @@ mod tests {
 
     #[test]
     fn test_env_is_relaxed() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert_eq!(resolve_implicit_dev_session(Some("test"), false), Ok(true));
     }
 
     #[test]
     fn wrong_case_is_rejected() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(resolve_implicit_dev_session(Some("Production"), false).is_err());
     }
 
     #[test]
     fn abbreviated_value_is_rejected() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(resolve_implicit_dev_session(Some("prod"), false).is_err());
     }
 
     #[test]
     fn whitespace_is_rejected() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(resolve_implicit_dev_session(Some(" production"), false).is_err());
     }
 
     #[test]
     fn empty_string_is_rejected() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         assert!(resolve_implicit_dev_session(Some(""), false).is_err());
     }
 
     #[test]
     fn rejection_still_happens_even_with_the_explicit_flag_set() {
+        // Given the inline inputs and test fixtures.
+        // When the operation is evaluated by the assertion.
+        // Then
         // Node validates NODE_ENV unconditionally at import time, before any
         // flag logic runs, so a malformed value must fail closed regardless
         // of FUBBIK_IMPLICIT_DEV_SESSION.

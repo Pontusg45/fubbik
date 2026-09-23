@@ -59,6 +59,20 @@ pub enum PlanCommand {
     },
     /// Change plan status
     Status { id: String, status: String },
+    /// Add a task to a plan
+    AddTask {
+        plan_id: String,
+        title: String,
+        #[arg(short, long)]
+        description: Option<String>,
+    },
+    /// Mark a plan task as done
+    TaskDone { plan_id: String, task_id: String },
+    /// Link a requirement to a plan
+    LinkRequirement {
+        plan_id: String,
+        requirement_id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -92,6 +106,14 @@ pub enum PluginCommand {
 
 #[derive(Subcommand)]
 pub enum ContextCommand {
+    /// Get context about a concept through semantic search
+    About {
+        concept: String,
+        #[arg(short = 't', long, default_value = "8000")]
+        max_tokens: usize,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
     /// Export token-budgeted project context
     Export {
         #[arg(long)]
@@ -487,6 +509,8 @@ pub enum Command {
     },
     /// Show configuration-free server and knowledge-base status
     Status,
+    /// Open the web application, a named page, or a chunk
+    Open { target: Option<String> },
     /// Manage imported Markdown documents
     Docs {
         #[command(subcommand)]
@@ -604,6 +628,7 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         }
         Command::Stale { command } => commands::stale::run(&client, command, output).await,
         Command::Status => commands::status::run(&client, output).await,
+        Command::Open { target } => commands::open::run(target.as_deref(), output),
         Command::Docs { command } => commands::docs::run(&client, command, output).await,
         Command::Chunk { command } => run_chunk(command, &client, output).await,
     }

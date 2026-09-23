@@ -750,6 +750,7 @@ dependencies = [
  "fubbik-api",
  "fubbik-cli",
  "fubbik-db",
+ "fubbik-mcp",
  "serde_json",
  "tokio",
  "tower-http",
@@ -847,6 +848,17 @@ dependencies = [
  "tokio",
  "tracing",
  "utoipa",
+]
+
+[[package]]
+name = "fubbik-mcp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "serde_json",
+ "tokio",
+ "wiremock",
 ]
 
 [[package]]

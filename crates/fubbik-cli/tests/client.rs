@@ -1,7 +1,89 @@
 use fubbik_cli::client::Client;
 
 #[tokio::test]
+async fn context_about_forwards_the_semantic_query_contract() {
+    // Given
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/context/about"))
+        .and(wiremock::matchers::query_param("q", "authentication"))
+        .and(wiremock::matchers::query_param("spaceId", "space-1"))
+        .and(wiremock::matchers::query_param("maxTokens", "2400"))
+        .and(wiremock::matchers::query_param("format", "structured-json"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({"sections": [], "totalTokens": 0})),
+        )
+        .mount(&server)
+        .await;
+
+    // When
+    let context = Client::new(server.uri())
+        .context_about("authentication", Some("space-1"), 2400, "structured-json")
+        .await
+        .unwrap();
+
+    // Then
+    assert_eq!(context["totalTokens"], 0);
+}
+
+#[tokio::test]
+async fn plan_task_creation_uses_the_nested_plan_endpoint() {
+    // Given
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/plans/plan-1/tasks"))
+        .and(wiremock::matchers::body_json(serde_json::json!({
+            "title": "Port MCP", "description": "Replace the TypeScript process"
+        })))
+        .respond_with(
+            wiremock::ResponseTemplate::new(201).set_body_json(serde_json::json!({
+                "id": "task-1", "planId": "plan-1", "title": "Port MCP",
+                "description": "Replace the TypeScript process", "status": "pending"
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When
+    let task = Client::new(server.uri())
+        .create_plan_task("plan-1", "Port MCP", Some("Replace the TypeScript process"))
+        .await
+        .unwrap();
+
+    // Then
+    assert_eq!(task.id, "task-1");
+}
+
+#[tokio::test]
+async fn linking_a_requirement_uses_the_plan_requirement_contract() {
+    // Given
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/plans/plan-1/requirements"))
+        .and(wiremock::matchers::body_json(
+            serde_json::json!({"requirementId": "req-1"}),
+        ))
+        .respond_with(
+            wiremock::ResponseTemplate::new(201)
+                .set_body_json(serde_json::json!({"planId":"plan-1","requirementId":"req-1"})),
+        )
+        .mount(&server)
+        .await;
+
+    // When
+    let link = Client::new(server.uri())
+        .link_plan_requirement("plan-1", "req-1")
+        .await
+        .unwrap();
+
+    // Then
+    assert_eq!(link["requirementId"], "req-1");
+}
+
+#[tokio::test]
 async fn source_documentation_posts_a_versioned_manifest_to_the_import_endpoint() {
+    // Given
     let server = wiremock::MockServer::start().await;
     let manifest = fubbik_core::source_docs::SourceManifest {
         version: 1,
@@ -24,15 +106,18 @@ async fn source_documentation_posts_a_versioned_manifest_to_the_import_endpoint(
         .expect(1)
         .mount(&server)
         .await;
+    // When
     let result = Client::new(server.uri())
         .import_source_docs("space-1", &manifest)
         .await
         .unwrap();
+    // Then
     assert_eq!(result["documentId"], "doc-1");
 }
 
 #[tokio::test]
 async fn space_list_uses_the_active_rust_api() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/spaces"))
@@ -46,13 +131,16 @@ async fn space_list_uses_the_active_rust_api() {
         .mount(&server)
         .await;
 
+    // When
     let spaces = Client::new(server.uri()).list_spaces().await.unwrap();
+    // Then
     assert_eq!(spaces.len(), 1);
     assert_eq!(spaces[0].name, "fubbik");
 }
 
 #[tokio::test]
 async fn space_references_accept_an_exact_name_or_id() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/spaces"))
@@ -66,7 +154,9 @@ async fn space_references_accept_an_exact_name_or_id() {
         .mount(&server)
         .await;
 
+    // When
     let client = Client::new(server.uri());
+    // Then
     assert_eq!(
         client
             .resolve_space(Some("fubbik"))
@@ -87,6 +177,7 @@ async fn space_references_accept_an_exact_name_or_id() {
 
 #[tokio::test]
 async fn multiple_space_references_are_resolved_in_one_lookup() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/spaces"))
@@ -100,15 +191,18 @@ async fn multiple_space_references_are_resolved_in_one_lookup() {
         .mount(&server)
         .await;
 
+    // When
     let resolved = Client::new(server.uri())
         .resolve_spaces(&["frontend".into(), "space-2".into()])
         .await
         .unwrap();
+    // Then
     assert_eq!(resolved, ["space-1", "space-2"]);
 }
 
 #[tokio::test]
 async fn space_detection_accepts_the_rust_apis_empty_no_match_response() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/spaces/detect"))
@@ -116,15 +210,18 @@ async fn space_detection_accepts_the_rust_apis_empty_no_match_response() {
         .mount(&server)
         .await;
 
+    // When
     let detected = Client::new(server.uri())
         .detect_space(Some("/tmp/unknown"), None)
         .await
         .unwrap();
+    // Then
     assert!(detected.is_none());
 }
 
 #[tokio::test]
 async fn tag_list_preserves_server_counts() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/tags"))
@@ -136,12 +233,15 @@ async fn tag_list_preserves_server_counts() {
         .mount(&server)
         .await;
 
+    // When
     let tags = Client::new(server.uri()).list_tags().await.unwrap();
+    // Then
     assert_eq!(tags[0].chunk_count, 3);
 }
 
 #[tokio::test]
 async fn link_sends_the_connection_contract() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("POST"))
         .and(wiremock::matchers::path("/api/connections"))
@@ -158,15 +258,18 @@ async fn link_sends_the_connection_contract() {
         .mount(&server)
         .await;
 
+    // When
     let edge = Client::new(server.uri())
         .create_connection("a", "b", "supports")
         .await
         .unwrap();
+    // Then
     assert_eq!(edge.id, "edge-1");
 }
 
 #[tokio::test]
 async fn requirements_list_forwards_filters_and_unwraps_the_envelope() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/requirements"))
@@ -183,15 +286,18 @@ async fn requirements_list_forwards_filters_and_unwraps_the_envelope() {
         .mount(&server)
         .await;
 
+    // When
     let requirements = Client::new(server.uri())
         .list_requirements(Some("space-1"), Some("failing"), None)
         .await
         .unwrap();
+    // Then
     assert_eq!(requirements[0].id, "req-1");
 }
 
 #[tokio::test]
 async fn enrich_all_uses_the_bulk_endpoint() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("POST"))
         .and(wiremock::matchers::path("/api/chunks/enrich-all"))
@@ -202,12 +308,15 @@ async fn enrich_all_uses_the_bulk_endpoint() {
         .mount(&server)
         .await;
 
+    // When
     let result = Client::new(server.uri()).enrich_all().await.unwrap();
+    // Then
     assert_eq!(result["enriched"], 4);
 }
 
 #[tokio::test]
 async fn document_import_sends_file_content_and_source_path() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("POST"))
         .and(wiremock::matchers::path("/api/documents/import"))
@@ -220,15 +329,18 @@ async fn document_import_sends_file_content_and_source_path() {
         .mount(&server)
         .await;
 
+    // When
     let imported = Client::new(server.uri())
         .import_document("/repo/README.md", "# Hello", Some("space-1"))
         .await
         .unwrap();
+    // Then
     assert_eq!(imported["document"]["id"], "doc-1");
 }
 
 #[tokio::test]
 async fn list_builds_the_expected_query_string() {
+    // Given
     let server = wiremock::MockServer::start().await;
 
     wiremock::Mock::given(wiremock::matchers::method("GET"))
@@ -247,12 +359,15 @@ async fn list_builds_the_expected_query_string() {
         .await;
 
     let client = Client::new(server.uri());
+    // When
     let chunks = client.list_chunks(Some("note"), None, 10).await.unwrap();
+    // Then
     assert!(chunks.is_empty());
 }
 
 #[tokio::test]
 async fn surfaces_server_errors_as_anyhow() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .respond_with(wiremock::ResponseTemplate::new(401))
@@ -260,7 +375,9 @@ async fn surfaces_server_errors_as_anyhow() {
         .await;
 
     let client = Client::new(server.uri());
+    // When
     let err = client.list_chunks(None, None, 50).await.unwrap_err();
+    // Then
     assert!(
         err.to_string().contains("401"),
         "error should mention the status: {err}"
@@ -269,6 +386,7 @@ async fn surfaces_server_errors_as_anyhow() {
 
 #[tokio::test]
 async fn review_actions_use_the_proposal_endpoints() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("POST"))
         .and(wiremock::matchers::path("/api/proposals/p1/approve"))
@@ -293,15 +411,18 @@ async fn review_actions_use_the_proposal_endpoints() {
         .await;
 
     let client = Client::new(server.uri());
+    // When
     let proposal = client
         .review_proposal("p1", "approve", Some("looks good"))
         .await
         .unwrap();
+    // Then
     assert_eq!(proposal.status, "approved");
 }
 
 #[tokio::test]
 async fn task_claim_reads_the_plan_then_updates_its_first_task() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/plans/plan-1"))
@@ -328,10 +449,12 @@ async fn task_claim_reads_the_plan_then_updates_its_first_task() {
         .await;
 
     let client = Client::new(server.uri());
+    // When
     let task = client
         .set_quick_task_status("plan-1", "in_progress")
         .await
         .unwrap();
+    // Then
     assert_eq!(task.id, "task-1");
     assert_eq!(task.status, "in_progress");
 }
@@ -348,6 +471,7 @@ fn chunk_json(id: &str, title: &str) -> serde_json::Value {
 
 #[tokio::test]
 async fn get_accepts_the_enriched_chunk_detail_envelope() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/chunks/c1"))
@@ -361,12 +485,15 @@ async fn get_accepts_the_enriched_chunk_detail_envelope() {
         .mount(&server)
         .await;
 
+    // When
     let chunk = Client::new(server.uri()).get_chunk("c1").await.unwrap();
+    // Then
     assert_eq!(chunk.title, "Enveloped");
 }
 
 #[tokio::test]
 async fn update_sends_only_fields_the_user_supplied() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("PATCH"))
         .and(wiremock::matchers::path("/api/chunks/c1"))
@@ -381,25 +508,31 @@ async fn update_sends_only_fields_the_user_supplied() {
         .await;
 
     let tags = vec!["rust".to_string(), "cli".to_string()];
+    // When
     let chunk = Client::new(server.uri())
         .update_chunk("c1", Some("Renamed"), None, None, Some(&tags), None)
         .await
         .unwrap();
+    // Then
     assert_eq!(chunk.title, "Renamed");
 }
 
 #[tokio::test]
 async fn update_rejects_an_empty_patch_without_making_a_request() {
+    // Given
     let client = Client::new("http://127.0.0.1:1");
+    // When
     let error = client
         .update_chunk("c1", None, None, None, None, None)
         .await
         .unwrap_err();
+    // Then
     assert!(error.to_string().contains("nothing to update"));
 }
 
 #[tokio::test]
 async fn context_export_builds_budget_and_path_query() {
+    // Given
     let server = wiremock::MockServer::start().await;
     wiremock::Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/api/chunks/export/context"))
@@ -415,9 +548,11 @@ async fn context_export_builds_budget_and_path_query() {
         .mount(&server)
         .await;
 
+    // When
     let value = Client::new(server.uri())
         .export_context(Some("space-1"), 6000, "markdown", Some("src/lib.rs"))
         .await
         .unwrap();
+    // Then
     assert_eq!(value["content"], "# Context");
 }

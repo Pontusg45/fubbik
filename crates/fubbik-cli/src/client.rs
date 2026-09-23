@@ -368,6 +368,24 @@ impl Client {
         self.get_json("/api/context/for-file", &query).await
     }
 
+    pub async fn context_about(
+        &self,
+        concept: &str,
+        space: Option<&str>,
+        max_tokens: usize,
+        format: &str,
+    ) -> Result<serde_json::Value> {
+        let mut query = vec![
+            ("q", concept.to_string()),
+            ("maxTokens", max_tokens.to_string()),
+            ("format", format.to_string()),
+        ];
+        if let Some(value) = space {
+            query.push(("spaceId", value.to_string()));
+        }
+        self.get_json("/api/context/about", &query).await
+    }
+
     pub async fn claude_md(
         &self,
         space: Option<&str>,
@@ -791,6 +809,33 @@ impl Client {
             reqwest::Method::PATCH,
             &format!("/api/plans/{id}"),
             serde_json::json!({ "status": status }),
+        )
+        .await
+    }
+
+    pub async fn create_plan_task(
+        &self,
+        plan_id: &str,
+        title: &str,
+        description: Option<&str>,
+    ) -> Result<PlanTask> {
+        self.send_json(
+            reqwest::Method::POST,
+            &format!("/api/plans/{plan_id}/tasks"),
+            serde_json::json!({ "title": title, "description": description }),
+        )
+        .await
+    }
+
+    pub async fn link_plan_requirement(
+        &self,
+        plan_id: &str,
+        requirement_id: &str,
+    ) -> Result<serde_json::Value> {
+        self.send_json(
+            reqwest::Method::POST,
+            &format!("/api/plans/{plan_id}/requirements"),
+            serde_json::json!({ "requirementId": requirement_id }),
         )
         .await
     }

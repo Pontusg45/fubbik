@@ -10,6 +10,30 @@ use crate::output::{self, OutputMode};
 
 pub async fn run(client: &Client, command: ContextCommand, mode: OutputMode) -> Result<()> {
     match command {
+        ContextCommand::About {
+            concept,
+            max_tokens,
+            space,
+        } => {
+            let (settings, _) = config::load()?;
+            let space = client
+                .resolve_space(space.as_deref().or(settings.space.as_deref()))
+                .await?;
+            let format = if mode == OutputMode::Json {
+                "structured-json"
+            } else {
+                "structured-md"
+            };
+            let value = client
+                .context_about(
+                    &concept,
+                    space.as_deref(),
+                    checked_budget(max_tokens)?,
+                    format,
+                )
+                .await?;
+            render_context(value, mode)
+        }
         ContextCommand::Export {
             max_tokens,
             space,

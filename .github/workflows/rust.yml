@@ -27,6 +27,8 @@ jobs:
             # to be that day instead, silently downloading a second toolchain
             # alongside the pinned one.
             - run: rustup show
+            - name: Check Rust migration contract
+              run: node scripts/check-rust-migration.mjs
             - run: cargo fmt --check
             - run: cargo clippy --all-targets -- -D warnings
             - run: cargo test --workspace

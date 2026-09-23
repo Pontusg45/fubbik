@@ -65,6 +65,44 @@ pub async fn run(client: &Client, command: PlanCommand, mode: OutputMode) -> Res
                 );
             }
         }
+        PlanCommand::AddTask {
+            plan_id,
+            title,
+            description,
+        } => {
+            let task = client
+                .create_plan_task(&plan_id, &title, description.as_deref())
+                .await?;
+            if !output::id_or_json(mode, &task.id, &task)? {
+                println!("{} {} {}", "created".green(), task.id.dimmed(), task.title);
+            }
+        }
+        PlanCommand::TaskDone { plan_id, task_id } => {
+            let task = client
+                .update_task_status(&plan_id, &task_id, "done")
+                .await?;
+            if !output::id_or_json(mode, &task.id, &task)? {
+                println!("{} {}", "completed".green(), task.id.dimmed());
+            }
+        }
+        PlanCommand::LinkRequirement {
+            plan_id,
+            requirement_id,
+        } => {
+            let linked = client
+                .link_plan_requirement(&plan_id, &requirement_id)
+                .await?;
+            match mode {
+                OutputMode::Json => output::json(&linked)?,
+                OutputMode::Quiet => println!("{requirement_id}"),
+                OutputMode::Human => println!(
+                    "{} {} → {}",
+                    "linked".green(),
+                    requirement_id.dimmed(),
+                    plan_id
+                ),
+            }
+        }
     }
     Ok(())
 }

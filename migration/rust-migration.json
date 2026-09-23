@@ -1,0 +1,253 @@
+{
+    "version": 1,
+    "objective": "Run the Fubbik backend, CLI, MCP server, database maintenance, and production web serving without a Node or Bun runtime.",
+    "allowedAfterCutover": [
+        "TypeScript frontend source and its build-time toolchain",
+        "VS Code extension source and its build-time toolchain",
+        "contract fixtures retained for compatibility tests"
+    ],
+    "areas": {
+        "backendRoutes": {
+            "inventory": {
+                "root": "packages/api/src",
+                "suffix": "routes.ts"
+            },
+            "statuses": {
+                "ported": [
+                    "activity/routes.ts",
+                    "ai/routes.ts",
+                    "applies-to/routes.ts",
+                    "chunks/cluster-routes.ts",
+                    "chunks/group-routes.ts",
+                    "chunks/routes.ts",
+                    "codebases/routes.ts",
+                    "collections/routes.ts",
+                    "comments/routes.ts",
+                    "connections/routes.ts",
+                    "context-export/routes.ts",
+                    "context-for-file/routes.ts",
+                    "context/routes.ts",
+                    "context/snapshot-routes.ts",
+                    "coverage/routes.ts",
+                    "density/routes.ts",
+                    "documents/routes.ts",
+                    "enrich/routes.ts",
+                    "favorites/routes.ts",
+                    "features/routes.ts",
+                    "file-refs/routes.ts",
+                    "generate-instructions/routes.ts",
+                    "graph/routes.ts",
+                    "health/routes.ts",
+                    "knowledge-health/routes.ts",
+                    "learning-paths/routes.ts",
+                    "matrices/routes.ts",
+                    "notifications/routes.ts",
+                    "plans/routes.ts",
+                    "proposals/routes.ts",
+                    "requirements/dependency-routes.ts",
+                    "requirements/routes.ts",
+                    "saved-graphs/routes.ts",
+                    "scope-keys/routes.ts",
+                    "search/routes.ts",
+                    "settings/routes.ts",
+                    "spaces/routes.ts",
+                    "staleness/routes.ts",
+                    "stats/routes.ts",
+                    "tag-types/routes.ts",
+                    "tags/routes.ts",
+                    "tasks/routes.ts",
+                    "templates/routes.ts",
+                    "timeline/routes.ts",
+                    "use-cases/routes.ts",
+                    "vocabularies/routes.ts",
+                    "vocabulary/routes.ts",
+                    "workspaces/routes.ts"
+                ],
+                "retire": [
+                    {
+                        "source": "code-index/routes.ts",
+                        "reason": "No web, Rust CLI, or MCP consumer uses this legacy indexing API."
+                    },
+                    {
+                        "source": "concepts/routes.ts",
+                        "reason": "No active product consumer uses the legacy concepts API."
+                    },
+                    {
+                        "source": "diagram/routes.ts",
+                        "reason": "No active product consumer uses the server-side diagram API."
+                    },
+                    {
+                        "source": "usage/routes.ts",
+                        "reason": "The legacy route returns placeholder data and has no active consumer."
+                    }
+                ]
+            },
+            "rustTargets": [
+                "crates/fubbik-api/src/lib.rs",
+                "crates/fubbik-api/src/chunks/routes.rs",
+                "crates/fubbik-api/src/chunks/groups.rs",
+                "crates/fubbik-api/src/context/routes.rs",
+                "crates/fubbik-api/src/file_refs/routes.rs",
+                "crates/fubbik-api/src/health/routes.rs"
+            ],
+            "exitCriterion": "Every retained HTTP contract is implemented and contract-tested in fubbik-api; retired routes have no callers."
+        },
+        "cliCommands": {
+            "inventory": {
+                "root": "apps/cli/src/commands",
+                "suffix": ".ts",
+                "excludeSuffix": ".test.ts"
+            },
+            "statuses": {
+                "ported": [
+                    "add.ts",
+                    "cat.ts",
+                    "chunk.ts",
+                    "context-about.ts",
+                    "context-for.ts",
+                    "context.ts",
+                    "doctor.ts",
+                    "enrich.ts",
+                    "get.ts",
+                    "health.ts",
+                    "init.ts",
+                    "link.ts",
+                    "list.ts",
+                    "open.ts",
+                    "plan.ts",
+                    "remove.ts",
+                    "review.ts",
+                    "search.ts",
+                    "space.ts",
+                    "stats.ts",
+                    "status.ts",
+                    "sync.ts",
+                    "unlink.ts",
+                    "update.ts"
+                ],
+                "replaced": [
+                    "codebase.ts",
+                    "context-group.ts",
+                    "requirements.ts",
+                    "tags.ts"
+                ],
+                "partial": [
+                    "docs.ts",
+                    "req.ts",
+                    "task.ts"
+                ],
+                "pending": [
+                    "bulk-add.ts",
+                    "check-files.ts",
+                    "cleanup.ts",
+                    "context-dir.ts",
+                    "context-for-diff.ts",
+                    "context-for-plan.ts",
+                    "context-snapshot.ts",
+                    "diff.ts",
+                    "export-site.ts",
+                    "export.ts",
+                    "gaps.ts",
+                    "generate.ts",
+                    "hooks.ts",
+                    "import-requirements.ts",
+                    "import.ts",
+                    "kb-diff.ts",
+                    "lint.ts",
+                    "maintain.ts",
+                    "matrix.ts",
+                    "mcp-tools.ts",
+                    "prompt.ts",
+                    "quick.ts",
+                    "recap.ts",
+                    "seed-conventions.ts",
+                    "setup.ts",
+                    "suggest.ts",
+                    "sync-claude-md.ts",
+                    "tag-group.ts",
+                    "tag-normalize.ts",
+                    "updates.ts",
+                    "watch.ts",
+                    "why.ts"
+                ]
+            },
+            "rustTargets": [
+                "crates/fubbik-cli/src/lib.rs",
+                "crates/fubbik-cli/src/commands"
+            ],
+            "exitCriterion": "Every supported legacy invocation has a Rust implementation or a documented compatibility alias, including exit codes and JSON output."
+        },
+        "mcpSources": {
+            "inventory": {
+                "root": "packages/mcp/src",
+                "suffix": ".ts",
+                "excludeSuffix": ".test.ts"
+            },
+            "statuses": {
+                "partial": [
+                    "api-client.ts",
+                    "index.ts",
+                    "tools.ts"
+                ],
+                "pending": [
+                    "context-tools.ts",
+                    "coordination-format.ts",
+                    "coordination-tools.ts",
+                    "matrix-tools.ts",
+                    "plan-tools.ts",
+                    "plugin.ts",
+                    "requirement-tools.ts",
+                    "suggestion-tools.ts",
+                    "task-tools.ts"
+                ]
+            },
+            "rustTargets": [
+                "crates/fubbik-mcp"
+            ],
+            "exitCriterion": "fubbik mcp serves the retained tool catalog over stdio from Rust and passes protocol and tool contract tests."
+        }
+    },
+    "runtimeDependencies": [
+        {
+            "id": "source-doc-extraction",
+            "status": "pending",
+            "evidence": "crates/fubbik-cli/src/commands/source_docs.rs",
+            "exitCriterion": "JavaScript, TypeScript, and Java extraction run without spawning node, jsdoc, typedoc, or a JVM."
+        },
+        {
+            "id": "database-seed",
+            "status": "pending",
+            "evidence": "packages/db/src/seed/index.ts",
+            "exitCriterion": "Development and container seed workflows invoke a Rust command."
+        },
+        {
+            "id": "production-web-serving",
+            "status": "pending",
+            "evidence": "docker/build/web.Dockerfile",
+            "exitCriterion": "The production Rust server embeds or serves the built SPA with fallback routing."
+        },
+        {
+            "id": "mcp-process",
+            "status": "partial",
+            "evidence": "crates/fubbik/src/main.rs",
+            "exitCriterion": "The fubbik mcp command starts a working Rust MCP server instead of a placeholder."
+        }
+    ],
+    "legacyPackages": [
+        "apps/cli",
+        "apps/server",
+        "packages/api",
+        "packages/auth",
+        "packages/db",
+        "packages/mcp"
+    ],
+    "cutoverGates": [
+        "migration contract check passes",
+        "Rust workspace formatting, clippy, and tests pass",
+        "HTTP differential contracts pass",
+        "CLI compatibility suite passes",
+        "MCP protocol and tool contracts pass",
+        "production image smoke test passes without node or bun",
+        "legacy runtime packages are removed from workspace and deployment files"
+    ]
+}

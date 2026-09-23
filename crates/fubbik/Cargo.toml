@@ -22,3 +22,4 @@ fubbik-ai = { path = "../fubbik-ai" }
 fubbik-api = { path = "../fubbik-api" }
 fubbik-cli = { path = "../fubbik-cli" }
 fubbik-db = { path = "../fubbik-db" }
+fubbik-mcp = { path = "../fubbik-mcp" }
