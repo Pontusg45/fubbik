@@ -6,4 +6,5 @@ pub mod error;
 pub mod export;
 pub mod routes;
 pub mod service;
+pub mod suggest_context;
 pub mod validator;

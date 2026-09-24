@@ -103,6 +103,16 @@ impl Server {
         ) {
             return self.call_context_tool(name, &arguments).await;
         }
+        if matches!(
+            name,
+            "list_requirements"
+                | "create_requirement"
+                | "update_requirement_status"
+                | "suggest_requirements"
+                | "create_requirements_batch"
+        ) {
+            return self.call_requirement_tool(name, &arguments).await;
+        }
         let value = match name {
             "search_chunks" => {
                 let mut query = vec![(
@@ -235,6 +245,104 @@ impl Server {
                 format_snapshot(&data)
             }
             _ => bail!("unknown context tool: {name}"),
+        };
+        Ok(text_result(text))
+    }
+
+    async fn call_requirement_tool(&self, name: &str, arguments: &Value) -> Result<Value> {
+        let text = match name {
+            "list_requirements" => {
+                let mut query = Vec::new();
+                push_string_query(&mut query, arguments, "status", "status");
+                push_string_query(&mut query, arguments, "priority", "priority");
+                push_string_query(&mut query, arguments, "spaceId", "spaceId");
+                push_string_query(&mut query, arguments, "search", "search");
+                let data = self.api.get("/api/requirements", &query).await?;
+                let requirements = data
+                    .get("requirements")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|requirement| {
+                        json!({
+                            "id": requirement.get("id").cloned().unwrap_or(Value::Null),
+                            "title": requirement.get("title").cloned().unwrap_or(Value::Null),
+                            "status": requirement.get("status").cloned().unwrap_or(Value::Null),
+                            "priority": requirement.get("priority").cloned().unwrap_or(Value::Null),
+                            "description": requirement.get("description").cloned().unwrap_or(Value::Null)
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                serde_json::to_string_pretty(&json!({
+                    "requirements": requirements,
+                    "total": data.get("total").cloned().unwrap_or_else(|| json!(0))
+                }))?
+            }
+            "create_requirement" => {
+                required_string(arguments, "title")?;
+                let steps = arguments
+                    .get("steps")
+                    .and_then(Value::as_array)
+                    .filter(|steps| !steps.is_empty())
+                    .context("steps must contain at least one Given/When/Then step")?;
+                let mut body = arguments.clone();
+                body["steps"] = Value::Array(steps.clone());
+                let data = self
+                    .api
+                    .send(Method::POST, "/api/requirements", body)
+                    .await?;
+                let requirement = data.get("requirement").unwrap_or(&data);
+                format!(
+                    "Created requirement \"{}\" ({}). ID: {}",
+                    json_scalar(requirement, "title"),
+                    json_scalar(requirement, "status"),
+                    json_scalar(requirement, "id")
+                )
+            }
+            "update_requirement_status" => {
+                let id = required_string(arguments, "requirementId")?;
+                let status = required_string(arguments, "status")?;
+                let data = self
+                    .api
+                    .send(
+                        Method::PATCH,
+                        &format!("/api/requirements/{id}/status"),
+                        json!({"status": status}),
+                    )
+                    .await?;
+                format!(
+                    "Requirement \"{}\" status updated to {}. ID: {}",
+                    json_scalar(&data, "title"),
+                    json_scalar(&data, "status"),
+                    json_scalar(&data, "id")
+                )
+            }
+            "suggest_requirements" => {
+                let mut query = Vec::new();
+                push_string_query(&mut query, arguments, "focus", "focus");
+                push_string_query(&mut query, arguments, "spaceId", "spaceId");
+                let data = self
+                    .api
+                    .get("/api/requirements/suggest-context", &query)
+                    .await?;
+                format_suggestion_context(&data, optional_string(arguments, "focus"))
+            }
+            "create_requirements_batch" => {
+                let requirements = arguments
+                    .get("requirements")
+                    .and_then(Value::as_array)
+                    .filter(|requirements| !requirements.is_empty())
+                    .context("requirements must contain at least one item")?;
+                let mut body = arguments.clone();
+                body["requirements"] = Value::Array(requirements.clone());
+                let data = self
+                    .api
+                    .send(Method::POST, "/api/requirements/batch", body)
+                    .await?;
+                format_created_requirements(&data)
+            }
+            _ => bail!("unknown requirement tool: {name}"),
         };
         Ok(text_result(text))
     }
@@ -496,6 +604,141 @@ fn format_snapshot(data: &Value) -> String {
     lines.join("\n").trim_end().to_string()
 }
 
+fn format_suggestion_context(data: &Value, focus: Option<&str>) -> String {
+    let mut lines = vec!["# Knowledge Base Context for Requirement Suggestions".to_string()];
+    if let Some(focus) = focus {
+        lines.extend([String::new(), format!("**Focus area:** {focus}")]);
+    }
+    lines.extend([String::new(), "## Existing Requirements".into()]);
+    for use_case in array_field(data, "useCases") {
+        lines.extend([
+            String::new(),
+            format!("### {}", json_scalar(use_case, "name")),
+        ]);
+        for requirement in array_field(use_case, "requirements") {
+            lines.push(format!(
+                "- [{}] {}",
+                json_scalar(requirement, "status"),
+                json_scalar(requirement, "title")
+            ));
+        }
+    }
+    let ungrouped = array_field(data, "ungroupedRequirements");
+    if !ungrouped.is_empty() {
+        lines.extend([String::new(), "### Ungrouped".into()]);
+        for requirement in ungrouped {
+            lines.push(format!(
+                "- [{}] {}",
+                json_scalar(requirement, "status"),
+                json_scalar(requirement, "title")
+            ));
+        }
+    }
+
+    let gaps = array_field(data, "coverageGaps");
+    if !gaps.is_empty() {
+        lines.extend([
+            String::new(),
+            "## Uncovered Chunks (no requirements linked)".into(),
+            String::new(),
+        ]);
+        for gap in gaps {
+            lines.push(format!(
+                "- {} ({})",
+                json_scalar(gap, "title"),
+                json_scalar(gap, "id")
+            ));
+        }
+    }
+
+    let health = data.get("healthIssueCounts").unwrap_or(&Value::Null);
+    lines.extend([
+        String::new(),
+        "## Knowledge Health".into(),
+        String::new(),
+        format!(
+            "- Orphan chunks (no connections): {}",
+            json_scalar(health, "orphan")
+        ),
+        format!(
+            "- Stale chunks (>30 days old, neighbors updated): {}",
+            json_scalar(health, "stale")
+        ),
+        format!(
+            "- Thin chunks (<100 chars): {}",
+            json_scalar(health, "thin")
+        ),
+    ]);
+
+    let relevant = array_field(data, "relevantChunks");
+    if !relevant.is_empty() {
+        lines.extend([String::new(), "## Relevant Chunks".into()]);
+        for chunk in relevant {
+            lines.extend([
+                String::new(),
+                format!(
+                    "### {} ({})",
+                    json_scalar(chunk, "title"),
+                    json_scalar(chunk, "id")
+                ),
+                json_scalar(chunk, "content"),
+            ]);
+        }
+    }
+
+    lines.extend([
+        String::new(),
+        "---".into(),
+        String::new(),
+        "Based on this context, suggest new requirements organized into use cases.".into(),
+        "For each requirement, provide: title, Given/When/Then steps, priority, and which use case it belongs to.".into(),
+        "When ready, call `create_requirements_batch` to create the approved requirements.".into(),
+    ]);
+    lines.join("\n")
+}
+
+fn format_created_requirements(data: &Value) -> String {
+    let mut lines = vec![format!(
+        "# Created {} Requirements",
+        json_scalar(data, "created")
+    )];
+    let use_cases = array_field(data, "useCasesCreated");
+    if !use_cases.is_empty() {
+        lines.extend([
+            String::new(),
+            format!(
+                "**Use cases auto-created:** {}",
+                use_cases
+                    .iter()
+                    .map(|use_case| json_scalar(use_case, "name"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        ]);
+    }
+    lines.extend([
+        String::new(),
+        "## Requirements Created".into(),
+        String::new(),
+    ]);
+    for requirement in array_field(data, "requirements") {
+        lines.push(format!(
+            "- {} ({})",
+            json_scalar(requirement, "title"),
+            json_scalar(requirement, "id")
+        ));
+    }
+    lines.join("\n")
+}
+
+fn array_field<'a>(value: &'a Value, field: &str) -> &'a [Value] {
+    value
+        .get(field)
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+}
+
 fn text_result(text: String) -> Value {
     json!({
         "content": [{ "type": "text", "text": text }],
@@ -713,7 +956,84 @@ pub fn tools() -> Vec<Value> {
             "Retrieve a frozen context snapshot",
             object(json!({"snapshotId":{"type":"string"}}), &["snapshotId"]),
         ),
+        tool(
+            "list_requirements",
+            "List requirements with optional filters",
+            object(
+                json!({
+                    "status":{"type":"string"}, "priority":{"type":"string"},
+                    "spaceId":{"type":"string"}, "search":{"type":"string"}
+                }),
+                &[],
+            ),
+        ),
+        tool(
+            "create_requirement",
+            "Create a requirement with Given/When/Then steps",
+            object(
+                json!({
+                    "title":{"type":"string"}, "description":{"type":"string"},
+                    "priority":{"type":"string","enum":["must","should","could","wont"]},
+                    "steps":{"type":"array","minItems":1,"items": requirement_step_schema()},
+                    "spaceId":{"type":"string"}
+                }),
+                &["title", "steps"],
+            ),
+        ),
+        tool(
+            "update_requirement_status",
+            "Update a requirement status",
+            object(
+                json!({
+                    "requirementId":{"type":"string"},
+                    "status":{"type":"string","enum":["passing","failing","untested"]}
+                }),
+                &["requirementId", "status"],
+            ),
+        ),
+        tool(
+            "suggest_requirements",
+            "Get knowledge context for suggesting requirements",
+            object(
+                json!({"focus":{"type":"string"}, "spaceId":{"type":"string"}}),
+                &[],
+            ),
+        ),
+        tool(
+            "create_requirements_batch",
+            "Create multiple requirements and resolve their use cases",
+            object(
+                json!({
+                    "requirements":{
+                        "type":"array", "minItems":1, "maxItems":50,
+                        "items":{
+                            "type":"object", "additionalProperties":false,
+                            "properties":{
+                                "title":{"type":"string"}, "description":{"type":"string"},
+                                "steps":{"type":"array","minItems":1,"items":requirement_step_schema()},
+                                "priority":{"type":"string","enum":["must","should","could","wont"]},
+                                "useCaseId":{"type":"string"}, "useCaseName":{"type":"string"},
+                                "parentUseCaseName":{"type":"string"}
+                            },
+                            "required":["title","steps"]
+                        }
+                    },
+                    "spaceId":{"type":"string"}
+                }),
+                &["requirements"],
+            ),
+        ),
     ]
+}
+
+fn requirement_step_schema() -> Value {
+    object(
+        json!({
+            "keyword":{"type":"string","enum":["given","when","then","and","but"]},
+            "text":{"type":"string"}
+        }),
+        &["keyword", "text"],
+    )
 }
 
 fn tool(name: &str, description: &str, input_schema: Value) -> Value {
@@ -744,7 +1064,7 @@ mod tests {
 
     #[test]
     fn migrated_tool_catalog_has_unique_names_and_object_schemas() {
-        // Given the migrated core and context tool catalog
+        // Given the migrated core, context, and requirement tool catalog
         let catalog = tools();
         // When its names and schemas are inspected
         let mut names = catalog
@@ -754,8 +1074,8 @@ mod tests {
         let count = names.len();
         names.sort_unstable();
         names.dedup();
-        // Then all fourteen tools are unique and expose object schemas
-        assert_eq!(count, 14);
+        // Then all nineteen tools are unique and expose object schemas
+        assert_eq!(count, 19);
         assert_eq!(names.len(), count);
         assert!(
             catalog
@@ -775,6 +1095,14 @@ mod tests {
             .find(|tool| tool["name"] == "search_vocabulary")
             .unwrap();
         assert_eq!(vocabulary["inputSchema"]["required"], json!(["spaceId"]));
+        let create_requirement = catalog
+            .iter()
+            .find(|tool| tool["name"] == "create_requirement")
+            .unwrap();
+        assert_eq!(
+            create_requirement["inputSchema"]["required"],
+            json!(["title", "steps"])
+        );
     }
 
     #[tokio::test]
@@ -935,5 +1263,116 @@ mod tests {
         assert!(text.contains("# Context Snapshot: snapshot-1"));
         assert!(text.contains("## Authentication [decision]"));
         assert!(text.contains("**Rationale:** Auditable"));
+    }
+
+    #[tokio::test]
+    async fn requirement_status_uses_the_dedicated_status_endpoint() {
+        // Given an API requirement that can transition to passing
+        let api = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("PATCH"))
+            .and(wiremock::matchers::path(
+                "/api/requirements/requirement-1/status",
+            ))
+            .and(wiremock::matchers::body_json(json!({"status":"passing"})))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(json!({
+                "id":"requirement-1", "title":"Login succeeds", "status":"passing"
+            })))
+            .mount(&api)
+            .await;
+        let server = Server::new(api.uri());
+
+        // When the requirement status tool runs
+        let response = server
+            .handle(json!({
+                "jsonrpc":"2.0", "id":7, "method":"tools/call",
+                "params":{"name":"update_requirement_status","arguments":{
+                    "requirementId":"requirement-1", "status":"passing"
+                }}
+            }))
+            .await
+            .unwrap();
+
+        // Then it reports the updated requirement
+        assert_eq!(
+            response["result"]["content"][0]["text"],
+            "Requirement \"Login succeeds\" status updated to passing. ID: requirement-1"
+        );
+    }
+
+    #[tokio::test]
+    async fn suggestion_context_is_rendered_from_the_backend_contract() {
+        // Given suggestion context using the endpoint's healthIssueCounts contract
+        let api = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path(
+                "/api/requirements/suggest-context",
+            ))
+            .and(wiremock::matchers::query_param("focus", "auth"))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(json!({
+                "useCases":[{"id":"uc-1","name":"Authentication","description":null,
+                    "requirements":[{"id":"r-1","title":"Require MFA","status":"untested","priority":"must"}]}],
+                "ungroupedRequirements":[{"id":"r-2","title":"Audit login","status":"failing","priority":null}],
+                "coverageGaps":[{"id":"c-1","title":"Session expiry"}],
+                "healthIssueCounts":{"orphan":2,"stale":1,"thin":3},
+                "relevantChunks":[{"id":"c-2","title":"Auth policy","content":"Use MFA","type":"decision"}]
+            })))
+            .mount(&api)
+            .await;
+        let server = Server::new(api.uri());
+
+        // When the suggestion tool requests a focused report
+        let response = server
+            .handle(json!({
+                "jsonrpc":"2.0", "id":8, "method":"tools/call",
+                "params":{"name":"suggest_requirements","arguments":{"focus":"auth"}}
+            }))
+            .await
+            .unwrap();
+
+        // Then the Markdown includes grouped, ungrouped, coverage, health, and chunk context
+        let text = response["result"]["content"][0]["text"].as_str().unwrap();
+        assert!(text.contains("### Authentication"));
+        assert!(text.contains("### Ungrouped"));
+        assert!(text.contains("- Session expiry (c-1)"));
+        assert!(text.contains("Orphan chunks (no connections): 2"));
+        assert!(text.contains("### Auth policy (c-2)"));
+    }
+
+    #[tokio::test]
+    async fn batch_creation_is_summarized_for_the_agent() {
+        // Given an API that creates requirements and a use case in one batch
+        let api = wiremock::MockServer::start().await;
+        let request_body = json!({
+            "requirements":[{
+                "title":"Require MFA",
+                "steps":[{"keyword":"given","text":"an account"}]
+            }]
+        });
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/api/requirements/batch"))
+            .and(wiremock::matchers::body_json(request_body.clone()))
+            .respond_with(wiremock::ResponseTemplate::new(201).set_body_json(json!({
+                "created":1,
+                "requirements":[{"id":"r-1","title":"Require MFA","useCaseId":"uc-1"}],
+                "useCasesCreated":[{"id":"uc-1","name":"Authentication","parentId":null}]
+            })))
+            .mount(&api)
+            .await;
+        let server = Server::new(api.uri());
+
+        // When the batch creation tool runs
+        let response = server
+            .handle(json!({
+                "jsonrpc":"2.0", "id":9, "method":"tools/call",
+                "params":{"name":"create_requirements_batch","arguments":request_body}
+            }))
+            .await
+            .unwrap();
+
+        // Then it names both the created use case and requirement
+        let text = response["result"]["content"][0]["text"].as_str().unwrap();
+        assert!(text.contains("# Created 1 Requirements"));
+        assert!(text.contains("**Use cases auto-created:** Authentication"));
+        assert!(text.contains("- Require MFA (r-1)"));
     }
 }

@@ -185,7 +185,9 @@
             },
             "statuses": {
                 "ported": [
-                    "context-tools.ts"
+                    "context-tools.ts",
+                    "requirement-tools.ts",
+                    "suggestion-tools.ts"
                 ],
                 "partial": [
                     "api-client.ts",
@@ -198,8 +200,6 @@
                     "matrix-tools.ts",
                     "plan-tools.ts",
                     "plugin.ts",
-                    "requirement-tools.ts",
-                    "suggestion-tools.ts",
                     "task-tools.ts"
                 ]
             },

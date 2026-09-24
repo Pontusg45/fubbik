@@ -12,6 +12,7 @@ use super::dto::{
 };
 use super::error::RequirementResult;
 use super::service;
+use super::suggest_context::{self, SuggestContextQuery, SuggestContextResponse};
 use crate::AppState;
 use crate::auth::CurrentUser;
 use crate::error::ApiResult;
@@ -89,6 +90,18 @@ pub async fn create_requirement(
     Ok((
         StatusCode::CREATED,
         Json(service::create_requirement(&state.pool, &user.id, body).await?),
+    ))
+}
+
+#[utoipa::path(get, path = "/api/requirements/suggest-context", params(SuggestContextQuery),
+    responses((status = 200, body = SuggestContextResponse)))]
+pub async fn suggest_context(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Query(query): Query<SuggestContextQuery>,
+) -> ApiResult<Json<SuggestContextResponse>> {
+    Ok(Json(
+        suggest_context::get_suggest_context(&state.pool, &user.id, query).await?,
     ))
 }
 
@@ -190,6 +203,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/requirements/bulk", patch(bulk_action))
         .route("/api/requirements/reorder", patch(reorder))
         .route("/api/requirements/export", get(export_all))
+        .route("/api/requirements/suggest-context", get(suggest_context))
         .route("/api/requirements/batch", post(batch_create))
         .route(
             "/api/requirements",
