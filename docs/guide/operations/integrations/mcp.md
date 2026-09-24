@@ -28,7 +28,7 @@ Add to your AI tool's MCP settings:
 }
 ```
 
-The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration currently exposes forty-one core, context, requirement, task, coordination, and plan tools. Matrix tools are being moved in the final MCP migration slice and remain available through the legacy development package until their contract tests pass.
+The MCP server uses newline-delimited JSON-RPC over stdio. The Rust implementation exposes the complete retained catalog of fifty-three tools across core knowledge, context, requirements, tasks, coordination, plans, and behavioral matrices.
 
 ## Available Tools
 
@@ -75,3 +75,15 @@ The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration cu
 | `update_plan_task` | Update a plan task |
 | `delete_plan_task` | Delete a plan task |
 | `link_plan_task_chunk` | Link a chunk to a plan task |
+| `list_matrices` | List behavioral specification matrices |
+| `get_matrix_view` | Get a matrix grid and computed statuses |
+| `create_matrix` | Create a behavioral specification matrix |
+| `add_dimension` | Add a matrix dimension |
+| `add_rule` | Add a behavioral rule |
+| `toggle_cell` | Toggle a rule and dimension intersection |
+| `link_cell_requirement` | Link a requirement to a matrix cell |
+| `link_cell_code` | Link a code reference to a matrix cell |
+| `record_test_result` | Record a matrix cell test result |
+| `get_rule_history` | Get a behavioral rule's history |
+| `get_behaviors_for_file` | Find behavioral rules governing a file |
+| `get_matrix_gaps` | List unspecified and violated matrix cells |

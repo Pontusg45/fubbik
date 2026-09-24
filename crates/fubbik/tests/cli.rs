@@ -172,7 +172,7 @@ fn mcp_serves_initialize_and_tool_catalog_over_stdio() {
     assert_eq!(responses[0]["result"]["serverInfo"]["name"], "fubbik");
     assert_eq!(
         responses[1]["result"]["tools"].as_array().unwrap().len(),
-        41
+        53
     );
 }
 

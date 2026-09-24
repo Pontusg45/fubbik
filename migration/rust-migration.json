@@ -185,22 +185,25 @@
             },
             "statuses": {
                 "ported": [
+                    "api-client.ts",
                     "coordination-format.ts",
                     "coordination-tools.ts",
                     "context-tools.ts",
+                    "index.ts",
+                    "matrix-tools.ts",
                     "plan-tools.ts",
                     "requirement-tools.ts",
                     "suggestion-tools.ts",
-                    "task-tools.ts"
-                ],
-                "partial": [
-                    "api-client.ts",
-                    "index.ts",
+                    "task-tools.ts",
                     "tools.ts"
                 ],
-                "pending": [
-                    "matrix-tools.ts",
-                    "plugin.ts"
+                "partial": [],
+                "pending": [],
+                "retire": [
+                    {
+                        "source": "plugin.ts",
+                        "reason": "Rust registers typed tool groups directly; the runtime plugin registry only compensates for TypeScript module loading."
+                    }
                 ]
             },
             "rustTargets": [
@@ -242,10 +245,13 @@
                 "ack_board",
                 "add_analyze_item",
                 "add_plan_task",
+                "add_dimension",
+                "add_rule",
                 "add_task",
                 "claim_task",
                 "complete_task",
                 "create_plan",
+                "create_matrix",
                 "create_chunk",
                 "create_context_snapshot",
                 "create_requirement",
@@ -258,20 +264,28 @@
                 "get_context_snapshot",
                 "get_conventions",
                 "get_plan",
+                "get_behaviors_for_file",
+                "get_matrix_gaps",
+                "get_matrix_view",
                 "get_requirements",
                 "join_board",
                 "link_plan_task_chunk",
+                "link_cell_code",
+                "link_cell_requirement",
                 "link_requirement",
                 "list_plans",
+                "list_matrices",
                 "list_requirements",
                 "list_tasks",
                 "list_updates",
                 "propose_chunk_update",
                 "read_board",
+                "record_test_result",
                 "search_chunks",
                 "search_vocabulary",
                 "suggest_requirements",
                 "sync_claude_md",
+                "toggle_cell",
                 "unlink_requirement",
                 "update_analyze_item",
                 "update_board_task",
@@ -279,6 +293,7 @@
                 "update_plan",
                 "update_plan_task",
                 "update_requirement_status",
+                "get_rule_history",
                 "write_board_entry"
             ]
         }
