@@ -25,6 +25,7 @@ pub mod tag;
 pub mod task;
 pub mod update;
 pub mod updates;
+pub mod why;
 
 use crate::client::Chunk;
 use comfy_table::{Table, presets::UTF8_FULL};

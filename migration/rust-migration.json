@@ -135,7 +135,8 @@
                     "task.ts",
                     "unlink.ts",
                     "update.ts",
-                    "updates.ts"
+                    "updates.ts",
+                    "why.ts"
                 ],
                 "replaced": [
                     "codebase.ts",
@@ -165,8 +166,7 @@
                     "suggest.ts",
                     "tag-group.ts",
                     "tag-normalize.ts",
-                    "watch.ts",
-                    "why.ts"
+                    "watch.ts"
                 ],
                 "retire": [
                     {
