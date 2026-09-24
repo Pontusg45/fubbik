@@ -529,6 +529,7 @@ pub enum Command {
         command: ContextCommand,
     },
     /// Regenerate the configured CLAUDE.md context file
+    #[command(visible_alias = "sync-claude-md")]
     Sync {
         #[arg(short, long)]
         output: Option<PathBuf>,
@@ -540,6 +541,15 @@ pub enum Command {
         max_tokens: Option<usize>,
         #[arg(long)]
         dry_run: bool,
+        /// Include only global, unscoped chunks
+        #[arg(long)]
+        global: bool,
+        /// Regenerate continuously
+        #[arg(long)]
+        watch: bool,
+        /// Polling interval for --watch
+        #[arg(long, default_value = "30", requires = "watch")]
+        interval: u64,
     },
     /// Review proposed knowledge changes
     Review {
@@ -729,17 +739,32 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
             tag,
             max_tokens,
             dry_run,
+            global,
+            watch,
+            interval,
         } => {
-            commands::context::sync(
-                &client,
-                path.as_deref(),
-                space.as_deref(),
-                tag.as_deref(),
-                max_tokens,
-                dry_run,
-                output,
-            )
-            .await
+            if interval == 0 {
+                anyhow::bail!("watch interval must be greater than zero");
+            }
+            loop {
+                commands::context::sync(
+                    &client,
+                    commands::context::SyncOptions {
+                        output_path: path.as_deref(),
+                        space: space.as_deref(),
+                        tag: tag.as_deref(),
+                        max_tokens,
+                        dry_run,
+                        global,
+                    },
+                    output,
+                )
+                .await?;
+                if !watch {
+                    break Ok(());
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
+            }
         }
         Command::Review { command } => commands::review::run(&client, command, output).await,
         Command::Plan { command } => commands::plan::run(&client, command, output).await,

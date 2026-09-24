@@ -312,28 +312,33 @@ fn render_snapshot(value: &serde_json::Value, mode: OutputMode) -> Result<()> {
     Ok(())
 }
 
-pub async fn sync(
-    client: &Client,
-    output_path: Option<&Path>,
-    space: Option<&str>,
-    tag: Option<&str>,
-    max_tokens: Option<usize>,
-    dry_run: bool,
-    mode: OutputMode,
-) -> Result<()> {
+pub struct SyncOptions<'a> {
+    pub output_path: Option<&'a Path>,
+    pub space: Option<&'a str>,
+    pub tag: Option<&'a str>,
+    pub max_tokens: Option<usize>,
+    pub dry_run: bool,
+    pub global: bool,
+}
+
+pub async fn sync(client: &Client, options: SyncOptions<'_>, mode: OutputMode) -> Result<()> {
     let (settings, _) = config::load()?;
-    let path = output_path.unwrap_or(&settings.claude_md.output);
-    let space = client
-        .resolve_space(space.or(settings.space.as_deref()))
-        .await?;
+    let path = options.output_path.unwrap_or(&settings.claude_md.output);
+    let space = if options.global {
+        None
+    } else {
+        client
+            .resolve_space(options.space.or(settings.space.as_deref()))
+            .await?
+    };
     let response = client
         .claude_md(
             space.as_deref(),
-            tag.or(Some(settings.claude_md.tag.as_str())),
-            checked_budget(max_tokens.unwrap_or(settings.claude_md.max_tokens))?,
+            options.tag.or(Some(settings.claude_md.tag.as_str())),
+            checked_budget(options.max_tokens.unwrap_or(settings.claude_md.max_tokens))?,
         )
         .await?;
-    if dry_run {
+    if options.dry_run {
         return match mode {
             OutputMode::Json => output::json(&serde_json::json!({
                 "dryRun": true, "output": path, "chunks": response.chunks,

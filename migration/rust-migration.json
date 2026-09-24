@@ -130,7 +130,7 @@
                     "space.ts",
                     "stats.ts",
                     "status.ts",
-                    "sync.ts",
+                    "sync-claude-md.ts",
                     "task.ts",
                     "unlink.ts",
                     "update.ts"
@@ -162,12 +162,17 @@
                     "seed-conventions.ts",
                     "setup.ts",
                     "suggest.ts",
-                    "sync-claude-md.ts",
                     "tag-group.ts",
                     "tag-normalize.ts",
                     "updates.ts",
                     "watch.ts",
                     "why.ts"
+                ],
+                "retire": [
+                    {
+                        "source": "sync.ts",
+                        "reason": "The Rust cutover removes the local JSON chunk store, so local-to-server replication is obsolete; server-backed commands write directly to the API."
+                    }
                 ]
             },
             "rustTargets": [

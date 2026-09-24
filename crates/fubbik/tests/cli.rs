@@ -160,6 +160,23 @@ fn context_snapshot_help_exposes_the_full_lifecycle() {
 }
 
 #[test]
+fn sync_claude_md_alias_exposes_watch_and_global_options() {
+    // Given the legacy CLAUDE.md sync command name
+    // When its help is requested through the Rust binary
+    let out = Command::new(env!("CARGO_BIN_EXE_fubbik"))
+        .args(["sync-claude-md", "--help"])
+        .output()
+        .expect("binary runs");
+
+    // Then the compatibility alias and its retained modes are available
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    for option in ["--watch", "--interval", "--global", "--tag", "--output"] {
+        assert!(stdout.contains(option), "missing {option}:\n{stdout}");
+    }
+}
+
+#[test]
 fn open_json_reports_the_target_without_launching_a_browser() {
     // Given no server configuration requirement and machine-readable output
     // When a named web page is opened
