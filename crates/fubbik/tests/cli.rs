@@ -114,6 +114,7 @@ fn context_help_exposes_semantic_about_lookup() {
     assert!(stdout.contains("for-plan"));
     assert!(stdout.contains("for-diff"));
     assert!(stdout.contains("snapshot"));
+    assert!(stdout.contains("dir"));
 }
 
 #[test]

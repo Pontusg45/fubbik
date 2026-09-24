@@ -156,6 +156,18 @@ pub enum ContextCommand {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Generate context for files in a directory
+    Dir {
+        directory: PathBuf,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+        #[arg(long, default_value = "200")]
+        max_files: usize,
+        #[arg(short = 't', long)]
+        max_tokens: Option<usize>,
+    },
     /// Manage frozen context snapshots
     Snapshot {
         #[command(subcommand)]

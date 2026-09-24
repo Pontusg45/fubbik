@@ -116,6 +116,64 @@ pub async fn run(client: &Client, command: ContextCommand, mode: OutputMode) -> 
                 .await?;
             render_context(value, mode)
         }
+        ContextCommand::Dir {
+            directory,
+            space,
+            output: output_path,
+            max_files,
+            max_tokens,
+        } => {
+            if max_files == 0 {
+                bail!("max files must be greater than zero");
+            }
+            let paths = collect_directory_files(&directory, max_files)?;
+            if paths.is_empty() {
+                bail!("no files found in {}", directory.display());
+            }
+            let (settings, _) = config::load()?;
+            let space = client
+                .resolve_space(space.as_deref().or(settings.space.as_deref()))
+                .await?;
+            let format = if output_path.is_some() {
+                "structured-md"
+            } else {
+                context_format(mode)
+            };
+            let value = client
+                .context_for_files(
+                    &paths,
+                    space.as_deref(),
+                    checked_budget(max_tokens.unwrap_or(settings.context.max_tokens))?,
+                    format,
+                )
+                .await?;
+            if let Some(path) = output_path {
+                let content = value["content"]
+                    .as_str()
+                    .ok_or_else(|| anyhow::anyhow!("context response omitted markdown content"))?;
+                write_generated(&path, content)?;
+                return match mode {
+                    OutputMode::Json => output::json(&serde_json::json!({
+                        "output": path,
+                        "files": paths.len(),
+                        "chunks": value["totalChunks"],
+                    })),
+                    OutputMode::Quiet => {
+                        println!("{}", path.display());
+                        Ok(())
+                    }
+                    OutputMode::Human => {
+                        println!(
+                            "Wrote context for {} file(s) to {}",
+                            paths.len(),
+                            path.display()
+                        );
+                        Ok(())
+                    }
+                };
+            }
+            render_context(value, mode)
+        }
         ContextCommand::Snapshot { command } => run_snapshot(client, command, mode).await,
         ContextCommand::ClaudeMd {
             space,
@@ -329,6 +387,60 @@ fn changed_files(staged: bool) -> Result<Vec<String>> {
         .collect())
 }
 
+fn collect_directory_files(directory: &Path, max_files: usize) -> Result<Vec<String>> {
+    let cwd = std::env::current_dir()?;
+    let root = if directory.is_absolute() {
+        directory.to_owned()
+    } else {
+        cwd.join(directory)
+    };
+    if !root.is_dir() {
+        bail!("not a directory: {}", root.display());
+    }
+    let mut files = Vec::new();
+    collect_directory_files_into(&root, &cwd, max_files, &mut files)?;
+    files.sort();
+    Ok(files)
+}
+
+fn collect_directory_files_into(
+    directory: &Path,
+    cwd: &Path,
+    max_files: usize,
+    files: &mut Vec<String>,
+) -> Result<()> {
+    if files.len() >= max_files {
+        return Ok(());
+    }
+    let mut entries = std::fs::read_dir(directory)
+        .with_context(|| format!("could not read directory {}", directory.display()))?
+        .collect::<std::io::Result<Vec<_>>>()?;
+    entries.sort_by_key(std::fs::DirEntry::file_name);
+    for entry in entries {
+        if files.len() >= max_files {
+            break;
+        }
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with('.') || name == "node_modules" {
+            continue;
+        }
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            collect_directory_files_into(&entry.path(), cwd, max_files, files)?;
+        } else if file_type.is_file() {
+            let path = entry.path();
+            files.push(
+                path.strip_prefix(cwd)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+        }
+    }
+    Ok(())
+}
+
 fn render_context(value: serde_json::Value, mode: OutputMode) -> Result<()> {
     if mode == OutputMode::Json {
         return output::json(&value);
@@ -382,4 +494,32 @@ fn write_generated(path: &Path, content: &str) -> Result<()> {
     std::fs::rename(&temporary, path)
         .with_context(|| format!("failed to replace {}", path.display()))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::collect_directory_files_into;
+
+    #[test]
+    fn directory_collection_skips_hidden_and_dependency_directories_and_honors_limit() {
+        // Given a source tree with visible, hidden, and dependency files
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join("src")).unwrap();
+        std::fs::create_dir(root.path().join(".git")).unwrap();
+        std::fs::create_dir(root.path().join("node_modules")).unwrap();
+        std::fs::write(root.path().join("README.md"), "readme").unwrap();
+        std::fs::write(root.path().join("src/lib.rs"), "lib").unwrap();
+        std::fs::write(root.path().join("src/main.rs"), "main").unwrap();
+        std::fs::write(root.path().join(".git/config"), "hidden").unwrap();
+        std::fs::write(root.path().join("node_modules/pkg.js"), "dependency").unwrap();
+
+        // When at most two context paths are collected
+        let mut files = Vec::new();
+        collect_directory_files_into(root.path(), root.path(), 2, &mut files).unwrap();
+
+        // Then collection is bounded and excluded directories are absent
+        assert_eq!(files.len(), 2);
+        assert!(files.iter().all(|path| !path.contains(".git")));
+        assert!(files.iter().all(|path| !path.contains("node_modules")));
+    }
 }
