@@ -28,7 +28,7 @@ Add to your AI tool's MCP settings:
 }
 ```
 
-The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration currently exposes nineteen core, context, and requirement tools. Plan, coordination, task, and matrix tools are being moved in subsequent migration slices and remain available through the legacy development package until their contract tests pass.
+The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration currently exposes twenty-two core, context, requirement, and quick-task tools. Plan, coordination, and matrix tools are being moved in subsequent migration slices and remain available through the legacy development package until their contract tests pass.
 
 ## Available Tools
 
@@ -53,3 +53,6 @@ The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration cu
 | `update_requirement_status` | Mark a requirement passing, failing, or untested |
 | `suggest_requirements` | Build suggestion context from requirements and knowledge health |
 | `create_requirements_batch` | Create approved requirements and resolve use cases |
+| `add_task` | Add a quick task backed by a single-task plan |
+| `list_tasks` | List in-progress quick tasks |
+| `complete_task` | Complete a quick task |

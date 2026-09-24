@@ -187,7 +187,8 @@
                 "ported": [
                     "context-tools.ts",
                     "requirement-tools.ts",
-                    "suggestion-tools.ts"
+                    "suggestion-tools.ts",
+                    "task-tools.ts"
                 ],
                 "partial": [
                     "api-client.ts",
@@ -199,8 +200,7 @@
                     "coordination-tools.ts",
                     "matrix-tools.ts",
                     "plan-tools.ts",
-                    "plugin.ts",
-                    "task-tools.ts"
+                    "plugin.ts"
                 ]
             },
             "rustTargets": [

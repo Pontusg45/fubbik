@@ -113,6 +113,9 @@ impl Server {
         ) {
             return self.call_requirement_tool(name, &arguments).await;
         }
+        if matches!(name, "add_task" | "list_tasks" | "complete_task") {
+            return self.call_task_tool(name, &arguments).await;
+        }
         let value = match name {
             "search_chunks" => {
                 let mut query = vec![(
@@ -343,6 +346,56 @@ impl Server {
                 format_created_requirements(&data)
             }
             _ => bail!("unknown requirement tool: {name}"),
+        };
+        Ok(text_result(text))
+    }
+
+    async fn call_task_tool(&self, name: &str, arguments: &Value) -> Result<Value> {
+        let text = match name {
+            "add_task" => {
+                let title = required_string(arguments, "title")?;
+                let task = self
+                    .api
+                    .send(Method::POST, "/api/tasks", arguments.clone())
+                    .await?;
+                format!(
+                    "Task created: \"{title}\" (ID: {})",
+                    json_scalar(&task, "id")
+                )
+            }
+            "list_tasks" => {
+                let tasks = self.api.get("/api/tasks", &[]).await?;
+                let tasks = tasks.as_array().map(Vec::as_slice).unwrap_or_default();
+                if tasks.is_empty() {
+                    "No open tasks".into()
+                } else {
+                    let list = tasks
+                        .iter()
+                        .map(|task| {
+                            format!(
+                                "- [{}] {} ({})",
+                                json_scalar(task, "status"),
+                                json_scalar(task, "title"),
+                                json_scalar(task, "id")
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    format!("{} open task(s):\n{list}", tasks.len())
+                }
+            }
+            "complete_task" => {
+                let id = required_string(arguments, "taskId")?;
+                self.api
+                    .send(
+                        Method::POST,
+                        &format!("/api/tasks/{id}/complete"),
+                        json!({"note": arguments.get("note").cloned().unwrap_or(Value::Null)}),
+                    )
+                    .await?;
+                "Task completed".into()
+            }
+            _ => bail!("unknown task tool: {name}"),
         };
         Ok(text_result(text))
     }
@@ -1023,6 +1076,23 @@ pub fn tools() -> Vec<Value> {
                 &["requirements"],
             ),
         ),
+        tool(
+            "add_task",
+            "Add a quick task for tracking",
+            object(
+                json!({"title":{"type":"string"}, "description":{"type":"string"}}),
+                &["title"],
+            ),
+        ),
+        tool("list_tasks", "List open tasks", object(json!({}), &[])),
+        tool(
+            "complete_task",
+            "Complete a task",
+            object(
+                json!({"taskId":{"type":"string"}, "note":{"type":"string"}}),
+                &["taskId"],
+            ),
+        ),
     ]
 }
 
@@ -1074,8 +1144,8 @@ mod tests {
         let count = names.len();
         names.sort_unstable();
         names.dedup();
-        // Then all nineteen tools are unique and expose object schemas
-        assert_eq!(count, 19);
+        // Then all twenty-two tools are unique and expose object schemas
+        assert_eq!(count, 22);
         assert_eq!(names.len(), count);
         assert!(
             catalog
@@ -1374,5 +1444,73 @@ mod tests {
         assert!(text.contains("# Created 1 Requirements"));
         assert!(text.contains("**Use cases auto-created:** Authentication"));
         assert!(text.contains("- Require MFA (r-1)"));
+    }
+
+    #[tokio::test]
+    async fn quick_task_tools_use_the_compatibility_queue() {
+        // Given the quick-task API supports create, list, and complete
+        let api = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/api/tasks"))
+            .and(wiremock::matchers::body_json(json!({
+                "title":"Review migration", "description":"Check parity"
+            })))
+            .respond_with(wiremock::ResponseTemplate::new(201).set_body_json(json!({
+                "id":"task-1", "title":"Review migration", "status":"in_progress"
+            })))
+            .mount(&api)
+            .await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/api/tasks"))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(json!([{
+                "id":"task-1", "title":"Review migration", "status":"in_progress"
+            }])))
+            .mount(&api)
+            .await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/api/tasks/task-1/complete"))
+            .and(wiremock::matchers::body_json(json!({"note":"Done"})))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(json!({
+                "id":"task-1", "status":"completed"
+            })))
+            .mount(&api)
+            .await;
+        let server = Server::new(api.uri());
+
+        // When an agent creates, lists, and completes the task
+        let created = server
+            .handle(json!({
+                "jsonrpc":"2.0", "id":10, "method":"tools/call",
+                "params":{"name":"add_task","arguments":{
+                    "title":"Review migration", "description":"Check parity"
+                }}
+            }))
+            .await
+            .unwrap();
+        let listed = server
+            .handle(json!({
+                "jsonrpc":"2.0", "id":11, "method":"tools/call",
+                "params":{"name":"list_tasks","arguments":{}}
+            }))
+            .await
+            .unwrap();
+        let completed = server
+            .handle(json!({
+                "jsonrpc":"2.0", "id":12, "method":"tools/call",
+                "params":{"name":"complete_task","arguments":{"taskId":"task-1","note":"Done"}}
+            }))
+            .await
+            .unwrap();
+
+        // Then every tool returns concise task-oriented output
+        assert_eq!(
+            created["result"]["content"][0]["text"],
+            "Task created: \"Review migration\" (ID: task-1)"
+        );
+        assert_eq!(
+            listed["result"]["content"][0]["text"],
+            "1 open task(s):\n- [in_progress] Review migration (task-1)"
+        );
+        assert_eq!(completed["result"]["content"][0]["text"], "Task completed");
     }
 }

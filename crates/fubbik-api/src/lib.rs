@@ -39,6 +39,7 @@ pub mod staleness;
 pub mod stats;
 pub mod tag_types;
 pub mod tags;
+pub mod tasks;
 pub mod templates;
 pub mod timeline;
 pub mod use_cases;
@@ -112,6 +113,7 @@ pub fn router(state: AppState) -> Router {
         .merge(stats::routes::router())
         .merge(tag_types::routes::router())
         .merge(tags::routes::router())
+        .merge(tasks::router())
         .merge(templates::routes::router())
         .merge(use_cases::routes::router())
         .merge(vocabularies::routes::router())
