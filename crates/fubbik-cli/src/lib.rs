@@ -361,6 +361,27 @@ pub enum DocsCommand {
 }
 
 #[derive(Subcommand)]
+pub enum GenerateCommand {
+    /// Generate CLAUDE.md instructions
+    #[command(name = "claude.md")]
+    ClaudeMd {
+        #[arg(short, long)]
+        space: String,
+    },
+    /// Generate AGENTS.md instructions
+    #[command(name = "agents.md")]
+    AgentsMd {
+        #[arg(short, long)]
+        space: String,
+    },
+    /// Generate Cursor rules
+    Cursorrules {
+        #[arg(short, long)]
+        space: String,
+    },
+}
+
+#[derive(Subcommand)]
 pub enum ChunkCommand {
     /// Create a chunk
     Add {
@@ -527,6 +548,11 @@ pub enum Command {
     Context {
         #[command(subcommand)]
         command: ContextCommand,
+    },
+    /// Generate instruction files from the knowledge base
+    Generate {
+        #[command(subcommand)]
+        command: GenerateCommand,
     },
     /// Regenerate the configured CLAUDE.md context file
     #[command(visible_alias = "sync-claude-md")]
@@ -733,6 +759,7 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         Command::Doctor => commands::config::doctor(&client, output).await,
         Command::Config { command } => commands::config::run(command, output),
         Command::Context { command } => commands::context::run(&client, command, output).await,
+        Command::Generate { command } => commands::generate::run(&client, command, output).await,
         Command::Sync {
             output: path,
             space,

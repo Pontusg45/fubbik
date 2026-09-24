@@ -510,6 +510,18 @@ impl Client {
         self.get_json("/api/chunks/export/claude-md", &query).await
     }
 
+    pub async fn generate_instructions(
+        &self,
+        space_id: &str,
+        format: &str,
+    ) -> Result<serde_json::Value> {
+        self.get_json(
+            &format!("/api/spaces/{space_id}/generate-instructions"),
+            &[("format", format.to_owned())],
+        )
+        .await
+    }
+
     pub async fn health(&self) -> Result<serde_json::Value> {
         self.get_json("/api/health", &[]).await
     }

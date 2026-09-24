@@ -41,7 +41,7 @@ fn help_lists_serve_and_mcp() {
     );
     for command in [
         "space", "tag", "link", "unlink", "req", "stats", "enrich", "stale", "status", "docs",
-        "chunk", "open",
+        "chunk", "open", "generate",
     ] {
         assert!(
             stdout.contains(command),
@@ -96,6 +96,10 @@ fn nested_command_help_exposes_the_first_management_slice() {
         (
             "docs",
             ["list", "show", "import", "import-dir", "sync", "render"].as_slice(),
+        ),
+        (
+            "generate",
+            ["claude.md", "agents.md", "cursorrules"].as_slice(),
         ),
         (
             "chunk",

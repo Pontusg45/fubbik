@@ -5,6 +5,7 @@ pub mod context;
 pub mod delete;
 pub mod docs;
 pub mod enrich;
+pub mod generate;
 pub mod get;
 pub mod health;
 pub mod input;

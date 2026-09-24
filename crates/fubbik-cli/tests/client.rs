@@ -190,6 +190,33 @@ async fn context_snapshot_deletion_accepts_an_empty_success_response() {
 }
 
 #[tokio::test]
+async fn instruction_generation_uses_the_space_route_and_requested_format() {
+    // Given an instruction endpoint for a resolved space and AGENTS.md format
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path(
+            "/api/spaces/space-1/generate-instructions",
+        ))
+        .and(wiremock::matchers::query_param("format", "agents"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "format": "agents", "content": "# Agent instructions\n"
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When AGENTS.md instructions are generated
+    let value = Client::new(server.uri())
+        .generate_instructions("space-1", "agents")
+        .await
+        .unwrap();
+
+    // Then the generated content is returned
+    assert_eq!(value["content"], "# Agent instructions\n");
+}
+
+#[tokio::test]
 async fn plan_task_creation_uses_the_nested_plan_endpoint() {
     // Given
     let server = wiremock::MockServer::start().await;
