@@ -65,12 +65,12 @@ fn nested_command_help_exposes_the_first_management_slice() {
         ("tag", ["list", "add", "rename", "remove"].as_slice()),
         (
             "req",
-            ["list", "add", "status", "export", "verify"].as_slice(),
+            ["list", "add", "status", "export", "verify", "import"].as_slice(),
         ),
         ("stale", ["list", "dismiss"].as_slice()),
         (
             "docs",
-            ["list", "show", "import", "sync", "render"].as_slice(),
+            ["list", "show", "import", "import-dir", "sync", "render"].as_slice(),
         ),
         (
             "chunk",

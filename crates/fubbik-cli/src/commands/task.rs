@@ -48,9 +48,8 @@ pub async fn run(client: &Client, command: TaskCommand, mode: OutputMode) -> Res
                 OutputMode::Human => println!("{} {}", "claimed".green(), task.title),
             }
         }
-        TaskCommand::Done { id } => {
-            let task = client.set_quick_task_status(&id, "done").await?;
-            let plan = client.update_plan_status(&id, "completed").await?;
+        TaskCommand::Done { id, note } => {
+            let (task, plan) = client.complete_quick_task(&id, note.as_deref()).await?;
             if mode == OutputMode::Json {
                 return output::json(&serde_json::json!({ "task": task, "plan": plan }));
             }

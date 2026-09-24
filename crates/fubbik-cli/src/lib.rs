@@ -93,7 +93,11 @@ pub enum TaskCommand {
     /// Mark a quick task in progress (the id is its plan id)
     Claim { id: String },
     /// Complete a quick task and its plan (the id is its plan id)
-    Done { id: String },
+    Done {
+        id: String,
+        #[arg(short, long)]
+        note: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -227,6 +231,14 @@ pub enum RequirementCommand {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Import requirements from a Gherkin feature file
+    Import {
+        file: PathBuf,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+        #[arg(long, default_value = "should", value_parser = ["must", "should", "could", "wont"])]
+        priority: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -270,6 +282,12 @@ pub enum DocsCommand {
     /// Import one Markdown file
     Import {
         path: PathBuf,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
+    /// Recursively import Markdown files from a directory
+    ImportDir {
+        dir: PathBuf,
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },

@@ -579,6 +579,7 @@ impl Client {
     pub async fn create_requirement(
         &self,
         title: &str,
+        description: Option<&str>,
         steps: &[serde_json::Value],
         space_id: Option<&str>,
         priority: Option<&str>,
@@ -589,6 +590,7 @@ impl Client {
                 "/api/requirements",
                 serde_json::json!({
                     "title": title,
+                    "description": description,
                     "steps": steps,
                     "spaceId": space_id,
                     "priority": priority,
@@ -691,6 +693,25 @@ impl Client {
                 "content": content,
                 "spaceId": space_id,
             }),
+        )
+        .await
+    }
+
+    pub async fn import_documents(
+        &self,
+        files: &[(String, String)],
+        space_id: Option<&str>,
+    ) -> Result<Vec<serde_json::Value>> {
+        let files = files
+            .iter()
+            .map(|(source_path, content)| {
+                serde_json::json!({ "sourcePath": source_path, "content": content })
+            })
+            .collect::<Vec<_>>();
+        self.send_json(
+            reqwest::Method::POST,
+            "/api/documents/import-dir",
+            serde_json::json!({ "files": files, "spaceId": space_id }),
         )
         .await
     }
@@ -873,5 +894,32 @@ impl Client {
             .first()
             .ok_or_else(|| anyhow::anyhow!("plan {plan_id} has no task"))?;
         self.update_task_status(plan_id, &first.id, status).await
+    }
+
+    pub async fn complete_quick_task(
+        &self,
+        plan_id: &str,
+        note: Option<&str>,
+    ) -> Result<(PlanTask, Plan)> {
+        let detail = self.get_plan(plan_id).await?;
+        let task = detail
+            .tasks
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("plan {plan_id} has no task"))?;
+        let plan = self
+            .send_json(
+                reqwest::Method::POST,
+                &format!("/api/tasks/{plan_id}/complete"),
+                serde_json::json!({ "note": note }),
+            )
+            .await?;
+        Ok((
+            PlanTask {
+                status: "done".into(),
+                ..task
+            },
+            plan,
+        ))
     }
 }

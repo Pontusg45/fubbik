@@ -296,6 +296,50 @@ async fn requirements_list_forwards_filters_and_unwraps_the_envelope() {
 }
 
 #[tokio::test]
+async fn requirement_creation_forwards_the_import_description_and_priority() {
+    // Given a requirement endpoint expecting the fields parsed from Gherkin
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/requirements"))
+        .and(wiremock::matchers::body_json(serde_json::json!({
+            "title": "Sign in",
+            "description": "Authentication",
+            "steps": [{"keyword": "given", "text": "a registered user"}],
+            "spaceId": "space-1",
+            "priority": "must"
+        })))
+        .respond_with(
+            wiremock::ResponseTemplate::new(201).set_body_json(serde_json::json!({
+                "requirement": {
+                    "id": "req-1", "title": "Sign in", "status": "untested",
+                    "priority": "must", "steps": []
+                }
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When the client creates the imported requirement
+    let requirement = Client::new(server.uri())
+        .create_requirement(
+            "Sign in",
+            Some("Authentication"),
+            &[serde_json::json!({
+                "keyword": "given",
+                "text": "a registered user"
+            })],
+            Some("space-1"),
+            Some("must"),
+        )
+        .await
+        .unwrap();
+
+    // Then the created requirement is unwrapped from the API envelope
+    assert_eq!(requirement.id, "req-1");
+    assert_eq!(requirement.priority.as_deref(), Some("must"));
+}
+
+#[tokio::test]
 async fn enrich_all_uses_the_bulk_endpoint() {
     // Given
     let server = wiremock::MockServer::start().await;
@@ -336,6 +380,45 @@ async fn document_import_sends_file_content_and_source_path() {
         .unwrap();
     // Then
     assert_eq!(imported["document"]["id"], "doc-1");
+}
+
+#[tokio::test]
+async fn directory_import_sends_all_documents_in_one_request() {
+    // Given a document import endpoint expecting two Markdown files and a space
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/documents/import-dir"))
+        .and(wiremock::matchers::body_json(serde_json::json!({
+            "files": [
+                {"sourcePath": "/repo/README.md", "content": "# Readme"},
+                {"sourcePath": "/repo/docs/guide.md", "content": "# Guide"}
+            ],
+            "spaceId": "space-1"
+        })))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {"document": {"id": "doc-1"}},
+                {"document": {"id": "doc-2"}}
+            ])),
+        )
+        .mount(&server)
+        .await;
+
+    // When the client imports the directory payload
+    let results = Client::new(server.uri())
+        .import_documents(
+            &[
+                ("/repo/README.md".into(), "# Readme".into()),
+                ("/repo/docs/guide.md".into(), "# Guide".into()),
+            ],
+            Some("space-1"),
+        )
+        .await
+        .unwrap();
+
+    // Then both per-document results are returned
+    assert_eq!(results.len(), 2);
+    assert_eq!(results[1]["document"]["id"], "doc-2");
 }
 
 #[tokio::test]
@@ -457,6 +540,45 @@ async fn task_claim_reads_the_plan_then_updates_its_first_task() {
     // Then
     assert_eq!(task.id, "task-1");
     assert_eq!(task.status, "in_progress");
+}
+
+#[tokio::test]
+async fn task_completion_forwards_the_note_to_the_compatibility_endpoint() {
+    // Given a quick task plan and a completion endpoint that expects a note
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/plans/plan-1"))
+        .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "plan": {"id": "plan-1", "title": "Ship it", "status": "in_progress"},
+            "requirements": [],
+            "analyze": {},
+            "tasks": [{"id": "task-1", "planId": "plan-1", "title": "Ship it", "status": "in_progress"}],
+            "dependencies": []
+        })))
+        .mount(&server)
+        .await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/tasks/plan-1/complete"))
+        .and(wiremock::matchers::body_json(serde_json::json!({
+            "note": "Verified in production"
+        })))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "plan-1", "title": "Ship it", "status": "completed"
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When the client completes the quick task with that note
+    let (task, plan) = Client::new(server.uri())
+        .complete_quick_task("plan-1", Some("Verified in production"))
+        .await
+        .unwrap();
+
+    // Then the returned task and plan both reflect completion
+    assert_eq!(task.status, "done");
+    assert_eq!(plan.status, "completed");
 }
 
 fn chunk_json(id: &str, title: &str) -> serde_json::Value {

@@ -107,14 +107,17 @@
                     "context-for.ts",
                     "context.ts",
                     "doctor.ts",
+                    "docs.ts",
                     "enrich.ts",
                     "get.ts",
                     "health.ts",
+                    "import-requirements.ts",
                     "init.ts",
                     "link.ts",
                     "list.ts",
                     "open.ts",
                     "plan.ts",
+                    "req.ts",
                     "remove.ts",
                     "review.ts",
                     "search.ts",
@@ -122,6 +125,7 @@
                     "stats.ts",
                     "status.ts",
                     "sync.ts",
+                    "task.ts",
                     "unlink.ts",
                     "update.ts"
                 ],
@@ -131,11 +135,7 @@
                     "requirements.ts",
                     "tags.ts"
                 ],
-                "partial": [
-                    "docs.ts",
-                    "req.ts",
-                    "task.ts"
-                ],
+                "partial": [],
                 "pending": [
                     "bulk-add.ts",
                     "check-files.ts",
@@ -150,7 +150,6 @@
                     "gaps.ts",
                     "generate.ts",
                     "hooks.ts",
-                    "import-requirements.ts",
                     "import.ts",
                     "kb-diff.ts",
                     "lint.ts",
