@@ -170,7 +170,10 @@ fn mcp_serves_initialize_and_tool_catalog_over_stdio() {
         .collect::<Vec<_>>();
     assert_eq!(responses.len(), 2);
     assert_eq!(responses[0]["result"]["serverInfo"]["name"], "fubbik");
-    assert_eq!(responses[1]["result"]["tools"].as_array().unwrap().len(), 9);
+    assert_eq!(
+        responses[1]["result"]["tools"].as_array().unwrap().len(),
+        14
+    );
 }
 
 #[test]

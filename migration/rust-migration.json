@@ -184,13 +184,15 @@
                 "excludeSuffix": ".test.ts"
             },
             "statuses": {
+                "ported": [
+                    "context-tools.ts"
+                ],
                 "partial": [
                     "api-client.ts",
                     "index.ts",
                     "tools.ts"
                 ],
                 "pending": [
-                    "context-tools.ts",
                     "coordination-format.ts",
                     "coordination-tools.ts",
                     "matrix-tools.ts",

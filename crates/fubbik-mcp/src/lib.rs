@@ -93,6 +93,16 @@ impl Server {
         if !arguments.is_object() {
             bail!("arguments must be an object");
         }
+        if matches!(
+            name,
+            "sync_claude_md"
+                | "get_context"
+                | "get_context_for_task"
+                | "create_context_snapshot"
+                | "get_context_snapshot"
+        ) {
+            return self.call_context_tool(name, &arguments).await;
+        }
         let value = match name {
             "search_chunks" => {
                 let mut query = vec![(
@@ -177,6 +187,183 @@ impl Server {
             "isError": false
         }))
     }
+
+    async fn call_context_tool(&self, name: &str, arguments: &Value) -> Result<Value> {
+        let text = match name {
+            "sync_claude_md" => {
+                let mut query = Vec::new();
+                push_string_query(&mut query, arguments, "tag", "tag");
+                push_string_query(&mut query, arguments, "spaceId", "spaceId");
+                let data = self.api.get("/api/chunks/export/claude-md", &query).await?;
+                let chunks = data.get("chunks").and_then(Value::as_u64).unwrap_or(0);
+                if chunks == 0 {
+                    let tag = arguments
+                        .get("tag")
+                        .and_then(Value::as_str)
+                        .unwrap_or("claude-context");
+                    format!(
+                        "No chunks tagged \"{tag}\" found. Tag some chunks with \"{tag}\" to generate CLAUDE.md content."
+                    )
+                } else {
+                    format!(
+                        "Generated CLAUDE.md content ({chunks} chunks):\n\n{}",
+                        data.get("content").and_then(Value::as_str).unwrap_or("")
+                    )
+                }
+            }
+            "get_context" => self.get_context(arguments).await?,
+            "get_context_for_task" => self.get_context_for_task(arguments).await?,
+            "create_context_snapshot" => {
+                let data = self
+                    .api
+                    .send(Method::POST, "/api/context/snapshot", arguments.clone())
+                    .await?;
+                format!(
+                    "Snapshot created.\nsnapshotId: {}\nchunks: {}\ntokens: {}\ncreatedAt: {}\n\nUse get_context_snapshot with this ID to retrieve the frozen content.",
+                    json_scalar(&data, "snapshotId"),
+                    json_scalar(&data, "chunkCount"),
+                    json_scalar(&data, "tokenCount"),
+                    json_scalar(&data, "createdAt")
+                )
+            }
+            "get_context_snapshot" => {
+                let snapshot_id = required_string(arguments, "snapshotId")?;
+                let data = self
+                    .api
+                    .get(&format!("/api/context/snapshot/{snapshot_id}"), &[])
+                    .await?;
+                format_snapshot(&data)
+            }
+            _ => bail!("unknown context tool: {name}"),
+        };
+        Ok(text_result(text))
+    }
+
+    async fn get_context(&self, arguments: &Value) -> Result<String> {
+        let plan_id = optional_string(arguments, "planId");
+        let concept = optional_string(arguments, "concept");
+        let file_path = optional_string(arguments, "filePath");
+        let max_tokens = arguments
+            .get("maxTokens")
+            .and_then(Value::as_u64)
+            .unwrap_or(8000)
+            .to_string();
+        let space_id = optional_string(arguments, "spaceId");
+        let mut parts = Vec::new();
+
+        if let Some(plan_id) = plan_id {
+            let mut query = vec![
+                ("planId", plan_id.to_string()),
+                ("maxTokens", max_tokens.clone()),
+                ("format", "structured-md".into()),
+            ];
+            push_optional_query(&mut query, "spaceId", space_id);
+            parts.push(context_text(
+                self.api.get("/api/context/for-plan", &query).await?,
+            ));
+            if let Some(file_path) = file_path {
+                let mut query = vec![
+                    ("paths", file_path.to_string()),
+                    ("maxTokens", max_tokens),
+                    ("format", "structured-md".into()),
+                ];
+                push_optional_query(&mut query, "spaceId", space_id);
+                parts.push(context_text(
+                    self.api.get("/api/context/for-files", &query).await?,
+                ));
+            }
+        } else if let Some(concept) = concept {
+            let mut query = vec![
+                ("q", concept.to_string()),
+                ("maxTokens", max_tokens),
+                ("format", "structured-md".into()),
+            ];
+            push_optional_query(&mut query, "spaceId", space_id);
+            parts.push(context_text(
+                self.api.get("/api/context/about", &query).await?,
+            ));
+        } else if let Some(file_path) = file_path {
+            let mut query = vec![
+                ("paths", file_path.to_string()),
+                ("maxTokens", max_tokens),
+                ("format", "structured-md".into()),
+            ];
+            push_optional_query(&mut query, "spaceId", space_id);
+            parts.push(context_text(
+                self.api.get("/api/context/for-files", &query).await?,
+            ));
+        } else {
+            return Ok("Provide at least one of: planId, concept, or filePath.".into());
+        }
+
+        Ok(parts
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n\n---\n\n"))
+    }
+
+    async fn get_context_for_task(&self, arguments: &Value) -> Result<String> {
+        let plan_id = required_string(arguments, "planId")?;
+        let task_id = required_string(arguments, "taskId")?;
+        let max_tokens = arguments
+            .get("maxTokens")
+            .and_then(Value::as_u64)
+            .unwrap_or(4000)
+            .to_string();
+        let detail = self.api.get(&format!("/api/plans/{plan_id}"), &[]).await?;
+        let task = detail
+            .get("tasks")
+            .and_then(Value::as_array)
+            .and_then(|tasks| {
+                tasks
+                    .iter()
+                    .find(|task| task.get("id").and_then(Value::as_str) == Some(task_id))
+            });
+        let mut chunk_ids = Vec::new();
+        if let Some(chunks) = task
+            .and_then(|task| task.get("chunks"))
+            .and_then(Value::as_array)
+        {
+            collect_chunk_ids(chunks, &mut chunk_ids);
+        }
+        if let Some(chunks) = detail
+            .get("analyze")
+            .and_then(|analyze| analyze.get("chunk"))
+            .and_then(Value::as_array)
+        {
+            collect_chunk_ids(chunks, &mut chunk_ids);
+        }
+        chunk_ids.sort_unstable();
+        chunk_ids.dedup();
+        let context = context_text(
+            self.api
+                .get(
+                    "/api/context/for-plan",
+                    &[
+                        ("planId", plan_id.to_string()),
+                        ("maxTokens", max_tokens),
+                        ("format", "structured-md".into()),
+                    ],
+                )
+                .await?,
+        );
+        let header = if task.is_some() {
+            format!(
+                "# Context for Task: {task_id}\n\nRelevant chunk IDs: {}\n\n",
+                if chunk_ids.is_empty() {
+                    "none".into()
+                } else {
+                    chunk_ids.join(", ")
+                }
+            )
+        } else {
+            format!(
+                "# Context for Plan: {plan_id}\n\nTask {task_id} not found — returning full plan context.\n\n"
+            )
+        };
+        Ok(header + &context)
+    }
 }
 
 struct ApiClient {
@@ -229,6 +416,91 @@ fn required_string<'a>(value: &'a Value, field: &str) -> Result<&'a str> {
         .get(field)
         .and_then(Value::as_str)
         .with_context(|| format!("{field} must be a string"))
+}
+
+fn optional_string<'a>(value: &'a Value, field: &str) -> Option<&'a str> {
+    value.get(field).and_then(Value::as_str)
+}
+
+fn push_optional_query(
+    query: &mut Vec<(&'static str, String)>,
+    parameter: &'static str,
+    value: Option<&str>,
+) {
+    if let Some(value) = value {
+        query.push((parameter, value.to_string()));
+    }
+}
+
+fn context_text(value: Value) -> String {
+    match value {
+        Value::String(text) => text,
+        Value::Object(object) => object
+            .get("content")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string(),
+        _ => String::new(),
+    }
+}
+
+fn collect_chunk_ids(chunks: &[Value], ids: &mut Vec<String>) {
+    ids.extend(chunks.iter().filter_map(|chunk| {
+        chunk
+            .get("chunkId")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    }));
+}
+
+fn json_scalar(value: &Value, field: &str) -> String {
+    match value.get(field) {
+        Some(Value::String(value)) => value.clone(),
+        Some(value) if !value.is_null() => value.to_string(),
+        _ => String::new(),
+    }
+}
+
+fn format_snapshot(data: &Value) -> String {
+    let chunks = data
+        .get("chunks")
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    let mut lines = vec![
+        format!("# Context Snapshot: {}", json_scalar(data, "id")),
+        format!(
+            "> Created: {} | Tokens: {} | Chunks: {}",
+            json_scalar(data, "createdAt"),
+            json_scalar(data, "tokenCount"),
+            chunks.len()
+        ),
+        String::new(),
+    ];
+    for chunk in chunks {
+        lines.push(format!(
+            "## {} [{}]",
+            json_scalar(chunk, "title"),
+            json_scalar(chunk, "type")
+        ));
+        if let Some(content) = optional_string(chunk, "content").filter(|value| !value.is_empty()) {
+            lines.extend([String::new(), content.to_string()]);
+        }
+        if let Some(rationale) =
+            optional_string(chunk, "rationale").filter(|value| !value.is_empty())
+        {
+            lines.extend([String::new(), format!("**Rationale:** {rationale}")]);
+        }
+        lines.push(String::new());
+    }
+    lines.join("\n").trim_end().to_string()
+}
+
+fn text_result(text: String) -> Value {
+    json!({
+        "content": [{ "type": "text", "text": text }],
+        "isError": false
+    })
 }
 
 fn push_string_query(
@@ -392,6 +664,55 @@ pub fn tools() -> Vec<Value> {
                 &["spaceId"],
             ),
         ),
+        tool(
+            "sync_claude_md",
+            "Generate CLAUDE.md content from tagged chunks",
+            object(
+                json!({"tag":{"type":"string"}, "spaceId":{"type":"string"}}),
+                &[],
+            ),
+        ),
+        tool(
+            "get_context",
+            "Retrieve context for a plan, concept, or file",
+            object(
+                json!({
+                    "planId":{"type":"string"}, "concept":{"type":"string"},
+                    "filePath":{"type":"string"}, "maxTokens":{"type":"integer","minimum":1},
+                    "spaceId":{"type":"string"}
+                }),
+                &[],
+            ),
+        ),
+        tool(
+            "get_context_for_task",
+            "Get tightly scoped context for a task within a plan",
+            object(
+                json!({
+                    "planId":{"type":"string"}, "taskId":{"type":"string"},
+                    "maxTokens":{"type":"integer","minimum":1}
+                }),
+                &["planId", "taskId"],
+            ),
+        ),
+        tool(
+            "create_context_snapshot",
+            "Freeze context into a persistent snapshot",
+            object(
+                json!({
+                    "planId":{"type":"string"}, "taskId":{"type":"string"},
+                    "filePaths":{"type":"array","items":{"type":"string"}},
+                    "concept":{"type":"string"}, "maxTokens":{"type":"integer","minimum":1},
+                    "spaceId":{"type":"string"}
+                }),
+                &[],
+            ),
+        ),
+        tool(
+            "get_context_snapshot",
+            "Retrieve a frozen context snapshot",
+            object(json!({"snapshotId":{"type":"string"}}), &["snapshotId"]),
+        ),
     ]
 }
 
@@ -422,8 +743,8 @@ mod tests {
     }
 
     #[test]
-    fn core_tool_catalog_has_unique_names_and_object_schemas() {
-        // Given the migrated core tool catalog
+    fn migrated_tool_catalog_has_unique_names_and_object_schemas() {
+        // Given the migrated core and context tool catalog
         let catalog = tools();
         // When its names and schemas are inspected
         let mut names = catalog
@@ -433,8 +754,8 @@ mod tests {
         let count = names.len();
         names.sort_unstable();
         names.dedup();
-        // Then all nine core tools are unique and expose object schemas
-        assert_eq!(count, 9);
+        // Then all fourteen tools are unique and expose object schemas
+        assert_eq!(count, 14);
         assert_eq!(names.len(), count);
         assert!(
             catalog
@@ -487,5 +808,132 @@ mod tests {
             response["result"]["structuredContent"]["chunks"][0]["id"],
             "chunk-1"
         );
+    }
+
+    #[tokio::test]
+    async fn sync_claude_md_preserves_markdown_tool_output() {
+        // Given
+        let api = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/api/chunks/export/claude-md"))
+            .and(wiremock::matchers::query_param("tag", "agent-context"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .set_body_json(json!({"content":"# Agent context","chunks":2})),
+            )
+            .mount(&api)
+            .await;
+        let server = Server::new(api.uri());
+
+        // When
+        let response = server
+            .handle(json!({
+                "jsonrpc":"2.0", "id":3, "method":"tools/call",
+                "params":{"name":"sync_claude_md","arguments":{"tag":"agent-context"}}
+            }))
+            .await
+            .unwrap();
+
+        // Then
+        assert_eq!(
+            response["result"]["content"][0]["text"],
+            "Generated CLAUDE.md content (2 chunks):\n\n# Agent context"
+        );
+        assert!(response["result"].get("structuredContent").is_none());
+    }
+
+    #[tokio::test]
+    async fn concept_context_uses_the_active_semantic_endpoint() {
+        // Given
+        let api = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/api/context/about"))
+            .and(wiremock::matchers::query_param("q", "authentication"))
+            .and(wiremock::matchers::query_param("maxTokens", "1200"))
+            .and(wiremock::matchers::query_param("format", "structured-md"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .set_body_json(json!({"content":"# Authentication"})),
+            )
+            .mount(&api)
+            .await;
+        let server = Server::new(api.uri());
+
+        // When
+        let response = server
+            .handle(json!({
+                "jsonrpc":"2.0", "id":4, "method":"tools/call",
+                "params":{"name":"get_context","arguments":{"concept":"authentication","maxTokens":1200}}
+            }))
+            .await
+            .unwrap();
+
+        // Then
+        assert_eq!(response["result"]["content"][0]["text"], "# Authentication");
+    }
+
+    #[tokio::test]
+    async fn context_snapshot_creation_forwards_the_versioned_body() {
+        // Given
+        let api = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/api/context/snapshot"))
+            .and(wiremock::matchers::body_json(json!({
+                "planId":"plan-1", "taskId":"task-1", "maxTokens":3200
+            })))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(json!({
+                "snapshotId":"snapshot-1", "chunkCount":3, "tokenCount":900,
+                "createdAt":"2026-09-24T10:00:00Z"
+            })))
+            .mount(&api)
+            .await;
+        let server = Server::new(api.uri());
+
+        // When
+        let response = server
+            .handle(json!({
+                "jsonrpc":"2.0", "id":5, "method":"tools/call",
+                "params":{"name":"create_context_snapshot","arguments":{
+                    "planId":"plan-1", "taskId":"task-1", "maxTokens":3200
+                }}
+            }))
+            .await
+            .unwrap();
+
+        // Then
+        let text = response["result"]["content"][0]["text"].as_str().unwrap();
+        assert!(text.contains("snapshotId: snapshot-1"));
+        assert!(text.contains("chunks: 3"));
+        assert!(text.contains("tokens: 900"));
+    }
+
+    #[tokio::test]
+    async fn frozen_context_is_rendered_as_markdown() {
+        // Given
+        let api = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/api/context/snapshot/snapshot-1"))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(json!({
+                "id":"snapshot-1", "createdAt":"2026-09-24T10:00:00Z", "tokenCount":42,
+                "chunks":[{"title":"Authentication", "type":"decision", "content":"Use sessions", "rationale":"Auditable"}]
+            })))
+            .mount(&api)
+            .await;
+        let server = Server::new(api.uri());
+
+        // When
+        let response = server
+            .handle(json!({
+                "jsonrpc":"2.0", "id":6, "method":"tools/call",
+                "params":{"name":"get_context_snapshot","arguments":{"snapshotId":"snapshot-1"}}
+            }))
+            .await
+            .unwrap();
+
+        // Then
+        let text = response["result"]["content"][0]["text"].as_str().unwrap();
+        assert!(text.contains("# Context Snapshot: snapshot-1"));
+        assert!(text.contains("## Authentication [decision]"));
+        assert!(text.contains("**Rationale:** Auditable"));
     }
 }
