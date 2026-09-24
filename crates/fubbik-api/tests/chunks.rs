@@ -61,6 +61,60 @@ async fn create_then_fetch_chunk(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn tagged_chunk_creation_is_reported_by_update_and_tag_routes(pool: sqlx::PgPool) {
+    // Given a chunk created under an update tag
+    seed_dev_user(&pool).await;
+    let app = fubbik_api::router(dev_state(pool));
+    let created = app
+        .clone()
+        .oneshot(
+            Request::post("/api/chunks")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    r#"{"title":"Tagged","content":"new","updateTag":"release-1"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(created.status(), StatusCode::CREATED);
+
+    // When the tag catalogue and its updates are requested
+    let tags = app
+        .clone()
+        .oneshot(
+            Request::get("/api/chunks/updates/tags")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let updates = app
+        .oneshot(
+            Request::get("/api/chunks/updates?tag=release-1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Then the tag count and creation-shaped before/after values are returned
+    assert_eq!(tags.status(), StatusCode::OK);
+    let tags: serde_json::Value =
+        serde_json::from_slice(&tags.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(
+        tags["tags"][0],
+        serde_json::json!({"tag":"release-1","count":1})
+    );
+    assert_eq!(updates.status(), StatusCode::OK);
+    let updates: serde_json::Value =
+        serde_json::from_slice(&updates.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(updates["updates"][0]["version"], 0);
+    assert!(updates["updates"][0]["before"]["title"].is_null());
+    assert_eq!(updates["updates"][0]["after"]["title"], "Tagged");
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn missing_chunk_is_404(pool: sqlx::PgPool) {
     // Given
     seed_dev_user(&pool).await;

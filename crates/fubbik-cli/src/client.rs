@@ -522,6 +522,25 @@ impl Client {
         .await
     }
 
+    pub async fn list_updates(
+        &self,
+        tag: &str,
+        space_id: Option<&str>,
+    ) -> Result<serde_json::Value> {
+        let mut query = vec![("tag", tag.to_owned())];
+        if let Some(value) = space_id {
+            query.push(("spaceId", value.to_owned()));
+        }
+        self.get_json("/api/chunks/updates", &query).await
+    }
+
+    pub async fn list_update_tags(&self, space_id: Option<&str>) -> Result<serde_json::Value> {
+        let query = space_id
+            .map(|value| vec![("spaceId", value.to_owned())])
+            .unwrap_or_default();
+        self.get_json("/api/chunks/updates/tags", &query).await
+    }
+
     pub async fn health(&self) -> Result<serde_json::Value> {
         self.get_json("/api/health", &[]).await
     }

@@ -134,7 +134,8 @@
                     "sync-claude-md.ts",
                     "task.ts",
                     "unlink.ts",
-                    "update.ts"
+                    "update.ts",
+                    "updates.ts"
                 ],
                 "replaced": [
                     "codebase.ts",
@@ -164,7 +165,6 @@
                     "suggest.ts",
                     "tag-group.ts",
                     "tag-normalize.ts",
-                    "updates.ts",
                     "watch.ts",
                     "why.ts"
                 ],

@@ -34,6 +34,35 @@ pub struct ChunkVersion {
     pub created_at: UtcTimestamp,
 }
 
+#[derive(Debug, sqlx::FromRow)]
+pub struct TaggedChunkVersion {
+    pub version_id: String,
+    pub chunk_id: String,
+    pub version: i32,
+    pub update_tag: Option<String>,
+    pub title: String,
+    pub content: String,
+    pub chunk_type: String,
+    pub rationale: Option<String>,
+    pub alternatives: Option<Json<Vec<String>>>,
+    pub consequences: Option<String>,
+    pub scope: Option<Json<serde_json::Value>>,
+    pub created_at: UtcTimestamp,
+    pub chunk_title: String,
+    pub chunk_content: String,
+    pub current_type: String,
+    pub chunk_rationale: Option<String>,
+    pub chunk_alternatives: Option<Json<Vec<String>>>,
+    pub chunk_consequences: Option<String>,
+    pub chunk_scope: Json<serde_json::Value>,
+}
+
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct UpdateTagCount {
+    pub tag: String,
+    pub count: i64,
+}
+
 /// Appends the chunk's current state to its history. Call before applying
 /// an update so the snapshot captures the pre-edit version.
 ///
@@ -126,4 +155,55 @@ pub async fn list_for_chunk(
     .fetch_all(pool)
     .await?;
     Ok(rows)
+}
+
+pub async fn list_by_update_tag(
+    pool: &PgPool,
+    user_id: &str,
+    tag: &str,
+    space_id: Option<&str>,
+) -> AppResult<Vec<TaggedChunkVersion>> {
+    Ok(sqlx::query_as::<_, TaggedChunkVersion>(
+        r#"SELECT v.id AS version_id, v.chunk_id, v.version, v.update_tag,
+                  v.title, v.content, v.type AS chunk_type, v.rationale,
+                  v.alternatives, v.consequences, v.scope, v.created_at,
+                  c.title AS chunk_title, c.content AS chunk_content,
+                  c.type AS current_type, c.rationale AS chunk_rationale,
+                  c.alternatives AS chunk_alternatives,
+                  c.consequences AS chunk_consequences, c.scope AS chunk_scope
+           FROM chunk_version v
+           JOIN chunk c ON c.id = v.chunk_id
+           WHERE v.update_tag = $1 AND c.user_id = $2
+             AND ($3::text IS NULL OR EXISTS (
+                 SELECT 1 FROM chunk_space cs
+                 WHERE cs.chunk_id = v.chunk_id AND cs.space_id = $3))
+           ORDER BY v.created_at DESC"#,
+    )
+    .bind(tag)
+    .bind(user_id)
+    .bind(space_id)
+    .fetch_all(pool)
+    .await?)
+}
+
+pub async fn list_update_tags(
+    pool: &PgPool,
+    user_id: &str,
+    space_id: Option<&str>,
+) -> AppResult<Vec<UpdateTagCount>> {
+    Ok(sqlx::query_as::<_, UpdateTagCount>(
+        r#"SELECT v.update_tag AS tag, count(*)::bigint AS count
+           FROM chunk_version v
+           JOIN chunk c ON c.id = v.chunk_id
+           WHERE v.update_tag IS NOT NULL AND c.user_id = $1
+             AND ($2::text IS NULL OR EXISTS (
+                 SELECT 1 FROM chunk_space cs
+                 WHERE cs.chunk_id = v.chunk_id AND cs.space_id = $2))
+           GROUP BY v.update_tag
+           ORDER BY v.update_tag"#,
+    )
+    .bind(user_id)
+    .bind(space_id)
+    .fetch_all(pool)
+    .await?)
 }

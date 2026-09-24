@@ -554,6 +554,15 @@ pub enum Command {
         #[command(subcommand)]
         command: GenerateCommand,
     },
+    /// List chunk updates grouped by update tag
+    Updates {
+        #[arg(long, conflicts_with = "tags")]
+        tag: Option<String>,
+        #[arg(long, conflicts_with = "tag")]
+        tags: bool,
+        #[arg(long)]
+        space_id: Option<String>,
+    },
     /// Regenerate the configured CLAUDE.md context file
     #[command(visible_alias = "sync-claude-md")]
     Sync {
@@ -760,6 +769,13 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         Command::Config { command } => commands::config::run(command, output),
         Command::Context { command } => commands::context::run(&client, command, output).await,
         Command::Generate { command } => commands::generate::run(&client, command, output).await,
+        Command::Updates {
+            tag,
+            tags,
+            space_id,
+        } => {
+            commands::updates::run(&client, tag.as_deref(), tags, space_id.as_deref(), output).await
+        }
         Command::Sync {
             output: path,
             space,

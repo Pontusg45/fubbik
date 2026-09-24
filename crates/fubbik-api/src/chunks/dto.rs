@@ -1,5 +1,61 @@
 use fubbik_db::repo::chunk::{Chunk, Enrichment, Sort};
 
+#[derive(Debug, serde::Deserialize, utoipa::IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdatesQuery {
+    pub tag: String,
+    pub space_id: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, utoipa::IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTagsQuery {
+    pub space_id: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateState {
+    pub title: Option<String>,
+    pub content: Option<String>,
+    #[serde(rename = "type")]
+    pub chunk_type: Option<String>,
+    pub rationale: Option<String>,
+    pub alternatives: Option<Vec<String>>,
+    pub consequences: Option<String>,
+    pub scope: Option<serde_json::Value>,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct TaggedUpdate {
+    pub version_id: String,
+    pub chunk_id: String,
+    pub chunk_title: String,
+    pub update_tag: Option<String>,
+    pub version: i32,
+    #[schema(value_type = chrono::NaiveDateTime)]
+    pub created_at: fubbik_db::timestamp::UtcTimestamp,
+    pub before: UpdateState,
+    pub after: UpdateState,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct UpdatesResponse {
+    pub updates: Vec<TaggedUpdate>,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct UpdateTagsResponse {
+    pub tags: Vec<UpdateTag>,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct UpdateTag {
+    pub tag: String,
+    pub count: i64,
+}
+
 #[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
 pub struct ConnectionSuggestion {
     pub id: String,

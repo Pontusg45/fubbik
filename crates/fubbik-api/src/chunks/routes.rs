@@ -12,6 +12,7 @@ use super::ai;
 use super::dto::{
     CheckSimilarBody, ChunkDetail, ChunkListResponse, CreateChunkBody, FederatedSearchQuery,
     FederatedSearchResponse, ListChunksQuery, NeighborsQuery, SemanticSearchQuery, UpdateChunkBody,
+    UpdateTagsQuery, UpdateTagsResponse, UpdatesQuery, UpdatesResponse,
 };
 use super::service;
 use crate::AppState;
@@ -309,6 +310,36 @@ pub async fn chunk_history(
     Ok(Json(service::history(&state.pool, &user.id, &id).await?))
 }
 
+#[utoipa::path(get, path = "/api/chunks/updates", params(UpdatesQuery),
+    responses((status = 200, body = UpdatesResponse)))]
+pub async fn list_updates(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Query(query): Query<UpdatesQuery>,
+) -> ApiResult<Json<UpdatesResponse>> {
+    Ok(Json(UpdatesResponse {
+        updates: service::list_updates_by_tag(
+            &state.pool,
+            &user.id,
+            &query.tag,
+            query.space_id.as_deref(),
+        )
+        .await?,
+    }))
+}
+
+#[utoipa::path(get, path = "/api/chunks/updates/tags", params(UpdateTagsQuery),
+    responses((status = 200, body = UpdateTagsResponse)))]
+pub async fn list_update_tags(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Query(query): Query<UpdateTagsQuery>,
+) -> ApiResult<Json<UpdateTagsResponse>> {
+    Ok(Json(UpdateTagsResponse {
+        tags: service::list_update_tags(&state.pool, &user.id, query.space_id.as_deref()).await?,
+    }))
+}
+
 /// One entry of `PUT /api/chunks/{id}/applies-to`'s body.
 ///
 /// The body is a **bare array** of these, not `{patterns: [...]}` — that is
@@ -557,6 +588,8 @@ pub fn router() -> Router<AppState> {
         .route("/api/chunks/bulk-update", post(bulk_update))
         .route("/api/chunks/bulk", axum::routing::delete(bulk_delete))
         .route("/api/chunks/merge", post(merge_chunks))
+        .route("/api/chunks/updates", get(list_updates))
+        .route("/api/chunks/updates/tags", get(list_update_tags))
         .route("/api/chunks/{id}/archive", post(archive_chunk))
         .route("/api/chunks/{id}/restore", post(restore_chunk))
         .route(

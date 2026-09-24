@@ -217,6 +217,32 @@ async fn instruction_generation_uses_the_space_route_and_requested_format() {
 }
 
 #[tokio::test]
+async fn update_listing_forwards_tag_and_space_filters() {
+    // Given an update endpoint expecting a tag and space filter
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/chunks/updates"))
+        .and(wiremock::matchers::query_param("tag", "release-1"))
+        .and(wiremock::matchers::query_param("spaceId", "space-1"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "updates": [{"chunkId": "chunk-1", "chunkTitle": "Tagged", "version": 0}]
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When updates are listed through the CLI client
+    let value = Client::new(server.uri())
+        .list_updates("release-1", Some("space-1"))
+        .await
+        .unwrap();
+
+    // Then the matching update envelope is returned
+    assert_eq!(value["updates"][0]["chunkId"], "chunk-1");
+}
+
+#[tokio::test]
 async fn plan_task_creation_uses_the_nested_plan_endpoint() {
     // Given
     let server = wiremock::MockServer::start().await;

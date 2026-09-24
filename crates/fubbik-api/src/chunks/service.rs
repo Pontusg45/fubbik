@@ -5,8 +5,79 @@ use std::collections::HashSet;
 
 use super::dto::{
     ChunkCluster, ChunkListResponse, ClusterMember, ConnectionSuggestion, CreateChunkBody,
-    FederatedChunk, FederatedSearchResponse, UpdateChunkBody,
+    FederatedChunk, FederatedSearchResponse, TaggedUpdate, UpdateChunkBody, UpdateState, UpdateTag,
 };
+
+pub async fn list_updates_by_tag(
+    pool: &PgPool,
+    user_id: &str,
+    tag: &str,
+    space_id: Option<&str>,
+) -> AppResult<Vec<TaggedUpdate>> {
+    let versions =
+        fubbik_db::repo::chunk_version::list_by_update_tag(pool, user_id, tag, space_id).await?;
+    Ok(versions
+        .into_iter()
+        .map(|version| {
+            let before = if version.version == 0 {
+                UpdateState {
+                    title: None,
+                    content: None,
+                    chunk_type: None,
+                    rationale: None,
+                    alternatives: None,
+                    consequences: None,
+                    scope: None,
+                }
+            } else {
+                UpdateState {
+                    title: Some(version.title),
+                    content: Some(version.content),
+                    chunk_type: Some(version.chunk_type),
+                    rationale: version.rationale,
+                    alternatives: version.alternatives.map(|value| value.0),
+                    consequences: version.consequences,
+                    scope: version.scope.map(|value| value.0),
+                }
+            };
+            TaggedUpdate {
+                version_id: version.version_id,
+                chunk_id: version.chunk_id,
+                chunk_title: version.chunk_title.clone(),
+                update_tag: version.update_tag,
+                version: version.version,
+                created_at: version.created_at,
+                before,
+                after: UpdateState {
+                    title: Some(version.chunk_title),
+                    content: Some(version.chunk_content),
+                    chunk_type: Some(version.current_type),
+                    rationale: version.chunk_rationale,
+                    alternatives: version.chunk_alternatives.map(|value| value.0),
+                    consequences: version.chunk_consequences,
+                    scope: Some(version.chunk_scope.0),
+                },
+            }
+        })
+        .collect())
+}
+
+pub async fn list_update_tags(
+    pool: &PgPool,
+    user_id: &str,
+    space_id: Option<&str>,
+) -> AppResult<Vec<UpdateTag>> {
+    Ok(
+        fubbik_db::repo::chunk_version::list_update_tags(pool, user_id, space_id)
+            .await?
+            .into_iter()
+            .map(|row| UpdateTag {
+                tag: row.tag,
+                count: row.count,
+            })
+            .collect(),
+    )
+}
 
 pub async fn list(
     pool: &PgPool,
