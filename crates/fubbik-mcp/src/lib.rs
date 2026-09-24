@@ -4,6 +4,8 @@ use serde_json::{Value, json};
 
 mod api;
 mod protocol;
+#[path = "tools/mod.rs"]
+mod tool_groups;
 
 use api::ApiClient;
 pub use protocol::run;
@@ -83,6 +85,9 @@ impl Server {
         }
         if matches!(name, "add_task" | "list_tasks" | "complete_task") {
             return self.call_task_tool(name, &arguments).await;
+        }
+        if tool_groups::coordination::handles(name) {
+            return tool_groups::coordination::call(&self.api, name, &arguments).await;
         }
         let value = match name {
             "search_chunks" => {
@@ -798,7 +803,7 @@ fn object(properties: Value, required: &[&str]) -> Value {
 }
 
 pub fn tools() -> Vec<Value> {
-    vec![
+    let mut tools = vec![
         tool(
             "search_chunks",
             "Search the fubbik knowledge base for chunks",
@@ -1016,7 +1021,9 @@ pub fn tools() -> Vec<Value> {
                 &["taskId"],
             ),
         ),
-    ]
+    ];
+    tools.extend(tool_groups::coordination::definitions());
+    tools
 }
 
 fn requirement_step_schema() -> Value {
@@ -1067,8 +1074,8 @@ mod tests {
         let count = names.len();
         names.sort_unstable();
         names.dedup();
-        // Then all twenty-two tools are unique and expose object schemas
-        assert_eq!(count, 22);
+        // Then all twenty-eight tools are unique and expose object schemas
+        assert_eq!(count, 28);
         assert_eq!(names.len(), count);
         assert!(
             catalog

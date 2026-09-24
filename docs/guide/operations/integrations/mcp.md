@@ -28,7 +28,7 @@ Add to your AI tool's MCP settings:
 }
 ```
 
-The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration currently exposes twenty-two core, context, requirement, and quick-task tools. Plan, coordination, and matrix tools are being moved in subsequent migration slices and remain available through the legacy development package until their contract tests pass.
+The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration currently exposes twenty-eight core, context, requirement, task, and coordination tools. Plan and matrix tools are being moved in subsequent migration slices and remain available through the legacy development package until their contract tests pass.
 
 ## Available Tools
 
@@ -56,3 +56,9 @@ The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration cu
 | `add_task` | Add a quick task backed by a single-task plan |
 | `list_tasks` | List in-progress quick tasks |
 | `complete_task` | Complete a quick task |
+| `join_board` | Join or reconnect to a persistent plan board |
+| `read_board` | Read board tasks, claims, agents, and journal entries |
+| `claim_task` | Claim, renew, or release a task lease |
+| `update_board_task` | Transition a task held by an agent run |
+| `write_board_entry` | Write a durable board note or message |
+| `ack_board` | Persist a run's journal cursor and heartbeat |

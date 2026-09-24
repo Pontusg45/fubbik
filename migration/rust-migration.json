@@ -185,6 +185,8 @@
             },
             "statuses": {
                 "ported": [
+                    "coordination-format.ts",
+                    "coordination-tools.ts",
                     "context-tools.ts",
                     "requirement-tools.ts",
                     "suggestion-tools.ts",
@@ -196,8 +198,6 @@
                     "tools.ts"
                 ],
                 "pending": [
-                    "coordination-format.ts",
-                    "coordination-tools.ts",
                     "matrix-tools.ts",
                     "plan-tools.ts",
                     "plugin.ts"
@@ -239,7 +239,9 @@
         "mcpTools": {
             "root": "crates/fubbik-mcp/src",
             "expected": [
+                "ack_board",
                 "add_task",
+                "claim_task",
                 "complete_task",
                 "create_chunk",
                 "create_context_snapshot",
@@ -251,16 +253,20 @@
                 "get_context_snapshot",
                 "get_conventions",
                 "get_requirements",
+                "join_board",
                 "list_requirements",
                 "list_tasks",
                 "list_updates",
                 "propose_chunk_update",
+                "read_board",
                 "search_chunks",
                 "search_vocabulary",
                 "suggest_requirements",
                 "sync_claude_md",
+                "update_board_task",
                 "update_chunk",
-                "update_requirement_status"
+                "update_requirement_status",
+                "write_board_entry"
             ]
         }
     },
