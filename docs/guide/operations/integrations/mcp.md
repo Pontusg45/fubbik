@@ -28,7 +28,7 @@ Add to your AI tool's MCP settings:
 }
 ```
 
-The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration currently exposes twenty-eight core, context, requirement, task, and coordination tools. Plan and matrix tools are being moved in subsequent migration slices and remain available through the legacy development package until their contract tests pass.
+The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration currently exposes forty-one core, context, requirement, task, coordination, and plan tools. Matrix tools are being moved in the final MCP migration slice and remain available through the legacy development package until their contract tests pass.
 
 ## Available Tools
 
@@ -62,3 +62,16 @@ The MCP server uses newline-delimited JSON-RPC over stdio. The Rust migration cu
 | `update_board_task` | Transition a task held by an agent run |
 | `write_board_entry` | Write a durable board note or message |
 | `ack_board` | Persist a run's journal cursor and heartbeat |
+| `create_plan` | Create an implementation plan |
+| `list_plans` | List plans with optional filters |
+| `get_plan` | Get a plan with tasks, analysis, and requirements |
+| `update_plan` | Update plan metadata or status |
+| `link_requirement` | Link a requirement to a plan |
+| `unlink_requirement` | Remove a requirement link from a plan |
+| `add_analyze_item` | Add a plan analysis item |
+| `update_analyze_item` | Update a plan analysis item |
+| `delete_analyze_item` | Delete a plan analysis item |
+| `add_plan_task` | Add a task to a plan |
+| `update_plan_task` | Update a plan task |
+| `delete_plan_task` | Delete a plan task |
+| `link_plan_task_chunk` | Link a chunk to a plan task |

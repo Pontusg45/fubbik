@@ -89,6 +89,9 @@ impl Server {
         if tool_groups::coordination::handles(name) {
             return tool_groups::coordination::call(&self.api, name, &arguments).await;
         }
+        if tool_groups::plan::handles(name) {
+            return tool_groups::plan::call(&self.api, name, &arguments).await;
+        }
         let value = match name {
             "search_chunks" => {
                 let mut query = vec![(
@@ -1023,6 +1026,7 @@ pub fn tools() -> Vec<Value> {
         ),
     ];
     tools.extend(tool_groups::coordination::definitions());
+    tools.extend(tool_groups::plan::definitions());
     tools
 }
 
@@ -1074,8 +1078,8 @@ mod tests {
         let count = names.len();
         names.sort_unstable();
         names.dedup();
-        // Then all twenty-eight tools are unique and expose object schemas
-        assert_eq!(count, 28);
+        // Then all forty-one tools are unique and expose object schemas
+        assert_eq!(count, 41);
         assert_eq!(names.len(), count);
         assert!(
             catalog

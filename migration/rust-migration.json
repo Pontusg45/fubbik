@@ -188,6 +188,7 @@
                     "coordination-format.ts",
                     "coordination-tools.ts",
                     "context-tools.ts",
+                    "plan-tools.ts",
                     "requirement-tools.ts",
                     "suggestion-tools.ts",
                     "task-tools.ts"
@@ -199,7 +200,6 @@
                 ],
                 "pending": [
                     "matrix-tools.ts",
-                    "plan-tools.ts",
                     "plugin.ts"
                 ]
             },
@@ -240,20 +240,29 @@
             "root": "crates/fubbik-mcp/src",
             "expected": [
                 "ack_board",
+                "add_analyze_item",
+                "add_plan_task",
                 "add_task",
                 "claim_task",
                 "complete_task",
+                "create_plan",
                 "create_chunk",
                 "create_context_snapshot",
                 "create_requirement",
                 "create_requirements_batch",
+                "delete_analyze_item",
+                "delete_plan_task",
                 "get_chunk",
                 "get_context",
                 "get_context_for_task",
                 "get_context_snapshot",
                 "get_conventions",
+                "get_plan",
                 "get_requirements",
                 "join_board",
+                "link_plan_task_chunk",
+                "link_requirement",
+                "list_plans",
                 "list_requirements",
                 "list_tasks",
                 "list_updates",
@@ -263,8 +272,12 @@
                 "search_vocabulary",
                 "suggest_requirements",
                 "sync_claude_md",
+                "unlink_requirement",
+                "update_analyze_item",
                 "update_board_task",
                 "update_chunk",
+                "update_plan",
+                "update_plan_task",
                 "update_requirement_status",
                 "write_board_entry"
             ]
