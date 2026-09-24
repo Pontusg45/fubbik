@@ -233,9 +233,9 @@
         },
         {
             "id": "mcp-process",
-            "status": "partial",
+            "status": "ported",
             "evidence": "crates/fubbik/src/main.rs",
-            "exitCriterion": "The fubbik mcp command starts a working Rust MCP server instead of a placeholder."
+            "exitCriterion": "The fubbik mcp command serves the complete retained tool catalog over stdio without Node or Bun."
         }
     ],
     "executableContracts": {
