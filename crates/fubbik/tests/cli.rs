@@ -16,6 +16,10 @@ fn help_lists_serve_and_mcp() {
     );
     assert!(stdout.contains("mcp"), "missing mcp subcommand:\n{stdout}");
     assert!(
+        stdout.contains("mcp-tools"),
+        "missing mcp-tools subcommand:\n{stdout}"
+    );
+    assert!(
         stdout.contains("review"),
         "missing review subcommand:\n{stdout}"
     );
@@ -40,6 +44,23 @@ fn help_lists_serve_and_mcp() {
             "missing {command} subcommand:\n{stdout}"
         );
     }
+}
+
+#[test]
+fn mcp_tools_json_uses_the_live_rust_catalog() {
+    // Given the Rust CLI in machine-readable mode
+    // When the MCP tool catalog is requested
+    let out = Command::new(env!("CARGO_BIN_EXE_fubbik"))
+        .args(["--json", "mcp-tools"])
+        .output()
+        .expect("binary runs");
+
+    // Then the complete live tool catalog is returned
+    assert!(out.status.success());
+    let tools: Vec<serde_json::Value> = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(tools.len(), 53);
+    assert!(tools.iter().any(|tool| tool["name"] == "search_chunks"));
+    assert!(tools.iter().any(|tool| tool["name"] == "sync_claude_md"));
 }
 
 #[test]

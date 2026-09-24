@@ -34,6 +34,8 @@ enum Commands {
     },
     /// Run the MCP server over stdio
     Mcp,
+    /// List the MCP server's available tools
+    McpTools,
     /// Print the OpenAPI document to stdout
     Openapi,
     /// One-time backfill: project every existing `chunk_connection` row
@@ -238,6 +240,23 @@ async fn main() -> anyhow::Result<()> {
                 .unwrap_or_else(|| fubbik_cli::config::resolve_base_url(None))
                 .unwrap_or_else(|_| "http://localhost:3100".into());
             fubbik_mcp::run(&base).await
+        }
+        Commands::McpTools => {
+            let tools = fubbik_mcp::tools();
+            if output == fubbik_cli::OutputMode::Json {
+                println!("{}", serde_json::to_string_pretty(&tools)?);
+            } else {
+                println!("MCP Server Tools:\n");
+                for tool in &tools {
+                    println!(
+                        "  {:<32} {}",
+                        tool["name"].as_str().unwrap_or("?"),
+                        tool["description"].as_str().unwrap_or("")
+                    );
+                }
+                println!("\n{} tools", tools.len());
+            }
+            Ok(())
         }
         Commands::Openapi => {
             use utoipa::OpenApi;
