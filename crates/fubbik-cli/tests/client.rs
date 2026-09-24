@@ -91,6 +91,65 @@ async fn multi_file_context_joins_paths_and_forwards_the_space() {
 }
 
 #[tokio::test]
+async fn context_snapshot_creation_sends_all_supported_selectors() {
+    // Given a snapshot endpoint expecting plan, task, concept, files, and budget fields
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/context/snapshot"))
+        .and(wiremock::matchers::body_json(serde_json::json!({
+            "planId": "plan-1",
+            "taskId": "task-1",
+            "concept": "authentication",
+            "filePaths": ["src/auth.rs"],
+            "spaceId": "space-1",
+            "maxTokens": 5000
+        })))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "snapshotId": "snapshot-1", "tokenCount": 120, "chunkCount": 2,
+                "createdAt": "2026-09-24T10:00:00"
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When a snapshot is created through the client
+    let value = Client::new(server.uri())
+        .create_context_snapshot(
+            Some("plan-1"),
+            Some("task-1"),
+            Some("authentication"),
+            &["src/auth.rs".into()],
+            Some("space-1"),
+            5000,
+        )
+        .await
+        .unwrap();
+
+    // Then the snapshot identifier is returned
+    assert_eq!(value["snapshotId"], "snapshot-1");
+}
+
+#[tokio::test]
+async fn context_snapshot_deletion_accepts_an_empty_success_response() {
+    // Given a snapshot delete endpoint returning the legacy empty response
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("DELETE"))
+        .and(wiremock::matchers::path("/api/context/snapshot/snapshot-1"))
+        .respond_with(wiremock::ResponseTemplate::new(200))
+        .mount(&server)
+        .await;
+
+    // When the snapshot is deleted
+    let result = Client::new(server.uri())
+        .delete_context_snapshot("snapshot-1")
+        .await;
+
+    // Then the empty body is treated as success
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
 async fn plan_task_creation_uses_the_nested_plan_endpoint() {
     // Given
     let server = wiremock::MockServer::start().await;

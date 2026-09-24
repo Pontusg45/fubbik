@@ -3,10 +3,10 @@ use std::path::Path;
 use anyhow::{Context, Result, bail};
 use owo_colors::OwoColorize;
 
-use crate::ContextCommand;
 use crate::client::{ClaudeMdResponse, Client};
 use crate::config;
 use crate::output::{self, OutputMode};
+use crate::{ContextCommand, ContextSnapshotCommand};
 
 pub async fn run(client: &Client, command: ContextCommand, mode: OutputMode) -> Result<()> {
     match command {
@@ -116,6 +116,7 @@ pub async fn run(client: &Client, command: ContextCommand, mode: OutputMode) -> 
                 .await?;
             render_context(value, mode)
         }
+        ContextCommand::Snapshot { command } => run_snapshot(client, command, mode).await,
         ContextCommand::ClaudeMd {
             space,
             tag,
@@ -141,6 +142,116 @@ pub async fn run(client: &Client, command: ContextCommand, mode: OutputMode) -> 
             }
         }
     }
+}
+
+async fn run_snapshot(
+    client: &Client,
+    command: ContextSnapshotCommand,
+    mode: OutputMode,
+) -> Result<()> {
+    match command {
+        ContextSnapshotCommand::Create {
+            plan,
+            task,
+            about,
+            files,
+            max_tokens,
+            space,
+        } => {
+            let space = client.resolve_space(space.as_deref()).await?;
+            let value = client
+                .create_context_snapshot(
+                    plan.as_deref(),
+                    task.as_deref(),
+                    about.as_deref(),
+                    &files,
+                    space.as_deref(),
+                    checked_budget(max_tokens)?,
+                )
+                .await?;
+            let id = value["snapshotId"].as_str().unwrap_or("");
+            if !output::id_or_json(mode, id, &value)? {
+                println!(
+                    "Snapshot created: {id}\nChunks: {}  Tokens: {}\nCreated: {}",
+                    value["chunkCount"].as_u64().unwrap_or(0),
+                    value["tokenCount"].as_u64().unwrap_or(0),
+                    value["createdAt"].as_str().unwrap_or("")
+                );
+            }
+            Ok(())
+        }
+        ContextSnapshotCommand::Get { snapshot_id } => {
+            let value = client.get_context_snapshot(&snapshot_id).await?;
+            render_snapshot(&value, mode)
+        }
+        ContextSnapshotCommand::List => {
+            let snapshots = client.list_context_snapshots().await?;
+            match mode {
+                OutputMode::Json => output::json(&snapshots),
+                OutputMode::Quiet => {
+                    for snapshot in snapshots {
+                        if let Some(id) = snapshot["id"].as_str() {
+                            println!("{id}");
+                        }
+                    }
+                    Ok(())
+                }
+                OutputMode::Human => {
+                    if snapshots.is_empty() {
+                        println!("No snapshots found.");
+                    }
+                    for snapshot in snapshots {
+                        println!(
+                            "{}  tokens:{}  {}",
+                            snapshot["id"].as_str().unwrap_or("?"),
+                            snapshot["tokenCount"].as_u64().unwrap_or(0),
+                            snapshot["createdAt"].as_str().unwrap_or("")
+                        );
+                    }
+                    Ok(())
+                }
+            }
+        }
+        ContextSnapshotCommand::Delete { snapshot_id } => {
+            client.delete_context_snapshot(&snapshot_id).await?;
+            match mode {
+                OutputMode::Json => output::json(&serde_json::json!({
+                    "deleted": true, "snapshotId": snapshot_id
+                })),
+                _ => {
+                    println!("Deleted snapshot {snapshot_id}");
+                    Ok(())
+                }
+            }
+        }
+    }
+}
+
+fn render_snapshot(value: &serde_json::Value, mode: OutputMode) -> Result<()> {
+    if mode == OutputMode::Json {
+        return output::json(value);
+    }
+    println!(
+        "# Context Snapshot: {}\nCreated: {}  Tokens: {}  Chunks: {}\n",
+        value["id"].as_str().unwrap_or("?"),
+        value["createdAt"].as_str().unwrap_or(""),
+        value["tokenCount"].as_u64().unwrap_or(0),
+        value["chunks"].as_array().map_or(0, Vec::len)
+    );
+    if let Some(chunks) = value["chunks"].as_array() {
+        for chunk in chunks {
+            println!(
+                "## {} [{}]\n\n{}\n",
+                chunk["title"].as_str().unwrap_or("Untitled"),
+                chunk["type"].as_str().unwrap_or("unknown"),
+                chunk["content"].as_str().unwrap_or("")
+            );
+            if let Some(rationale) = chunk["rationale"].as_str() {
+                println!("Rationale: {rationale}\n");
+            }
+        }
+    }
+    Ok(())
 }
 
 pub async fn sync(

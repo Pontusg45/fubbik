@@ -156,6 +156,11 @@ pub enum ContextCommand {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Manage frozen context snapshots
+    Snapshot {
+        #[command(subcommand)]
+        command: ContextSnapshotCommand,
+    },
     /// Generate CLAUDE.md-compatible project instructions
     ClaudeMd {
         #[arg(short, long, visible_alias = "codebase")]
@@ -167,6 +172,31 @@ pub enum ContextCommand {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+}
+
+#[derive(Subcommand)]
+pub enum ContextSnapshotCommand {
+    /// Create a frozen context snapshot
+    Create {
+        #[arg(long)]
+        plan: Option<String>,
+        #[arg(long)]
+        task: Option<String>,
+        #[arg(long)]
+        about: Option<String>,
+        #[arg(long, value_delimiter = ',')]
+        files: Vec<String>,
+        #[arg(long, default_value = "8000")]
+        max_tokens: usize,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
+    /// Retrieve a frozen context snapshot
+    Get { snapshot_id: String },
+    /// List frozen context snapshots
+    List,
+    /// Delete a frozen context snapshot
+    Delete { snapshot_id: String },
 }
 
 #[derive(Subcommand)]

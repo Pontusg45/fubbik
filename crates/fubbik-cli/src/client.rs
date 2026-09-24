@@ -235,6 +235,24 @@ impl Client {
         Ok(res.text().await?)
     }
 
+    async fn send_empty(&self, method: reqwest::Method, path: &str) -> Result<()> {
+        let res = self
+            .http
+            .request(method, format!("{}{path}", self.base))
+            .send()
+            .await
+            .with_context(|| format!("could not reach fubbik at {}", self.base))?;
+        if !res.status().is_success() {
+            let status = res.status();
+            let detail = res.text().await.unwrap_or_default();
+            if detail.is_empty() {
+                bail!("request to {path} failed with {status}");
+            }
+            bail!("request to {path} failed with {status}: {detail}");
+        }
+        Ok(())
+    }
+
     pub async fn list_chunks(
         &self,
         chunk_type: Option<&str>,
@@ -401,6 +419,47 @@ impl Client {
             query.push(("spaceId", value.to_owned()));
         }
         self.get_json("/api/context/for-files", &query).await
+    }
+
+    pub async fn create_context_snapshot(
+        &self,
+        plan_id: Option<&str>,
+        task_id: Option<&str>,
+        concept: Option<&str>,
+        file_paths: &[String],
+        space_id: Option<&str>,
+        max_tokens: usize,
+    ) -> Result<serde_json::Value> {
+        self.send_json(
+            reqwest::Method::POST,
+            "/api/context/snapshot",
+            serde_json::json!({
+                "planId": plan_id,
+                "taskId": task_id,
+                "concept": concept,
+                "filePaths": file_paths,
+                "spaceId": space_id,
+                "maxTokens": max_tokens,
+            }),
+        )
+        .await
+    }
+
+    pub async fn get_context_snapshot(&self, id: &str) -> Result<serde_json::Value> {
+        self.get_json(&format!("/api/context/snapshot/{id}"), &[])
+            .await
+    }
+
+    pub async fn list_context_snapshots(&self) -> Result<Vec<serde_json::Value>> {
+        self.get_json("/api/context/snapshots", &[]).await
+    }
+
+    pub async fn delete_context_snapshot(&self, id: &str) -> Result<()> {
+        self.send_empty(
+            reqwest::Method::DELETE,
+            &format!("/api/context/snapshot/{id}"),
+        )
+        .await
     }
 
     pub async fn context_about(

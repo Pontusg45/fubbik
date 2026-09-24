@@ -113,6 +113,24 @@ fn context_help_exposes_semantic_about_lookup() {
     assert!(stdout.contains("about"));
     assert!(stdout.contains("for-plan"));
     assert!(stdout.contains("for-diff"));
+    assert!(stdout.contains("snapshot"));
+}
+
+#[test]
+fn context_snapshot_help_exposes_the_full_lifecycle() {
+    // Given the Rust CLI binary
+    // When snapshot help is requested
+    let out = Command::new(env!("CARGO_BIN_EXE_fubbik"))
+        .args(["context", "snapshot", "--help"])
+        .output()
+        .expect("binary runs");
+
+    // Then all legacy snapshot operations are available
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    for operation in ["create", "get", "list", "delete"] {
+        assert!(stdout.contains(operation), "missing {operation}:\n{stdout}");
+    }
 }
 
 #[test]
