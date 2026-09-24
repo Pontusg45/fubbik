@@ -368,6 +368,41 @@ impl Client {
         self.get_json("/api/context/for-file", &query).await
     }
 
+    pub async fn context_for_plan(
+        &self,
+        plan_id: &str,
+        max_tokens: usize,
+        format: &str,
+    ) -> Result<serde_json::Value> {
+        self.get_json(
+            "/api/context/for-plan",
+            &[
+                ("planId", plan_id.to_owned()),
+                ("maxTokens", max_tokens.to_string()),
+                ("format", format.to_owned()),
+            ],
+        )
+        .await
+    }
+
+    pub async fn context_for_files(
+        &self,
+        paths: &[String],
+        space: Option<&str>,
+        max_tokens: usize,
+        format: &str,
+    ) -> Result<serde_json::Value> {
+        let mut query = vec![
+            ("paths", paths.join(",")),
+            ("maxTokens", max_tokens.to_string()),
+            ("format", format.to_owned()),
+        ];
+        if let Some(value) = space {
+            query.push(("spaceId", value.to_owned()));
+        }
+        self.get_json("/api/context/for-files", &query).await
+    }
+
     pub async fn context_about(
         &self,
         concept: &str,

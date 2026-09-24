@@ -74,6 +74,48 @@ pub async fn run(client: &Client, command: ContextCommand, mode: OutputMode) -> 
                 .await?;
             render_context(value, mode)
         }
+        ContextCommand::ForPlan {
+            plan_id,
+            max_tokens,
+            space: _,
+        } => {
+            let format = context_format(mode);
+            let value = client
+                .context_for_plan(&plan_id, checked_budget(max_tokens)?, format)
+                .await?;
+            render_context(value, mode)
+        }
+        ContextCommand::ForDiff {
+            staged,
+            max_tokens,
+            space,
+        } => {
+            let paths = changed_files(staged)?;
+            if paths.is_empty() {
+                return match mode {
+                    OutputMode::Json => {
+                        output::json(&serde_json::json!({ "files": [], "chunks": [] }))
+                    }
+                    _ => {
+                        println!("No changed files.");
+                        Ok(())
+                    }
+                };
+            }
+            let (settings, _) = config::load()?;
+            let space = client
+                .resolve_space(space.as_deref().or(settings.space.as_deref()))
+                .await?;
+            let value = client
+                .context_for_files(
+                    &paths,
+                    space.as_deref(),
+                    checked_budget(max_tokens)?,
+                    context_format(mode),
+                )
+                .await?;
+            render_context(value, mode)
+        }
         ContextCommand::ClaudeMd {
             space,
             tag,
@@ -146,6 +188,34 @@ fn checked_budget(value: usize) -> Result<usize> {
         bail!("max tokens must be greater than zero");
     }
     Ok(value)
+}
+
+fn context_format(mode: OutputMode) -> &'static str {
+    if mode == OutputMode::Json {
+        "structured-json"
+    } else {
+        "structured-md"
+    }
+}
+
+fn changed_files(staged: bool) -> Result<Vec<String>> {
+    let mut command = std::process::Command::new("git");
+    command.args(["diff", "--name-only"]);
+    if staged {
+        command.arg("--staged");
+    }
+    let result = command.output().context("could not run git diff")?;
+    if !result.status.success() {
+        bail!(
+            "git diff failed: {}",
+            String::from_utf8_lossy(&result.stderr).trim()
+        );
+    }
+    Ok(String::from_utf8(result.stdout)?
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(str::to_owned)
+        .collect())
 }
 
 fn render_context(value: serde_json::Value, mode: OutputMode) -> Result<()> {

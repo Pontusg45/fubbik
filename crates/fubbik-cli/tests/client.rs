@@ -28,6 +28,69 @@ async fn context_about_forwards_the_semantic_query_contract() {
 }
 
 #[tokio::test]
+async fn plan_context_forwards_the_plan_budget_and_format() {
+    // Given a plan context endpoint with an exact query contract
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/context/for-plan"))
+        .and(wiremock::matchers::query_param("planId", "plan-1"))
+        .and(wiremock::matchers::query_param("maxTokens", "6000"))
+        .and(wiremock::matchers::query_param("format", "structured-json"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "format": "structured-json", "sections": [], "totalChunks": 0
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When plan-scoped context is requested
+    let value = Client::new(server.uri())
+        .context_for_plan("plan-1", 6000, "structured-json")
+        .await
+        .unwrap();
+
+    // Then the structured response is returned
+    assert_eq!(value["format"], "structured-json");
+}
+
+#[tokio::test]
+async fn multi_file_context_joins_paths_and_forwards_the_space() {
+    // Given a multi-file context endpoint with two changed paths
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/context/for-files"))
+        .and(wiremock::matchers::query_param(
+            "paths",
+            "src/lib.rs,src/main.rs",
+        ))
+        .and(wiremock::matchers::query_param("spaceId", "space-1"))
+        .and(wiremock::matchers::query_param("maxTokens", "8000"))
+        .and(wiremock::matchers::query_param("format", "structured-md"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "format": "structured-md", "content": "# Context", "totalChunks": 1
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When context is requested for both paths
+    let value = Client::new(server.uri())
+        .context_for_files(
+            &["src/lib.rs".into(), "src/main.rs".into()],
+            Some("space-1"),
+            8000,
+            "structured-md",
+        )
+        .await
+        .unwrap();
+
+    // Then the endpoint response is returned intact
+    assert_eq!(value["content"], "# Context");
+}
+
+#[tokio::test]
 async fn plan_task_creation_uses_the_nested_plan_endpoint() {
     // Given
     let server = wiremock::MockServer::start().await;

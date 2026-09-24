@@ -109,7 +109,10 @@ fn context_help_exposes_semantic_about_lookup() {
 
     // Then the migrated semantic lookup is available
     assert!(out.status.success());
-    assert!(String::from_utf8_lossy(&out.stdout).contains("about"));
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("about"));
+    assert!(stdout.contains("for-plan"));
+    assert!(stdout.contains("for-diff"));
 }
 
 #[test]

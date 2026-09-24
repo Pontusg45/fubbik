@@ -139,6 +139,23 @@ pub enum ContextCommand {
         #[arg(long, default_value = "structured-md", value_parser = ["structured-md", "structured-json", "json-legacy"])]
         format: String,
     },
+    /// Get context scoped to a plan
+    ForPlan {
+        plan_id: String,
+        #[arg(short = 't', long, default_value = "8000")]
+        max_tokens: usize,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
+    /// Get context for files changed in the working tree
+    ForDiff {
+        #[arg(long)]
+        staged: bool,
+        #[arg(short = 't', long, default_value = "8000")]
+        max_tokens: usize,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
     /// Generate CLAUDE.md-compatible project instructions
     ClaudeMd {
         #[arg(short, long, visible_alias = "codebase")]
