@@ -30,6 +30,32 @@ function inventoryFiles(spec, root) {
         .sort();
 }
 
+function rustToolNames(spec, root) {
+    const sourceRoot = join(root, spec.root);
+    const files = filesBelow(sourceRoot).filter((path) => path.endsWith(".rs"));
+    const names = files.flatMap((path) =>
+        [...readFileSync(path, "utf8").matchAll(/\btool\(\s*"([^"]+)"/g)].map((match) => match[1]),
+    );
+    return names.sort();
+}
+
+function compareContract(name, expected, actual, errors) {
+    const duplicateExpected = expected.filter((value, index) => expected.indexOf(value) !== index);
+    const duplicateActual = actual.filter((value, index) => actual.indexOf(value) !== index);
+    if (duplicateExpected.length) {
+        errors.push(`${name} has duplicate expected entries: ${[...new Set(duplicateExpected)].join(", ")}`);
+    }
+    if (duplicateActual.length) {
+        errors.push(`${name} has duplicate Rust entries: ${[...new Set(duplicateActual)].join(", ")}`);
+    }
+    const expectedSet = new Set(expected);
+    const actualSet = new Set(actual);
+    const missing = expected.filter((value) => !actualSet.has(value));
+    const unexpected = actual.filter((value) => !expectedSet.has(value));
+    if (missing.length) errors.push(`${name} is missing Rust entries: ${missing.join(", ")}`);
+    if (unexpected.length) errors.push(`${name} has untracked Rust entries: ${unexpected.join(", ")}`);
+}
+
 export function validateMigration(manifest, root = repoRoot) {
     const errors = [];
     if (manifest.version !== 1) errors.push("manifest.version must be 1");
@@ -80,6 +106,15 @@ export function validateMigration(manifest, root = repoRoot) {
         if (dependency.evidence && !existsSync(join(root, dependency.evidence))) {
             errors.push(`${dependency.id} evidence does not exist: ${dependency.evidence}`);
         }
+    }
+
+    const mcpTools = manifest.executableContracts?.mcpTools;
+    if (!mcpTools) {
+        errors.push("executableContracts.mcpTools is required");
+    } else if (!existsSync(join(root, mcpTools.root))) {
+        errors.push(`mcpTools root does not exist: ${mcpTools.root}`);
+    } else {
+        compareContract("mcpTools", [...mcpTools.expected].sort(), rustToolNames(mcpTools, root), errors);
     }
 
     if (!(manifest.cutoverGates?.length > 0)) errors.push("cutoverGates must not be empty");

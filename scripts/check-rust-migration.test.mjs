@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { checkMigration, validateMigration } from "./check-rust-migration.mjs";
@@ -28,6 +29,9 @@ test("an untracked legacy source fails the contract", () => {
                 exitCriterion: "all commands are classified"
             }
         },
+        executableContracts: {
+            mcpTools: { root: "crates/fubbik-mcp/src", expected: [] }
+        },
         runtimeDependencies: [],
         cutoverGates: ["test"]
     };
@@ -37,4 +41,16 @@ test("an untracked legacy source fails the contract", () => {
 
     // Then the omitted sources are reported
     assert.ok(errors.some((error) => error.includes("untracked sources")));
+});
+
+test("a missing Rust MCP tool fails the executable contract", () => {
+    // Given the checked-in manifest with one additional expected MCP tool
+    const manifest = structuredClone(JSON.parse(readFileSync(new URL("../migration/rust-migration.json", import.meta.url))));
+    manifest.executableContracts.mcpTools.expected.push("missing_tool");
+
+    // When the executable contract is checked
+    const errors = validateMigration(manifest);
+
+    // Then the absent Rust registration is identified by name
+    assert.ok(errors.some((error) => error.includes("mcpTools is missing Rust entries: missing_tool")));
 });

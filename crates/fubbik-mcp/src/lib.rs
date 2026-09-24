@@ -1,46 +1,14 @@
 use anyhow::{Context, Result, bail};
 use reqwest::Method;
 use serde_json::{Value, json};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+mod api;
+mod protocol;
+
+use api::ApiClient;
+pub use protocol::run;
 
 const PROTOCOL_VERSION: &str = "2025-06-18";
-
-pub async fn run(base_url: &str) -> Result<()> {
-    let server = Server::new(base_url);
-    let mut lines = BufReader::new(tokio::io::stdin()).lines();
-    let mut stdout = tokio::io::stdout();
-
-    while let Some(line) = lines.next_line().await? {
-        if line.trim().is_empty() {
-            continue;
-        }
-        let request: Value = match serde_json::from_str(&line) {
-            Ok(request) => request,
-            Err(error) => {
-                write_message(
-                    &mut stdout,
-                    &error_response(Value::Null, -32700, format!("parse error: {error}")),
-                )
-                .await?;
-                continue;
-            }
-        };
-
-        if let Some(response) = server.handle(request).await {
-            write_message(&mut stdout, &response).await?;
-        }
-    }
-    Ok(())
-}
-
-async fn write_message(writer: &mut tokio::io::Stdout, message: &Value) -> Result<()> {
-    writer
-        .write_all(serde_json::to_string(message)?.as_bytes())
-        .await?;
-    writer.write_all(b"\n").await?;
-    writer.flush().await?;
-    Ok(())
-}
 
 pub struct Server {
     api: ApiClient,
@@ -527,51 +495,6 @@ impl Server {
     }
 }
 
-struct ApiClient {
-    base: String,
-    http: reqwest::Client,
-}
-
-impl ApiClient {
-    fn new(base: impl Into<String>) -> Self {
-        Self {
-            base: base.into().trim_end_matches('/').to_string(),
-            http: reqwest::Client::new(),
-        }
-    }
-
-    async fn get(&self, path: &str, query: &[(&str, String)]) -> Result<Value> {
-        let response = self
-            .http
-            .get(format!("{}{path}", self.base))
-            .query(query)
-            .send()
-            .await
-            .with_context(|| format!("could not reach fubbik at {}", self.base))?;
-        decode(response, path).await
-    }
-
-    async fn send(&self, method: Method, path: &str, body: Value) -> Result<Value> {
-        let response = self
-            .http
-            .request(method, format!("{}{path}", self.base))
-            .json(&body)
-            .send()
-            .await
-            .with_context(|| format!("could not reach fubbik at {}", self.base))?;
-        decode(response, path).await
-    }
-}
-
-async fn decode(response: reqwest::Response, path: &str) -> Result<Value> {
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        bail!("API {status} for {path}: {body}");
-    }
-    Ok(response.json().await?)
-}
-
 fn required_string<'a>(value: &'a Value, field: &str) -> Result<&'a str> {
     value
         .get(field)
@@ -866,7 +789,7 @@ fn filter_vocabulary(mut value: Value, category: Option<&str>) -> Value {
     value
 }
 
-fn error_response(id: Value, code: i64, message: String) -> Value {
+pub(crate) fn error_response(id: Value, code: i64, message: String) -> Value {
     json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } })
 }
 
