@@ -448,6 +448,23 @@ pub enum Command {
         #[arg(long = "space", visible_alias = "codebase", value_delimiter = ',')]
         spaces: Vec<String>,
     },
+    /// Quickly create a chunk from a title and optional piped content
+    Quick {
+        #[arg(num_args = 0..)]
+        title_words: Vec<String>,
+        #[arg(short, long)]
+        title: Option<String>,
+        #[arg(long = "type", default_value = "note")]
+        chunk_type: String,
+        #[arg(long, value_delimiter = ',')]
+        tags: Vec<String>,
+        #[arg(long)]
+        global: bool,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+        #[arg(long = "tag")]
+        update_tag: Option<String>,
+    },
     /// Show a chunk by id
     Get { id: String },
     /// Print only a chunk's content
@@ -624,6 +641,46 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
                 &client, &title, &content, chunk_type, &tags, &spaces, output,
             )
             .await
+        }
+        Command::Quick {
+            title_words,
+            title,
+            chunk_type,
+            tags,
+            global,
+            space,
+            update_tag,
+        } => {
+            use std::io::{IsTerminal, Read};
+
+            let title = title.unwrap_or_else(|| title_words.join(" "));
+            if title.trim().is_empty() {
+                anyhow::bail!("title is required; pass it as arguments or use --title");
+            }
+            let mut content = String::new();
+            if !std::io::stdin().is_terminal() {
+                std::io::stdin().read_to_string(&mut content)?;
+            }
+            let space = if global {
+                None
+            } else {
+                client.resolve_space(space.as_deref()).await?
+            };
+            let spaces = space.into_iter().collect::<Vec<_>>();
+            let chunk = client
+                .create_chunk_with_update_tag(
+                    &title,
+                    &content,
+                    &chunk_type,
+                    &tags,
+                    &spaces,
+                    update_tag.as_deref(),
+                )
+                .await?;
+            if !output::id_or_json(output, &chunk.id, &chunk)? {
+                println!("created {} {}", chunk.id, chunk.title);
+            }
+            Ok(())
         }
         Command::Get { id } => commands::get::run(&client, &id, output).await,
         Command::Cat { id } => commands::get::cat(&client, &id, output).await,

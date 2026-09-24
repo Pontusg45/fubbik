@@ -1,6 +1,46 @@
 use fubbik_cli::client::Client;
 
 #[tokio::test]
+async fn quick_chunk_creation_forwards_space_tags_and_update_tag() {
+    // Given a chunk endpoint expecting the quick-command creation contract
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/chunks"))
+        .and(wiremock::matchers::body_json(serde_json::json!({
+            "title": "Remember this",
+            "content": "Piped details\n",
+            "type": "note",
+            "tags": ["agent", "memory"],
+            "spaceIds": ["space-1"],
+            "updateTag": "session-42"
+        })))
+        .respond_with(
+            wiremock::ResponseTemplate::new(201).set_body_json(serde_json::json!({
+                "id": "chunk-1", "title": "Remember this", "content": "Piped details\n",
+                "type": "note", "updatedAt": "2026-09-24T10:00:00"
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When a quick chunk is created with all optional metadata
+    let chunk = Client::new(server.uri())
+        .create_chunk_with_update_tag(
+            "Remember this",
+            "Piped details\n",
+            "note",
+            &["agent".into(), "memory".into()],
+            &["space-1".into()],
+            Some("session-42"),
+        )
+        .await
+        .unwrap();
+
+    // Then the created chunk is returned
+    assert_eq!(chunk.id, "chunk-1");
+}
+
+#[tokio::test]
 async fn context_about_forwards_the_semantic_query_contract() {
     // Given
     let server = wiremock::MockServer::start().await;

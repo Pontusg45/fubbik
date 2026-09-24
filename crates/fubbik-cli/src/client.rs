@@ -283,6 +283,19 @@ impl Client {
         tags: &[String],
         spaces: &[String],
     ) -> Result<Chunk> {
+        self.create_chunk_with_update_tag(title, content, chunk_type, tags, spaces, None)
+            .await
+    }
+
+    pub async fn create_chunk_with_update_tag(
+        &self,
+        title: &str,
+        content: &str,
+        chunk_type: &str,
+        tags: &[String],
+        spaces: &[String],
+        update_tag: Option<&str>,
+    ) -> Result<Chunk> {
         let res = self
             .http
             .post(format!("{}/api/chunks", self.base))
@@ -292,6 +305,7 @@ impl Client {
                 "type": chunk_type,
                 "tags": tags,
                 "spaceIds": spaces,
+                "updateTag": update_tag,
             }))
             .send()
             .await

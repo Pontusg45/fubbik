@@ -24,6 +24,10 @@ fn help_lists_serve_and_mcp() {
         "missing review subcommand:\n{stdout}"
     );
     assert!(
+        stdout.contains("quick"),
+        "missing quick subcommand:\n{stdout}"
+    );
+    assert!(
         stdout.contains("plan"),
         "missing plan subcommand:\n{stdout}"
     );
