@@ -41,7 +41,7 @@ fn help_lists_serve_and_mcp() {
     );
     for command in [
         "space", "tag", "link", "unlink", "req", "stats", "enrich", "stale", "status", "docs",
-        "chunk", "open", "generate", "updates", "why", "suggest", "gaps",
+        "chunk", "open", "generate", "updates", "why", "suggest", "gaps", "recap",
     ] {
         assert!(
             stdout.contains(command),

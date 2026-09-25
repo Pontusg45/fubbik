@@ -584,6 +584,13 @@ pub enum Command {
         #[arg(long, default_value = "30")]
         limit: usize,
     },
+    /// Summarize recent knowledge base changes
+    Recap {
+        #[arg(long, default_value = "7d")]
+        since: String,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
     /// Regenerate the configured CLAUDE.md context file
     #[command(visible_alias = "sync-claude-md")]
     Sync {
@@ -808,6 +815,9 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
             space,
             limit,
         } => commands::gaps::run(&client, &directory, space.as_deref(), limit, output).await,
+        Command::Recap { since, space } => {
+            commands::recap::run(&client, &since, space.as_deref(), output).await
+        }
         Command::Sync {
             output: path,
             space,

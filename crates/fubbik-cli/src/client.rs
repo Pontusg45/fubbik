@@ -14,6 +14,19 @@ pub struct Chunk {
     pub updated_at: String,
 }
 
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecapChunk {
+    pub id: String,
+    pub title: String,
+    #[serde(rename = "type")]
+    pub chunk_type: String,
+    pub created_at: String,
+    pub updated_at: String,
+    #[serde(default)]
+    pub tags: Vec<serde_json::Value>,
+}
+
 #[derive(Debug, serde::Deserialize)]
 #[serde(untagged)]
 enum ChunkResponse {
@@ -155,6 +168,11 @@ struct ChunkListResponse {
     chunks: Vec<Chunk>,
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct RecapChunkListResponse {
+    chunks: Vec<RecapChunk>,
+}
+
 pub struct Client {
     base: String,
     http: reqwest::Client,
@@ -267,6 +285,23 @@ impl Client {
             query.push(("search", s.to_string()));
         }
         let res: ChunkListResponse = self.get_json("/api/chunks", &query).await?;
+        Ok(res.chunks)
+    }
+
+    pub async fn list_recent_chunks(
+        &self,
+        days: u32,
+        space_id: Option<&str>,
+    ) -> Result<Vec<RecapChunk>> {
+        let mut query = vec![
+            ("after", days.to_string()),
+            ("sort", "updated".to_string()),
+            ("limit", "100".to_string()),
+        ];
+        if let Some(space_id) = space_id {
+            query.push(("spaceId", space_id.to_string()));
+        }
+        let res: RecapChunkListResponse = self.get_json("/api/chunks", &query).await?;
         Ok(res.chunks)
     }
 

@@ -664,6 +664,40 @@ async fn list_builds_the_expected_query_string() {
 }
 
 #[tokio::test]
+async fn recent_chunk_listing_forwards_recap_filters() {
+    // Given a recent-chunk endpoint scoped to one space
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/chunks"))
+        .and(wiremock::matchers::query_param("after", "14"))
+        .and(wiremock::matchers::query_param("sort", "updated"))
+        .and(wiremock::matchers::query_param("limit", "100"))
+        .and(wiremock::matchers::query_param("spaceId", "space-1"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "chunks": [{
+                    "id": "chunk-1", "title": "Changed", "type": "note",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "updatedAt": "2026-01-02T00:00:00Z"
+                }],
+                "total": 1, "limit": 100, "offset": 0
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When the recap's recent chunks are requested
+    let chunks = Client::new(server.uri())
+        .list_recent_chunks(14, Some("space-1"))
+        .await
+        .unwrap();
+
+    // Then the typed chunk is returned
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(chunks[0].id, "chunk-1");
+}
+
+#[tokio::test]
 async fn surfaces_server_errors_as_anyhow() {
     // Given
     let server = wiremock::MockServer::start().await;
