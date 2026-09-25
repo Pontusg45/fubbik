@@ -171,6 +171,12 @@ struct ChunkListResponse {
 #[derive(Debug, serde::Deserialize)]
 struct RecapChunkListResponse {
     chunks: Vec<RecapChunk>,
+    total: i64,
+}
+
+pub struct RecentChunks {
+    pub chunks: Vec<RecapChunk>,
+    pub total: i64,
 }
 
 pub struct Client {
@@ -292,7 +298,7 @@ impl Client {
         &self,
         days: u32,
         space_id: Option<&str>,
-    ) -> Result<Vec<RecapChunk>> {
+    ) -> Result<RecentChunks> {
         let mut query = vec![
             ("after", days.to_string()),
             ("sort", "updated".to_string()),
@@ -302,7 +308,10 @@ impl Client {
             query.push(("spaceId", space_id.to_string()));
         }
         let res: RecapChunkListResponse = self.get_json("/api/chunks", &query).await?;
-        Ok(res.chunks)
+        Ok(RecentChunks {
+            chunks: res.chunks,
+            total: res.total,
+        })
     }
 
     pub async fn list_prompt_chunks(&self, search: Option<&str>) -> Result<Vec<Chunk>> {

@@ -608,6 +608,13 @@ pub enum Command {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Show knowledge base changes since a date
+    KbDiff {
+        #[arg(long, default_value = "7d")]
+        since: String,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
     /// Manage reusable prompt templates
     Prompt {
         #[command(subcommand)]
@@ -839,6 +846,9 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         } => commands::gaps::run(&client, &directory, space.as_deref(), limit, output).await,
         Command::Recap { since, space } => {
             commands::recap::run(&client, &since, space.as_deref(), output).await
+        }
+        Command::KbDiff { since, space } => {
+            commands::kb_diff::run(&client, &since, space.as_deref(), output).await
         }
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,
         Command::Sync {

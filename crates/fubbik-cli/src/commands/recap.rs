@@ -27,8 +27,8 @@ pub async fn run(
     let since =
         (Utc::now() - Duration::days(i64::from(days))).to_rfc3339_opts(SecondsFormat::Millis, true);
     let space_id = client.resolve_space(space).await?;
-    let chunks = client.list_recent_chunks(days, space_id.as_deref()).await?;
-    let recap = summarize(chunks, since);
+    let page = client.list_recent_chunks(days, space_id.as_deref()).await?;
+    let recap = summarize(page.chunks, since);
 
     match mode {
         OutputMode::Json => output::json(&recap),

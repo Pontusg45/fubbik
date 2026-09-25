@@ -687,14 +687,15 @@ async fn recent_chunk_listing_forwards_recap_filters() {
         .await;
 
     // When the recap's recent chunks are requested
-    let chunks = Client::new(server.uri())
+    let page = Client::new(server.uri())
         .list_recent_chunks(14, Some("space-1"))
         .await
         .unwrap();
 
     // Then the typed chunk is returned
-    assert_eq!(chunks.len(), 1);
-    assert_eq!(chunks[0].id, "chunk-1");
+    assert_eq!(page.total, 1);
+    assert_eq!(page.chunks.len(), 1);
+    assert_eq!(page.chunks[0].id, "chunk-1");
 }
 
 #[tokio::test]
