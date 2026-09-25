@@ -151,6 +151,7 @@
                     "codebase.ts",
                     "context-group.ts",
                     "requirements.ts",
+                    "tag-group.ts",
                     "tags.ts"
                 ],
                 "partial": [],
@@ -163,7 +164,6 @@
                     "maintain.ts",
                     "matrix.ts",
                     "setup.ts",
-                    "tag-group.ts",
                     "tag-normalize.ts",
                     "watch.ts"
                 ],
