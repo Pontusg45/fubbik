@@ -61,6 +61,7 @@ fn help_lists_serve_and_mcp() {
         "prompt",
         "kb-diff",
         "check-files",
+        "bulk-add",
         "hooks",
     ] {
         assert!(

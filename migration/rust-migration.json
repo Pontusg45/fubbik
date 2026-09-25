@@ -101,6 +101,7 @@
             "statuses": {
                 "ported": [
                     "add.ts",
+                    "bulk-add.ts",
                     "cat.ts",
                     "check-files.ts",
                     "chunk.ts",
@@ -153,7 +154,6 @@
                 ],
                 "partial": [],
                 "pending": [
-                    "bulk-add.ts",
                     "cleanup.ts",
                     "diff.ts",
                     "export-site.ts",
