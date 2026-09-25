@@ -49,8 +49,12 @@ fn flatten_detail(mut detail: serde_json::Value) -> serde_json::Value {
     let Some(serde_json::Value::Object(mut chunk)) = chunk else {
         return detail;
     };
-    if let Some(tags) = detail.get("tags") {
-        chunk.insert("tags".into(), tags.clone());
+    if let serde_json::Value::Object(metadata) = detail {
+        for (key, value) in metadata {
+            if key != "chunk" {
+                chunk.insert(key, value);
+            }
+        }
     }
     serde_json::Value::Object(chunk)
 }

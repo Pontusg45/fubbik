@@ -126,6 +126,7 @@
                     "import-requirements.ts",
                     "init.ts",
                     "kb-diff.ts",
+                    "lint.ts",
                     "link.ts",
                     "list.ts",
                     "mcp-tools.ts",
@@ -160,7 +161,6 @@
                 "partial": [],
                 "pending": [
                     "cleanup.ts",
-                    "lint.ts",
                     "maintain.ts",
                     "matrix.ts",
                     "setup.ts",

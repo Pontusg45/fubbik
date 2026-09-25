@@ -821,6 +821,31 @@ async fn chunk_page_forwards_export_pagination_and_scope() {
 }
 
 #[tokio::test]
+async fn knowledge_health_forwards_the_lint_space_scope() {
+    // Given a space-scoped knowledge health endpoint
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/health/knowledge"))
+        .and(wiremock::matchers::query_param("spaceId", "space-1"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "orphans":{"chunks":[],"total":0}, "stale":{"chunks":[],"total":0}
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When lint requests health for that space
+    let health = Client::new(server.uri())
+        .knowledge_health(Some("space-1"))
+        .await
+        .unwrap();
+
+    // Then the scoped report is returned
+    assert_eq!(health["orphans"]["total"], 0);
+}
+
+#[tokio::test]
 async fn surfaces_server_errors_as_anyhow() {
     // Given
     let server = wiremock::MockServer::start().await;

@@ -17,6 +17,7 @@ pub mod hooks;
 pub mod import;
 pub mod input;
 pub mod kb_diff;
+pub mod lint;
 pub mod list;
 pub mod open;
 pub mod plan;

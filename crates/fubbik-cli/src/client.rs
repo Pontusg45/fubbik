@@ -638,6 +638,13 @@ impl Client {
         self.get_json("/api/health", &[]).await
     }
 
+    pub async fn knowledge_health(&self, space_id: Option<&str>) -> Result<serde_json::Value> {
+        let query = space_id
+            .map(|space_id| vec![("spaceId", space_id.to_owned())])
+            .unwrap_or_default();
+        self.get_json("/api/health/knowledge", &query).await
+    }
+
     pub async fn list_spaces(&self) -> Result<Vec<Space>> {
         self.get_json("/api/spaces", &[]).await
     }

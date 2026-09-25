@@ -66,6 +66,7 @@ fn help_lists_serve_and_mcp() {
         "import",
         "export",
         "export-site",
+        "lint",
         "hooks",
     ] {
         assert!(

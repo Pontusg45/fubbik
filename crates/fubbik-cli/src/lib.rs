@@ -670,6 +670,15 @@ pub enum Command {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Check knowledge chunks for quality issues
+    Lint {
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+        #[arg(long)]
+        fix: bool,
+        #[arg(long)]
+        score: bool,
+    },
     /// Manage chunk-aware Git hooks
     Hooks {
         #[command(subcommand)]
@@ -940,6 +949,9 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
             output: output_dir,
             space,
         } => commands::export_site::run(&client, &output_dir, space.as_deref(), output).await,
+        Command::Lint { space, fix, score } => {
+            commands::lint::run(&client, space.as_deref(), fix, score, output).await
+        }
         Command::Hooks { command } => commands::hooks::run(command, output),
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,
         Command::Sync {
