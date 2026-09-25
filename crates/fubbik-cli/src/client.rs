@@ -166,6 +166,12 @@ struct RequirementMutationResponse {
 #[derive(Debug, serde::Deserialize)]
 struct ChunkListResponse {
     chunks: Vec<Chunk>,
+    total: i64,
+}
+
+pub struct ChunkPage {
+    pub chunks: Vec<Chunk>,
+    pub total: i64,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -322,6 +328,26 @@ impl Client {
         }
         let res: ChunkListResponse = self.get_json("/api/chunks", &query).await?;
         Ok(res.chunks)
+    }
+
+    pub async fn list_chunk_page(&self, space_id: Option<&str>, offset: u32) -> Result<ChunkPage> {
+        let mut query = vec![
+            ("limit", "100".to_string()),
+            ("offset", offset.to_string()),
+            ("sort", "alpha".to_string()),
+        ];
+        if let Some(space_id) = space_id {
+            query.push(("spaceId", space_id.to_owned()));
+        }
+        let response: ChunkListResponse = self.get_json("/api/chunks", &query).await?;
+        Ok(ChunkPage {
+            chunks: response.chunks,
+            total: response.total,
+        })
+    }
+
+    pub async fn get_chunk_detail(&self, id: &str) -> Result<serde_json::Value> {
+        self.get_json(&format!("/api/chunks/{id}"), &[]).await
     }
 
     pub async fn get_chunk(&self, id: &str) -> Result<Chunk> {

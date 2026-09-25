@@ -792,6 +792,35 @@ async fn markdown_chunk_import_sends_relative_paths_and_space() {
 }
 
 #[tokio::test]
+async fn chunk_page_forwards_export_pagination_and_scope() {
+    // Given the second page of a space-scoped alphabetical chunk listing
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/chunks"))
+        .and(wiremock::matchers::query_param("limit", "100"))
+        .and(wiremock::matchers::query_param("offset", "100"))
+        .and(wiremock::matchers::query_param("sort", "alpha"))
+        .and(wiremock::matchers::query_param("spaceId", "space-1"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "chunks": [], "total": 100, "limit": 100, "offset": 100
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When the export helper requests that page
+    let page = Client::new(server.uri())
+        .list_chunk_page(Some("space-1"), 100)
+        .await
+        .unwrap();
+
+    // Then the total and empty terminal page are preserved
+    assert_eq!(page.total, 100);
+    assert!(page.chunks.is_empty());
+}
+
+#[tokio::test]
 async fn surfaces_server_errors_as_anyhow() {
     // Given
     let server = wiremock::MockServer::start().await;

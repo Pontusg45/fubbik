@@ -654,6 +654,15 @@ pub enum Command {
         #[arg(long = "no-recursive", action = clap::ArgAction::SetFalse, default_value_t = true)]
         recursive: bool,
     },
+    /// Export the knowledge base
+    Export {
+        #[arg(long, default_value = "json", value_parser = ["json", "md"])]
+        format: String,
+        #[arg(long, default_value = "export")]
+        out: PathBuf,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
     /// Manage chunk-aware Git hooks
     Hooks {
         #[command(subcommand)]
@@ -916,6 +925,9 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
                 output,
             )
             .await
+        }
+        Command::Export { format, out, space } => {
+            commands::export::run(&client, &format, &out, space.as_deref(), output).await
         }
         Command::Hooks { command } => commands::hooks::run(command, output),
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,

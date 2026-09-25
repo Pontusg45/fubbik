@@ -64,6 +64,7 @@ fn help_lists_serve_and_mcp() {
         "bulk-add",
         "seed-conventions",
         "import",
+        "export",
         "hooks",
     ] {
         assert!(
