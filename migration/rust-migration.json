@@ -142,6 +142,7 @@
                     "review.ts",
                     "search.ts",
                     "seed-conventions.ts",
+                    "setup.ts",
                     "space.ts",
                     "stats.ts",
                     "status.ts",
@@ -164,9 +165,7 @@
                     "tags.ts"
                 ],
                 "partial": [],
-                "pending": [
-                    "setup.ts"
-                ],
+                "pending": [],
                 "retire": [
                     {
                         "source": "diff.ts",

@@ -1114,3 +1114,45 @@ async fn matrix_creation_forwards_scope_and_optional_fields() {
     assert_eq!(matrix.id, "matrix-1");
     assert_eq!(matrix.layer, "contract");
 }
+
+#[tokio::test]
+async fn discovered_chunks_are_created_as_ai_drafts() {
+    // Given a chunk endpoint expecting setup discovery provenance
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/chunks"))
+        .and(wiremock::matchers::body_json(serde_json::json!({
+            "title": "Tech Stack",
+            "content": "## Frameworks\n- react",
+            "type": "reference",
+            "tags": ["tech-stack", "react"],
+            "spaceIds": ["space-1"],
+            "origin": "ai"
+        })))
+        .respond_with(
+            wiremock::ResponseTemplate::new(201).set_body_json(serde_json::json!({
+                "id": "chunk-1",
+                "title": "Tech Stack",
+                "content": "## Frameworks\n- react",
+                "type": "reference",
+                "updatedAt": "2026-09-25T10:00:00"
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When setup imports an automatically discovered chunk
+    let chunk = Client::new(server.uri())
+        .create_discovered_chunk(
+            "Tech Stack",
+            "## Frameworks\n- react",
+            "reference",
+            &["tech-stack".into(), "react".into()],
+            "space-1",
+        )
+        .await
+        .unwrap();
+
+    // Then the created draft is returned
+    assert_eq!(chunk.id, "chunk-1");
+}

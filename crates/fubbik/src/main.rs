@@ -286,6 +286,7 @@ async fn main() -> anyhow::Result<()> {
                         cmd,
                         fubbik_cli::Command::Doctor
                             | fubbik_cli::Command::Init { .. }
+                            | fubbik_cli::Command::Setup { .. }
                             | fubbik_cli::Command::Open { .. }
                     ) =>
                 {

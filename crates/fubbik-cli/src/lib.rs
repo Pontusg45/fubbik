@@ -655,6 +655,18 @@ pub enum Command {
         #[arg(short, long)]
         force: bool,
     },
+    /// Scan this project and populate its knowledge base
+    Setup {
+        /// Server URL (prefer the global --url option for new scripts)
+        #[arg(long)]
+        server: Option<String>,
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(short = 'y', long)]
+        yes: bool,
+        #[arg(long)]
+        force: bool,
+    },
     /// Diagnose CLI configuration and server connectivity
     Doctor,
     /// Read or update project configuration
@@ -1000,6 +1012,18 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         }
         Command::Health => commands::health::run(&client, output).await,
         Command::Init { server, force } => commands::config::init(server.as_deref(), force, output),
+        Command::Setup {
+            server,
+            dry_run,
+            yes,
+            force,
+        } => {
+            let setup_client = server
+                .as_deref()
+                .map(client::Client::new)
+                .unwrap_or_else(|| client::Client::new(base_url));
+            commands::setup::run(&setup_client, dry_run, yes, force, output).await
+        }
         Command::Doctor => commands::config::doctor(&client, output).await,
         Command::Config { command } => commands::config::run(command, output),
         Command::Context { command } => commands::context::run(&client, command, output).await,

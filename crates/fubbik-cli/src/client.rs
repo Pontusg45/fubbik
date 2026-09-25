@@ -422,6 +422,29 @@ impl Client {
             .await
     }
 
+    pub async fn create_discovered_chunk(
+        &self,
+        title: &str,
+        content: &str,
+        chunk_type: &str,
+        tags: &[String],
+        space_id: &str,
+    ) -> Result<Chunk> {
+        self.send_json(
+            reqwest::Method::POST,
+            "/api/chunks",
+            serde_json::json!({
+                "title": title,
+                "content": content,
+                "type": chunk_type,
+                "tags": tags,
+                "spaceIds": [space_id],
+                "origin": "ai",
+            }),
+        )
+        .await
+    }
+
     pub async fn create_chunk_with_update_tag(
         &self,
         title: &str,
@@ -836,6 +859,25 @@ impl Client {
                 "targetId": target_id,
                 "relation": relation,
                 "origin": "human",
+            }),
+        )
+        .await
+    }
+
+    pub async fn create_discovered_connection(
+        &self,
+        source_id: &str,
+        target_id: &str,
+        relation: &str,
+    ) -> Result<Connection> {
+        self.send_json(
+            reqwest::Method::POST,
+            "/api/connections",
+            serde_json::json!({
+                "sourceId": source_id,
+                "targetId": target_id,
+                "relation": relation,
+                "origin": "ai",
             }),
         )
         .await

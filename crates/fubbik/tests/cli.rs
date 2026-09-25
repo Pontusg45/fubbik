@@ -70,6 +70,7 @@ fn help_lists_serve_and_mcp() {
         "cleanup",
         "watch",
         "matrix",
+        "setup",
         "hooks",
     ] {
         assert!(
@@ -196,6 +197,26 @@ fn context_help_exposes_semantic_about_lookup() {
     assert!(stdout.contains("for-diff"));
     assert!(stdout.contains("snapshot"));
     assert!(stdout.contains("dir"));
+}
+
+#[test]
+fn setup_help_exposes_preview_and_import_controls() {
+    // Given the Rust CLI binary
+    // When setup help is requested
+    let out = Command::new(env!("CARGO_BIN_EXE_fubbik"))
+        .args(["setup", "--help"])
+        .output()
+        .expect("binary runs");
+
+    // Then the legacy setup controls remain available
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    for option in ["--server", "--dry-run", "--yes", "--force"] {
+        assert!(
+            stdout.contains(option),
+            "setup help missing {option}:\n{stdout}"
+        );
+    }
 }
 
 #[test]
