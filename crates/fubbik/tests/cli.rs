@@ -41,7 +41,7 @@ fn help_lists_serve_and_mcp() {
     );
     for command in [
         "space", "tag", "link", "unlink", "req", "stats", "enrich", "stale", "status", "docs",
-        "chunk", "open", "generate", "updates", "why", "suggest", "gaps", "recap",
+        "chunk", "open", "generate", "updates", "why", "suggest", "gaps", "recap", "prompt",
     ] {
         assert!(
             stdout.contains(command),
@@ -86,6 +86,7 @@ fn nested_command_help_exposes_the_first_management_slice() {
         ),
         ("task", ["add", "list", "claim", "done"].as_slice()),
         ("plugin", ["list", "doctor"].as_slice()),
+        ("prompt", ["list", "get", "add"].as_slice()),
         ("space", ["list", "add", "remove", "current"].as_slice()),
         ("tag", ["list", "add", "rename", "remove"].as_slice()),
         (

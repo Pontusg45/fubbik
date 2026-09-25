@@ -109,6 +109,23 @@ pub enum PluginCommand {
 }
 
 #[derive(Subcommand)]
+pub enum PromptCommand {
+    /// List reusable prompt templates
+    List,
+    /// Get a prompt template by title or id
+    Get { name: String },
+    /// Create a reusable prompt template
+    Add {
+        #[arg(short, long)]
+        title: String,
+        #[arg(short, long, conflicts_with = "content_file")]
+        content: Option<String>,
+        #[arg(long, value_name = "PATH", conflicts_with = "content")]
+        content_file: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
 pub enum ContextCommand {
     /// Get context about a concept through semantic search
     About {
@@ -591,6 +608,11 @@ pub enum Command {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Manage reusable prompt templates
+    Prompt {
+        #[command(subcommand)]
+        command: PromptCommand,
+    },
     /// Regenerate the configured CLAUDE.md context file
     #[command(visible_alias = "sync-claude-md")]
     Sync {
@@ -818,6 +840,7 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         Command::Recap { since, space } => {
             commands::recap::run(&client, &since, space.as_deref(), output).await
         }
+        Command::Prompt { command } => commands::prompt::run(&client, command, output).await,
         Command::Sync {
             output: path,
             space,

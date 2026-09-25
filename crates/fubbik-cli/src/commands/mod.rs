@@ -14,6 +14,7 @@ pub mod list;
 pub mod open;
 pub mod plan;
 pub mod plugin;
+pub mod prompt;
 pub mod recap;
 pub mod requirement;
 pub mod review;

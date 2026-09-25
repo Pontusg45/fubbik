@@ -305,6 +305,16 @@ impl Client {
         Ok(res.chunks)
     }
 
+    pub async fn list_prompt_chunks(&self, search: Option<&str>) -> Result<Vec<Chunk>> {
+        let mut query = vec![("tags", "prompt".to_string()), ("limit", "50".to_string())];
+        if let Some(search) = search {
+            query.push(("search", search.to_string()));
+            query.push(("limit", "1".to_string()));
+        }
+        let res: ChunkListResponse = self.get_json("/api/chunks", &query).await?;
+        Ok(res.chunks)
+    }
+
     pub async fn get_chunk(&self, id: &str) -> Result<Chunk> {
         let response: ChunkResponse = self.get_json(&format!("/api/chunks/{id}"), &[]).await?;
         Ok(response.into_chunk())

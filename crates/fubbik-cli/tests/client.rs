@@ -698,6 +698,38 @@ async fn recent_chunk_listing_forwards_recap_filters() {
 }
 
 #[tokio::test]
+async fn prompt_search_uses_the_prompt_tag_and_single_result_limit() {
+    // Given a prompt-tagged chunk search endpoint
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/chunks"))
+        .and(wiremock::matchers::query_param("tags", "prompt"))
+        .and(wiremock::matchers::query_param("search", "review"))
+        .and(wiremock::matchers::query_param("limit", "1"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "chunks": [{
+                    "id": "prompt-1", "title": "Review", "content": "Review this",
+                    "type": "note", "updatedAt": "2026-01-02T00:00:00Z"
+                }],
+                "total": 1, "limit": 1, "offset": 0
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When a prompt is searched by title
+    let chunks = Client::new(server.uri())
+        .list_prompt_chunks(Some("review"))
+        .await
+        .unwrap();
+
+    // Then only the matching prompt chunk is returned
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(chunks[0].id, "prompt-1");
+}
+
+#[tokio::test]
 async fn surfaces_server_errors_as_anyhow() {
     // Given
     let server = wiremock::MockServer::start().await;
