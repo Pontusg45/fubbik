@@ -20,6 +20,7 @@ pub mod input;
 pub mod kb_diff;
 pub mod lint;
 pub mod list;
+pub mod matrix;
 pub mod open;
 pub mod plan;
 pub mod plugin;

@@ -130,6 +130,7 @@
                     "lint.ts",
                     "link.ts",
                     "list.ts",
+                    "matrix.ts",
                     "mcp-tools.ts",
                     "open.ts",
                     "plan.ts",
@@ -164,7 +165,6 @@
                 ],
                 "partial": [],
                 "pending": [
-                    "matrix.ts",
                     "setup.ts"
                 ],
                 "retire": [

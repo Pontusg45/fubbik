@@ -69,6 +69,7 @@ fn help_lists_serve_and_mcp() {
         "lint",
         "cleanup",
         "watch",
+        "matrix",
         "hooks",
     ] {
         assert!(
@@ -116,6 +117,24 @@ fn nested_command_help_exposes_the_first_management_slice() {
         ("plugin", ["list", "doctor"].as_slice()),
         ("prompt", ["list", "get", "add"].as_slice()),
         ("hooks", ["install", "uninstall"].as_slice()),
+        (
+            "matrix",
+            [
+                "list",
+                "create",
+                "show",
+                "add-dimension",
+                "add-rule",
+                "cell",
+                "gaps",
+                "link",
+                "link-code",
+                "report-test",
+                "history",
+                "behaviors-for",
+            ]
+            .as_slice(),
+        ),
         ("space", ["list", "add", "remove", "current"].as_slice()),
         (
             "tag",

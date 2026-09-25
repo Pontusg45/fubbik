@@ -137,6 +137,89 @@ pub enum HooksCommand {
 }
 
 #[derive(Subcommand)]
+pub enum MatrixCommand {
+    /// List matrices
+    List {
+        #[arg(long, value_parser = ["invariant", "contract"])]
+        layer: Option<String>,
+    },
+    /// Create a matrix
+    Create {
+        name: String,
+        #[arg(long, value_parser = ["invariant", "contract"])]
+        layer: String,
+        #[arg(long)]
+        description: Option<String>,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
+    /// Show a matrix as a grid
+    Show { id: String },
+    /// Add a dimension to a matrix
+    AddDimension { matrix_id: String, name: String },
+    /// Add a rule to a matrix
+    AddRule {
+        matrix_id: String,
+        title: String,
+        #[arg(long)]
+        category: Option<String>,
+        #[arg(long)]
+        rationale: Option<String>,
+        #[arg(long)]
+        alternatives: Option<String>,
+        #[arg(long)]
+        consequences: Option<String>,
+        #[arg(long)]
+        counterexample: Option<String>,
+    },
+    /// Toggle whether a matrix cell is relevant
+    Cell {
+        matrix_id: String,
+        rule_id: String,
+        dimension_id: String,
+    },
+    /// List unspecified and violated cells
+    Gaps { id: String },
+    /// Link a requirement to a cell
+    Link {
+        cell_id: String,
+        requirement_id: String,
+        #[arg(long)]
+        matrix: String,
+    },
+    /// Link a code reference to a cell
+    LinkCode {
+        cell_id: String,
+        #[arg(long)]
+        matrix: String,
+        #[arg(long, value_parser = ["file", "symbol", "test"])]
+        kind: String,
+        #[arg(long = "ref")]
+        code_ref: String,
+    },
+    /// Report a test result for a cell
+    ReportTest {
+        cell_id: String,
+        #[arg(long)]
+        matrix: String,
+        #[arg(long)]
+        test_ref: String,
+        #[arg(long, value_parser = ["pass", "fail"])]
+        status: String,
+        #[arg(long)]
+        detail: Option<String>,
+    },
+    /// Show a rule's version history
+    History {
+        rule_id: String,
+        #[arg(long)]
+        matrix: String,
+    },
+    /// Find behavioral rules governing a file
+    BehaviorsFor { path: String },
+}
+
+#[derive(Subcommand)]
 pub enum ContextCommand {
     /// Get context about a concept through semantic search
     About {
@@ -700,6 +783,11 @@ pub enum Command {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
     },
+    /// Manage behavioral specification matrices
+    Matrix {
+        #[command(subcommand)]
+        command: MatrixCommand,
+    },
     /// Manage chunk-aware Git hooks
     Hooks {
         #[command(subcommand)]
@@ -988,6 +1076,7 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
             .await
         }
         Command::Watch { dir } => commands::watch::run(&client, &dir, output).await,
+        Command::Matrix { command } => commands::matrix::run(&client, command, output).await,
         Command::Hooks { command } => commands::hooks::run(command, output),
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,
         Command::Sync {
