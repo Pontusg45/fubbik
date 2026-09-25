@@ -61,6 +61,7 @@ fn help_lists_serve_and_mcp() {
         "prompt",
         "kb-diff",
         "check-files",
+        "hooks",
     ] {
         assert!(
             stdout.contains(command),
@@ -106,6 +107,7 @@ fn nested_command_help_exposes_the_first_management_slice() {
         ("task", ["add", "list", "claim", "done"].as_slice()),
         ("plugin", ["list", "doctor"].as_slice()),
         ("prompt", ["list", "get", "add"].as_slice()),
+        ("hooks", ["install", "uninstall"].as_slice()),
         ("space", ["list", "add", "remove", "current"].as_slice()),
         ("tag", ["list", "add", "rename", "remove"].as_slice()),
         (

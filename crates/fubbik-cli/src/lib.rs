@@ -126,6 +126,17 @@ pub enum PromptCommand {
 }
 
 #[derive(Subcommand)]
+pub enum HooksCommand {
+    /// Install the chunk-aware pre-commit hook
+    Install {
+        #[arg(long)]
+        force: bool,
+    },
+    /// Remove a pre-commit hook installed by fubbik
+    Uninstall,
+}
+
+#[derive(Subcommand)]
 pub enum ContextCommand {
     /// Get context about a concept through semantic search
     About {
@@ -621,6 +632,11 @@ pub enum Command {
         #[arg(long)]
         staged: bool,
     },
+    /// Manage chunk-aware Git hooks
+    Hooks {
+        #[command(subcommand)]
+        command: HooksCommand,
+    },
     /// Manage reusable prompt templates
     Prompt {
         #[command(subcommand)]
@@ -859,6 +875,7 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         Command::CheckFiles { files, staged } => {
             commands::check_files::run(&client, files, staged, output).await
         }
+        Command::Hooks { command } => commands::hooks::run(command, output),
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,
         Command::Sync {
             output: path,

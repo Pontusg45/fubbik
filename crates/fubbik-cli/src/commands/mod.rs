@@ -10,6 +10,7 @@ pub mod gaps;
 pub mod generate;
 pub mod get;
 pub mod health;
+pub mod hooks;
 pub mod input;
 pub mod kb_diff;
 pub mod list;
