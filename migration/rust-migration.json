@@ -155,13 +155,13 @@
                 "replaced": [
                     "codebase.ts",
                     "context-group.ts",
+                    "maintain.ts",
                     "requirements.ts",
                     "tag-group.ts",
                     "tags.ts"
                 ],
                 "partial": [],
                 "pending": [
-                    "maintain.ts",
                     "matrix.ts",
                     "setup.ts",
                     "tag-normalize.ts",
