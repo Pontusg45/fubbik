@@ -644,6 +644,16 @@ pub enum Command {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Import chunks from JSON or Markdown
+    Import {
+        path: PathBuf,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+        #[arg(long = "type", default_value = "document")]
+        default_type: String,
+        #[arg(long = "no-recursive", action = clap::ArgAction::SetFalse, default_value_t = true)]
+        recursive: bool,
+    },
     /// Manage chunk-aware Git hooks
     Hooks {
         #[command(subcommand)]
@@ -890,6 +900,22 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         Command::BulkAdd { file } => commands::bulk_add::run(&client, &file, output).await,
         Command::SeedConventions { file, dry_run } => {
             commands::seed_conventions::run(&client, &file, dry_run, output).await
+        }
+        Command::Import {
+            path,
+            space,
+            default_type,
+            recursive,
+        } => {
+            commands::import::run(
+                &client,
+                &path,
+                space.as_deref(),
+                &default_type,
+                recursive,
+                output,
+            )
+            .await
         }
         Command::Hooks { command } => commands::hooks::run(command, output),
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,

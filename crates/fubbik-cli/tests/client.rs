@@ -755,6 +755,43 @@ async fn applies_to_update_uses_the_bare_array_contract() {
 }
 
 #[tokio::test]
+async fn markdown_chunk_import_sends_relative_paths_and_space() {
+    // Given a chunk document import endpoint with two Markdown files
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("POST"))
+        .and(wiremock::matchers::path("/api/chunks/import-docs"))
+        .and(wiremock::matchers::body_json(serde_json::json!({
+            "files": [
+                {"path": "one.md", "content": "# One"},
+                {"path": "nested/two.md", "content": "# Two"}
+            ],
+            "spaceId": "space-1"
+        })))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "created": 2, "skipped": 0, "connections": 0, "errors": []
+            })),
+        )
+        .mount(&server)
+        .await;
+
+    // When the Markdown batch is imported
+    let result = Client::new(server.uri())
+        .import_chunk_documents(
+            &[
+                ("one.md".into(), "# One".into()),
+                ("nested/two.md".into(), "# Two".into()),
+            ],
+            "space-1",
+        )
+        .await
+        .unwrap();
+
+    // Then the server import summary is returned
+    assert_eq!(result["created"], 2);
+}
+
+#[tokio::test]
 async fn surfaces_server_errors_as_anyhow() {
     // Given
     let server = wiremock::MockServer::start().await;

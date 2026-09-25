@@ -922,6 +922,23 @@ impl Client {
         .await
     }
 
+    pub async fn import_chunk_documents(
+        &self,
+        files: &[(String, String)],
+        space_id: &str,
+    ) -> Result<serde_json::Value> {
+        let files = files
+            .iter()
+            .map(|(path, content)| serde_json::json!({"path": path, "content": content}))
+            .collect::<Vec<_>>();
+        self.send_json(
+            reqwest::Method::POST,
+            "/api/chunks/import-docs",
+            serde_json::json!({"files": files, "spaceId": space_id}),
+        )
+        .await
+    }
+
     pub async fn import_source_docs(
         &self,
         space_id: &str,
