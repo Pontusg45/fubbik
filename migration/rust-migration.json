@@ -151,6 +151,7 @@
                     "unlink.ts",
                     "update.ts",
                     "updates.ts",
+                    "watch.ts",
                     "why.ts"
                 ],
                 "replaced": [
@@ -164,8 +165,7 @@
                 "partial": [],
                 "pending": [
                     "matrix.ts",
-                    "setup.ts",
-                    "watch.ts"
+                    "setup.ts"
                 ],
                 "retire": [
                     {

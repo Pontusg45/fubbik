@@ -695,6 +695,11 @@ pub enum Command {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Watch file changes and show associated knowledge
+    Watch {
+        #[arg(long, default_value = ".")]
+        dir: PathBuf,
+    },
     /// Manage chunk-aware Git hooks
     Hooks {
         #[command(subcommand)]
@@ -982,6 +987,7 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
             )
             .await
         }
+        Command::Watch { dir } => commands::watch::run(&client, &dir, output).await,
         Command::Hooks { command } => commands::hooks::run(command, output),
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,
         Command::Sync {

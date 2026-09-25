@@ -40,6 +40,7 @@ pub mod tag_normalize;
 pub mod task;
 pub mod update;
 pub mod updates;
+pub mod watch;
 pub mod why;
 
 use crate::client::Chunk;
