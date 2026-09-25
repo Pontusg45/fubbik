@@ -637,6 +637,13 @@ pub enum Command {
         #[arg(long, value_name = "PATH")]
         file: PathBuf,
     },
+    /// Extract conventions from an instruction file and create chunks
+    SeedConventions {
+        #[arg(long, default_value = "CLAUDE.md")]
+        file: PathBuf,
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Manage chunk-aware Git hooks
     Hooks {
         #[command(subcommand)]
@@ -881,6 +888,9 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
             commands::check_files::run(&client, files, staged, output).await
         }
         Command::BulkAdd { file } => commands::bulk_add::run(&client, &file, output).await,
+        Command::SeedConventions { file, dry_run } => {
+            commands::seed_conventions::run(&client, &file, dry_run, output).await
+        }
         Command::Hooks { command } => commands::hooks::run(command, output),
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,
         Command::Sync {

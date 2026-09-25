@@ -23,6 +23,7 @@ pub mod recap;
 pub mod requirement;
 pub mod review;
 pub mod search;
+pub mod seed_conventions;
 pub mod source_docs;
 pub mod space;
 pub mod stale;

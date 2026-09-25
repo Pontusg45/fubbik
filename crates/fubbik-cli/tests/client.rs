@@ -731,6 +731,30 @@ async fn prompt_search_uses_the_prompt_tag_and_single_result_limit() {
 }
 
 #[tokio::test]
+async fn applies_to_update_uses_the_bare_array_contract() {
+    // Given an applies-to endpoint expecting the active bare-array contract
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("PUT"))
+        .and(wiremock::matchers::path("/api/chunks/chunk-1/applies-to"))
+        .and(wiremock::matchers::body_json(serde_json::json!([
+            {"pattern": "src/**/*.rs"},
+            {"pattern": "Cargo.toml"}
+        ])))
+        .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+        .mount(&server)
+        .await;
+
+    // When file scopes are assigned to a chunk
+    let value = Client::new(server.uri())
+        .set_applies_to("chunk-1", &["src/**/*.rs".into(), "Cargo.toml".into()])
+        .await
+        .unwrap();
+
+    // Then the accepted API response is returned
+    assert_eq!(value, serde_json::json!([]));
+}
+
+#[tokio::test]
 async fn surfaces_server_errors_as_anyhow() {
     // Given
     let server = wiremock::MockServer::start().await;

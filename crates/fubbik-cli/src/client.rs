@@ -416,6 +416,19 @@ impl Client {
         .await
     }
 
+    pub async fn set_applies_to(&self, id: &str, patterns: &[String]) -> Result<serde_json::Value> {
+        let body = patterns
+            .iter()
+            .map(|pattern| serde_json::json!({"pattern": pattern}))
+            .collect::<Vec<_>>();
+        self.send_json(
+            reqwest::Method::PUT,
+            &format!("/api/chunks/{id}/applies-to"),
+            body.into(),
+        )
+        .await
+    }
+
     pub async fn export_context(
         &self,
         space: Option<&str>,
