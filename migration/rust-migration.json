@@ -146,6 +146,7 @@
                     "status.ts",
                     "sync-claude-md.ts",
                     "suggest.ts",
+                    "tag-normalize.ts",
                     "task.ts",
                     "unlink.ts",
                     "update.ts",
@@ -164,7 +165,6 @@
                 "pending": [
                     "matrix.ts",
                     "setup.ts",
-                    "tag-normalize.ts",
                     "watch.ts"
                 ],
                 "retire": [

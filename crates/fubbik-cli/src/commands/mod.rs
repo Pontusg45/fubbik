@@ -36,6 +36,7 @@ pub mod stats;
 pub mod status;
 pub mod suggest;
 pub mod tag;
+pub mod tag_normalize;
 pub mod task;
 pub mod update;
 pub mod updates;

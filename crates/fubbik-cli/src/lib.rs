@@ -277,6 +277,13 @@ pub enum TagCommand {
     Rename { id: String, name: String },
     /// Delete a tag
     Remove { id: String },
+    /// Identify and optionally fix tag variants, broad tags, and filename tags
+    Normalize {
+        #[arg(long)]
+        confirm: bool,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

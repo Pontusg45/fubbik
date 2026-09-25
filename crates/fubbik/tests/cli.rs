@@ -116,7 +116,10 @@ fn nested_command_help_exposes_the_first_management_slice() {
         ("prompt", ["list", "get", "add"].as_slice()),
         ("hooks", ["install", "uninstall"].as_slice()),
         ("space", ["list", "add", "remove", "current"].as_slice()),
-        ("tag", ["list", "add", "rename", "remove"].as_slice()),
+        (
+            "tag",
+            ["list", "add", "rename", "remove", "normalize"].as_slice(),
+        ),
         (
             "req",
             ["list", "add", "status", "export", "verify", "import"].as_slice(),

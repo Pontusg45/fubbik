@@ -31,6 +31,9 @@ pub async fn run(client: &Client, command: TagCommand, mode: OutputMode) -> Resu
                 }
             }
         }
+        TagCommand::Normalize { confirm, space } => {
+            super::tag_normalize::run(client, confirm, space.as_deref(), mode).await
+        }
     }
 }
 
