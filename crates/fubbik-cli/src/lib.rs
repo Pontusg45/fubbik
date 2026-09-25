@@ -615,6 +615,12 @@ pub enum Command {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Check files for directly associated knowledge chunks
+    CheckFiles {
+        files: Vec<String>,
+        #[arg(long)]
+        staged: bool,
+    },
     /// Manage reusable prompt templates
     Prompt {
         #[command(subcommand)]
@@ -849,6 +855,9 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         }
         Command::KbDiff { since, space } => {
             commands::kb_diff::run(&client, &since, space.as_deref(), output).await
+        }
+        Command::CheckFiles { files, staged } => {
+            commands::check_files::run(&client, files, staged, output).await
         }
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,
         Command::Sync {

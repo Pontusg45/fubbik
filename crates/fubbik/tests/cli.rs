@@ -40,9 +40,27 @@ fn help_lists_serve_and_mcp() {
         "missing plugin subcommand:\n{stdout}"
     );
     for command in [
-        "space", "tag", "link", "unlink", "req", "stats", "enrich", "stale", "status", "docs",
-        "chunk", "open", "generate", "updates", "why", "suggest", "gaps", "recap", "prompt",
+        "space",
+        "tag",
+        "link",
+        "unlink",
+        "req",
+        "stats",
+        "enrich",
+        "stale",
+        "status",
+        "docs",
+        "chunk",
+        "open",
+        "generate",
+        "updates",
+        "why",
+        "suggest",
+        "gaps",
+        "recap",
+        "prompt",
         "kb-diff",
+        "check-files",
     ] {
         assert!(
             stdout.contains(command),

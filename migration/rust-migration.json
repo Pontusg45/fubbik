@@ -102,6 +102,7 @@
                 "ported": [
                     "add.ts",
                     "cat.ts",
+                    "check-files.ts",
                     "chunk.ts",
                     "context-about.ts",
                     "context-dir.ts",
@@ -152,7 +153,6 @@
                 "partial": [],
                 "pending": [
                     "bulk-add.ts",
-                    "check-files.ts",
                     "cleanup.ts",
                     "diff.ts",
                     "export-site.ts",
