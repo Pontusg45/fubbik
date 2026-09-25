@@ -156,7 +156,6 @@
                 "partial": [],
                 "pending": [
                     "cleanup.ts",
-                    "diff.ts",
                     "export-site.ts",
                     "export.ts",
                     "import.ts",
@@ -169,6 +168,10 @@
                     "watch.ts"
                 ],
                 "retire": [
+                    {
+                        "source": "diff.ts",
+                        "reason": "The Rust cutover removes the local JSON chunk store, so comparing local-store records against the authoritative server has no server-only meaning."
+                    },
                     {
                         "source": "sync.ts",
                         "reason": "The Rust cutover removes the local JSON chunk store, so local-to-server replication is obsolete; server-backed commands write directly to the API."
