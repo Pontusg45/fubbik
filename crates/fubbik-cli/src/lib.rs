@@ -569,6 +569,12 @@ pub enum Command {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Suggest knowledge chunks for a source file
+    Suggest {
+        path: PathBuf,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
     /// Regenerate the configured CLAUDE.md context file
     #[command(visible_alias = "sync-claude-md")]
     Sync {
@@ -784,6 +790,9 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         }
         Command::Why { path, space } => {
             commands::why::run(&client, &path, space.as_deref(), output).await
+        }
+        Command::Suggest { path, space } => {
+            commands::suggest::run(&client, &path, space.as_deref(), output).await
         }
         Command::Sync {
             output: path,

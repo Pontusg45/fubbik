@@ -21,6 +21,7 @@ pub mod space;
 pub mod stale;
 pub mod stats;
 pub mod status;
+pub mod suggest;
 pub mod tag;
 pub mod task;
 pub mod update;
