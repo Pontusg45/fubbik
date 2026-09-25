@@ -679,6 +679,15 @@ pub enum Command {
         #[arg(long)]
         score: bool,
     },
+    /// Identify and optionally remove low-value chunks
+    Cleanup {
+        #[arg(long)]
+        confirm: bool,
+        #[arg(long = "type")]
+        chunk_type: Option<String>,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
     /// Manage chunk-aware Git hooks
     Hooks {
         #[command(subcommand)]
@@ -951,6 +960,20 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         } => commands::export_site::run(&client, &output_dir, space.as_deref(), output).await,
         Command::Lint { space, fix, score } => {
             commands::lint::run(&client, space.as_deref(), fix, score, output).await
+        }
+        Command::Cleanup {
+            confirm,
+            chunk_type,
+            space,
+        } => {
+            commands::cleanup::run(
+                &client,
+                confirm,
+                chunk_type.as_deref(),
+                space.as_deref(),
+                output,
+            )
+            .await
         }
         Command::Hooks { command } => commands::hooks::run(command, output),
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,

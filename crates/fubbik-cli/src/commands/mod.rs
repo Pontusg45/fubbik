@@ -1,6 +1,7 @@
 pub mod add;
 pub mod bulk_add;
 pub mod check_files;
+pub mod cleanup;
 pub mod config;
 pub mod connection;
 pub mod context;
