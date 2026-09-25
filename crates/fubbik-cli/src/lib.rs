@@ -663,6 +663,13 @@ pub enum Command {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Generate a static HTML site from the knowledge base
+    ExportSite {
+        #[arg(short, long, default_value = "fubbik-site")]
+        output: PathBuf,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+    },
     /// Manage chunk-aware Git hooks
     Hooks {
         #[command(subcommand)]
@@ -929,6 +936,10 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         Command::Export { format, out, space } => {
             commands::export::run(&client, &format, &out, space.as_deref(), output).await
         }
+        Command::ExportSite {
+            output: output_dir,
+            space,
+        } => commands::export_site::run(&client, &output_dir, space.as_deref(), output).await,
         Command::Hooks { command } => commands::hooks::run(command, output),
         Command::Prompt { command } => commands::prompt::run(&client, command, output).await,
         Command::Sync {

@@ -116,6 +116,7 @@
                     "docs.ts",
                     "enrich.ts",
                     "export.ts",
+                    "export-site.ts",
                     "get.ts",
                     "generate.ts",
                     "gaps.ts",
@@ -159,7 +160,6 @@
                 "partial": [],
                 "pending": [
                     "cleanup.ts",
-                    "export-site.ts",
                     "lint.ts",
                     "maintain.ts",
                     "matrix.ts",

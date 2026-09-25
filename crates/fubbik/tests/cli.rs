@@ -65,6 +65,7 @@ fn help_lists_serve_and_mcp() {
         "seed-conventions",
         "import",
         "export",
+        "export-site",
         "hooks",
     ] {
         assert!(

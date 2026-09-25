@@ -8,6 +8,7 @@ pub mod delete;
 pub mod docs;
 pub mod enrich;
 pub mod export;
+pub mod export_site;
 pub mod gaps;
 pub mod generate;
 pub mod get;
