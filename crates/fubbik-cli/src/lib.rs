@@ -575,6 +575,15 @@ pub enum Command {
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
+    /// Find source files with no associated knowledge
+    Gaps {
+        #[arg(default_value = ".")]
+        directory: PathBuf,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
+        #[arg(long, default_value = "30")]
+        limit: usize,
+    },
     /// Regenerate the configured CLAUDE.md context file
     #[command(visible_alias = "sync-claude-md")]
     Sync {
@@ -794,6 +803,11 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         Command::Suggest { path, space } => {
             commands::suggest::run(&client, &path, space.as_deref(), output).await
         }
+        Command::Gaps {
+            directory,
+            space,
+            limit,
+        } => commands::gaps::run(&client, &directory, space.as_deref(), limit, output).await,
         Command::Sync {
             output: path,
             space,
