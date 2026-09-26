@@ -351,9 +351,9 @@
         },
         {
             "id": "rust-seed-parity",
-            "status": "pending",
-            "evidence": "packages/db/src/seed/index.ts",
-            "verification": "cargo test -p fubbik-db --test seed"
+            "status": "complete",
+            "evidence": "migration/seed-parity.md",
+            "verification": "cargo test -p fubbik-db --test seed && node scripts/compare-seed-parity.mjs"
         },
         {
             "id": "rust-web-serving",

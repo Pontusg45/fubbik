@@ -57,8 +57,8 @@ pnpm install
 ## Database Setup
 
 This project uses PostgreSQL. The Rust server and its embedded SQLx migrations
-are the schema authority. Drizzle is retained only as a typed sample-data seed
-adapter and for read-only Studio inspection; do not generate or apply schema
+are the schema authority. The sample-data seed runs through `fubbik seed` in
+Rust. Drizzle remains for read-only Studio inspection; do not generate or apply schema
 changes through Drizzle.
 
 When upgrading an existing database from the former Node/Drizzle server,
@@ -148,7 +148,7 @@ fubbik/
 │   ├── auth/        # Retired Better Auth reference (outside active workspace)
 │   ├── client/      # Generated Rust OpenAPI client and shared wire contracts
 │   ├── config/      # Shared TypeScript config
-│   ├── db/          # Typed seed adapter and legacy schema reference
+│   ├── db/          # Legacy schema and seed reference for parity checks
 │   └── env/         # Environment validation (Arktype + t3-env)
 ├── crates/          # Primary Rust API, database, CLI, and core libraries
 ```

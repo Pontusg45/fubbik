@@ -8,6 +8,7 @@ mod misc;
 mod planner;
 mod plans;
 mod requirements;
+mod reset;
 mod self_documenting;
 mod spaces;
 mod tags;
@@ -27,6 +28,7 @@ pub use misc::{seed_collections, seed_documents, seed_vocabulary, seed_workspace
 pub use planner::{MODULES, ResetPolicy, SeedModule, SeedOptions, SeedScenario, plan_modules};
 pub use plans::{PlanSeed, seed_plans};
 pub use requirements::seed_requirements;
+pub use reset::reset_selected;
 pub use self_documenting::{SelfDocCounts, seed_self_documenting};
 pub use spaces::seed_spaces;
 pub use tags::{TagSeedCounts, seed_tags};
@@ -66,6 +68,9 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
     .bind(spaces::DEV_USER_ID)
     .execute(&mut *tx)
     .await?;
+    if options.reset == ResetPolicy::Auto {
+        reset_selected(&mut tx, &modules).await?;
+    }
     let mut report = SeedReport {
         modules: modules.clone(),
         core: None,
@@ -131,7 +136,7 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
         } else if module == "collections" {
             report.collections = Some(seed_collections(&mut tx).await?);
         } else if module == "self-documenting" {
-            report.self_documenting = Some(seed_self_documenting(&mut tx).await?);
+            report.self_documenting = Some(seed_self_documenting(&mut tx, &chunk_ids).await?);
         } else {
             bail!("Seed module {module} has no native implementation");
         }

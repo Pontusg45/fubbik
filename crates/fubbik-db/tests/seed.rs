@@ -1,4 +1,4 @@
-use fubbik_db::seed::{SeedOptions, SeedScenario, seed, seed_core};
+use fubbik_db::seed::{ResetPolicy, SeedOptions, SeedScenario, seed, seed_core};
 use sqlx::{PgPool, Row};
 
 #[sqlx::test]
@@ -95,6 +95,7 @@ async fn demo_scenario_runs_all_native_modules_idempotently(pool: PgPool) {
     // Then all 16 modules complete and their fixture counts remain stable
     assert_eq!(first.modules.len(), 16);
     assert_eq!(first.chunks, second.chunks);
+    assert_eq!(first.self_documenting.unwrap().connections, 8);
     assert_eq!(first.matrices, second.matrices);
     assert_eq!(first.agent_coordination, second.agent_coordination);
 }
@@ -395,4 +396,100 @@ async fn matrix_module_ports_cells_and_requirement_links(pool: PgPool) {
     assert_eq!(counts.rules, 69);
     assert_eq!(counts.cells, 184);
     assert_eq!(counts.requirement_links, 7);
+}
+
+#[sqlx::test]
+async fn reset_none_preserves_extra_rows_while_auto_replaces_them(pool: PgPool) {
+    // Given a seeded tag catalog with an extra dev-user tag
+    let mut options = SeedOptions {
+        only: Some(["tags".to_string()].into()),
+        reset: ResetPolicy::None,
+        ..SeedOptions::default()
+    };
+    seed(&pool, &options).await.unwrap();
+    sqlx::query(
+        "INSERT INTO tag (id, name, user_id) VALUES ('seed-extra-tag', 'extra', 'dev-user')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // When the seed runs without reset, then with automatic reset
+    seed(&pool, &options).await.unwrap();
+    let retained: i64 = sqlx::query_scalar("SELECT count(*) FROM tag WHERE id = 'seed-extra-tag'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    options.reset = ResetPolicy::Auto;
+    seed(&pool, &options).await.unwrap();
+
+    // Then none preserves the extra tag and auto removes it
+    assert_eq!(retained, 1);
+    let removed: i64 = sqlx::query_scalar("SELECT count(*) FROM tag WHERE id = 'seed-extra-tag'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(removed, 0);
+}
+
+#[sqlx::test]
+async fn extended_scenario_respects_skip_selection(pool: PgPool) {
+    // Given the extended scenario with documents explicitly skipped
+    let options = SeedOptions {
+        scenario: SeedScenario::Extended,
+        skip: ["documents".to_string()].into(),
+        ..SeedOptions::default()
+    };
+
+    // When the native seed runs
+    let report = seed(&pool, &options).await.unwrap();
+
+    // Then all other modules run and no document fixture is inserted
+    assert_eq!(report.modules.len(), 15);
+    assert!(!report.modules.contains(&"documents"));
+    assert_eq!(report.documents, None);
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM document")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
+}
+
+#[sqlx::test]
+async fn failed_module_rolls_back_user_and_prior_module_writes(pool: PgPool) {
+    // Given a database that rejects space inserts after core and user bootstrap
+    sqlx::query(
+        "CREATE FUNCTION reject_seed_space() RETURNS trigger LANGUAGE plpgsql AS $$ \
+         BEGIN RAISE EXCEPTION 'seed space rejected'; END $$",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "CREATE TRIGGER reject_seed_space BEFORE INSERT ON space \
+         FOR EACH ROW EXECUTE FUNCTION reject_seed_space()",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let options = SeedOptions {
+        scenario: SeedScenario::Minimal,
+        ..SeedOptions::default()
+    };
+
+    // When the seed fails in the codebases module
+    let error = seed(&pool, &options).await.unwrap_err();
+
+    // Then the transaction leaves no dev user or partial spaces
+    assert!(error.to_string().contains("seed space rejected"));
+    let users: i64 = sqlx::query_scalar("SELECT count(*) FROM \"user\" WHERE id = 'dev-user'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let spaces: i64 = sqlx::query_scalar("SELECT count(*) FROM space")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(users, 0);
+    assert_eq!(spaces, 0);
 }

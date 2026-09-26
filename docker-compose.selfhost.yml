@@ -87,7 +87,7 @@ services:
         command:
             - sh
             - -c
-            - 'if [ "$$SEED_DATABASE" = "true" ]; then exec bun run packages/db/src/seed/index.ts --quiet; fi'
+            - 'if [ "$$SEED_DATABASE" = "true" ]; then exec fubbik seed --quiet; fi'
         depends_on:
             server:
                 condition: service_healthy

@@ -30,7 +30,7 @@ const FIXTURES: &[Fixture] = &[
     },
     Fixture {
         name: "seed-fixtures-dsl",
-        title: "Seed system: fixture model",
+        title: "Seed system: fixture DSL",
         kind: "reference",
         content: "Fixtures identify chunks and relationships by semantic names. A module records the database ID for each name, and later modules resolve those names before inserting foreign keys. A missing name is an error. Catalog data is checked into JSON files alongside the Rust modules.",
         pattern: "crates/fubbik-db/src/seed/*-catalog.json",
@@ -54,15 +54,15 @@ const FIXTURES: &[Fixture] = &[
     },
     Fixture {
         name: "seed-factories",
-        title: "Seed system: fixture helpers",
+        title: "Seed system: factory helpers",
         kind: "reference",
-        content: "Each seed module inserts its own domain rows using stable names and IDs. Shared fixture helpers are planned for the remaining module ports; preserve ownership, type, provenance, and relation values when introducing them.",
+        content: "Each seed module inserts its own domain rows using stable names and IDs. The named-reference loaders resolve cross-module links before inserting foreign keys and preserve ownership, type, provenance, and relation values.",
         pattern: "crates/fubbik-db/src/seed/mod.rs",
         tags: &["seed-system", "self-documenting", "reference"],
     },
     Fixture {
         name: "seed-verification",
-        title: "Seed system: verification",
+        title: "Seed system: post-seed verification",
         kind: "reference",
         content: "After seeding, compare the structured report and database row counts with the legacy fixtures. Verify named relationships, foreign keys, repeat-run behavior, and rollback. The entire run commits only when every module succeeds.",
         pattern: "crates/fubbik-db/tests/seed.rs",
@@ -87,7 +87,10 @@ pub struct SelfDocCounts {
     pub applies_to: usize,
 }
 
-pub async fn seed_self_documenting(tx: &mut Transaction<'_, Postgres>) -> Result<SelfDocCounts> {
+pub async fn seed_self_documenting(
+    tx: &mut Transaction<'_, Postgres>,
+    chunk_ids: &BTreeMap<String, String>,
+) -> Result<SelfDocCounts> {
     let space_id: Option<String> =
         sqlx::query_scalar("SELECT id FROM space WHERE user_id = $1 AND name = 'fubbik'")
             .bind(DEV_USER_ID)
@@ -104,7 +107,7 @@ pub async fn seed_self_documenting(tx: &mut Transaction<'_, Postgres>) -> Result
         let id = existing.unwrap_or_else(|| format!("seed-selfdoc-{}", fixture.name));
         sqlx::query(
             "INSERT INTO chunk (id, title, type, content, user_id) VALUES ($1, $2, $3, $4, $5) \
-             ON CONFLICT (id) DO UPDATE SET content = EXCLUDED.content, updated_at = now()",
+             ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, content = EXCLUDED.content, updated_at = now()",
         )
         .bind(&id)
         .bind(fixture.title)
@@ -156,9 +159,20 @@ pub async fn seed_self_documenting(tx: &mut Transaction<'_, Postgres>) -> Result
         .execute(&mut **tx)
         .await?;
     }
+    if let Some(seed_system_id) = chunk_ids.get("seed-system") {
+        sqlx::query(
+            "INSERT INTO chunk_connection (id, source_id, target_id, relation) \
+             VALUES ($1, $2, $3, 'references') ON CONFLICT (source_id, target_id, relation) DO NOTHING",
+        )
+        .bind("seed-selfdoc-link-seed-architecture-seed-system")
+        .bind(&ids["seed-architecture"])
+        .bind(seed_system_id)
+        .execute(&mut **tx)
+        .await?;
+    }
     Ok(SelfDocCounts {
         chunks: FIXTURES.len(),
-        connections: LINKS.len(),
+        connections: LINKS.len() + usize::from(chunk_ids.contains_key("seed-system")),
         applies_to: FIXTURES.len(),
     })
 }

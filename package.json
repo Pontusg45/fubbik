@@ -39,7 +39,7 @@
         "db:watch": "turbo run db:watch --filter=@fubbik/db",
         "db:stop": "turbo run db:stop --filter=@fubbik/db",
         "db:down": "turbo run db:down --filter=@fubbik/db",
-        "seed": "turbo run seed --filter=@fubbik/db",
+        "seed": "cargo run --locked -p fubbik -- seed",
         "scan": "turbo run scan --filter=@fubbik/db",
         "test": "turbo run test",
         "test:e2e": "turbo run test:e2e",

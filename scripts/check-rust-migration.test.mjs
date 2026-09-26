@@ -15,8 +15,8 @@ test("the checked-in Rust migration contract covers every legacy source", () => 
         cliCommands: 63,
         mcpSources: 12,
     });
-    assert.equal(result.gates.complete, 1);
-    assert.ok(result.gates.pending.includes("rust-seed-parity"));
+    assert.equal(result.gates.complete, 2);
+    assert.ok(result.gates.pending.includes("rust-web-serving"));
 });
 
 test("an untracked legacy source fails the contract", () => {

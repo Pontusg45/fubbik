@@ -17,7 +17,7 @@
     "scripts": {
         "check-types": "tsgo -b",
         "lint": "oxlint src",
-        "seed": "bun run src/seed/index.ts",
+        "seed:legacy": "bun run src/seed/index.ts",
         "scan": "bun run src/scan.ts",
         "db:studio": "drizzle-kit studio",
         "schema:verify": "bun run scripts/verify-schema.ts",
