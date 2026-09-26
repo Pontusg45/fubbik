@@ -1,5 +1,6 @@
 mod core;
 mod planner;
+mod self_documenting;
 mod spaces;
 mod tags;
 
@@ -9,6 +10,7 @@ use sqlx::PgPool;
 
 pub use core::{CoreSeedCounts, seed_core};
 pub use planner::{MODULES, ResetPolicy, SeedModule, SeedOptions, SeedScenario, plan_modules};
+pub use self_documenting::{SelfDocCounts, seed_self_documenting};
 pub use spaces::seed_spaces;
 pub use tags::{TagSeedCounts, seed_tags};
 
@@ -18,6 +20,7 @@ pub struct SeedReport {
     pub core: Option<CoreSeedCounts>,
     pub spaces: Option<usize>,
     pub tags: Option<TagSeedCounts>,
+    pub self_documenting: Option<SelfDocCounts>,
 }
 
 /// Runs selected modules atomically. Reject incomplete ports before making
@@ -26,7 +29,7 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
     let modules = plan_modules(MODULES, options).map_err(anyhow::Error::msg)?;
     if let Some(module) = modules
         .iter()
-        .find(|name| !matches!(**name, "core" | "codebases" | "tags"))
+        .find(|name| !matches!(**name, "core" | "codebases" | "tags" | "self-documenting"))
     {
         bail!("Rust seed module {module} has not been ported yet");
     }
@@ -44,6 +47,7 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
         core: None,
         spaces: None,
         tags: None,
+        self_documenting: None,
     };
     for module in modules {
         if module == "core" {
@@ -52,6 +56,8 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
             report.spaces = Some(seed_spaces(&mut tx).await?);
         } else if module == "tags" {
             report.tags = Some(seed_tags(&mut tx).await?);
+        } else if module == "self-documenting" {
+            report.self_documenting = Some(seed_self_documenting(&mut tx).await?);
         }
     }
     tx.commit().await?;

@@ -146,3 +146,34 @@ async fn tag_module_seeds_legacy_named_catalog_idempotently(pool: PgPool) {
     .unwrap();
     assert_eq!(count, 64);
 }
+
+#[sqlx::test]
+async fn minimal_scenario_seeds_self_documentation_and_named_links(pool: PgPool) {
+    // Given the minimal scenario with its dependency closure
+    let options = SeedOptions {
+        scenario: SeedScenario::Minimal,
+        ..SeedOptions::default()
+    };
+
+    // When the complete minimal seed runs twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then the six descriptions and seven links remain stable
+    assert_eq!(
+        first.modules,
+        ["core", "codebases", "tags", "self-documenting"]
+    );
+    assert_eq!(first.self_documenting, second.self_documenting);
+    let counts = first.self_documenting.unwrap();
+    assert_eq!(counts.chunks, 6);
+    assert_eq!(counts.connections, 7);
+    assert_eq!(counts.applies_to, 6);
+    let links: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM chunk_connection WHERE id LIKE 'seed-selfdoc-link-%'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(links, 7);
+}
