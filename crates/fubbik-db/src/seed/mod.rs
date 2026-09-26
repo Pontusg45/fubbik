@@ -2,7 +2,9 @@ mod chunks;
 mod connections;
 mod core;
 mod file_links;
+mod misc;
 mod planner;
+mod plans;
 mod requirements;
 mod self_documenting;
 mod spaces;
@@ -17,7 +19,9 @@ pub use chunks::seed_chunks;
 pub use connections::seed_connections;
 pub use core::{CoreSeedCounts, seed_core};
 pub use file_links::{FileLinkCounts, seed_file_links};
+pub use misc::{seed_collections, seed_documents, seed_vocabulary, seed_workspaces};
 pub use planner::{MODULES, ResetPolicy, SeedModule, SeedOptions, SeedScenario, plan_modules};
+pub use plans::{PlanSeed, seed_plans};
 pub use requirements::seed_requirements;
 pub use self_documenting::{SelfDocCounts, seed_self_documenting};
 pub use spaces::seed_spaces;
@@ -35,6 +39,12 @@ pub struct SeedReport {
     pub file_links: Option<FileLinkCounts>,
     pub use_cases: Option<usize>,
     pub requirements: Option<usize>,
+    pub plans: Option<usize>,
+    pub plan_tasks: Option<usize>,
+    pub documents: Option<usize>,
+    pub vocabulary: Option<usize>,
+    pub workspaces: Option<usize>,
+    pub collections: Option<usize>,
     pub self_documenting: Option<SelfDocCounts>,
 }
 
@@ -53,6 +63,11 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
                 | "file-links"
                 | "use-cases"
                 | "requirements"
+                | "plans"
+                | "documents"
+                | "vocabulary"
+                | "workspaces"
+                | "collections"
                 | "self-documenting"
         )
     }) {
@@ -77,10 +92,17 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
         file_links: None,
         use_cases: None,
         requirements: None,
+        plans: None,
+        plan_tasks: None,
+        documents: None,
+        vocabulary: None,
+        workspaces: None,
+        collections: None,
         self_documenting: None,
     };
     let mut chunk_ids = std::collections::BTreeMap::new();
     let mut use_case_ids = std::collections::BTreeMap::new();
+    let mut requirement_ids = std::collections::BTreeMap::new();
     for module in modules {
         if module == "core" {
             report.core = Some(seed_core(&mut tx).await?);
@@ -99,11 +121,20 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
             use_case_ids = seed_use_cases(&mut tx).await?;
             report.use_cases = Some(use_case_ids.len());
         } else if module == "requirements" {
-            report.requirements = Some(
-                seed_requirements(&mut tx, &use_case_ids, &chunk_ids)
-                    .await?
-                    .len(),
-            );
+            requirement_ids = seed_requirements(&mut tx, &use_case_ids, &chunk_ids).await?;
+            report.requirements = Some(requirement_ids.len());
+        } else if module == "plans" {
+            let plan = seed_plans(&mut tx, &requirement_ids, &chunk_ids).await?;
+            report.plans = Some(1);
+            report.plan_tasks = Some(plan.task_ids.len());
+        } else if module == "documents" {
+            report.documents = Some(seed_documents(&mut tx).await?);
+        } else if module == "vocabulary" {
+            report.vocabulary = Some(seed_vocabulary(&mut tx).await?);
+        } else if module == "workspaces" {
+            report.workspaces = Some(seed_workspaces(&mut tx).await?);
+        } else if module == "collections" {
+            report.collections = Some(seed_collections(&mut tx).await?);
         } else if module == "self-documenting" {
             report.self_documenting = Some(seed_self_documenting(&mut tx).await?);
         }

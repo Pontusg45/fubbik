@@ -282,3 +282,65 @@ async fn requirements_link_named_use_cases_and_chunks(pool: PgPool) {
     .unwrap();
     assert_eq!(linked, 3);
 }
+
+#[sqlx::test]
+async fn plan_module_links_requirements_tasks_and_analysis(pool: PgPool) {
+    // Given the requirements and chunks needed by the demo plan
+    let options = SeedOptions {
+        only: Some(["plans".to_string()].into()),
+        ..SeedOptions::default()
+    };
+
+    // When the plan module runs twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then the plan keeps six tasks, three analysis items, and one requirement link
+    assert_eq!(first.plans, Some(1));
+    assert_eq!(second.plan_tasks, Some(6));
+    let analyze: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM plan_analyze_item WHERE plan_id = 'seed-plan-vocab-crud'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(analyze, 3);
+    let linked: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM plan_requirement WHERE plan_id = 'seed-plan-vocab-crud'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(linked, 1);
+}
+
+#[sqlx::test]
+async fn supporting_demo_domains_seed_idempotently(pool: PgPool) {
+    // Given the document, vocabulary, workspace, and collection modules
+    let options = SeedOptions {
+        only: Some(
+            ["documents", "vocabulary", "workspaces", "collections"]
+                .map(str::to_string)
+                .into(),
+        ),
+        ..SeedOptions::default()
+    };
+
+    // When these modules run twice with their dependencies
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then all supporting fixtures and workspace-space links are stable
+    assert_eq!(first.documents, Some(3));
+    assert_eq!(second.vocabulary, Some(10));
+    assert_eq!(first.workspaces, Some(1));
+    assert_eq!(second.collections, Some(2));
+    let links: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM workspace_space ws JOIN workspace w ON w.id = ws.workspace_id \
+         WHERE w.name = 'fubbik-platform'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(links, 2);
+}
