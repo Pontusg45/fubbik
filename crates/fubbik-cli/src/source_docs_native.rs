@@ -61,6 +61,221 @@ pub fn extract_javascript(root: &Path, project: &str) -> Result<SourceManifest> 
     Ok(manifest)
 }
 
+pub fn extract_typescript(root: &Path, project: &str) -> Result<SourceManifest> {
+    let root = root
+        .canonicalize()
+        .context("could not resolve source root")?;
+    if !root.is_dir() {
+        bail!("source root is not a directory: {}", root.display());
+    }
+    let config: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(root.join("typedoc.json"))
+            .context("native TypeScript extraction requires typedoc.json")?,
+    )
+    .context("invalid typedoc.json")?;
+    let entry_points = config["entryPoints"]
+        .as_array()
+        .context("typedoc.json must list explicit entryPoints")?;
+    if entry_points.is_empty() {
+        bail!("typedoc.json has no entryPoints");
+    }
+
+    let mut symbols = Vec::new();
+    for entry in entry_points {
+        let entry = entry.as_str().context("entryPoints must be file paths")?;
+        let file = root.join(entry).canonicalize()?;
+        if !file.starts_with(&root) || !file.is_file() {
+            bail!("TypeScript entry point is outside the source root or is not a file: {entry}");
+        }
+        let extension = file.extension().and_then(|value| value.to_str());
+        let language = match extension {
+            Some("ts") => tree_sitter_typescript::LANGUAGE_TYPESCRIPT,
+            Some("tsx") => tree_sitter_typescript::LANGUAGE_TSX,
+            _ => bail!("unsupported TypeScript entry point: {entry}"),
+        };
+        let source = std::fs::read_to_string(&file)?;
+        let mut parser = Parser::new();
+        parser.set_language(&language.into())?;
+        let tree = parser
+            .parse(&source, None)
+            .context("could not parse TypeScript source")?;
+        if tree.root_node().has_error() {
+            bail!("source parsing failed: {}", file.display());
+        }
+        let path = file
+            .strip_prefix(&root)?
+            .to_string_lossy()
+            .replace('\\', "/");
+        extract_ts_file(tree.root_node(), &source, &path, &mut symbols)?;
+    }
+    symbols.sort_by(|left, right| left.key.cmp(&right.key));
+    let manifest = SourceManifest {
+        version: 1,
+        project: project.to_owned(),
+        language: SourceLanguage::Typescript,
+        extractor: format!(
+            "fubbik tree-sitter-typescript {}",
+            env!("CARGO_PKG_VERSION")
+        ),
+        complete: true,
+        diagnostics: Vec::new(),
+        symbols,
+    };
+    manifest.validate().map_err(anyhow::Error::msg)?;
+    Ok(manifest)
+}
+
+fn extract_ts_file(
+    root: Node<'_>,
+    source: &str,
+    path: &str,
+    symbols: &mut Vec<SourceSymbol>,
+) -> Result<()> {
+    let mut cursor = root.walk();
+    let mut preceding_doc = None;
+    let mut consumed = HashSet::new();
+    for node in root.named_children(&mut cursor) {
+        if node.kind() == "comment" {
+            let comment = text(node, source);
+            preceding_doc = comment.starts_with("/**").then_some((node, comment));
+            continue;
+        }
+        if node.kind() == "export_statement" && node.child_by_field_name("declaration").is_none() {
+            bail!("native TypeScript extraction cannot safely follow re-exports in {path}");
+        }
+        if let Some((comment_node, comment)) = preceding_doc.take() {
+            let declaration = if node.kind() == "export_statement" {
+                node.child_by_field_name("declaration")
+            } else {
+                Some(node)
+            };
+            if let Some(function) = declaration.filter(|node| node.kind() == "function_declaration")
+            {
+                let name = function
+                    .child_by_field_name("name")
+                    .context("function has no name")?;
+                let title = text(name, source).to_owned();
+                let parameters = function
+                    .child_by_field_name("parameters")
+                    .context("function has no parameters")?;
+                let mut param_cursor = parameters.walk();
+                let mut types = Vec::new();
+                let mut rendered_params = Vec::new();
+                for parameter in parameters.named_children(&mut param_cursor) {
+                    if parameter.kind() != "required_parameter" {
+                        bail!("unsupported TypeScript parameter in {path}");
+                    }
+                    let name = parameter
+                        .child_by_field_name("pattern")
+                        .context("parameter has no name")?;
+                    let kind = parameter
+                        .child_by_field_name("type")
+                        .context("parameter has no type")?;
+                    let kind = primitive_ts_type(kind, source, path)?;
+                    types.push(kind.clone());
+                    rendered_params.push(format!("{}: {kind}", text(name, source)));
+                }
+                let return_type = function
+                    .child_by_field_name("return_type")
+                    .context("function has no return type")?;
+                let return_type = primitive_ts_type(return_type, source, path)?;
+                let documentation = TsDoc::parse(comment)?;
+                consumed.insert(comment_node.start_byte());
+                symbols.push(SourceSymbol {
+                    key: format!("{path}::{title}({})", types.join(",")),
+                    signature: format!("{title}({}): {return_type}", rendered_params.join(", ")),
+                    title,
+                    documentation: documentation.markdown(),
+                    path: path.to_owned(),
+                    line: function.start_position().row as u32 + 1,
+                    references: Vec::new(),
+                });
+            }
+        }
+    }
+    reject_unhandled_jsdoc(root, source, path, &consumed)?;
+    Ok(())
+}
+
+fn primitive_ts_type(annotation: Node<'_>, source: &str, path: &str) -> Result<String> {
+    let mut cursor = annotation.walk();
+    let mut children = annotation.named_children(&mut cursor);
+    let Some(kind) = children.next() else {
+        bail!("missing TypeScript type in {path}");
+    };
+    if kind.kind() != "predefined_type" || children.next().is_some() {
+        bail!("unsupported TypeScript type in {path}");
+    }
+    Ok(text(kind, source).to_owned())
+}
+
+#[derive(Default)]
+struct TsDoc {
+    summary: String,
+    tags: Vec<(String, String)>,
+    params: Vec<(String, String)>,
+}
+
+impl TsDoc {
+    fn parse(comment: &str) -> Result<Self> {
+        let mut doc = Self::default();
+        let body = comment.trim_start_matches("/**").trim_end_matches("*/");
+        let mut current: Option<usize> = None;
+        for raw in body.lines() {
+            let line = raw.trim().trim_start_matches('*').trim();
+            if let Some(rest) = line.strip_prefix("@param ") {
+                let (name, description) = rest.split_once(' ').unwrap_or((rest, ""));
+                doc.params.push((
+                    name.to_owned(),
+                    description.trim_start_matches("- ").to_owned(),
+                ));
+                current = None;
+            } else if let Some(rest) = line
+                .strip_prefix("@returns ")
+                .or_else(|| line.strip_prefix("@return "))
+            {
+                doc.tags.push(("returns".into(), rest.to_owned()));
+                current = Some(doc.tags.len() - 1);
+            } else if let Some(rest) = line.strip_prefix("@example") {
+                doc.tags.push(("example".into(), rest.trim().to_owned()));
+                current = Some(doc.tags.len() - 1);
+            } else if line.starts_with('@') {
+                bail!("unsupported TypeScript doc tag: {line}");
+            } else if let Some(index) = current {
+                if !doc.tags[index].1.is_empty() {
+                    doc.tags[index].1.push('\n');
+                }
+                doc.tags[index].1.push_str(line);
+            } else if !line.is_empty() {
+                if !doc.summary.is_empty() {
+                    doc.summary.push(' ');
+                }
+                doc.summary.push_str(line);
+            }
+        }
+        Ok(doc)
+    }
+
+    fn markdown(&self) -> String {
+        let mut rendered = self.summary.clone();
+        for (tag, content) in &self.tags {
+            rendered.push_str(&format!("\n\n### {tag}\n\n{}", content.trim_end()));
+        }
+        if !self.params.is_empty() {
+            rendered.push_str("\n\n### Parameters\n\n");
+            rendered.push_str(
+                &self
+                    .params
+                    .iter()
+                    .map(|(name, description)| format!("- **{name}**: {description}"))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            );
+        }
+        rendered
+    }
+}
+
 fn collect_files(directory: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
     for entry in std::fs::read_dir(directory)? {
         let entry = entry?;
@@ -425,7 +640,45 @@ fn typed_value(value: &str) -> (String, &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::extract_javascript;
+    use super::{extract_javascript, extract_typescript};
+
+    #[test]
+    fn extracts_explicit_typescript_entry_point_without_typedoc() {
+        // Given the checked-in TypeDoc fixture with one typed function
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/source-docs");
+
+        // When the native TypeScript extractor reads the configured entry point
+        let manifest = extract_typescript(&root, "fixture").unwrap();
+
+        // Then its symbol identity and rendered type information match TypeDoc
+        assert_eq!(manifest.symbols.len(), 1);
+        assert_eq!(manifest.symbols[0].key, "example.ts::find(string)");
+        assert_eq!(manifest.symbols[0].signature, "find(name: string): string");
+        assert!(manifest.symbols[0].documentation.contains("### example"));
+    }
+
+    #[test]
+    fn refuses_typescript_reexports_without_scanning_their_targets() {
+        // Given a TypeDoc entry point that re-exports symbols from another file
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(
+            root.path().join("typedoc.json"),
+            r#"{"entryPoints":["index.ts"]}"#,
+        )
+        .unwrap();
+        std::fs::write(root.path().join("index.ts"), "export * from './other';\n").unwrap();
+
+        // When the native extractor cannot enumerate the re-exported symbols
+        let error = extract_typescript(root.path(), "fixture").unwrap_err();
+
+        // Then it fails before treating the partial result as a complete scan
+        assert!(
+            error
+                .to_string()
+                .contains("cannot safely follow re-exports")
+        );
+    }
 
     #[test]
     fn extracts_documented_javascript_without_external_tools() {

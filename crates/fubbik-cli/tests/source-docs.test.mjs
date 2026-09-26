@@ -93,6 +93,29 @@ for (const fixtureName of ["source-docs", "source-docs-forms"]) {
     });
 }
 
+test("native TypeScript extraction preserves the TypeDoc symbol contract", () => {
+    // Given the TypeDoc entry-point fixture and both extractors
+    const temporary = mkdtempSync(join(tmpdir(), "fubbik-typedoc-differential-"));
+    const fixture = fileURLToPath(new URL("./fixtures/source-docs", import.meta.url));
+    try {
+        // When the legacy and native paths extract the same typed function
+        const legacy = spawnSync("node", [
+            fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)),
+            fixture, "typescript", "fixture", temporary
+        ], { encoding: "utf8" });
+        const native = spawnSync(fileURLToPath(new URL("../../../target/debug/fubbik", import.meta.url)), [
+            "docs", "extract", fixture, "--language", "typescript", "--project", "fixture", "--preview"
+        ], { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } });
+
+        // Then symbol keys, signatures, comments, and locations agree exactly
+        assert.equal(legacy.status, 0, legacy.stderr);
+        assert.equal(native.status, 0, native.stderr);
+        assert.deepEqual(JSON.parse(native.stdout).symbols, JSON.parse(legacy.stdout).symbols);
+    } finally {
+        rmSync(temporary, { recursive: true, force: true });
+    }
+});
+
 test("failed source parsing never produces a complete manifest", () => {
     // Given
     const temporary = mkdtempSync(join(tmpdir(), "fubbik-docs-invalid-"));

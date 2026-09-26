@@ -19,6 +19,8 @@ pub async fn run(
         let project = project.context("--project is required when extracting source")?;
         if language == "javascript" {
             crate::source_docs_native::extract_javascript(path, project)?
+        } else if language == "typescript" {
+            crate::source_docs_native::extract_typescript(path, project)?
         } else {
             let temporary = tempfile::tempdir()?;
             let script = temporary.path().join("extract.mjs");

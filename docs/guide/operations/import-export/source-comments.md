@@ -18,12 +18,14 @@ classes, class methods, and variables in `.js`, `.mjs`, and `.cjs` files. If it 
 syntax or another documented declaration, it fails before import rather than
 claiming a complete scan that could archive existing symbols.
 
-TypeScript and Java extraction still require Node.js, plus TypeDoc for
-TypeScript or a JDK (17+) for Java. Install TypeDoc in the source project's
-development dependencies or put it on PATH. Fubbik never downloads these
-tools automatically.
-TypeDoc uses the project's `typedoc.json` and `tsconfig.json`; configure its
-entry points to cover the intended API. Java uses Javadoc's normal public and
+TypeScript extraction also runs natively for explicit `.ts` or `.tsx` file
+entry points listed in `typedoc.json` when their documented exports are
+top-level functions with primitive parameter and return types. Unsupported
+declarations, tags, and re-exports fail before import. Java extraction still
+requires Node.js and a JDK (17+). Fubbik never downloads these tools
+automatically.
+The native TypeScript path reads `typedoc.json` entry points; configure them
+to cover the intended API. Java uses Javadoc's normal public and
 protected visibility and requires dependencies to be available to Javadoc
 (for example through `CLASSPATH`). Extractor failures stop before any import.
 
@@ -95,8 +97,9 @@ APIs. Keep the same extractor version/configuration in CI for stable output.
 
 ## Development checks
 
-Run the native JavaScript fixture with `cargo test -p fubbik --test source_docs`.
-Run the legacy TypeScript and Java extractor fixtures with `node --test
-crates/fubbik-cli/tests/source-docs.test.mjs` after installing their tools.
+Run the native JavaScript and TypeScript fixtures with `cargo test -p fubbik --test source_docs`.
+Run the legacy extractor comparisons with `node --test
+crates/fubbik-cli/tests/source-docs.test.mjs` after installing JSDoc, TypeDoc,
+TypeScript, and the JDK for the differential tests.
 Database behavior is covered by `cargo test -p fubbik-api --test source_docs`
 with the Rust test database running.
