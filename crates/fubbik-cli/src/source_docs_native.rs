@@ -287,7 +287,14 @@ impl JsDoc {
         }
         if !self.examples.is_empty() {
             rendered.push_str("\n\n### Examples\n\n");
-            rendered.push_str(&self.examples.join("\n\n"));
+            rendered.push_str(
+                &self
+                    .examples
+                    .iter()
+                    .map(|example| example.trim_end())
+                    .collect::<Vec<_>>()
+                    .join("\n\n"),
+            );
         }
         if !self.throws.is_empty() {
             rendered.push_str("\n\n### Throws\n\n");
@@ -344,8 +351,10 @@ mod tests {
         let symbol = &manifest.symbols[0];
         assert_eq!(symbol.key, "example.js::find");
         assert_eq!(symbol.signature, "find(name: string): string");
-        assert!(symbol.documentation.contains("### Returns"));
-        assert!(symbol.documentation.contains("### Examples"));
+        assert_eq!(
+            symbol.documentation,
+            "Find a value.\n\n### Parameters\n\n- **name**: string Lookup name.\n\n### Returns\n\nstring Stored value.\n\n### Examples\n\nfind('example');"
+        );
         assert_eq!(symbol.line, 7);
     }
 
