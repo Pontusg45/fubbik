@@ -117,7 +117,35 @@ export function validateMigration(manifest, root = repoRoot) {
         compareContract("mcpTools", [...mcpTools.expected].sort(), rustToolNames(mcpTools, root), errors);
     }
 
-    if (!(manifest.cutoverGates?.length > 0)) errors.push("cutoverGates must not be empty");
+    if (!(manifest.cutoverGates?.length > 0)) {
+        errors.push("cutoverGates must not be empty");
+    } else {
+        const ids = new Set();
+        for (const gate of manifest.cutoverGates) {
+            if (!gate || typeof gate !== "object" || Array.isArray(gate)) {
+                errors.push("every cutover gate must be an object");
+                continue;
+            }
+            if (typeof gate.id !== "string" || !gate.id.trim()) {
+                errors.push("every cutover gate needs an id");
+            } else if (ids.has(gate.id)) {
+                errors.push(`duplicate cutover gate id: ${gate.id}`);
+            } else {
+                ids.add(gate.id);
+            }
+            if (!["pending", "complete"].includes(gate.status)) {
+                errors.push(`${gate.id ?? "cutover gate"} needs a pending or complete status`);
+            }
+            if (typeof gate.verification !== "string" || !gate.verification.trim()) {
+                errors.push(`${gate.id ?? "cutover gate"} needs a verification command`);
+            }
+            if (typeof gate.evidence !== "string" || !gate.evidence.trim()) {
+                errors.push(`${gate.id ?? "cutover gate"} needs an evidence path`);
+            } else if (gate.status === "complete" && !existsSync(join(root, gate.evidence))) {
+                errors.push(`${gate.id} is complete but evidence does not exist: ${gate.evidence}`);
+            }
+        }
+    }
     return errors;
 }
 
@@ -132,17 +160,25 @@ export function checkMigration(manifestPath = defaultManifest, root = repoRoot) 
             Object.values(area.statuses).reduce((sum, entries) => sum + entries.length, 0),
         ]),
     );
-    return { version: manifest.version, totals };
+    const gates = {
+        complete: manifest.cutoverGates.filter((gate) => gate.status === "complete").length,
+        pending: manifest.cutoverGates.filter((gate) => gate.status === "pending").map((gate) => gate.id),
+    };
+    return { version: manifest.version, totals, gates };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     try {
         const result = checkMigration(process.argv[2] ? resolve(process.argv[2]) : defaultManifest);
-        console.log(
-            `Rust migration contract is complete (v${result.version}): ${Object.entries(result.totals)
-                .map(([name, count]) => `${name}=${count}`)
-                .join(", ")}`,
-        );
+        const inventory = Object.entries(result.totals).map(([name, count]) => `${name}=${count}`).join(", ");
+        console.log(`Rust source inventory is classified (v${result.version}): ${inventory}`);
+        if (result.gates.pending.length) {
+            console.log(
+                `Runtime cutover is pending: ${result.gates.complete} gates complete, ${result.gates.pending.length} pending (${result.gates.pending.join(", ")})`,
+            );
+        } else {
+            console.log(`Runtime cutover is complete: ${result.gates.complete} gates verified`);
+        }
     } catch (error) {
         console.error(`Rust migration contract check failed:\n${error.message}`);
         process.exitCode = 1;

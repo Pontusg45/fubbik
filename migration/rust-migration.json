@@ -313,12 +313,71 @@
         "packages/mcp"
     ],
     "cutoverGates": [
-        "migration contract check passes",
-        "Rust workspace formatting, clippy, and tests pass",
-        "HTTP differential contracts pass",
-        "CLI compatibility suite passes",
-        "MCP protocol and tool contracts pass",
-        "production image smoke test passes without node or bun",
-        "legacy runtime packages are removed from workspace and deployment files"
+        {
+            "id": "source-inventory",
+            "status": "complete",
+            "evidence": "scripts/check-rust-migration.test.mjs",
+            "verification": "node --test scripts/check-rust-migration.test.mjs"
+        },
+        {
+            "id": "rust-workspace",
+            "status": "pending",
+            "evidence": ".github/workflows/rust.yml",
+            "verification": "cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --no-fail-fast"
+        },
+        {
+            "id": "http-differential",
+            "status": "pending",
+            "evidence": "scripts/differential.sh",
+            "verification": "./scripts/differential.sh"
+        },
+        {
+            "id": "cli-compatibility",
+            "status": "pending",
+            "evidence": "crates/fubbik/tests/cli.rs",
+            "verification": "cargo test -p fubbik --test cli"
+        },
+        {
+            "id": "mcp-contracts",
+            "status": "pending",
+            "evidence": "crates/fubbik-mcp/src/lib.rs",
+            "verification": "cargo test -p fubbik-mcp"
+        },
+        {
+            "id": "native-source-extraction",
+            "status": "pending",
+            "evidence": "crates/fubbik-cli/src/commands/source_docs.rs",
+            "verification": "cargo test -p fubbik-cli --test source_docs"
+        },
+        {
+            "id": "rust-seed-parity",
+            "status": "pending",
+            "evidence": "packages/db/src/seed/index.ts",
+            "verification": "cargo test -p fubbik-db --test seed"
+        },
+        {
+            "id": "rust-web-serving",
+            "status": "pending",
+            "evidence": "docker/build/web.Dockerfile",
+            "verification": "cargo test -p fubbik-api --test assets"
+        },
+        {
+            "id": "production-image-smoke",
+            "status": "pending",
+            "evidence": "docker/build/server.Dockerfile",
+            "verification": "./scripts/smoke-production-image.sh"
+        },
+        {
+            "id": "legacy-runtime-removal",
+            "status": "pending",
+            "evidence": "package.json",
+            "verification": "node scripts/check-rust-migration.mjs"
+        },
+        {
+            "id": "release-smoke",
+            "status": "pending",
+            "evidence": "migration/README.md",
+            "verification": "./scripts/smoke-production-image.sh"
+        }
     ]
 }
