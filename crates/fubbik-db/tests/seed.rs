@@ -255,3 +255,30 @@ async fn file_links_module_ports_globs_and_direct_refs(pool: PgPool) {
     .unwrap();
     assert_eq!(applies, 52);
 }
+
+#[sqlx::test]
+async fn requirements_link_named_use_cases_and_chunks(pool: PgPool) {
+    // Given the two use cases and named knowledge chunks
+    let options = SeedOptions {
+        only: Some(["requirements".to_string()].into()),
+        ..SeedOptions::default()
+    };
+
+    // When requirements seed twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then two BDD requirements and their three chunk references remain stable
+    assert_eq!(first.use_cases, Some(2));
+    assert_eq!(first.requirements, Some(2));
+    assert_eq!(second.requirements, Some(2));
+    let linked: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM requirement_chunk rc \
+         JOIN requirement r ON r.id = rc.requirement_id \
+         WHERE r.id LIKE 'seed-requirement-%'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(linked, 3);
+}

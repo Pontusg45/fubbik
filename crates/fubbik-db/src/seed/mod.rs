@@ -3,9 +3,11 @@ mod connections;
 mod core;
 mod file_links;
 mod planner;
+mod requirements;
 mod self_documenting;
 mod spaces;
 mod tags;
+mod use_cases;
 
 use anyhow::{Result, bail};
 use serde::Serialize;
@@ -16,9 +18,11 @@ pub use connections::seed_connections;
 pub use core::{CoreSeedCounts, seed_core};
 pub use file_links::{FileLinkCounts, seed_file_links};
 pub use planner::{MODULES, ResetPolicy, SeedModule, SeedOptions, SeedScenario, plan_modules};
+pub use requirements::seed_requirements;
 pub use self_documenting::{SelfDocCounts, seed_self_documenting};
 pub use spaces::seed_spaces;
 pub use tags::{TagSeedCounts, seed_tags};
+pub use use_cases::seed_use_cases;
 
 #[derive(Debug, Serialize)]
 pub struct SeedReport {
@@ -29,6 +33,8 @@ pub struct SeedReport {
     pub chunks: Option<usize>,
     pub connections: Option<usize>,
     pub file_links: Option<FileLinkCounts>,
+    pub use_cases: Option<usize>,
+    pub requirements: Option<usize>,
     pub self_documenting: Option<SelfDocCounts>,
 }
 
@@ -45,6 +51,8 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
                 | "chunks"
                 | "connections"
                 | "file-links"
+                | "use-cases"
+                | "requirements"
                 | "self-documenting"
         )
     }) {
@@ -67,9 +75,12 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
         chunks: None,
         connections: None,
         file_links: None,
+        use_cases: None,
+        requirements: None,
         self_documenting: None,
     };
     let mut chunk_ids = std::collections::BTreeMap::new();
+    let mut use_case_ids = std::collections::BTreeMap::new();
     for module in modules {
         if module == "core" {
             report.core = Some(seed_core(&mut tx).await?);
@@ -84,6 +95,15 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
             report.connections = Some(seed_connections(&mut tx, &chunk_ids).await?);
         } else if module == "file-links" {
             report.file_links = Some(seed_file_links(&mut tx, &chunk_ids).await?);
+        } else if module == "use-cases" {
+            use_case_ids = seed_use_cases(&mut tx).await?;
+            report.use_cases = Some(use_case_ids.len());
+        } else if module == "requirements" {
+            report.requirements = Some(
+                seed_requirements(&mut tx, &use_case_ids, &chunk_ids)
+                    .await?
+                    .len(),
+            );
         } else if module == "self-documenting" {
             report.self_documenting = Some(seed_self_documenting(&mut tx).await?);
         }
