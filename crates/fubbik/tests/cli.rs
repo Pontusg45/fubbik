@@ -1,5 +1,59 @@
 use std::process::Command;
 
+#[tokio::test]
+async fn mcp_stdio_handles_requests_errors_and_notifications() {
+    use std::{process::Stdio, time::Duration};
+    use tokio::io::AsyncWriteExt;
+
+    // Given the shipped binary running its MCP stdio server
+    let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_fubbik"))
+        .arg("mcp")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+
+    // When the client sends a notification, valid requests, and malformed JSON
+    let mut stdin = child.stdin.take().unwrap();
+    stdin
+        .write_all(
+            b"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n\
+              {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}\n\
+              {\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\n\
+              {\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"unsupported\"}\n\
+              not json\n",
+        )
+        .await
+        .unwrap();
+    drop(stdin);
+    let output = tokio::time::timeout(Duration::from_secs(10), child.wait_with_output())
+        .await
+        .expect("MCP server exits after stdin closes")
+        .unwrap();
+
+    // Then it emits one JSON-RPC response per request and a parse error for the bad line
+    assert!(output.status.success());
+    let responses = String::from_utf8(output.stdout)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(responses.len(), 4);
+    assert_eq!(responses[0]["id"], 1);
+    assert_eq!(responses[0]["result"]["serverInfo"]["name"], "fubbik");
+    assert_eq!(responses[1]["id"], 2);
+    assert_eq!(
+        responses[1]["result"]["tools"].as_array().unwrap().len(),
+        53
+    );
+    assert_eq!(responses[2]["id"], 3);
+    assert_eq!(responses[2]["error"]["code"], -32601);
+    assert!(responses[3]["id"].is_null());
+    assert_eq!(responses[3]["error"]["code"], -32700);
+}
+
 #[test]
 fn help_lists_serve_and_mcp() {
     // Given the inline inputs and test fixtures.

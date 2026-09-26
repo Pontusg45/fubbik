@@ -339,9 +339,9 @@
         },
         {
             "id": "mcp-contracts",
-            "status": "pending",
-            "evidence": "crates/fubbik-mcp/src/lib.rs",
-            "verification": "cargo test -p fubbik-mcp"
+            "status": "complete",
+            "evidence": "migration/mcp-contracts.md",
+            "verification": "cargo test -p fubbik-mcp && cargo test -p fubbik --test cli mcp_stdio"
         },
         {
             "id": "native-source-extraction",

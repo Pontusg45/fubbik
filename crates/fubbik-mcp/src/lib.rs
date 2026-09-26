@@ -1052,6 +1052,7 @@ fn tool(name: &str, description: &str, input_schema: Value) -> Value {
 mod tests {
     use super::{Server, tools};
     use serde_json::json;
+    use std::collections::BTreeSet;
 
     #[tokio::test]
     async fn initialize_negotiates_a_tools_capable_server() {
@@ -1111,6 +1112,28 @@ mod tests {
             create_requirement["inputSchema"]["required"],
             json!(["title", "steps"])
         );
+    }
+
+    #[test]
+    fn tool_catalog_matches_the_migration_contract() {
+        // Given the retained MCP tool names recorded in the migration manifest
+        let manifest: serde_json::Value =
+            serde_json::from_str(include_str!("../../../migration/rust-migration.json")).unwrap();
+        let expected = manifest["executableContracts"]["mcpTools"]["expected"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|name| name.as_str().unwrap().to_owned())
+            .collect::<BTreeSet<_>>();
+
+        // When the public Rust catalog is inspected
+        let actual = tools()
+            .into_iter()
+            .map(|tool| tool["name"].as_str().unwrap().to_owned())
+            .collect::<BTreeSet<_>>();
+
+        // Then every retained tool is available and no unexpected tool is exposed
+        assert_eq!(actual, expected);
     }
 
     #[tokio::test]
