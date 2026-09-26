@@ -8,21 +8,12 @@ use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
+use fubbik_contracts::system::HealthResponse;
 use fubbik_db::repo::knowledge_health as kh;
 
 use crate::AppState;
 use crate::auth::CurrentUser;
 use crate::error::ApiResult;
-
-#[derive(serde::Serialize, utoipa::ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct HealthResponse {
-    /// `ok | degraded`.
-    pub status: String,
-    /// `connected | disconnected`.
-    pub db: String,
-    pub age_available: bool,
-}
 
 /// **Deliberately unauthenticated**, matching Node — this is what a load
 /// balancer or the nav bar's connection indicator polls, and requiring a

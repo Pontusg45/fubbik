@@ -1,7 +1,7 @@
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
-use fubbik_db::repo::stats::Stats;
+use fubbik_contracts::system::Stats;
 
 use super::service;
 use crate::AppState;
@@ -18,7 +18,12 @@ pub async fn get_stats(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
 ) -> ApiResult<Json<Stats>> {
-    Ok(Json(service::get_stats(&state.pool, &user.id).await?))
+    let stats = service::get_stats(&state.pool, &user.id).await?;
+    Ok(Json(Stats {
+        chunks: stats.chunks,
+        connections: stats.connections,
+        tags: stats.tags,
+    }))
 }
 
 pub fn router() -> Router<AppState> {

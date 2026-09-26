@@ -221,7 +221,7 @@ impl Client {
         self.get_json("/api/chunks/updates/tags", &query).await
     }
 
-    pub async fn health(&self) -> Result<serde_json::Value> {
+    pub async fn health(&self) -> Result<fubbik_contracts::system::HealthResponse> {
         self.get_json("/api/health", &[]).await
     }
 
@@ -232,7 +232,7 @@ impl Client {
         self.get_json("/api/health/knowledge", &query).await
     }
 
-    pub async fn stats(&self) -> Result<serde_json::Value> {
+    pub async fn stats(&self) -> Result<fubbik_contracts::system::Stats> {
         self.get_json("/api/stats", &[]).await
     }
 

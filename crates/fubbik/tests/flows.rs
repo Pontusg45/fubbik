@@ -251,6 +251,7 @@ async fn cli_output_modes_share_chunk_task_and_status_results(pool: PgPool) {
     let tasks_quiet = app
         .run_cli_with_flags(&["--quiet"], &["task", "list"])
         .await;
+    let health_human = app.run_cli_with_flags(&[], &["health"]).await;
     let health_quiet = app.run_cli_with_flags(&["--quiet"], &["health"]).await;
     let stats_quiet = app.run_cli_with_flags(&["--quiet"], &["stats"]).await;
     let status_quiet = app.run_cli_with_flags(&["--quiet"], &["status"]).await;
@@ -262,6 +263,7 @@ async fn cli_output_modes_share_chunk_task_and_status_results(pool: PgPool) {
         &list_quiet,
         &search_quiet,
         &tasks_quiet,
+        &health_human,
         &health_quiet,
         &stats_quiet,
         &status_quiet,
@@ -287,6 +289,8 @@ async fn cli_output_modes_share_chunk_task_and_status_results(pool: PgPool) {
         String::from_utf8_lossy(&tasks_quiet.stdout),
         format!("{task_id}\n")
     );
+    assert!(String::from_utf8_lossy(&health_human.stdout).contains("database: connected"));
+    assert!(String::from_utf8_lossy(&health_human.stdout).contains("AGE:      available"));
     assert_eq!(String::from_utf8_lossy(&health_quiet.stdout), "ok\n");
     assert_eq!(String::from_utf8_lossy(&stats_quiet.stdout), "1\n");
     assert_eq!(String::from_utf8_lossy(&status_quiet.stdout), "ok\n");
