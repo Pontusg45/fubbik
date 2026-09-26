@@ -21,6 +21,10 @@ RUN --mount=type=cache,id=fubbik-cargo-registry,target=/usr/local/cargo/registry
 
 FROM debian:bookworm-slim AS runner
 
+LABEL org.opencontainers.image.title="Fubbik seed" \
+      org.opencontainers.image.description="Rust database seed command" \
+      org.opencontainers.image.licenses="MIT"
+
 RUN apt-get update && \
     apt-get install --yes --no-install-recommends ca-certificates && \
     rm -rf /var/lib/apt/lists/* && \

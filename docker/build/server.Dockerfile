@@ -49,6 +49,10 @@ RUN --mount=type=cache,id=fubbik-cargo-registry,target=/usr/local/cargo/registry
 
 FROM debian:bookworm-slim AS runner
 
+LABEL org.opencontainers.image.title="Fubbik" \
+      org.opencontainers.image.description="Rust API, CLI, MCP server, and static web application" \
+      org.opencontainers.image.licenses="MIT"
+
 RUN apt-get update && \
     apt-get install --yes --no-install-recommends ca-certificates curl && \
     rm -rf /var/lib/apt/lists/* && \
@@ -68,6 +72,9 @@ COPY --from=web-builder --chown=fubbik:fubbik /app/apps/web/dist /app/web
 EXPOSE 3000
 
 USER fubbik
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl --fail --silent http://127.0.0.1:3000/api/health >/dev/null || exit 1
 
 ENTRYPOINT ["fubbik"]
 CMD ["serve"]

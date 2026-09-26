@@ -138,6 +138,9 @@ docker compose -f docker-compose.selfhost.yml exec -T db dropdb -U fubbik fubbik
 Run the restore check periodically; a backup that has never been restored is
 not yet a verified backup.
 
+See [self-hosted operations](docs/operations/self-hosted.md) for upgrades,
+rollback, log collection, seeding, and release archives.
+
 ## Project Structure
 
 ```

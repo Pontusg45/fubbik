@@ -1,0 +1,70 @@
+name: release
+
+on:
+    push:
+        tags:
+            - "v*"
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Version to package (for example, 0.1.0)"
+                required: true
+                type: string
+
+jobs:
+    package:
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest, macos-latest]
+        runs-on: ${{ matrix.os }}
+        permissions:
+            contents: read
+        env:
+            SQLX_OFFLINE: "true"
+            RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+        steps:
+            - uses: actions/checkout@v4
+            - run: rustup show
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: "22"
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm --filter web run build
+            - run: cargo build --locked --release -p fubbik
+            - name: Package and smoke the exact release archive
+              shell: bash
+              run: |
+                  target="$(rustc -vV | awk '/^host:/ {print $2}')"
+                  ./scripts/package-release.sh "$RELEASE_VERSION" "$target"
+                  for archive in dist/release/*.tar.gz; do
+                      ./scripts/smoke-release-archive.sh "$archive"
+                  done
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: fubbik-${{ runner.os }}-${{ runner.arch }}
+                  path: dist/release/*.tar.gz*
+                  if-no-files-found: error
+
+    prerelease:
+        if: startsWith(github.ref, 'refs/tags/v')
+        needs: package
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/download-artifact@v4
+              with:
+                  pattern: fubbik-*
+                  path: dist/release
+                  merge-multiple: true
+            - name: Publish a prerelease from the tested archives
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  gh release create "$GITHUB_REF_NAME" dist/release/*.tar.gz* \
+                      --prerelease --verify-tag --title "$GITHUB_REF_NAME" \
+                      --generate-notes
