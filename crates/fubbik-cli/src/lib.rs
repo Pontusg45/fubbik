@@ -3,6 +3,7 @@ pub mod commands;
 pub mod config;
 pub mod output;
 pub mod plugin;
+pub mod setup;
 
 use std::path::PathBuf;
 
