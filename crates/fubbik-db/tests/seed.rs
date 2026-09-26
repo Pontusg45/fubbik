@@ -177,3 +177,81 @@ async fn minimal_scenario_seeds_self_documentation_and_named_links(pool: PgPool)
     .unwrap();
     assert_eq!(links, 7);
 }
+
+#[sqlx::test]
+async fn chunk_module_ports_all_named_legacy_fixtures(pool: PgPool) {
+    // Given the chunks module with its catalog, space, and tag prerequisites
+    let options = SeedOptions {
+        only: Some(["chunks".to_string()].into()),
+        ..SeedOptions::default()
+    };
+
+    // When the Rust seed runs twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then all 46 legacy chunks and their named relationships remain stable
+    assert_eq!(first.chunks, Some(46));
+    assert_eq!(second.chunks, Some(46));
+    let linked: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM chunk_space cs JOIN chunk c ON c.id = cs.chunk_id \
+         WHERE c.id LIKE 'seed-chunk-%'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(linked, 46);
+}
+
+#[sqlx::test]
+async fn connection_module_resolves_all_named_chunk_links(pool: PgPool) {
+    // Given all chunk fixtures and a request for their graph topology
+    let options = SeedOptions {
+        only: Some(["connections".to_string()].into()),
+        ..SeedOptions::default()
+    };
+
+    // When the native seed runs twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then 56 typed relationships connect existing chunk rows exactly once
+    assert_eq!(first.connections, Some(56));
+    assert_eq!(second.connections, Some(56));
+    let linked: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM chunk_connection cc \
+         JOIN chunk source ON source.id = cc.source_id \
+         JOIN chunk target ON target.id = cc.target_id \
+         WHERE cc.id LIKE 'seed-connection-%'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(linked, 56);
+}
+
+#[sqlx::test]
+async fn file_links_module_ports_globs_and_direct_refs(pool: PgPool) {
+    // Given the named chunks required by file-level discovery
+    let options = SeedOptions {
+        only: Some(["file-links".to_string()].into()),
+        ..SeedOptions::default()
+    };
+
+    // When file links seed twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then all legacy globs and paths are present exactly once
+    assert_eq!(first.file_links, second.file_links);
+    let counts = first.file_links.unwrap();
+    assert_eq!(counts.applies_to, 52);
+    assert_eq!(counts.file_refs, 10);
+    let applies: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM chunk_applies_to WHERE id LIKE 'seed-file-applies-%'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(applies, 52);
+}
