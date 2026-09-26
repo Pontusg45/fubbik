@@ -1,5 +1,6 @@
 mod chunks;
 mod connections;
+mod coordination;
 mod core;
 mod file_links;
 mod misc;
@@ -17,6 +18,7 @@ use sqlx::PgPool;
 
 pub use chunks::seed_chunks;
 pub use connections::seed_connections;
+pub use coordination::{CoordinationCounts, seed_coordination};
 pub use core::{CoreSeedCounts, seed_core};
 pub use file_links::{FileLinkCounts, seed_file_links};
 pub use misc::{seed_collections, seed_documents, seed_vocabulary, seed_workspaces};
@@ -41,6 +43,7 @@ pub struct SeedReport {
     pub requirements: Option<usize>,
     pub plans: Option<usize>,
     pub plan_tasks: Option<usize>,
+    pub agent_coordination: Option<CoordinationCounts>,
     pub documents: Option<usize>,
     pub vocabulary: Option<usize>,
     pub workspaces: Option<usize>,
@@ -64,6 +67,7 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
                 | "use-cases"
                 | "requirements"
                 | "plans"
+                | "agent-coordination"
                 | "documents"
                 | "vocabulary"
                 | "workspaces"
@@ -94,6 +98,7 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
         requirements: None,
         plans: None,
         plan_tasks: None,
+        agent_coordination: None,
         documents: None,
         vocabulary: None,
         workspaces: None,
@@ -103,6 +108,7 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
     let mut chunk_ids = std::collections::BTreeMap::new();
     let mut use_case_ids = std::collections::BTreeMap::new();
     let mut requirement_ids = std::collections::BTreeMap::new();
+    let mut plan_seed = None;
     for module in modules {
         if module == "core" {
             report.core = Some(seed_core(&mut tx).await?);
@@ -127,6 +133,12 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
             let plan = seed_plans(&mut tx, &requirement_ids, &chunk_ids).await?;
             report.plans = Some(1);
             report.plan_tasks = Some(plan.task_ids.len());
+            plan_seed = Some(plan);
+        } else if module == "agent-coordination" {
+            let plan = plan_seed
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Missing seed plan"))?;
+            report.agent_coordination = Some(seed_coordination(&mut tx, plan).await?);
         } else if module == "documents" {
             report.documents = Some(seed_documents(&mut tx).await?);
         } else if module == "vocabulary" {

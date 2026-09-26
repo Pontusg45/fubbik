@@ -344,3 +344,29 @@ async fn supporting_demo_domains_seed_idempotently(pool: PgPool) {
     .unwrap();
     assert_eq!(links, 2);
 }
+
+#[sqlx::test]
+async fn coordination_module_preserves_claim_and_reply_story(pool: PgPool) {
+    // Given a seeded plan with its six tasks
+    let options = SeedOptions {
+        only: Some(["agent-coordination".to_string()].into()),
+        ..SeedOptions::default()
+    };
+
+    // When the coordination fixtures seed twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then three agents, one claim, and seven threaded entries remain valid
+    assert_eq!(first.agent_coordination, second.agent_coordination);
+    let counts = first.agent_coordination.unwrap();
+    assert_eq!((counts.runs, counts.claims, counts.entries), (3, 1, 7));
+    let replies: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM coordination_entry WHERE reply_to_id IS NOT NULL \
+         AND id LIKE 'seed-coordination-entry-%'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(replies, 1);
+}
