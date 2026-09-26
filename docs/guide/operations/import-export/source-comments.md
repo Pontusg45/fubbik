@@ -13,8 +13,8 @@ fubbik docs extract ./my-java-project --language java --project my-library --pre
 ```
 
 Preview prints the manifest and does not contact the API. JavaScript extraction
-runs natively in Rust and currently supports documented top-level function
-declarations in `.js`, `.mjs`, and `.cjs` files. If it encounters invalid
+runs natively in Rust and currently supports documented top-level functions,
+classes, class methods, and variables in `.js`, `.mjs`, and `.cjs` files. If it encounters invalid
 syntax or another documented declaration, it fails before import rather than
 claiming a complete scan that could archive existing symbols.
 

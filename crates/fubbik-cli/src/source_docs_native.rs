@@ -103,36 +103,111 @@ fn extract_js_file(
             preceding_doc = comment.starts_with("/**").then_some((node, comment));
             continue;
         }
-        if let Some((comment_node, comment)) = preceding_doc.take() {
-            let declaration = if node.kind() == "export_statement" {
-                let mut children = node.walk();
-                node.named_children(&mut children)
-                    .find(|child| child.kind() == "function_declaration")
-            } else if node.kind() == "function_declaration" {
-                Some(node)
-            } else {
-                None
+        let declaration = if node.kind() == "export_statement" {
+            node.child_by_field_name("declaration")
+        } else {
+            Some(node)
+        };
+        if let Some(class) =
+            declaration.filter(|declaration| declaration.kind() == "class_declaration")
+        {
+            extract_class_methods(class, source, path, symbols, &mut consumed)?;
+        }
+        if let Some((comment_node, comment)) = preceding_doc.take()
+            && let Some(declaration) = declaration
+        {
+            let name = match declaration.kind() {
+                "function_declaration" | "class_declaration" => {
+                    declaration.child_by_field_name("name")
+                }
+                "lexical_declaration" | "variable_declaration" => {
+                    let mut children = declaration.walk();
+                    let mut declarators = declaration
+                        .named_children(&mut children)
+                        .filter(|child| child.kind() == "variable_declarator");
+                    let first = declarators.next();
+                    if declarators.next().is_some() {
+                        None
+                    } else {
+                        first.and_then(|child| child.child_by_field_name("name"))
+                    }
+                }
+                _ => None,
             };
-            if let Some(function) = declaration
-                && let Some(name) = function.child_by_field_name("name")
-            {
+            if let Some(name) = name {
                 consumed.insert(comment_node.start_byte());
                 let title = text(name, source).to_owned();
                 let documentation = JsDoc::parse(comment)?;
-                let signature = documentation.signature(&title);
+                let signature = if matches!(
+                    declaration.kind(),
+                    "lexical_declaration" | "variable_declaration"
+                ) {
+                    documentation.member_signature(&title)
+                } else {
+                    documentation.signature(&title)
+                };
                 symbols.push(SourceSymbol {
                     key: format!("{path}::{title}"),
                     title,
                     signature,
                     documentation: documentation.markdown(),
                     path: path.to_owned(),
-                    line: function.start_position().row as u32 + 1,
+                    line: declaration.start_position().row as u32 + 1,
                     references: documentation.see,
                 });
             }
         }
     }
     reject_unhandled_jsdoc(root, source, path, &consumed)?;
+    Ok(())
+}
+
+fn extract_class_methods(
+    class: Node<'_>,
+    source: &str,
+    path: &str,
+    symbols: &mut Vec<SourceSymbol>,
+    consumed: &mut HashSet<usize>,
+) -> Result<()> {
+    let Some(name) = class.child_by_field_name("name") else {
+        return Ok(());
+    };
+    let class_name = text(name, source);
+    let Some(body) = class.child_by_field_name("body") else {
+        return Ok(());
+    };
+    let mut cursor = body.walk();
+    let mut preceding_doc = None;
+    for node in body.named_children(&mut cursor) {
+        if node.kind() == "comment" {
+            let comment = text(node, source);
+            preceding_doc = comment.starts_with("/**").then_some((node, comment));
+            continue;
+        }
+        if let Some((comment_node, comment)) = preceding_doc.take()
+            && node.kind() == "method_definition"
+            && let Some(name) = node.child_by_field_name("name")
+        {
+            let method_name = text(name, source);
+            let separator = if text(node, source).starts_with("static ") {
+                "."
+            } else {
+                "#"
+            };
+            let title = format!("{class_name}{separator}{method_name}");
+            let documentation = JsDoc::parse(comment)?;
+            consumed.insert(comment_node.start_byte());
+            symbols.push(SourceSymbol {
+                key: format!("{path}::{title}"),
+                signature: documentation.signature(&title),
+                title,
+                documentation: documentation.markdown(),
+                path: path.to_owned(),
+                line: node.start_position().row as u32 + 1,
+                references: documentation.see,
+            });
+        }
+    }
     Ok(())
 }
 
@@ -261,6 +336,21 @@ impl JsDoc {
         }
     }
 
+    fn member_signature(&self, title: &str) -> String {
+        let returns = self
+            .returns
+            .iter()
+            .map(|(kind, _)| kind.as_str())
+            .filter(|kind| !kind.is_empty())
+            .collect::<Vec<_>>()
+            .join(" | ");
+        if returns.is_empty() {
+            title.to_owned()
+        } else {
+            format!("{title}: {returns}")
+        }
+    }
+
     fn markdown(&self) -> String {
         let mut rendered = self.description.clone();
         if !self.params.is_empty() {
@@ -377,11 +467,11 @@ mod tests {
 
     #[test]
     fn refuses_documented_declarations_it_cannot_yet_represent() {
-        // Given a documented class that a function-only extractor cannot preserve
+        // Given a documented anonymous export the extractor cannot identify safely
         let root = tempfile::tempdir().unwrap();
         std::fs::write(
-            root.path().join("class.js"),
-            "/** Public class. */\nexport class Store {}\n",
+            root.path().join("anonymous.js"),
+            "/** Public object. */\nexport default { key: 1 };\n",
         )
         .unwrap();
 
@@ -403,5 +493,28 @@ mod tests {
 
         // Then it rejects the scan before any manifest can archive prior symbols
         assert!(error.to_string().contains("unsupported JSDoc tag"));
+    }
+
+    #[test]
+    fn extracts_classes_methods_and_documented_variables() {
+        // Given documented forms that share the legacy JSDoc symbol model
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(
+            root.path().join("forms.js"),
+            include_str!("../tests/fixtures/source-docs-forms/forms.js"),
+        )
+        .unwrap();
+
+        // When the native extractor scans the forms
+        let manifest = extract_javascript(root.path(), "forms").unwrap();
+
+        // Then it keeps class, member, and variable symbol identities
+        let names = manifest
+            .symbols
+            .iter()
+            .map(|symbol| symbol.title.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(names, ["Calculator", "Calculator#add", "answer", "twice"]);
+        assert_eq!(manifest.symbols[3].signature, "twice: number");
     }
 }

@@ -68,28 +68,30 @@ for (const language of ["javascript", "typescript"]) {
     });
 }
 
-test("native JavaScript extraction preserves the legacy JSDoc symbol contract", () => {
-    // Given the shared JavaScript fixture and both extractors
-    const temporary = mkdtempSync(join(tmpdir(), "fubbik-docs-differential-"));
-    const fixture = fileURLToPath(new URL("./fixtures/source-docs", import.meta.url));
-    try {
-        // When the legacy JSDoc path and shipped Rust CLI extract the same source
-        const legacy = spawnSync("node", [
-            fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)),
-            fixture, "javascript", "fixture", temporary
-        ], { encoding: "utf8" });
-        const native = spawnSync(fileURLToPath(new URL("../../../target/debug/fubbik", import.meta.url)), [
-            "docs", "extract", fixture, "--language", "javascript", "--project", "fixture", "--preview"
-        ], { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } });
+for (const fixtureName of ["source-docs", "source-docs-forms"]) {
+    test(`native JavaScript extraction preserves the legacy JSDoc contract for ${fixtureName}`, () => {
+        // Given a JavaScript fixture and both extractors
+        const temporary = mkdtempSync(join(tmpdir(), "fubbik-docs-differential-"));
+        const fixture = fileURLToPath(new URL(`./fixtures/${fixtureName}`, import.meta.url));
+        try {
+            // When the legacy JSDoc path and shipped Rust CLI extract the same source
+            const legacy = spawnSync("node", [
+                fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)),
+                fixture, "javascript", "fixture", temporary
+            ], { encoding: "utf8" });
+            const native = spawnSync(fileURLToPath(new URL("../../../target/debug/fubbik", import.meta.url)), [
+                "docs", "extract", fixture, "--language", "javascript", "--project", "fixture", "--preview"
+            ], { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } });
 
-        // Then stable symbol keys, signatures, documentation, and locations agree exactly
-        assert.equal(legacy.status, 0, legacy.stderr);
-        assert.equal(native.status, 0, native.stderr);
-        assert.deepEqual(JSON.parse(native.stdout).symbols, JSON.parse(legacy.stdout).symbols);
-    } finally {
-        rmSync(temporary, { recursive: true, force: true });
-    }
-});
+            // Then stable symbol keys, signatures, documentation, and locations agree exactly
+            assert.equal(legacy.status, 0, legacy.stderr);
+            assert.equal(native.status, 0, native.stderr);
+            assert.deepEqual(JSON.parse(native.stdout).symbols, JSON.parse(legacy.stdout).symbols);
+        } finally {
+            rmSync(temporary, { recursive: true, force: true });
+        }
+    });
+}
 
 test("failed source parsing never produces a complete manifest", () => {
     // Given
