@@ -45,6 +45,17 @@ enum Commands {
     /// Cypher `MERGE` rather than `CREATE`. Never runs automatically; this
     /// is the only entry point.
     BackfillConnections,
+    /// Seed the database with native Rust fixtures
+    Seed {
+        #[arg(long, default_value = "demo", value_parser = ["minimal", "demo", "extended"])]
+        scenario: String,
+        #[arg(long, value_delimiter = ',')]
+        only: Vec<String>,
+        #[arg(long, value_delimiter = ',')]
+        skip: Vec<String>,
+        #[arg(long, default_value = "auto", value_parser = ["auto", "none"])]
+        reset: String,
+    },
     /// Generate shell completion definitions
     Completions { shell: clap_complete::Shell },
     #[command(flatten)]
@@ -270,6 +281,40 @@ async fn main() -> anyhow::Result<()> {
             let pool = fubbik_db::connect(&database_url).await?;
             let count = fubbik_db::age::backfill_connections(&pool).await?;
             println!("projected {count} chunk_connection row(s) into the AGE graph");
+            Ok(())
+        }
+        Commands::Seed {
+            scenario,
+            only,
+            skip,
+            reset,
+        } => {
+            use fubbik_db::seed::{ResetPolicy, SeedOptions, SeedScenario};
+
+            let database_url = std::env::var("DATABASE_URL")
+                .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
+            let options = SeedOptions {
+                scenario: match scenario.as_str() {
+                    "minimal" => SeedScenario::Minimal,
+                    "demo" => SeedScenario::Demo,
+                    "extended" => SeedScenario::Extended,
+                    _ => unreachable!("clap validates seed scenario"),
+                },
+                only: (!only.is_empty()).then(|| only.into_iter().collect()),
+                skip: skip.into_iter().collect(),
+                reset: match reset.as_str() {
+                    "auto" => ResetPolicy::Auto,
+                    "none" => ResetPolicy::None,
+                    _ => unreachable!("clap validates reset policy"),
+                },
+            };
+            let pool = fubbik_db::connect(&database_url).await?;
+            let report = fubbik_db::seed::seed(&pool, &options).await?;
+            if output == fubbik_cli::OutputMode::Json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else if output == fubbik_cli::OutputMode::Human {
+                println!("Seeded modules: {}", report.modules.join(", "));
+            }
             Ok(())
         }
         Commands::Completions { shell } => {

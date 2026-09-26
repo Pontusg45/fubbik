@@ -1,4 +1,4 @@
-use fubbik_db::seed::seed_core;
+use fubbik_db::seed::{SeedOptions, SeedScenario, seed, seed_core};
 use sqlx::{PgPool, Row};
 
 #[sqlx::test]
@@ -62,4 +62,35 @@ async fn core_catalog_rolls_back_with_parent_transaction(pool: PgPool) {
             .await
             .unwrap();
     assert_eq!(count, 0);
+}
+
+#[sqlx::test]
+async fn selected_core_module_runs_through_transactional_entry_point(pool: PgPool) {
+    // Given an explicit request for the ported core module
+    let options = SeedOptions {
+        scenario: SeedScenario::Minimal,
+        only: Some(["core".to_string()].into()),
+        ..SeedOptions::default()
+    };
+
+    // When the Rust seed command runs twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then the report and catalog remain stable
+    assert_eq!(first.modules, ["core"]);
+    assert_eq!(first.core, second.core);
+    assert_eq!(first.core.unwrap().chunk_types, 7);
+}
+
+#[sqlx::test]
+async fn unported_module_is_rejected_before_seeding(pool: PgPool) {
+    // Given a default demo seed containing modules not yet ported
+    let options = SeedOptions::default();
+
+    // When the Rust seed entry point validates its plan
+    let error = seed(&pool, &options).await.unwrap_err();
+
+    // Then it reports the missing module without inserting catalog rows
+    assert!(error.to_string().contains("has not been ported yet"));
 }

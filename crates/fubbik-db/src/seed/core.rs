@@ -1,5 +1,5 @@
 use anyhow::Result;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, Transaction};
 
 #[derive(Debug, Deserialize)]
@@ -50,7 +50,7 @@ struct Catalog {
     inverse_pairs: Vec<(String, String)>,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
 pub struct CoreSeedCounts {
     pub chunk_types: usize,
     pub connection_relations: usize,
