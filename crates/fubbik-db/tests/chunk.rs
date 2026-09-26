@@ -341,6 +341,44 @@ async fn list_breaks_ties_by_id_for_every_sort(pool: sqlx::PgPool) {
     }
 }
 
+#[sqlx::test]
+async fn text_search_orders_by_title_similarity_before_creation_time(pool: sqlx::PgPool) {
+    // Given three matching chunks, with the least relevant created last
+    let uid = seed_user(&pool).await;
+    let exact = a_chunk(&pool, &uid, "Convention").await;
+    let partial = a_chunk(&pool, &uid, "Convention guide").await;
+    let content_only = chunk::create(
+        &pool,
+        &uid,
+        chunk::NewChunk {
+            title: "Other topic".into(),
+            content: "A convention is mentioned here.".into(),
+            chunk_type: "note".into(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    // When the ordinary chunk list is searched
+    let found = chunk::list(
+        &pool,
+        &uid,
+        &chunk::ListParams {
+            search: Some("convention".into()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    // Then title relevance controls the order, including content-only matches
+    assert_eq!(
+        found.into_iter().map(|row| row.id).collect::<Vec<_>>(),
+        vec![exact.id, partial.id, content_only.id]
+    );
+}
+
 // ── Task 7: `tags`/`after`/`enrichment`/`minConnections` (`ListParams`) ──
 
 #[sqlx::test]

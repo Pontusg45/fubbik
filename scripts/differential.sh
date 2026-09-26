@@ -2,19 +2,19 @@
 # Runs the differential harness against both stacks.
 #
 # READ-ONLY on the Node side. This script's only interaction with the Node
-# database is a single `pg_dump` FROM $DATABASE_URL. It must never `psql`,
+# source database is a single `pg_dump` FROM $DATABASE_URL. It must never `psql`,
 # `INSERT`, `UPDATE`, or otherwise write to $DATABASE_URL — doing so would
-# risk corrupting the user's live knowledge base. Everything this script
+# risk corrupting the source knowledge base. Everything this script
 # creates, migrates, truncates, and restores into lives in a dedicated
 # comparison database (`fubbik_diff`) on the Rust Postgres container,
 # entirely separate from `fubbik_rs` (which may hold local dev/test data)
-# and from the Node database itself.
+# and from the Node source database itself.
 #
 # Prerequisites this script does NOT start for you:
-#   - The Node server running and reachable (default http://localhost:3000).
-#     Never started here — it runs against the user's live knowledge base
-#     and must be started by hand.
-#   - The fubbik-rs-db container (port 5434) up and running.
+#   - The Node server running against $DATABASE_URL and reachable (default
+#     http://localhost:3000). Start it separately, whether the source is a
+#     disposable fixture or an existing knowledge base.
+#   - The canonical Rust test adapter on port 5434 up and running.
 set -euo pipefail
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
@@ -65,7 +65,10 @@ echo "==> Loading data from the Node database (read-only: DATABASE_URL is only e
 #
 # --exclude-table drops account/verification: the Node schema has these
 # tables, the Rust schema deliberately does not, and their INSERTs would
-# otherwise fail the restore outright.
+# otherwise fail the restore outright. Only public relational data is copied:
+# AGE graph schemas are rebuilt by the Rust process and cannot be restored
+# into the freshly migrated destination before their graph tables exist.
+# SQLx's migration ledger already exists in the destination.
 #
 # `set -o pipefail` (enabled above) makes this pipeline's exit status
 # non-zero if pg_dump fails, even though psql (the last command) may still
@@ -73,7 +76,8 @@ echo "==> Loading data from the Node database (read-only: DATABASE_URL is only e
 # could silently leave fubbik_diff full of nothing but migration-seeded
 # rows, and the comparison below would then "pass" by finding nothing to
 # disagree on.
-pg_dump --data-only --no-owner \
+pg_dump --data-only --no-owner --schema=public \
+  --exclude-table=public._sqlx_migrations \
   --exclude-table=account --exclude-table=verification \
   "${DATABASE_URL}" \
   | psql "${DIFF_DB_URL}" -v ON_ERROR_STOP=1 >/dev/null
@@ -94,10 +98,9 @@ echo "==> Loaded data for ${loaded_users} user(s)"
 echo "==> Checking the Node server is reachable at ${NODE_URL}"
 if ! curl -sf "${NODE_URL}/api/health" >/dev/null; then
   echo "ERROR: Node server not reachable at ${NODE_URL}/api/health." >&2
-  echo "This script never starts the Node server — it runs against the" >&2
-  echo "user's live knowledge base and must be started by hand (e.g." >&2
-  echo "'pnpm dev' from the repo root, or set FUBBIK_NODE_URL to point at" >&2
-  echo "wherever it's already running)." >&2
+  echo "This script never starts the Node server. Start it separately" >&2
+  echo "against the source DATABASE_URL, or set FUBBIK_NODE_URL to point" >&2
+  echo "at an already-running legacy server." >&2
   echo "Refusing to start the Rust server and run a comparison against a" >&2
   echo "dead Node server — that would produce a meaningless result." >&2
   exit 1
@@ -105,12 +108,25 @@ fi
 
 echo "==> Starting the Rust server against ${DIFF_DB}"
 DATABASE_URL="${DIFF_DB_URL}" \
+  BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET:-differential-only-secret-with-32-chars}" \
   FUBBIK_IMPLICIT_DEV_SESSION=true \
   cargo run --quiet -p fubbik -- serve &
 RUST_PID=$!
 trap 'kill "${RUST_PID}" 2>/dev/null || true' EXIT
 
-until curl -sf "${RUST_URL}/api/health" >/dev/null; do sleep 0.5; done
+deadline=$((SECONDS + 180))
+until curl -sf "${RUST_URL}/api/health" >/dev/null; do
+  if ! kill -0 "${RUST_PID}" 2>/dev/null; then
+    wait "${RUST_PID}" || true
+    echo "ERROR: Rust server exited before becoming healthy." >&2
+    exit 1
+  fi
+  if (( SECONDS >= deadline )); then
+    echo "ERROR: Rust server did not become healthy within 180 seconds." >&2
+    exit 1
+  fi
+  sleep 0.5
+done
 
 echo "==> Diffing"
 FUBBIK_NODE_URL="${NODE_URL}" \

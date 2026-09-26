@@ -327,8 +327,8 @@
         },
         {
             "id": "http-differential",
-            "status": "pending",
-            "evidence": "scripts/differential.sh",
+            "status": "complete",
+            "evidence": "migration/http-differential.md",
             "verification": "./scripts/differential.sh"
         },
         {

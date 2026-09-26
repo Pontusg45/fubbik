@@ -15,7 +15,7 @@ test("the checked-in Rust migration contract covers every legacy source", () => 
         cliCommands: 63,
         mcpSources: 12,
     });
-    assert.equal(result.gates.complete, 3);
+    assert.equal(result.gates.complete, 4);
     assert.ok(result.gates.pending.includes("rust-web-serving"));
 });
 

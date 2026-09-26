@@ -810,7 +810,7 @@ async fn list_with_limit(
 /// more rows; its doc comment ties it deliberately to the two HTTP routes
 /// above, both of which have their own passing tests pinned to exactly 100.
 pub async fn list(pool: &PgPool, user_id: &str, params: &ListParams) -> AppResult<Vec<Chunk>> {
-    list_with_limit(pool, user_id, params, params.limit.clamp(1, 100), false).await
+    list_with_limit(pool, user_id, params, params.limit.clamp(1, 100), true).await
 }
 
 /// Lists the bounded cross-space search view. Unlike the ordinary chunk list,
