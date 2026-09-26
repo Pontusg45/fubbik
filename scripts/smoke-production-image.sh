@@ -50,7 +50,7 @@ curl --fail --silent --show-error "$base/api/health" >/dev/null
 curl --fail --silent --show-error -H 'Accept: text/html' "$base/" | grep -q '<html'
 curl --fail --silent --show-error -H 'Accept: text/html' "$base/graph" | grep -q '<html'
 curl --fail --silent --show-error -H 'Accept: text/html' "$base/plans/example" | grep -q '<html'
-asset_path="$(curl --fail --silent --show-error "$base/" | grep -oE '/assets/[^" ]+\.js' | head -1)"
+asset_path="$(curl --fail --silent --show-error -H 'Accept: text/html' "$base/" | grep -oE '/assets/[^" ]+\.js' | head -1)"
 test -n "$asset_path"
 curl --fail --silent --show-error "$base$asset_path" >/dev/null
 test "$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Accept: text/html' "$base/api/unknown")" = 404
