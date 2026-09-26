@@ -4,6 +4,7 @@ pub mod config;
 pub mod output;
 pub mod plugin;
 pub mod setup;
+mod source_docs_java;
 mod source_docs_native;
 
 use std::path::PathBuf;

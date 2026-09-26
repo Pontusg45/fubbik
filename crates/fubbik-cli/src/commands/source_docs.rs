@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::{Context, Result, bail};
 use fubbik_core::source_docs::SourceManifest;
-use std::{path::Path, process::Command};
+use std::path::Path;
 
 pub async fn run(
     client: &Client,
@@ -17,37 +17,11 @@ pub async fn run(
 ) -> Result<()> {
     let manifest: SourceManifest = if let Some(language) = language {
         let project = project.context("--project is required when extracting source")?;
-        if language == "javascript" {
-            crate::source_docs_native::extract_javascript(path, project)?
-        } else if language == "typescript" {
-            crate::source_docs_native::extract_typescript(path, project)?
-        } else {
-            let temporary = tempfile::tempdir()?;
-            let script = temporary.path().join("extract.mjs");
-            std::fs::write(&script, include_str!("../source-docs/extract.mjs"))?;
-            std::fs::write(
-                temporary.path().join("FubbikDoclet.java"),
-                include_str!("../source-docs/FubbikDoclet.java"),
-            )?;
-            let result = Command::new("node")
-                .arg(&script)
-                .arg(path.canonicalize()?)
-                .arg(language)
-                .arg(project)
-                .arg(temporary.path())
-                .output()
-                .context("source extraction requires Node.js on PATH")?;
-            if !result.status.success() {
-                bail!(
-                    "source extraction failed: {}",
-                    String::from_utf8_lossy(&result.stderr)
-                );
-            }
-            if !result.stderr.is_empty() {
-                eprint!("{}", String::from_utf8_lossy(&result.stderr));
-            }
-            serde_json::from_slice(&result.stdout)
-                .context("extractor returned an invalid manifest")?
+        match language {
+            "javascript" => crate::source_docs_native::extract_javascript(path, project)?,
+            "typescript" => crate::source_docs_native::extract_typescript(path, project)?,
+            "java" => crate::source_docs_java::extract(path, project)?,
+            _ => bail!("unsupported source language: {language}"),
         }
     } else {
         let metadata = std::fs::metadata(path)?;

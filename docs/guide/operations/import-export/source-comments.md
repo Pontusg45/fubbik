@@ -14,25 +14,24 @@ fubbik docs extract ./my-java-project --language java --project my-library --pre
 
 Preview prints the manifest and does not contact the API. JavaScript extraction
 runs natively in Rust and currently supports documented top-level functions,
-classes, class methods, and variables in `.js`, `.mjs`, and `.cjs` files. If it encounters invalid
-syntax or another documented declaration, it fails before import rather than
-claiming a complete scan that could archive existing symbols.
+classes, class methods, and variables in `.js`, `.mjs`, and `.cjs` files.
 
 TypeScript extraction also runs natively for explicit `.ts` or `.tsx` file
 entry points listed in `typedoc.json` when their documented exports are
 top-level functions with primitive parameter and return types. Unsupported
-declarations, tags, and re-exports fail before import. Java extraction still
-requires Node.js and a JDK (17+). Fubbik never downloads these tools
-automatically.
-The native TypeScript path reads `typedoc.json` entry points; configure them
-to cover the intended API. Java uses Javadoc's normal public and
-protected visibility and requires dependencies to be available to Javadoc
-(for example through `CLASSPATH`). Extractor failures stop before any import.
+declarations, tags, and re-exports fail before import. Configure the entry
+points to cover the intended API.
+
+Java extraction runs natively for documented public or protected classes and
+methods whose parameter and return types are primitives or known `java.lang`
+types. It preserves overload keys and ignores private methods. Syntax errors,
+unresolved types, and other documented declarations fail before import. The
+native extractors do not invoke Node, JSDoc, TypeDoc, Javadoc, or a JVM.
 
 JavaScript and Java directory scans skip symlinks, `.git`, `node_modules`,
-`target`, `build`, `dist`, and `.next`. Java block tags and inline Javadoc notation are
-preserved as text; inherited comment expansion and conversion of every
-Javadoc HTML/inline tag to Markdown are not implemented.
+`target`, `build`, `dist`, and `.next`. The Java parser preserves supported
+block tags as text and rejects inline Javadoc tags it cannot render safely.
+Inherited comments and full Javadoc HTML handling are not implemented.
 
 ## Import and refresh
 
@@ -97,7 +96,8 @@ APIs. Keep the same extractor version/configuration in CI for stable output.
 
 ## Development checks
 
-Run the native JavaScript and TypeScript fixtures with `cargo test -p fubbik --test source_docs`.
+Run the native JavaScript, TypeScript, and Java fixtures with
+`cargo test -p fubbik --test source_docs`.
 Run the legacy extractor comparisons with `node --test
 crates/fubbik-cli/tests/source-docs.test.mjs` after installing JSDoc, TypeDoc,
 TypeScript, and the JDK for the differential tests.

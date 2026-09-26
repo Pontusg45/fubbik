@@ -116,6 +116,31 @@ test("native TypeScript extraction preserves the TypeDoc symbol contract", () =>
     }
 });
 
+test("native Java extraction preserves the Javadoc symbol contract", () => {
+    // Given the Java overload fixture and the legacy Doclet
+    const temporary = mkdtempSync(join(tmpdir(), "fubbik-javadoc-differential-"));
+    const fixture = fileURLToPath(new URL("./fixtures/source-docs", import.meta.url));
+    try {
+        copyFileSync(new URL("../src/source-docs/FubbikDoclet.java", import.meta.url), join(temporary, "FubbikDoclet.java"));
+
+        // When the legacy and native paths extract the same declarations
+        const legacy = spawnSync("node", [
+            fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)),
+            fixture, "java", "fixture", temporary
+        ], { encoding: "utf8" });
+        const native = spawnSync(fileURLToPath(new URL("../../../target/debug/fubbik", import.meta.url)), [
+            "docs", "extract", fixture, "--language", "java", "--project", "fixture", "--preview"
+        ], { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } });
+
+        // Then overload keys, signatures, comments, and source lines agree exactly
+        assert.equal(legacy.status, 0, legacy.stderr);
+        assert.equal(native.status, 0, native.stderr);
+        assert.deepEqual(JSON.parse(native.stdout).symbols, JSON.parse(legacy.stdout).symbols);
+    } finally {
+        rmSync(temporary, { recursive: true, force: true });
+    }
+});
+
 test("failed source parsing never produces a complete manifest", () => {
     // Given
     const temporary = mkdtempSync(join(tmpdir(), "fubbik-docs-invalid-"));
