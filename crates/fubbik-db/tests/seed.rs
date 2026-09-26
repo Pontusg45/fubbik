@@ -94,3 +94,55 @@ async fn unported_module_is_rejected_before_seeding(pool: PgPool) {
     // Then it reports the missing module without inserting catalog rows
     assert!(error.to_string().contains("has not been ported yet"));
 }
+
+#[sqlx::test]
+async fn codebase_module_reuses_named_spaces_on_repeat_runs(pool: PgPool) {
+    // Given a request for the codebase module and its core prerequisite
+    let options = SeedOptions {
+        only: Some(["codebases".to_string()].into()),
+        ..SeedOptions::default()
+    };
+
+    // When the seed runs twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then it reports two spaces and does not duplicate either name
+    assert_eq!(first.modules, ["core", "codebases"]);
+    assert_eq!(second.spaces, Some(2));
+    let count: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM space WHERE user_id = 'dev-user' \
+         AND name IN ('fubbik', 'fubbik-docs')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(count, 2);
+}
+
+#[sqlx::test]
+async fn tag_module_seeds_legacy_named_catalog_idempotently(pool: PgPool) {
+    // Given a request for tags and their core prerequisite
+    let options = SeedOptions {
+        only: Some(["tags".to_string()].into()),
+        ..SeedOptions::default()
+    };
+
+    // When the native seed runs twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then the exact legacy tag catalog and type associations are present
+    assert_eq!(first.tags, second.tags);
+    let counts = first.tags.unwrap();
+    assert_eq!(counts.tag_types, 8);
+    assert_eq!(counts.tags, 64);
+    let count: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM tag t JOIN tag_type tt ON tt.id = t.tag_type_id \
+         WHERE t.id LIKE 'seed-tag-%' AND tt.id LIKE 'seed-tt-%'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(count, 64);
+}

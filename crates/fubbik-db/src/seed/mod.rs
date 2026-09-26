@@ -1,5 +1,7 @@
 mod core;
 mod planner;
+mod spaces;
+mod tags;
 
 use anyhow::{Result, bail};
 use serde::Serialize;
@@ -7,29 +9,49 @@ use sqlx::PgPool;
 
 pub use core::{CoreSeedCounts, seed_core};
 pub use planner::{MODULES, ResetPolicy, SeedModule, SeedOptions, SeedScenario, plan_modules};
+pub use spaces::seed_spaces;
+pub use tags::{TagSeedCounts, seed_tags};
 
 #[derive(Debug, Serialize)]
 pub struct SeedReport {
     pub modules: Vec<&'static str>,
     pub core: Option<CoreSeedCounts>,
+    pub spaces: Option<usize>,
+    pub tags: Option<TagSeedCounts>,
 }
 
 /// Runs selected modules atomically. Reject incomplete ports before making
 /// any changes, so maintenance commands cannot silently seed partial data.
 pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
     let modules = plan_modules(MODULES, options).map_err(anyhow::Error::msg)?;
-    if let Some(module) = modules.iter().find(|name| **name != "core") {
+    if let Some(module) = modules
+        .iter()
+        .find(|name| !matches!(**name, "core" | "codebases" | "tags"))
+    {
         bail!("Rust seed module {module} has not been ported yet");
     }
 
     let mut tx = pool.begin().await?;
+    sqlx::query(
+        "INSERT INTO \"user\" (id, name, email, email_verified) \
+         VALUES ($1, 'Dev User', 'dev@localhost', false) ON CONFLICT (id) DO NOTHING",
+    )
+    .bind(spaces::DEV_USER_ID)
+    .execute(&mut *tx)
+    .await?;
     let mut report = SeedReport {
         modules: modules.clone(),
         core: None,
+        spaces: None,
+        tags: None,
     };
     for module in modules {
         if module == "core" {
             report.core = Some(seed_core(&mut tx).await?);
+        } else if module == "codebases" {
+            report.spaces = Some(seed_spaces(&mut tx).await?);
+        } else if module == "tags" {
+            report.tags = Some(seed_tags(&mut tx).await?);
         }
     }
     tx.commit().await?;
