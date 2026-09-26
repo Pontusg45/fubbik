@@ -84,15 +84,19 @@ async fn selected_core_module_runs_through_transactional_entry_point(pool: PgPoo
 }
 
 #[sqlx::test]
-async fn unported_module_is_rejected_before_seeding(pool: PgPool) {
-    // Given a default demo seed containing modules not yet ported
+async fn demo_scenario_runs_all_native_modules_idempotently(pool: PgPool) {
+    // Given the complete native demo seed registry
     let options = SeedOptions::default();
 
-    // When the Rust seed entry point validates its plan
-    let error = seed(&pool, &options).await.unwrap_err();
+    // When the demo seed runs twice in a transaction
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
 
-    // Then it reports the missing module without inserting catalog rows
-    assert!(error.to_string().contains("has not been ported yet"));
+    // Then all 16 modules complete and their fixture counts remain stable
+    assert_eq!(first.modules.len(), 16);
+    assert_eq!(first.chunks, second.chunks);
+    assert_eq!(first.matrices, second.matrices);
+    assert_eq!(first.agent_coordination, second.agent_coordination);
 }
 
 #[sqlx::test]
@@ -369,4 +373,26 @@ async fn coordination_module_preserves_claim_and_reply_story(pool: PgPool) {
     .await
     .unwrap();
     assert_eq!(replies, 1);
+}
+
+#[sqlx::test]
+async fn matrix_module_ports_cells_and_requirement_links(pool: PgPool) {
+    // Given both behavior matrices and their requirement dependencies
+    let options = SeedOptions {
+        only: Some(["matrices".to_string()].into()),
+        ..SeedOptions::default()
+    };
+
+    // When matrices seed twice
+    let first = seed(&pool, &options).await.unwrap();
+    let second = seed(&pool, &options).await.unwrap();
+
+    // Then all matrix dimensions, rules, cells, and specified links remain stable
+    assert_eq!(first.matrices, second.matrices);
+    let counts = first.matrices.unwrap();
+    assert_eq!(counts.matrices, 2);
+    assert_eq!(counts.dimensions, 19);
+    assert_eq!(counts.rules, 69);
+    assert_eq!(counts.cells, 184);
+    assert_eq!(counts.requirement_links, 7);
 }

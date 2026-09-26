@@ -3,6 +3,7 @@ mod connections;
 mod coordination;
 mod core;
 mod file_links;
+mod matrices;
 mod misc;
 mod planner;
 mod plans;
@@ -21,6 +22,7 @@ pub use connections::seed_connections;
 pub use coordination::{CoordinationCounts, seed_coordination};
 pub use core::{CoreSeedCounts, seed_core};
 pub use file_links::{FileLinkCounts, seed_file_links};
+pub use matrices::{MatrixCounts, seed_matrices};
 pub use misc::{seed_collections, seed_documents, seed_vocabulary, seed_workspaces};
 pub use planner::{MODULES, ResetPolicy, SeedModule, SeedOptions, SeedScenario, plan_modules};
 pub use plans::{PlanSeed, seed_plans};
@@ -44,6 +46,7 @@ pub struct SeedReport {
     pub plans: Option<usize>,
     pub plan_tasks: Option<usize>,
     pub agent_coordination: Option<CoordinationCounts>,
+    pub matrices: Option<MatrixCounts>,
     pub documents: Option<usize>,
     pub vocabulary: Option<usize>,
     pub workspaces: Option<usize>,
@@ -55,29 +58,6 @@ pub struct SeedReport {
 /// any changes, so maintenance commands cannot silently seed partial data.
 pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
     let modules = plan_modules(MODULES, options).map_err(anyhow::Error::msg)?;
-    if let Some(module) = modules.iter().find(|name| {
-        !matches!(
-            **name,
-            "core"
-                | "codebases"
-                | "tags"
-                | "chunks"
-                | "connections"
-                | "file-links"
-                | "use-cases"
-                | "requirements"
-                | "plans"
-                | "agent-coordination"
-                | "documents"
-                | "vocabulary"
-                | "workspaces"
-                | "collections"
-                | "self-documenting"
-        )
-    }) {
-        bail!("Rust seed module {module} has not been ported yet");
-    }
-
     let mut tx = pool.begin().await?;
     sqlx::query(
         "INSERT INTO \"user\" (id, name, email, email_verified) \
@@ -99,6 +79,7 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
         plans: None,
         plan_tasks: None,
         agent_coordination: None,
+        matrices: None,
         documents: None,
         vocabulary: None,
         workspaces: None,
@@ -139,6 +120,8 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
                 .as_ref()
                 .ok_or_else(|| anyhow::anyhow!("Missing seed plan"))?;
             report.agent_coordination = Some(seed_coordination(&mut tx, plan).await?);
+        } else if module == "matrices" {
+            report.matrices = Some(seed_matrices(&mut tx, &requirement_ids).await?);
         } else if module == "documents" {
             report.documents = Some(seed_documents(&mut tx).await?);
         } else if module == "vocabulary" {
@@ -149,6 +132,8 @@ pub async fn seed(pool: &PgPool, options: &SeedOptions) -> Result<SeedReport> {
             report.collections = Some(seed_collections(&mut tx).await?);
         } else if module == "self-documenting" {
             report.self_documenting = Some(seed_self_documenting(&mut tx).await?);
+        } else {
+            bail!("Seed module {module} has no native implementation");
         }
     }
     tx.commit().await?;

@@ -40,7 +40,7 @@ const FIXTURES: &[Fixture] = &[
         name: "seed-scenarios",
         title: "Seed system: scenarios",
         kind: "reference",
-        content: "Minimal seeds the built-in catalog and seed documentation with its codebase and tag dependencies. Demo and extended are defined in the registry, but currently reject modules that have not yet been ported to Rust. The planner accepts --only and --skip, includes transitive dependencies, and rejects conflicts or cycles.",
+        content: "Minimal seeds the built-in catalog and seed documentation with its codebase and tag dependencies. Demo seeds all registered fixture modules. Extended currently uses the same modules and can add richer fixtures later. The planner accepts --only and --skip, includes transitive dependencies, and rejects conflicts or cycles.",
         pattern: "crates/fubbik-db/src/seed/planner.rs",
         tags: &["seed-system", "self-documenting", "reference"],
     },
