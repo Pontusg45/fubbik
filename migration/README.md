@@ -11,7 +11,7 @@ Each cutover gate has a stable ID, `pending` or `complete` status, an evidence p
 1. **Lock the contract.** Keep route, command, MCP, and runtime dependency inventories exhaustive in CI. Record removals with a reason.
 2. **Close HTTP parity.** Maintain contract tests for every retained endpoint. Remove the unused code-index, concepts, diagram, and placeholder usage domains after caller scans remain empty.
 3. **Complete CLI parity.** Port commands in vertical slices through the existing typed client and output modes. Preserve command names, aliases, JSON shapes, quiet output, and exit behavior.
-4. **Remove extractor subprocesses.** Replace the Node/JSDoc/TypeDoc/JVM source-document path with native parsers behind the versioned `SourceManifest` boundary.
+4. **Complete native source extraction.** The CLI no longer starts Node, JSDoc, TypeDoc, or a JVM. Expand the native parsers beyond their documented declaration subsets and keep differential fixtures for stable `SourceManifest` symbols.
 5. **Maintain MCP parity.** Keep the retained 53-tool catalog aligned with the migration manifest and run the stdio protocol and HTTP dispatch tests when tools change.
 6. **Move operational commands.** Port seed, scan, and verification workflows to Rust and update local and container entrypoints.
 7. **Serve the web build from Rust.** Embed or serve the SPA assets with history fallback, cache policy, and a production image smoke test that confirms Node and Bun are absent.

@@ -6,16 +6,18 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+const rustBinary = process.env.FUBBIK_TEST_BINARY ?? fileURLToPath(new URL("../../../target/debug/fubbik", import.meta.url));
+
 test("Javadoc extracts overloads, tags and source locations while excluding private members", () => {
     // Given
     const temporary = mkdtempSync(join(tmpdir(), "fubbik-doclet-test-"));
     try {
-        copyFileSync(new URL("../src/source-docs/FubbikDoclet.java", import.meta.url), join(temporary, "FubbikDoclet.java"));
+        copyFileSync(new URL("./fixtures/legacy-source-docs/FubbikDoclet.java", import.meta.url), join(temporary, "FubbikDoclet.java"));
         // When
         const result = spawnSync(
             "node",
             [
-                fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)),
+                fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
                 fileURLToPath(new URL("./fixtures/source-docs", import.meta.url)),
                 "java",
                 "fixture",
@@ -45,7 +47,7 @@ for (const language of ["javascript", "typescript"]) {
             const result = spawnSync(
                 "node",
                 [
-                    fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)),
+                    fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
                     fileURLToPath(new URL("./fixtures/source-docs", import.meta.url)),
                     language,
                     "fixture",
@@ -76,10 +78,10 @@ for (const fixtureName of ["source-docs", "source-docs-forms"]) {
         try {
             // When the legacy JSDoc path and shipped Rust CLI extract the same source
             const legacy = spawnSync("node", [
-                fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)),
+                fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
                 fixture, "javascript", "fixture", temporary
             ], { encoding: "utf8" });
-            const native = spawnSync(fileURLToPath(new URL("../../../target/debug/fubbik", import.meta.url)), [
+            const native = spawnSync(rustBinary, [
                 "docs", "extract", fixture, "--language", "javascript", "--project", "fixture", "--preview"
             ], { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } });
 
@@ -100,10 +102,10 @@ test("native TypeScript extraction preserves the TypeDoc symbol contract", () =>
     try {
         // When the legacy and native paths extract the same typed function
         const legacy = spawnSync("node", [
-            fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)),
+            fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
             fixture, "typescript", "fixture", temporary
         ], { encoding: "utf8" });
-        const native = spawnSync(fileURLToPath(new URL("../../../target/debug/fubbik", import.meta.url)), [
+        const native = spawnSync(rustBinary, [
             "docs", "extract", fixture, "--language", "typescript", "--project", "fixture", "--preview"
         ], { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } });
 
@@ -121,14 +123,14 @@ test("native Java extraction preserves the Javadoc symbol contract", () => {
     const temporary = mkdtempSync(join(tmpdir(), "fubbik-javadoc-differential-"));
     const fixture = fileURLToPath(new URL("./fixtures/source-docs", import.meta.url));
     try {
-        copyFileSync(new URL("../src/source-docs/FubbikDoclet.java", import.meta.url), join(temporary, "FubbikDoclet.java"));
+        copyFileSync(new URL("./fixtures/legacy-source-docs/FubbikDoclet.java", import.meta.url), join(temporary, "FubbikDoclet.java"));
 
         // When the legacy and native paths extract the same declarations
         const legacy = spawnSync("node", [
-            fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)),
+            fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
             fixture, "java", "fixture", temporary
         ], { encoding: "utf8" });
-        const native = spawnSync(fileURLToPath(new URL("../../../target/debug/fubbik", import.meta.url)), [
+        const native = spawnSync(rustBinary, [
             "docs", "extract", fixture, "--language", "java", "--project", "fixture", "--preview"
         ], { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } });
 
@@ -149,7 +151,7 @@ test("failed source parsing never produces a complete manifest", () => {
         // When
         const result = spawnSync(
             "node",
-            [fileURLToPath(new URL("../src/source-docs/extract.mjs", import.meta.url)), temporary, "javascript", "fixture", temporary],
+            [fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)), temporary, "javascript", "fixture", temporary],
             { encoding: "utf8" }
         );
         // Then

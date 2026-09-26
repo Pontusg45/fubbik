@@ -221,9 +221,9 @@
     "runtimeDependencies": [
         {
             "id": "source-doc-extraction",
-            "status": "pending",
-            "evidence": "crates/fubbik-cli/src/commands/source_docs.rs",
-            "exitCriterion": "JavaScript, TypeScript, and Java extraction run without spawning node, jsdoc, typedoc, or a JVM."
+            "status": "partial",
+            "evidence": "crates/fubbik-cli/src/source_docs_native.rs",
+            "exitCriterion": "JavaScript, TypeScript, and Java extraction cover retained documented declarations without subprocesses and preserve SourceManifest parity."
         },
         {
             "id": "database-seed",
