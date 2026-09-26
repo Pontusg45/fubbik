@@ -20,12 +20,12 @@ Each cutover gate has a stable ID, `pending` or `complete` status, an evidence p
 
 ## Required checks
 
-```sh
-node scripts/check-rust-migration.mjs
-node --test scripts/check-rust-migration.test.mjs
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test --workspace
-```
+Run `just rust-test` for the canonical database adapter, formatting, strict
+Clippy, migration checks, and the full Rust workspace suite. It reports
+aggregate test totals and stops the database it started, including on failure.
+`just rust-test-fast` runs database-free library and CLI HTTP contract checks
+during development.
+For an already running test database, set `FUBBIK_TEST_DB_EXTERNAL=true` and
+`DATABASE_URL` when invoking `just rust-test`.
 
 Run the HTTP differential suite and production container smoke test before deleting any legacy implementation. The JSON contract's `cutoverGates` array is the definitive removal checklist.

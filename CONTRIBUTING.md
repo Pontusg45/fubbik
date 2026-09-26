@@ -70,7 +70,13 @@ Create route at `apps/web/src/routes/your-feature.tsx`.
 
 ### 6. Verify
 
-Run the focused test, then `just rust-test`.
+Run the focused test, then `just rust-test`. It starts and stops the canonical
+PostgreSQL adapter and runs formatting, strict Clippy, migration checks, and the
+full Rust workspace suite. Use `just rust-test-fast` for database-free library
+and CLI HTTP contract checks while iterating.
+
+To run a database-backed Cargo test directly, use
+`./scripts/rust-test-db.sh start && DATABASE_URL="$(./scripts/rust-test-db.sh url)" cargo test -p fubbik-db --test seed`.
 
 ## Common Commands
 
@@ -82,7 +88,8 @@ Run the focused test, then `just rust-test`.
 | `pnpm run check-types` | Type-check all packages |
 | `pnpm ci`              | Full CI pipeline        |
 | `pnpm db:studio`       | Open Drizzle Studio     |
-| `just rust-test`       | Full Rust suite on PG18 + AGE |
+| `just rust-test`       | Full Rust verification on PG18 + AGE |
+| `just rust-test-fast`  | Database-free Rust library checks |
 | `pnpm kill:all`        | Free ports 3000 + 3001  |
 | `pnpm service:start`   | Start via launchd       |
 

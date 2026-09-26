@@ -321,9 +321,9 @@
         },
         {
             "id": "rust-workspace",
-            "status": "pending",
-            "evidence": ".github/workflows/rust.yml",
-            "verification": "cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --no-fail-fast"
+            "status": "complete",
+            "evidence": "scripts/test-rust.sh",
+            "verification": "./scripts/test-rust.sh"
         },
         {
             "id": "http-differential",

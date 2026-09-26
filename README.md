@@ -168,7 +168,8 @@ Mark test bodies with `// Given`, `// When`, and `// Then` comments for setup, t
 - `pnpm run dev:server`: Start only the Rust server
 - `pnpm run check-types`: Type-check all packages (uses `tsgo`)
 - `pnpm run db:studio`: Open database studio UI
-- `just rust-test`: Run Rust tests with the canonical PG18/vector/AGE adapter
+- `just rust-test`: Start the canonical PG18/vector/AGE adapter, run formatting, strict Clippy, migration checks, and the complete Rust suite, then stop it
+- `just rust-test-fast`: Run database-free Rust libraries and CLI HTTP contract tests
 - `pnpm test`: Run workspace tests after starting the [database test adapter](packages/db/README.md)
 - `pnpm run ci`: Run the TypeScript CI pipeline
 - `pnpm run test:e2e`: Run the browser critical-path suite

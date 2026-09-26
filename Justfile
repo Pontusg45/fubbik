@@ -72,12 +72,16 @@ rust-test-db-stop:
 
 # Run the complete Rust suite against the canonical database adapter.
 rust-test:
-    #!/usr/bin/env zsh
-    set -euo pipefail
-    ./scripts/rust-test-db.sh start >/dev/null
-    database_url="$(./scripts/rust-test-db.sh url)"
-    trap './scripts/rust-test-db.sh stop' EXIT
-    SQLX_OFFLINE=true DATABASE_URL="$database_url" cargo test --workspace
+    ./scripts/test-rust.sh
+
+alias test-rust := rust-test
+
+# Run database-free Rust libraries and CLI HTTP contract tests.
+rust-test-fast:
+    cargo fmt --all --check
+    CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 SQLX_OFFLINE=true cargo test -p fubbik-contracts -p fubbik-cli -p fubbik-mcp
+
+alias test-rust-fast := rust-test-fast
 
 # Lint the workspace.
 lint:
