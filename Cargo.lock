@@ -840,6 +840,7 @@ dependencies = [
 name = "fubbik-db"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
  "fubbik-core",
  "rand",

@@ -2,6 +2,7 @@ pub mod age;
 pub mod embedding;
 mod migration;
 pub mod repo;
+pub mod seed;
 pub mod timestamp;
 
 use sqlx::postgres::{PgConnectOptions, PgConnection, PgPoolOptions};

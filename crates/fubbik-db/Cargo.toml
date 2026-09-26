@@ -4,6 +4,7 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 chrono = { version = "0.4", features = ["serde"] }
 rand = "0.8"
 serde.workspace = true
