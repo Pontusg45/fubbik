@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO chunk_version\n             (id, chunk_id, version, title, content, type, tags, update_tag)\n           VALUES ($1, $2, 0, '', '', '', '[]'::jsonb, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "56ce611cdca882a9d72f0026db520f053bfe16f601e7fa58e5db88a44a81b790"
+}

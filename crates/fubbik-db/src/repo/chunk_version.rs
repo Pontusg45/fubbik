@@ -127,6 +127,26 @@ pub async fn snapshot_in(
     Ok(())
 }
 
+/// Records a newly created chunk under an update tag. Version zero is a
+/// creation marker; later snapshots start at version one.
+pub async fn create_marker_in(
+    connection: &mut PgConnection,
+    chunk_id: &str,
+    update_tag: &str,
+) -> AppResult<()> {
+    sqlx::query!(
+        r#"INSERT INTO chunk_version
+             (id, chunk_id, version, title, content, type, tags, update_tag)
+           VALUES ($1, $2, 0, '', '', '', '[]'::jsonb, $3)"#,
+        crate::new_id(),
+        chunk_id,
+        update_tag
+    )
+    .execute(&mut *connection)
+    .await?;
+    Ok(())
+}
+
 /// Scoped by `user_id` in the SQL itself (via the parent `chunk` row), not
 /// just by the caller having already checked ownership via `service::get`.
 /// A `chunk_id`/`user_id` pair that does not correspond to an owned chunk

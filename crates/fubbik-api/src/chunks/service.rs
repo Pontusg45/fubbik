@@ -358,12 +358,9 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateChunkBody) -> AppR
 
     if let Some(tag) = body.update_tag.as_deref() {
         // Node records the create under version 0 with empty title/content
-        // (`chunk-mutations.ts:120-131`) — a marker row, not a snapshot.
-        // Reproduced by snapshotting the freshly created chunk instead,
-        // which carries the same `update_tag` but real content; an empty
-        // marker in the history list is worse than useless to the UI, which
-        // renders title and content per version.
-        fubbik_db::repo::chunk_version::snapshot_in(&mut tx, &created, Some(tag)).await?;
+        // (`chunk-mutations.ts:120-131`) so the updates endpoint can
+        // distinguish creation from subsequent edits.
+        fubbik_db::repo::chunk_version::create_marker_in(&mut tx, &created.id, tag).await?;
     }
 
     tx.commit().await?;
