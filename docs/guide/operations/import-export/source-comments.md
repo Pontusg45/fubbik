@@ -12,18 +12,23 @@ fubbik docs extract ./my-ts-project --language typescript --project my-library -
 fubbik docs extract ./my-java-project --language java --project my-library --preview
 ```
 
-Preview prints the manifest and does not contact the API. Extraction requires
-Node.js, plus JSDoc for JavaScript, TypeDoc for TypeScript, or a JDK (17+) for
-Java. Install JSDoc/TypeDoc in the source project's development dependencies
-or put their executables on PATH. Fubbik never downloads them automatically.
+Preview prints the manifest and does not contact the API. JavaScript extraction
+runs natively in Rust and currently supports documented top-level function
+declarations in `.js`, `.mjs`, and `.cjs` files. If it encounters invalid
+syntax or another documented declaration, it fails before import rather than
+claiming a complete scan that could archive existing symbols.
+
+TypeScript and Java extraction still require Node.js, plus TypeDoc for
+TypeScript or a JDK (17+) for Java. Install TypeDoc in the source project's
+development dependencies or put it on PATH. Fubbik never downloads these
+tools automatically.
 TypeDoc uses the project's `typedoc.json` and `tsconfig.json`; configure its
 entry points to cover the intended API. Java uses Javadoc's normal public and
 protected visibility and requires dependencies to be available to Javadoc
 (for example through `CLASSPATH`). Extractor failures stop before any import.
 
 JavaScript and Java directory scans skip symlinks, `.git`, `node_modules`,
-`target`, `build`, `dist`, and `.next`. The installed tools define supported
-syntax and comment tags. Java block tags and inline Javadoc notation are
+`target`, `build`, `dist`, and `.next`. Java block tags and inline Javadoc notation are
 preserved as text; inherited comment expansion and conversion of every
 Javadoc HTML/inline tag to Markdown are not implemented.
 
@@ -90,7 +95,8 @@ APIs. Keep the same extractor version/configuration in CI for stable output.
 
 ## Development checks
 
-Run the real extractor fixtures with `node --test
-crates/fubbik-cli/tests/source-docs.test.mjs` after installing the three tools.
+Run the native JavaScript fixture with `cargo test -p fubbik --test source_docs`.
+Run the legacy TypeScript and Java extractor fixtures with `node --test
+crates/fubbik-cli/tests/source-docs.test.mjs` after installing their tools.
 Database behavior is covered by `cargo test -p fubbik-api --test source_docs`
 with the Rust test database running.

@@ -16,6 +16,8 @@ reqwest = { version = "0.12", features = ["json", "cookies"] }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
+tree-sitter = "0.25.10"
+tree-sitter-javascript = "0.25.0"
 
 [dev-dependencies]
 wiremock = "0.6"
