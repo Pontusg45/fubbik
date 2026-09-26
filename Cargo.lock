@@ -752,6 +752,8 @@ dependencies = [
  "fubbik-db",
  "fubbik-mcp",
  "serde_json",
+ "sqlx",
+ "tempfile",
  "tokio",
  "tower-http",
  "tracing",

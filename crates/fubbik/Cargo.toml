@@ -23,3 +23,7 @@ fubbik-api = { path = "../fubbik-api" }
 fubbik-cli = { path = "../fubbik-cli" }
 fubbik-db = { path = "../fubbik-db" }
 fubbik-mcp = { path = "../fubbik-mcp" }
+
+[dev-dependencies]
+sqlx.workspace = true
+tempfile = "3"
