@@ -222,7 +222,23 @@ async fn main() -> anyhow::Result<()> {
                 .allow_methods(tower_http::cors::AllowMethods::mirror_request())
                 .allow_headers(tower_http::cors::AllowHeaders::mirror_request());
 
-            let app = fubbik_api::router(state)
+            let mut app = fubbik_api::router(state);
+            let asset_dir = std::env::var_os("FUBBIK_WEB_ASSETS_DIR")
+                .map(std::path::PathBuf::from)
+                .or_else(|| {
+                    let local = std::path::PathBuf::from("apps/web/dist");
+                    local.join("index.html").is_file().then_some(local)
+                });
+            if let Some(asset_dir) = asset_dir {
+                if !asset_dir.join("index.html").is_file() {
+                    anyhow::bail!(
+                        "web asset directory has no index.html: {}",
+                        asset_dir.display()
+                    );
+                }
+                app = app.merge(fubbik_api::assets::router(asset_dir));
+            }
+            let app = app
                 .layer(cors)
                 .layer(tower_http::catch_panic::CatchPanicLayer::new())
                 .layer(tower_http::trace::TraceLayer::new_for_http())

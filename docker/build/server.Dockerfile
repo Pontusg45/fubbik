@@ -2,6 +2,34 @@
 # Build from the monorepo root:
 #   docker build -f docker/build/server.Dockerfile .
 
+FROM node:22-slim AS web-builder
+
+RUN corepack enable && corepack prepare pnpm@10.10.0 --activate
+WORKDIR /app
+ENV CI=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 DOTENV_DISABLE=1
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/cli/package.json ./apps/cli/
+COPY apps/web/package.json ./apps/web/
+COPY apps/vscode/package.json ./apps/vscode/
+COPY packages/client/package.json ./packages/client/
+COPY packages/config/package.json ./packages/config/
+COPY packages/db/package.json ./packages/db/
+COPY packages/env/package.json ./packages/env/
+COPY packages/mcp/package.json ./packages/mcp/
+
+RUN --mount=type=cache,id=fubbik-pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm fetch && pnpm install --frozen-lockfile --prefer-offline
+
+COPY packages/client/ ./packages/client/
+COPY packages/config/ ./packages/config/
+COPY packages/env/ ./packages/env/
+COPY apps/web/ ./apps/web/
+
+ARG VITE_FUBBIK_IMPLICIT_DEV_SESSION=true
+ENV VITE_FUBBIK_IMPLICIT_DEV_SESSION=${VITE_FUBBIK_IMPLICIT_DEV_SESSION}
+RUN pnpm --filter web run build
+
 FROM rust:1.96-bookworm AS builder
 
 WORKDIR /app
@@ -32,8 +60,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
+ENV FUBBIK_WEB_ASSETS_DIR=/app/web
 
 COPY --from=builder --chown=fubbik:fubbik /tmp/fubbik /usr/local/bin/fubbik
+COPY --from=web-builder --chown=fubbik:fubbik /app/apps/web/dist /app/web
 
 EXPOSE 3000
 

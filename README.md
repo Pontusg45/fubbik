@@ -105,15 +105,18 @@ compatibility aliases `codebase`, `tags`, and `requirements` are also accepted.
 
 ### Self-hosting
 
-Start the Rust API, web UI, and PostgreSQL stack with:
+Start the Rust server and PostgreSQL stack with:
 
 ```bash
 docker compose -f docker-compose.selfhost.yml up -d
 ```
 
+Open http://localhost:4717 for the web UI. The same port serves `/api/*`.
+Set `FUBBIK_API_PORT` to publish a different port.
+
 For a first-run demo dataset, set `SEED_DATABASE=true`. Seeding runs as a
-one-shot tool after the Rust server has applied migrations; Node/Bun is not
-present in the API runtime image.
+one-shot tool after the Rust server has applied migrations; Node/Bun is absent
+from both runtime images.
 
 ### Self-hosted backups
 

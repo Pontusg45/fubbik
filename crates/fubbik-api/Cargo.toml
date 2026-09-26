@@ -10,6 +10,7 @@ axum-extra = { version = "0.10", features = ["cookie"] }
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 hmac = "0.12"
+percent-encoding = "2"
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.10"
@@ -35,3 +36,4 @@ reqwest = { version = "0.12", features = ["json"] }
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 wiremock = "0.6"
+tempfile = "3"

@@ -1,5 +1,6 @@
 pub mod activity;
 pub mod ai;
+pub mod assets;
 pub mod auth;
 pub mod background;
 pub mod chunks;
