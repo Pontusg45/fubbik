@@ -3,28 +3,23 @@ import { env } from "@fubbik/env/web";
 /** Default API port when `just dev` runs the Rust server. */
 const DEV_API_PORT = 3000;
 
-const SSR_DEFAULT = `http://127.0.0.1:${DEV_API_PORT}`;
+const SERVER_DEFAULT = `http://127.0.0.1:${DEV_API_PORT}`;
 
 /**
  * Resolved API origin for HTTP clients.
  *
- * - **Browser, local dev:** empty string → same-origin `/api/...` (Vite proxy).
- * - **Browser, production:** empty when unset → same-origin behind reverse proxy.
- * - **SSR / server-side fetch:** absolute URL (`SSR_API_ORIGIN`, configured origin, or loopback default).
+ * - **Browser, production:** same-origin `/api/...` served by the Rust process.
+ * - **Browser, local dev:** configured origin, or same-origin through the Vite proxy.
+ * - **Static-shell build:** a loopback origin is only used while rendering the shell.
  */
 export function apiOrigin(): string {
-    if (typeof window === "undefined") {
-        const ssr =
-            (typeof process !== "undefined" ? process.env.SSR_API_ORIGIN : undefined) ??
-            (import.meta as ImportMeta & { env?: { SSR_API_ORIGIN?: string } }).env?.SSR_API_ORIGIN;
-        if (ssr) return ssr.replace(/\/$/, "");
-    }
+    if (import.meta.env.PROD && typeof window !== "undefined") return "";
 
     const configured = (env.VITE_API_ORIGIN ?? env.VITE_API_URL ?? env.VITE_SERVER_URL)?.replace(/\/$/, "");
     if (configured) return configured;
 
     if (typeof window !== "undefined") return "";
-    return SSR_DEFAULT;
+    return SERVER_DEFAULT;
 }
 
 /** Absolute base for clients that require a full URL. */
@@ -32,7 +27,7 @@ export function apiBaseUrl(): string {
     const origin = apiOrigin();
     if (origin) return origin;
     if (typeof window !== "undefined") return window.location.origin;
-    return SSR_DEFAULT;
+    return SERVER_DEFAULT;
 }
 
 /** Build an absolute or same-origin API path. */

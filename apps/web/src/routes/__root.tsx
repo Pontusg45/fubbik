@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
+import { Link, Outlet, createRootRouteWithContext, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import {
     Settings,
@@ -53,34 +53,12 @@ import { SpaceSwitcher } from "@/features/spaces/space-switcher";
 import { useStaleCount } from "@/features/staleness/use-stale-count";
 import { VocabularyPrimer } from "@/features/vocabularies/use-vocabularies";
 
-import appCss from "../index.css?url";
 
 export interface RouterAppContext {
     queryClient: QueryClient;
 }
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
-    head: () => ({
-        meta: [
-            {
-                charSet: "utf-8"
-            },
-            {
-                name: "viewport",
-                content: "width=device-width, initial-scale=1"
-            },
-            {
-                title: "Fubbik"
-            }
-        ],
-        links: [
-            {
-                rel: "stylesheet",
-                href: appCss
-            }
-        ]
-    }),
-
     component: RootDocument
 });
 
@@ -91,11 +69,7 @@ function RootDocument() {
     const staleCount = useStaleCount();
     const proposalCount = usePendingProposalCount();
     return (
-        <html lang="en" suppressHydrationWarning>
-            <head>
-                <HeadContent />
-            </head>
-            <body>
+        <>
                 <ThemeProvider>
                     <ActiveSpaceProvider>
                         <SmartLinkProvider>
@@ -268,8 +242,6 @@ function RootDocument() {
 
                 <TanStackRouterDevtools position="bottom-left" />
                 <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
-                <Scripts />
-            </body>
-        </html>
+        </>
     );
 }

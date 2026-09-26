@@ -1,9 +1,8 @@
-import { createServerFn } from "@tanstack/react-start";
+import { authClient } from "@/lib/auth-client";
 
-import { authMiddleware } from "@/middleware/auth";
-
-export const getUser = createServerFn({ method: "GET" })
-    .middleware([authMiddleware])
-    .handler(async ({ context }) => {
-        return context.session;
-    });
+/** Resolve the same session shape through the Rust API in the browser. */
+export async function getUser() {
+    const { data, error } = await authClient.getSession();
+    if (error) throw error;
+    return data;
+}
