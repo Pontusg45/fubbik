@@ -118,27 +118,27 @@ pub async fn run(client: &Client, command: MatrixCommand, mode: OutputMode) -> R
 
 async fn list(client: &Client, layer: Option<&str>, mode: OutputMode) -> Result<()> {
     let matrices = client.list_matrices(layer).await?;
-    match mode {
-        OutputMode::Json => output::json(&matrices),
-        OutputMode::Quiet => {
-            for matrix in matrices {
-                println!("{}", matrix.id);
-            }
-            Ok(())
-        }
-        OutputMode::Human => {
-            if matrices.is_empty() {
-                println!("No matrices found.");
-            }
-            for matrix in matrices {
-                println!("  {} [{}] ({})", matrix.name, matrix.layer, matrix.id);
-                if let Some(description) = matrix.description {
-                    println!("    {description}");
-                }
-            }
-            Ok(())
+    let mut lines = Vec::new();
+    if matrices.is_empty() {
+        lines.push("No matrices found.".to_owned());
+    }
+    for matrix in &matrices {
+        lines.push(format!(
+            "  {} [{}] ({})",
+            matrix.name, matrix.layer, matrix.id
+        ));
+        if let Some(description) = &matrix.description {
+            lines.push(format!("    {description}"));
         }
     }
+    output::render(
+        mode,
+        output::CommandOutput {
+            quiet: matrices.iter().map(|matrix| matrix.id.clone()).collect(),
+            data: matrices,
+            human: lines.join("\n"),
+        },
+    )
 }
 
 async fn create(
@@ -153,159 +153,150 @@ async fn create(
     let matrix = client
         .create_matrix(name, layer, description, space_id.as_deref())
         .await?;
-    match mode {
-        OutputMode::Json => output::json(&matrix),
-        OutputMode::Quiet => {
-            println!("{}", matrix.id);
-            Ok(())
-        }
-        OutputMode::Human => {
-            println!("Created matrix \"{}\" ({})", matrix.name, matrix.id);
-            Ok(())
-        }
-    }
+    output::render(
+        mode,
+        output::CommandOutput {
+            human: format!("Created matrix \"{}\" ({})", matrix.name, matrix.id),
+            quiet: vec![matrix.id.clone()],
+            data: matrix,
+        },
+    )
 }
 
 async fn show(client: &Client, id: &str, mode: OutputMode) -> Result<()> {
     let view = client.matrix_view(id).await?;
-    match mode {
-        OutputMode::Json => output::json(&view),
-        OutputMode::Quiet => {
-            println!("{}", view.matrix.id);
-            Ok(())
-        }
-        OutputMode::Human => {
-            println!("{}", render_grid(&view));
-            Ok(())
-        }
-    }
+    output::render(
+        mode,
+        output::CommandOutput {
+            human: render_grid(&view),
+            quiet: vec![view.matrix.id.clone()],
+            data: view,
+        },
+    )
 }
 
 async fn gaps(client: &Client, id: &str, mode: OutputMode) -> Result<()> {
     let view = client.matrix_view(id).await?;
     let gaps = collect_gaps(&view);
-    match mode {
-        OutputMode::Json => output::json(&gaps),
-        OutputMode::Quiet => {
-            for gap in &gaps {
-                println!("{}", gap["id"].as_str().unwrap_or_default());
-            }
-            Ok(())
-        }
-        OutputMode::Human => {
-            if gaps.is_empty() {
-                println!("No gaps or violations found.");
+    let mut lines = Vec::new();
+    if gaps.is_empty() {
+        lines.push("No gaps or violations found.".to_owned());
+    } else {
+        for gap in &gaps {
+            let status = if gap["status"] == "violated" {
+                "VIOLATED"
             } else {
-                for gap in &gaps {
-                    let status = if gap["status"] == "violated" {
-                        "VIOLATED"
-                    } else {
-                        "GAP"
-                    };
-                    println!(
-                        "[{status}] \"{}\" × \"{}\"",
-                        string(gap, "rule"),
-                        string(gap, "dimension")
-                    );
-                }
-                println!("\n{} issue(s) found.", gaps.len());
-            }
-            Ok(())
+                "GAP"
+            };
+            lines.push(format!(
+                "[{status}] \"{}\" × \"{}\"",
+                string(gap, "rule"),
+                string(gap, "dimension")
+            ));
         }
+        lines.push(String::new());
+        lines.push(format!("{} issue(s) found.", gaps.len()));
     }
+    let quiet = ids(&gaps, "id");
+    output::render(
+        mode,
+        output::CommandOutput {
+            data: gaps,
+            human: lines.join("\n"),
+            quiet,
+        },
+    )
 }
 
 async fn history(client: &Client, matrix_id: &str, rule_id: &str, mode: OutputMode) -> Result<()> {
     let versions = client.matrix_rule_history(matrix_id, rule_id).await?;
-    match mode {
-        OutputMode::Json => output::json(&versions),
-        OutputMode::Quiet => {
-            print_ids(&versions, "id");
-            Ok(())
-        }
-        OutputMode::Human => {
-            if versions.is_empty() {
-                println!("No history found.");
-            }
-            for version in versions {
-                let snapshot = &version["snapshot"];
-                println!(
-                    "  {} ({})",
-                    string(snapshot, "title"),
-                    string(&version, "id")
-                );
-                let author = version["changedBy"]
-                    .as_str()
-                    .map(|value| format!(" by {value}"))
-                    .unwrap_or_default();
-                println!("    {}{author}", string(&version, "createdAt"));
-                for field in [
-                    "category",
-                    "rationale",
-                    "alternatives",
-                    "consequences",
-                    "counterexample",
-                ] {
-                    if let Some(value) = snapshot[field].as_str() {
-                        println!("    {field}: {value}");
-                    }
-                }
-                println!();
-            }
-            Ok(())
-        }
+    let mut lines = Vec::new();
+    if versions.is_empty() {
+        lines.push("No history found.".to_owned());
     }
+    for version in &versions {
+        let snapshot = &version["snapshot"];
+        lines.push(format!(
+            "  {} ({})",
+            string(snapshot, "title"),
+            string(version, "id")
+        ));
+        let author = version["changedBy"]
+            .as_str()
+            .map(|value| format!(" by {value}"))
+            .unwrap_or_default();
+        lines.push(format!("    {}{author}", string(version, "createdAt")));
+        for field in [
+            "category",
+            "rationale",
+            "alternatives",
+            "consequences",
+            "counterexample",
+        ] {
+            if let Some(value) = snapshot[field].as_str() {
+                lines.push(format!("    {field}: {value}"));
+            }
+        }
+        lines.push(String::new());
+    }
+    let quiet = ids(&versions, "id");
+    output::render(
+        mode,
+        output::CommandOutput {
+            data: versions,
+            human: lines.join("\n"),
+            quiet,
+        },
+    )
 }
 
 async fn behaviors_for(client: &Client, path: &str, mode: OutputMode) -> Result<()> {
     let behaviors = client.matrix_behaviors_for_file(path).await?;
-    match mode {
-        OutputMode::Json => output::json(&behaviors),
-        OutputMode::Quiet => {
-            print_ids(&behaviors, "ruleId");
-            Ok(())
+    let mut lines = Vec::new();
+    if behaviors.is_empty() {
+        lines.push(format!("No behavioral rules govern \"{path}\"."));
+    }
+    for behavior in &behaviors {
+        lines.push(format!(
+            "  {} [{}] {} × {}",
+            string(behavior, "ruleTitle"),
+            string(behavior, "layer"),
+            string(behavior, "matrixName"),
+            string(behavior, "dimensionName")
+        ));
+        if let Some(description) = behavior["description"].as_str() {
+            lines.push(format!("    {description}"));
         }
-        OutputMode::Human => {
-            if behaviors.is_empty() {
-                println!("No behavioral rules govern \"{path}\".");
-            }
-            for behavior in behaviors {
-                println!(
-                    "  {} [{}] {} × {}",
-                    string(&behavior, "ruleTitle"),
-                    string(&behavior, "layer"),
-                    string(&behavior, "matrixName"),
-                    string(&behavior, "dimensionName")
-                );
-                if let Some(description) = behavior["description"].as_str() {
-                    println!("    {description}");
-                }
-                if let Some(counterexample) = behavior["counterexample"].as_str() {
-                    println!("    counterexample: {counterexample}");
-                }
-            }
-            Ok(())
+        if let Some(counterexample) = behavior["counterexample"].as_str() {
+            lines.push(format!("    counterexample: {counterexample}"));
         }
     }
+    let quiet = ids(&behaviors, "ruleId");
+    output::render(
+        mode,
+        output::CommandOutput {
+            data: behaviors,
+            human: lines.join("\n"),
+            quiet,
+        },
+    )
 }
 
 fn mutation(mode: OutputMode, value: &Value, message: &str) -> Result<()> {
-    match mode {
-        OutputMode::Json => output::json(value),
-        OutputMode::Quiet => {
-            if let Some(id) = value["id"]
-                .as_str()
-                .or_else(|| value["cell"]["id"].as_str())
-            {
-                println!("{id}");
-            }
-            Ok(())
-        }
-        OutputMode::Human => {
-            println!("{message}");
-            Ok(())
-        }
-    }
+    let quiet = value["id"]
+        .as_str()
+        .or_else(|| value["cell"]["id"].as_str())
+        .map(str::to_owned)
+        .into_iter()
+        .collect();
+    output::render(
+        mode,
+        output::CommandOutput {
+            data: value,
+            human: message.into(),
+            quiet,
+        },
+    )
 }
 
 fn render_grid(view: &MatrixView) -> String {
@@ -402,12 +393,11 @@ fn collect_gaps(view: &MatrixView) -> Vec<Value> {
         .collect()
 }
 
-fn print_ids(values: &[Value], field: &str) {
-    for value in values {
-        if let Some(id) = value[field].as_str() {
-            println!("{id}");
-        }
-    }
+fn ids(values: &[Value], field: &str) -> Vec<String> {
+    values
+        .iter()
+        .filter_map(|value| value[field].as_str().map(str::to_owned))
+        .collect()
 }
 
 fn string<'a>(value: &'a Value, field: &str) -> &'a str {

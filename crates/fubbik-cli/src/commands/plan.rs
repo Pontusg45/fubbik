@@ -13,33 +13,43 @@ pub async fn run(client: &Client, command: PlanCommand, mode: OutputMode) -> Res
             let plans = client
                 .list_plans(status.as_deref(), space.as_deref())
                 .await?;
-            if mode == OutputMode::Json {
-                return output::json(&plans);
-            }
-            if mode == OutputMode::Quiet {
-                for plan in plans {
-                    println!("{}", plan.id);
-                }
-                return Ok(());
-            }
-            render_table(&plans);
+            output::render(
+                mode,
+                output::CommandOutput {
+                    human: render_table(&plans),
+                    quiet: plans.iter().map(|plan| plan.id.clone()).collect(),
+                    data: plans,
+                },
+            )?;
         }
         PlanCommand::Show { id } => {
             let detail = client.get_plan(&id).await?;
-            if output::id_or_json(mode, &detail.plan.id, &detail)? {
-                return Ok(());
-            }
-            println!("{} {}", detail.plan.title.bold(), detail.plan.id.dimmed());
-            println!("{} {}", "status:".dimmed(), detail.plan.status);
-            if let Some(description) = detail.plan.description {
-                println!("\n{description}");
+            let mut lines = vec![
+                format!("{} {}", detail.plan.title.bold(), detail.plan.id.dimmed()),
+                format!("{} {}", "status:".dimmed(), detail.plan.status),
+            ];
+            if let Some(description) = &detail.plan.description {
+                lines.push(format!("\n{description}"));
             }
             if !detail.tasks.is_empty() {
-                println!("\n{}", "Tasks".bold());
-                for task in detail.tasks {
-                    println!("  {:<12} {} {}", task.status, task.title, task.id.dimmed());
+                lines.push(format!("\n{}", "Tasks".bold()));
+                for task in &detail.tasks {
+                    lines.push(format!(
+                        "  {:<12} {} {}",
+                        task.status,
+                        task.title,
+                        task.id.dimmed()
+                    ));
                 }
             }
+            output::render(
+                mode,
+                output::CommandOutput {
+                    human: lines.join("\n"),
+                    quiet: vec![detail.plan.id.clone()],
+                    data: detail,
+                },
+            )?;
         }
         PlanCommand::Create {
             title,
@@ -50,20 +60,30 @@ pub async fn run(client: &Client, command: PlanCommand, mode: OutputMode) -> Res
             let plan = client
                 .create_plan(&title, description.as_deref(), space.as_deref(), &[])
                 .await?;
-            if !output::id_or_json(mode, &plan.id, &plan)? {
-                println!("{} {} {}", "created".green(), plan.id.dimmed(), plan.title);
-            }
+            output::render(
+                mode,
+                output::CommandOutput {
+                    human: format!("{} {} {}", "created".green(), plan.id.dimmed(), plan.title),
+                    quiet: vec![plan.id.clone()],
+                    data: plan,
+                },
+            )?;
         }
         PlanCommand::Status { id, status } => {
             let plan = client.update_plan_status(&id, &status).await?;
-            if !output::id_or_json(mode, &plan.id, &plan)? {
-                println!(
-                    "{} {} → {}",
-                    "updated".green(),
-                    plan.id.dimmed(),
-                    plan.status
-                );
-            }
+            output::render(
+                mode,
+                output::CommandOutput {
+                    human: format!(
+                        "{} {} → {}",
+                        "updated".green(),
+                        plan.id.dimmed(),
+                        plan.status
+                    ),
+                    quiet: vec![plan.id.clone()],
+                    data: plan,
+                },
+            )?;
         }
         PlanCommand::AddTask {
             plan_id,
@@ -73,17 +93,27 @@ pub async fn run(client: &Client, command: PlanCommand, mode: OutputMode) -> Res
             let task = client
                 .create_plan_task(&plan_id, &title, description.as_deref())
                 .await?;
-            if !output::id_or_json(mode, &task.id, &task)? {
-                println!("{} {} {}", "created".green(), task.id.dimmed(), task.title);
-            }
+            output::render(
+                mode,
+                output::CommandOutput {
+                    human: format!("{} {} {}", "created".green(), task.id.dimmed(), task.title),
+                    quiet: vec![task.id.clone()],
+                    data: task,
+                },
+            )?;
         }
         PlanCommand::TaskDone { plan_id, task_id } => {
             let task = client
                 .update_task_status(&plan_id, &task_id, "done")
                 .await?;
-            if !output::id_or_json(mode, &task.id, &task)? {
-                println!("{} {}", "completed".green(), task.id.dimmed());
-            }
+            output::render(
+                mode,
+                output::CommandOutput {
+                    human: format!("{} {}", "completed".green(), task.id.dimmed()),
+                    quiet: vec![task.id.clone()],
+                    data: task,
+                },
+            )?;
         }
         PlanCommand::LinkRequirement {
             plan_id,
@@ -92,25 +122,27 @@ pub async fn run(client: &Client, command: PlanCommand, mode: OutputMode) -> Res
             let linked = client
                 .link_plan_requirement(&plan_id, &requirement_id)
                 .await?;
-            match mode {
-                OutputMode::Json => output::json(&linked)?,
-                OutputMode::Quiet => println!("{requirement_id}"),
-                OutputMode::Human => println!(
-                    "{} {} → {}",
-                    "linked".green(),
-                    requirement_id.dimmed(),
-                    plan_id
-                ),
-            }
+            output::render(
+                mode,
+                output::CommandOutput {
+                    human: format!(
+                        "{} {} → {}",
+                        "linked".green(),
+                        requirement_id.dimmed(),
+                        plan_id
+                    ),
+                    quiet: vec![requirement_id],
+                    data: linked,
+                },
+            )?;
         }
     }
     Ok(())
 }
 
-fn render_table(plans: &[Plan]) {
+fn render_table(plans: &[Plan]) -> String {
     if plans.is_empty() {
-        println!("No plans found.");
-        return;
+        return "No plans found.".into();
     }
     let mut table = Table::new();
     table.load_preset(UTF8_FULL);
@@ -124,5 +156,5 @@ fn render_table(plans: &[Plan]) {
             plan.next_action.clone().unwrap_or_default(),
         ]);
     }
-    println!("{table}");
+    table.to_string()
 }

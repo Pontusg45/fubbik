@@ -19,17 +19,14 @@ pub async fn run(client: &Client, command: TagCommand, mode: OutputMode) -> Resu
         }
         TagCommand::Remove { id } => {
             let result = client.delete_tag(&id).await?;
-            match mode {
-                OutputMode::Json => output::json(&result),
-                OutputMode::Quiet => {
-                    println!("{id}");
-                    Ok(())
-                }
-                OutputMode::Human => {
-                    println!("{} {}", "removed".green(), id.dimmed());
-                    Ok(())
-                }
-            }
+            output::render(
+                mode,
+                output::CommandOutput {
+                    data: result,
+                    human: format!("{} {}", "removed".green(), id.dimmed()),
+                    quiet: vec![id],
+                },
+            )
         }
         TagCommand::Normalize { confirm, space } => {
             super::tag_normalize::run(client, confirm, space.as_deref(), mode).await
@@ -38,34 +35,34 @@ pub async fn run(client: &Client, command: TagCommand, mode: OutputMode) -> Resu
 }
 
 fn render_list(tags: Vec<Tag>, mode: OutputMode) -> Result<()> {
-    match mode {
-        OutputMode::Json => output::json(&tags),
-        OutputMode::Quiet => {
-            for tag in tags {
-                println!("{}", tag.id);
-            }
-            Ok(())
+    let human = if tags.is_empty() {
+        "No tags found.".into()
+    } else {
+        let mut table = Table::new();
+        table.load_preset(UTF8_FULL);
+        table.set_header(vec!["ID", "Chunks", "Name"]);
+        for tag in &tags {
+            table.add_row(vec![&tag.id, &tag.chunk_count.to_string(), &tag.name]);
         }
-        OutputMode::Human => {
-            if tags.is_empty() {
-                println!("No tags found.");
-                return Ok(());
-            }
-            let mut table = Table::new();
-            table.load_preset(UTF8_FULL);
-            table.set_header(vec!["ID", "Chunks", "Name"]);
-            for tag in tags {
-                table.add_row(vec![tag.id, tag.chunk_count.to_string(), tag.name]);
-            }
-            println!("{table}");
-            Ok(())
-        }
-    }
+        table.to_string()
+    };
+    output::render(
+        mode,
+        output::CommandOutput {
+            quiet: tags.iter().map(|tag| tag.id.clone()).collect(),
+            data: tags,
+            human,
+        },
+    )
 }
 
 fn render_one(tag: &Tag, verb: &str, mode: OutputMode) -> Result<()> {
-    if !output::id_or_json(mode, &tag.id, tag)? {
-        println!("{} {} {}", verb.green(), tag.id.dimmed(), tag.name);
-    }
-    Ok(())
+    output::render(
+        mode,
+        output::CommandOutput {
+            data: tag,
+            human: format!("{} {} {}", verb.green(), tag.id.dimmed(), tag.name),
+            quiet: vec![tag.id.clone()],
+        },
+    )
 }

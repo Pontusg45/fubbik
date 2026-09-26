@@ -12,29 +12,30 @@ pub async fn link(
     mode: OutputMode,
 ) -> Result<()> {
     let connection = client.create_connection(source, target, relation).await?;
-    if !output::id_or_json(mode, &connection.id, &connection)? {
-        println!(
-            "{} {} → {} ({})",
-            "linked".green(),
-            source,
-            target,
-            relation
-        );
-    }
-    Ok(())
+    output::render(
+        mode,
+        output::CommandOutput {
+            quiet: vec![connection.id.clone()],
+            data: connection,
+            human: format!(
+                "{} {} → {} ({})",
+                "linked".green(),
+                source,
+                target,
+                relation
+            ),
+        },
+    )
 }
 
 pub async fn unlink(client: &Client, id: &str, mode: OutputMode) -> Result<()> {
     let result = client.delete_connection(id).await?;
-    match mode {
-        OutputMode::Json => output::json(&result),
-        OutputMode::Quiet => {
-            println!("{id}");
-            Ok(())
-        }
-        OutputMode::Human => {
-            println!("{} {}", "unlinked".green(), id.dimmed());
-            Ok(())
-        }
-    }
+    output::render(
+        mode,
+        output::CommandOutput {
+            data: result,
+            human: format!("{} {}", "unlinked".green(), id.dimmed()),
+            quiet: vec![id.into()],
+        },
+    )
 }

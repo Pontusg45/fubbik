@@ -30,17 +30,14 @@ pub async fn run(client: &Client, command: SpaceCommand, mode: OutputMode) -> Re
                 bail!("refusing to remove a space without --force");
             }
             let result = client.delete_space(&space.id).await?;
-            match mode {
-                OutputMode::Json => output::json(&result),
-                OutputMode::Quiet => {
-                    println!("{}", space.id);
-                    Ok(())
-                }
-                OutputMode::Human => {
-                    println!("{} {}", "removed".green(), space.name);
-                    Ok(())
-                }
-            }
+            output::render(
+                mode,
+                output::CommandOutput {
+                    data: result,
+                    human: format!("{} {}", "removed".green(), space.name),
+                    quiet: vec![space.id],
+                },
+            )
         }
         SpaceCommand::Current => {
             let cwd = std::env::current_dir()?;
@@ -68,34 +65,34 @@ fn git_remote() -> Option<String> {
 }
 
 fn render_list(spaces: Vec<Space>, mode: OutputMode) -> Result<()> {
-    match mode {
-        OutputMode::Json => output::json(&spaces),
-        OutputMode::Quiet => {
-            for space in spaces {
-                println!("{}", space.id);
-            }
-            Ok(())
+    let human = if spaces.is_empty() {
+        "No spaces found.".into()
+    } else {
+        let mut table = Table::new();
+        table.load_preset(UTF8_FULL);
+        table.set_header(vec!["ID", "Kind", "Name"]);
+        for space in &spaces {
+            table.add_row(vec![&space.id, &space.kind, &space.name]);
         }
-        OutputMode::Human => {
-            if spaces.is_empty() {
-                println!("No spaces found.");
-                return Ok(());
-            }
-            let mut table = Table::new();
-            table.load_preset(UTF8_FULL);
-            table.set_header(vec!["ID", "Kind", "Name"]);
-            for space in spaces {
-                table.add_row(vec![space.id, space.kind, space.name]);
-            }
-            println!("{table}");
-            Ok(())
-        }
-    }
+        table.to_string()
+    };
+    output::render(
+        mode,
+        output::CommandOutput {
+            quiet: spaces.iter().map(|space| space.id.clone()).collect(),
+            data: spaces,
+            human,
+        },
+    )
 }
 
 fn render_one(space: &Space, verb: &str, mode: OutputMode) -> Result<()> {
-    if !output::id_or_json(mode, &space.id, space)? {
-        println!("{} {} {}", verb.green(), space.id.dimmed(), space.name);
-    }
-    Ok(())
+    output::render(
+        mode,
+        output::CommandOutput {
+            data: space,
+            human: format!("{} {} {}", verb.green(), space.id.dimmed(), space.name),
+            quiet: vec![space.id.clone()],
+        },
+    )
 }

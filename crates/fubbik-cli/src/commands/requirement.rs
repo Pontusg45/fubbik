@@ -65,21 +65,18 @@ pub async fn run(client: &Client, command: RequirementCommand, mode: OutputMode)
                 .filter(|item| item.status != "passing")
                 .collect();
             let result = serde_json::json!({"total": requirements.len(), "issues": issues.len()});
-            match mode {
-                OutputMode::Json => output::json(&result),
-                OutputMode::Quiet => {
-                    println!("{}", issues.len());
-                    Ok(())
-                }
-                OutputMode::Human => {
-                    println!(
+            output::render(
+                mode,
+                output::CommandOutput {
+                    data: result,
+                    human: format!(
                         "{} requirement(s), {} not passing",
                         requirements.len(),
                         issues.len()
-                    );
-                    Ok(())
-                }
-            }
+                    ),
+                    quiet: vec![issues.len().to_string()],
+                },
+            )
         }
         RequirementCommand::Import {
             file,
@@ -171,30 +168,33 @@ fn render_import(
     failed: Vec<String>,
     mode: OutputMode,
 ) -> Result<()> {
-    match mode {
-        OutputMode::Json => output::json(&serde_json::json!({
-            "total": created.len() + failed.len(),
-            "created": created,
-            "failed": failed,
-        })),
-        OutputMode::Quiet => {
-            for requirement in created {
-                println!("{}", requirement.id);
-            }
-            Ok(())
-        }
-        OutputMode::Human => {
-            println!(
-                "Imported {} requirement(s) from {}",
-                created.len(),
-                file.display()
-            );
-            if !failed.is_empty() {
-                println!("Failed to import {} requirement(s)", failed.len());
-            }
-            Ok(())
-        }
+    let mut human = format!(
+        "Imported {} requirement(s) from {}",
+        created.len(),
+        file.display()
+    );
+    if !failed.is_empty() {
+        human.push_str(&format!(
+            "\nFailed to import {} requirement(s)",
+            failed.len()
+        ));
     }
+    let quiet = created
+        .iter()
+        .map(|requirement| requirement.id.clone())
+        .collect();
+    output::render(
+        mode,
+        output::CommandOutput {
+            data: serde_json::json!({
+                "total": created.len() + failed.len(),
+                "created": created,
+                "failed": failed,
+            }),
+            human,
+            quiet,
+        },
+    )
 }
 
 fn parse_step(raw: &str) -> Result<serde_json::Value> {
@@ -210,46 +210,49 @@ fn parse_step(raw: &str) -> Result<serde_json::Value> {
 }
 
 fn render_list(requirements: Vec<Requirement>, mode: OutputMode) -> Result<()> {
-    match mode {
-        OutputMode::Json => output::json(&requirements),
-        OutputMode::Quiet => {
-            for requirement in requirements {
-                println!("{}", requirement.id);
-            }
-            Ok(())
+    let human = if requirements.is_empty() {
+        "No requirements found.".into()
+    } else {
+        let mut table = Table::new();
+        table.load_preset(UTF8_FULL);
+        table.set_header(vec!["ID", "Status", "Priority", "Title"]);
+        for requirement in &requirements {
+            table.add_row(vec![
+                requirement.id.clone(),
+                requirement.status.clone(),
+                requirement.priority.clone().unwrap_or_default(),
+                requirement.title.clone(),
+            ]);
         }
-        OutputMode::Human => {
-            if requirements.is_empty() {
-                println!("No requirements found.");
-                return Ok(());
-            }
-            let mut table = Table::new();
-            table.load_preset(UTF8_FULL);
-            table.set_header(vec!["ID", "Status", "Priority", "Title"]);
-            for requirement in requirements {
-                table.add_row(vec![
-                    requirement.id,
-                    requirement.status,
-                    requirement.priority.unwrap_or_default(),
-                    requirement.title,
-                ]);
-            }
-            println!("{table}");
-            Ok(())
-        }
-    }
+        table.to_string()
+    };
+    output::render(
+        mode,
+        output::CommandOutput {
+            quiet: requirements
+                .iter()
+                .map(|requirement| requirement.id.clone())
+                .collect(),
+            data: requirements,
+            human,
+        },
+    )
 }
 
 fn render_one(requirement: &Requirement, verb: &str, mode: OutputMode) -> Result<()> {
-    if !output::id_or_json(mode, &requirement.id, requirement)? {
-        println!(
-            "{} {} {}",
-            verb.green(),
-            requirement.id.dimmed(),
-            requirement.title
-        );
-    }
-    Ok(())
+    output::render(
+        mode,
+        output::CommandOutput {
+            data: requirement,
+            human: format!(
+                "{} {} {}",
+                verb.green(),
+                requirement.id.dimmed(),
+                requirement.title
+            ),
+            quiet: vec![requirement.id.clone()],
+        },
+    )
 }
 
 #[cfg(test)]
