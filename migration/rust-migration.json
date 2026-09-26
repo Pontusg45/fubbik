@@ -358,13 +358,13 @@
         {
             "id": "rust-web-serving",
             "status": "pending",
-            "evidence": "docker/build/web.Dockerfile",
-            "verification": "cargo test -p fubbik-api --test assets"
+            "evidence": "crates/fubbik-api/tests/assets.rs",
+            "verification": "cargo test -p fubbik-api --test assets && ./scripts/smoke-production-image.sh"
         },
         {
             "id": "production-image-smoke",
             "status": "pending",
-            "evidence": "docker/build/server.Dockerfile",
+            "evidence": "scripts/smoke-production-image.sh",
             "verification": "./scripts/smoke-production-image.sh"
         },
         {
