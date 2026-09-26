@@ -25,17 +25,7 @@ pub async fn load_chunks(
     client: &Client,
     space_id: Option<&str>,
 ) -> Result<Vec<serde_json::Value>> {
-    let mut offset = 0_u32;
-    let mut summaries = Vec::new();
-    loop {
-        let page = client.list_chunk_page(space_id, offset).await?;
-        let count = page.chunks.len();
-        summaries.extend(page.chunks);
-        offset = offset.saturating_add(count as u32);
-        if count == 0 || i64::from(offset) >= page.total {
-            break;
-        }
-    }
+    let summaries = client.list_all_chunks(space_id).await?;
 
     let mut chunks = Vec::with_capacity(summaries.len());
     for summary in summaries {

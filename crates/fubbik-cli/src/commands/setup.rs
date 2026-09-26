@@ -743,16 +743,16 @@ async fn import(
             }),
         }
     }
-    let mut offset = 0;
-    while let Ok(page) = client.list_chunk_page(Some(space_id), offset).await {
-        let count = page.chunks.len();
-        for chunk in page.chunks {
-            title_to_id.entry(chunk.title).or_insert(chunk.id);
+    match client.list_all_chunks(Some(space_id)).await {
+        Ok(existing) => {
+            for chunk in existing {
+                title_to_id.entry(chunk.title).or_insert(chunk.id);
+            }
         }
-        offset += count as u32;
-        if count == 0 || i64::from(offset) >= page.total {
-            break;
-        }
+        Err(error) => result.errors.push(ImportError {
+            item: "existing chunks".into(),
+            error: error.to_string(),
+        }),
     }
     for connection in connections {
         let Some(source) = title_to_id.get(&connection.source_title) else {
