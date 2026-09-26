@@ -78,7 +78,8 @@ pub async fn list_tasks(
     ))
 }
 
-#[utoipa::path(post, path = "/api/tasks/{id}/claim", params(("id" = String, Path,)),
+#[utoipa::path(post, path = "/api/tasks/{id}/claim", operation_id = "claim_queue_task",
+    params(("id" = String, Path,)),
     responses((status = 200, body = PlanDetail), (status = 404)))]
 pub async fn claim_task(
     State(state): State<AppState>,

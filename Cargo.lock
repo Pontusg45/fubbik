@@ -783,6 +783,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "fubbik-ai",
+ "fubbik-contracts",
  "fubbik-core",
  "fubbik-db",
  "hmac",
@@ -816,6 +817,7 @@ dependencies = [
  "chrono",
  "clap",
  "comfy-table",
+ "fubbik-contracts",
  "fubbik-core",
  "owo-colors",
  "reqwest",
@@ -824,6 +826,15 @@ dependencies = [
  "tempfile",
  "tokio",
  "wiremock",
+]
+
+[[package]]
+name = "fubbik-contracts"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "utoipa",
 ]
 
 [[package]]

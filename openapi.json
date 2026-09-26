@@ -1677,6 +1677,80 @@
         }
       }
     },
+    "/api/chunks/updates": {
+      "get": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "list_updates",
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdatesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chunks/updates/tags": {
+      "get": {
+        "tags": [
+          "crate::chunks::routes"
+        ],
+        "operationId": "list_update_tags",
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTagsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chunks/{id}": {
       "get": {
         "tags": [
@@ -8092,6 +8166,50 @@
         }
       }
     },
+    "/api/requirements/suggest-context": {
+      "get": {
+        "tags": [
+          "crate::requirements::routes"
+        ],
+        "operationId": "suggest_context",
+        "parameters": [
+          {
+            "name": "focus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestContextResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/requirements/traceability": {
       "get": {
         "tags": [
@@ -9744,6 +9862,136 @@
           },
           "400": {
             "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/tasks": {
+      "get": {
+        "tags": [
+          "crate::tasks"
+        ],
+        "operationId": "list_tasks",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanListRow"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "crate::tasks"
+        ],
+        "operationId": "create_task",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQueueTaskBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}/claim": {
+      "post": {
+        "tags": [
+          "crate::tasks"
+        ],
+        "operationId": "claim_queue_task",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}/complete": {
+      "post": {
+        "tags": [
+          "crate::tasks"
+        ],
+        "operationId": "complete_task",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteQueueTaskBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
           },
           "404": {
             "description": ""
@@ -12934,6 +13182,17 @@
           }
         }
       },
+      "CompleteQueueTaskBody": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CompoundGroupCount": {
         "type": "object",
         "required": [
@@ -13454,6 +13713,21 @@
           "count": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "CoverageGap": {
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
           }
         }
       },
@@ -14085,6 +14359,35 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "CreateQueueTaskBody": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spaceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
           }
         }
       },
@@ -16536,6 +16839,28 @@
           }
         }
       },
+      "HealthIssueCounts": {
+        "type": "object",
+        "required": [
+          "orphan",
+          "stale",
+          "thin"
+        ],
+        "properties": {
+          "orphan": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "stale": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "thin": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "required": [
@@ -18293,6 +18618,29 @@
           "bidirectional"
         ]
       },
+      "RelevantChunk": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "type"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
       "RenderResult": {
         "type": "object",
         "description": "Shape of `GET /api/documents/{id}/render`, matching Node's\n`renderDocument` return object (`packages/api/src/documents/service.ts:241-278`):\n`{ document, markdown }`, nested — **not** flattened, unlike\n[`DocumentDetail`].",
@@ -19789,6 +20137,98 @@
           }
         }
       },
+      "SuggestContextResponse": {
+        "type": "object",
+        "required": [
+          "useCases",
+          "ungroupedRequirements",
+          "coverageGaps",
+          "healthIssueCounts",
+          "relevantChunks"
+        ],
+        "properties": {
+          "coverageGaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoverageGap"
+            }
+          },
+          "healthIssueCounts": {
+            "$ref": "#/components/schemas/HealthIssueCounts"
+          },
+          "relevantChunks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RelevantChunk"
+            }
+          },
+          "ungroupedRequirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SuggestRequirement"
+            }
+          },
+          "useCases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SuggestUseCase"
+            }
+          }
+        }
+      },
+      "SuggestRequirement": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "SuggestUseCase": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "requirements"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SuggestRequirement"
+            }
+          }
+        }
+      },
       "SuggestedEntry": {
         "type": "object",
         "required": [
@@ -20054,6 +20494,49 @@
             "type": "string"
           },
           "userId": {
+            "type": "string"
+          }
+        }
+      },
+      "TaggedUpdate": {
+        "type": "object",
+        "required": [
+          "versionId",
+          "chunkId",
+          "chunkTitle",
+          "version",
+          "createdAt",
+          "before",
+          "after"
+        ],
+        "properties": {
+          "after": {
+            "$ref": "#/components/schemas/UpdateState"
+          },
+          "before": {
+            "$ref": "#/components/schemas/UpdateState"
+          },
+          "chunkId": {
+            "type": "string"
+          },
+          "chunkTitle": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updateTag": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "versionId": {
             "type": "string"
           }
         }
@@ -21171,6 +21654,51 @@
           }
         }
       },
+      "UpdateState": {
+        "type": "object",
+        "properties": {
+          "alternatives": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "consequences": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope": {},
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UpdateStatusBody": {
         "type": "object",
         "required": [
@@ -21179,6 +21707,22 @@
         "properties": {
           "status": {
             "$ref": "#/components/schemas/Status"
+          }
+        }
+      },
+      "UpdateTag": {
+        "type": "object",
+        "required": [
+          "tag",
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tag": {
+            "type": "string"
           }
         }
       },
@@ -21231,6 +21775,20 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "UpdateTagsResponse": {
+        "type": "object",
+        "required": [
+          "tags"
+        ],
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateTag"
+            }
           }
         }
       },
@@ -21379,6 +21937,20 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "UpdatesResponse": {
+        "type": "object",
+        "required": [
+          "updates"
+        ],
+        "properties": {
+          "updates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaggedUpdate"
+            }
           }
         }
       },

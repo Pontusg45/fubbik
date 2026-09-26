@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, bail};
+use fubbik_contracts::matrix::{ViewCell, ViewSummary};
 
 /// Mirrors the API's camelCase output. The CLI deserialises the wire format,
 /// not the database row, so this must match `fubbik_db::repo::chunk::Chunk`'s
@@ -179,30 +180,12 @@ pub struct MatrixRule {
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MatrixCell {
-    pub id: String,
-    pub status: String,
-    pub requirement_count: i64,
-}
-
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
-pub struct MatrixSummary {
-    pub specified: i64,
-    pub unspecified: i64,
-    pub violated: i64,
-    #[serde(default)]
-    pub verified: i64,
-    pub total: i64,
-}
-
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct MatrixView {
     pub matrix: Matrix,
     pub dimensions: Vec<MatrixDimension>,
     pub rules: Vec<MatrixRule>,
-    pub cells: std::collections::HashMap<String, MatrixCell>,
-    pub summary: MatrixSummary,
+    pub cells: std::collections::HashMap<String, ViewCell>,
+    pub summary: ViewSummary,
 }
 
 #[derive(Debug, serde::Deserialize)]

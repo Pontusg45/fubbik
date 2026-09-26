@@ -1,0 +1,11 @@
+[package]
+name = "fubbik-contracts"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+serde.workspace = true
+utoipa = "5"
+
+[dev-dependencies]
+serde_json.workspace = true

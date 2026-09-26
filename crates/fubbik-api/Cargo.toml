@@ -26,6 +26,7 @@ tracing.workspace = true
 unicode-normalization = "0.1"
 utoipa = { version = "5", features = ["axum_extras", "chrono"] }
 fubbik-core = { path = "../fubbik-core" }
+fubbik-contracts = { path = "../fubbik-contracts" }
 fubbik-db = { path = "../fubbik-db" }
 fubbik-ai = { path = "../fubbik-ai" }
 # `vocabulary::suggest` now calls Ollama through `fubbik_ai::OllamaClient`;

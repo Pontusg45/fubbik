@@ -1,6 +1,32 @@
 use utoipa::OpenApi;
 
 #[test]
+fn operation_ids_are_unique() {
+    // Given
+    let doc = fubbik_api::openapi::ApiDoc::openapi();
+    let json = serde_json::to_value(&doc).unwrap();
+
+    // When
+    let mut seen = std::collections::HashMap::new();
+    let mut duplicates = Vec::new();
+    for (path, methods) in json["paths"].as_object().unwrap() {
+        for (method, operation) in methods.as_object().unwrap() {
+            if let Some(id) = operation["operationId"].as_str()
+                && let Some(previous) = seen.insert(id, format!("{method} {path}"))
+            {
+                duplicates.push(format!("{id}: {previous}, {method} {path}"));
+            }
+        }
+    }
+
+    // Then
+    assert!(
+        duplicates.is_empty(),
+        "duplicate operation IDs: {duplicates:?}"
+    );
+}
+
+#[test]
 fn document_contains_every_chunk_path() {
     // Given
     let doc = fubbik_api::openapi::ApiDoc::openapi();

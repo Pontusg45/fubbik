@@ -486,6 +486,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chunks/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_updates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chunks/updates/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_update_tags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunks/{id}": {
         parameters: {
             query?: never;
@@ -2627,6 +2659,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/requirements/suggest-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["suggest_context"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/requirements/traceability": {
         parameters: {
             query?: never;
@@ -3211,6 +3259,54 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["update_tag"];
+        trace?: never;
+    };
+    "/api/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_tasks"];
+        put?: never;
+        post: operations["create_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["claim_queue_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["complete_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/templates": {
@@ -4370,6 +4466,9 @@ export interface components {
         CommentMessage: {
             message: string;
         };
+        CompleteQueueTaskBody: {
+            note?: string | null;
+        };
         CompoundGroupCount: {
             /** Format: int64 */
             count: number;
@@ -4558,6 +4657,10 @@ export interface components {
         CountResponse: {
             /** Format: int64 */
             count: number;
+        };
+        CoverageGap: {
+            id: string;
+            title: string;
         };
         /**
          * @description One (chunk, requirement) pair, published as-is inside the `matrix` field
@@ -4853,6 +4956,12 @@ export interface components {
         CreateProposalBody: {
             changes: components["schemas"]["ProposedChanges"];
             reason?: string | null;
+        };
+        CreateQueueTaskBody: {
+            description?: string | null;
+            priority?: string | null;
+            spaceId?: string | null;
+            title: string;
         };
         /**
          * @description Body of `POST /requirements` (`packages/api/src/requirements/routes.ts:
@@ -5797,6 +5906,14 @@ export interface components {
             refId: string;
             relation: string;
         };
+        HealthIssueCounts: {
+            /** Format: int64 */
+            orphan: number;
+            /** Format: int64 */
+            stale: number;
+            /** Format: int64 */
+            thin: number;
+        };
         HealthResponse: {
             ageAvailable: boolean;
             /** @description `connected | disconnected`. */
@@ -6534,6 +6651,12 @@ export interface components {
          * @enum {string}
          */
         RelationDirection: "forward" | "bidirectional";
+        RelevantChunk: {
+            content: string;
+            id: string;
+            title: string;
+            type: string;
+        };
         /**
          * @description Shape of `GET /api/documents/{id}/render`, matching Node's
          *     `renderDocument` return object (`packages/api/src/documents/service.ts:241-278`):
@@ -7170,6 +7293,25 @@ export interface components {
         SuggestBody: {
             spaceId: string;
         };
+        SuggestContextResponse: {
+            coverageGaps: components["schemas"]["CoverageGap"][];
+            healthIssueCounts: components["schemas"]["HealthIssueCounts"];
+            relevantChunks: components["schemas"]["RelevantChunk"][];
+            ungroupedRequirements: components["schemas"]["SuggestRequirement"][];
+            useCases: components["schemas"]["SuggestUseCase"][];
+        };
+        SuggestRequirement: {
+            id: string;
+            priority?: string | null;
+            status: string;
+            title: string;
+        };
+        SuggestUseCase: {
+            description?: string | null;
+            id: string;
+            name: string;
+            requirements: components["schemas"]["SuggestRequirement"][];
+        };
         SuggestedEntry: {
             category: string;
             expects?: string[] | null;
@@ -7271,6 +7413,18 @@ export interface components {
             id: string;
             name: string;
             userId: string;
+        };
+        TaggedUpdate: {
+            after: components["schemas"]["UpdateState"];
+            before: components["schemas"]["UpdateState"];
+            chunkId: string;
+            chunkTitle: string;
+            /** Format: date-time */
+            createdAt: string;
+            updateTag?: string | null;
+            /** Format: int32 */
+            version: number;
+            versionId: string;
         };
         /**
          * @description One entry of `POST /api/plans/{id}/tasks`'s optional `chunks` array
@@ -7673,8 +7827,22 @@ export interface components {
             name?: string | null;
             remoteUrl?: string | null;
         };
+        UpdateState: {
+            alternatives?: string[] | null;
+            consequences?: string | null;
+            content?: string | null;
+            rationale?: string | null;
+            scope?: unknown;
+            title?: string | null;
+            type?: string | null;
+        };
         UpdateStatusBody: {
             status: components["schemas"]["Status"];
+        };
+        UpdateTag: {
+            /** Format: int64 */
+            count: number;
+            tag: string;
         };
         /**
          * @description `tag_type_id` is deliberately `Option<Option<String>>`, not
@@ -7722,6 +7890,9 @@ export interface components {
             color?: string | null;
             icon?: string | null;
             name?: string | null;
+        };
+        UpdateTagsResponse: {
+            tags: components["schemas"]["UpdateTag"][];
         };
         /**
          * @description Body of `PATCH /api/plans/{id}/tasks/{taskId}` (`tasks.ts:138-145`).
@@ -7798,6 +7969,9 @@ export interface components {
         UpdateWorkspaceBody: {
             description?: string | null;
             name?: string | null;
+        };
+        UpdatesResponse: {
+            updates: components["schemas"]["TaggedUpdate"][];
         };
         /**
          * @description Body of `PUT /chunks/{id}/deltas/{featureId}`
@@ -8878,6 +9052,49 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    list_updates: {
+        parameters: {
+            query: {
+                tag: string;
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdatesResponse"];
+                };
+            };
+        };
+    };
+    list_update_tags: {
+        parameters: {
+            query?: {
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateTagsResponse"];
+                };
             };
         };
     };
@@ -13400,6 +13617,28 @@ export interface operations {
             };
         };
     };
+    suggest_context: {
+        parameters: {
+            query?: {
+                focus?: string | null;
+                spaceId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestContextResponse"];
+                };
+            };
+        };
+    };
     get_traceability: {
         parameters: {
             query?: {
@@ -14695,6 +14934,112 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_tasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanListRow"][];
+                };
+            };
+        };
+    };
+    create_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQueueTaskBody"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    claim_queue_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    complete_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteQueueTaskBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
             };
             404: {
                 headers: {

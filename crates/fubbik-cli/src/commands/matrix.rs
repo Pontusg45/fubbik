@@ -1,4 +1,5 @@
 use anyhow::Result;
+use fubbik_contracts::matrix::CellStatus;
 use serde_json::{Value, json};
 
 use crate::{
@@ -358,10 +359,10 @@ fn render_grid(view: &MatrixView) -> String {
             .iter()
             .map(|dimension| {
                 let key = format!("{}:{}", rule.id, dimension.id);
-                let symbol = match view.cells.get(&key).map(|cell| cell.status.as_str()) {
-                    Some("specified" | "verified") => "✓",
-                    Some("violated") => "✗",
-                    Some(_) => "?",
+                let symbol = match view.cells.get(&key).map(|cell| cell.status) {
+                    Some(CellStatus::Specified | CellStatus::Verified) => "✓",
+                    Some(CellStatus::Violated) => "✗",
+                    Some(CellStatus::Unspecified) => "?",
                     None => ".",
                 };
                 format!("{symbol:>column_width$}")
@@ -386,7 +387,7 @@ fn collect_gaps(view: &MatrixView) -> Vec<Value> {
         .collect::<std::collections::HashMap<_, _>>();
     view.cells
         .iter()
-        .filter(|(_, cell)| matches!(cell.status.as_str(), "unspecified" | "violated"))
+        .filter(|(_, cell)| matches!(cell.status, CellStatus::Unspecified | CellStatus::Violated))
         .map(|(key, cell)| {
             let (rule_id, dimension_id) = key.split_once(':').unwrap_or(("", ""));
             json!({
@@ -417,9 +418,8 @@ fn string<'a>(value: &'a Value, field: &str) -> &'a str {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::client::{
-        Matrix, MatrixCell, MatrixDimension, MatrixRule, MatrixSummary, MatrixView,
-    };
+    use crate::client::{Matrix, MatrixDimension, MatrixRule, MatrixView};
+    use fubbik_contracts::matrix::{CellStatus, ViewCell, ViewSummary};
 
     use super::{collect_gaps, render_grid};
 
@@ -444,13 +444,16 @@ mod tests {
             }],
             cells: HashMap::from([(
                 "rule-1:dimension-1".into(),
-                MatrixCell {
+                ViewCell {
                     id: "cell-1".into(),
-                    status: "violated".into(),
+                    status: CellStatus::Violated,
                     requirement_count: 1,
+                    code_count: 0,
+                    passing_test_count: 0,
+                    failing_test_count: 1,
                 },
             )]),
-            summary: MatrixSummary {
+            summary: ViewSummary {
                 specified: 0,
                 unspecified: 0,
                 violated: 1,

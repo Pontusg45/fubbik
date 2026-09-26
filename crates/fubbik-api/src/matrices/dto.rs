@@ -6,6 +6,7 @@
 //! They are validated in `service.rs`, not modelled as serde enums, for the
 //! reason spelled out on [`CreateMatrixBody::layer`].
 
+pub use fubbik_contracts::matrix::{CellStatus, ViewCell, ViewSummary};
 use fubbik_db::repo::behavior_matrix as repo;
 
 /// Distinguishes "key absent" from an explicit `null` for the tri-state
@@ -150,38 +151,6 @@ pub struct MatrixDetail {
     pub matrix: repo::BehaviorMatrix,
     pub dimensions: Vec<repo::BehaviorDimension>,
     pub rules: Vec<repo::BehaviorRule>,
-}
-
-/// Computed status of one cell. Derived on read rather than stored, so it
-/// always reflects current requirement statuses and test results.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
-#[serde(rename_all = "lowercase")]
-pub enum CellStatus {
-    Specified,
-    Unspecified,
-    Violated,
-    Verified,
-}
-
-#[derive(serde::Serialize, utoipa::ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ViewCell {
-    pub id: String,
-    pub status: CellStatus,
-    pub requirement_count: i64,
-    pub code_count: i64,
-    pub passing_test_count: i64,
-    pub failing_test_count: i64,
-}
-
-#[derive(serde::Serialize, utoipa::ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ViewSummary {
-    pub specified: i64,
-    pub unspecified: i64,
-    pub violated: i64,
-    pub verified: i64,
-    pub total: i64,
 }
 
 /// `GET /api/matrices/{id}/view`.
