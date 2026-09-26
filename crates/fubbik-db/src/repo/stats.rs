@@ -7,7 +7,7 @@ use sqlx::PgPool;
 /// (`packages/api/src/stats/service.ts`) field-for-field. No fields beyond
 /// what Node returns: this is a parity port, not a place to add "useful"
 /// counts.
-#[derive(Debug, Clone, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
+#[derive(Debug, Clone, serde::Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct Stats {
     pub chunks: i64,
