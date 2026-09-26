@@ -751,6 +751,7 @@ dependencies = [
  "fubbik-cli",
  "fubbik-db",
  "fubbik-mcp",
+ "reqwest",
  "serde_json",
  "sqlx",
  "tempfile",

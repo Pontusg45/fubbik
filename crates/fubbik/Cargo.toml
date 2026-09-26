@@ -27,3 +27,4 @@ fubbik-mcp = { path = "../fubbik-mcp" }
 [dev-dependencies]
 sqlx.workspace = true
 tempfile = "3"
+reqwest = { version = "0.12", features = ["json"] }
