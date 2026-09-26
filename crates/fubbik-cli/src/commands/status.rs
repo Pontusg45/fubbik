@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use crate::client::Client;
-use crate::output::{self, OutputMode};
+use crate::output::{self, CommandOutput, OutputMode};
 
 pub async fn run(client: &Client, mode: OutputMode) -> Result<()> {
     let health = client.health().await?;
@@ -11,25 +11,24 @@ pub async fn run(client: &Client, mode: OutputMode) -> Result<()> {
         "health": health,
         "stats": stats,
     });
-    match mode {
-        OutputMode::Json => output::json(&result),
-        OutputMode::Quiet => {
-            println!(
-                "{}",
-                result["health"]["status"].as_str().unwrap_or("unknown")
-            );
-            Ok(())
-        }
-        OutputMode::Human => {
-            println!("server:      {}", client.base_url());
-            println!(
-                "status:      {}",
-                result["health"]["status"].as_str().unwrap_or("unknown")
-            );
-            println!("chunks:      {}", result["stats"]["chunks"]);
-            println!("connections: {}", result["stats"]["connections"]);
-            println!("tags:        {}", result["stats"]["tags"]);
-            Ok(())
-        }
-    }
+    let status = result["health"]["status"]
+        .as_str()
+        .unwrap_or("unknown")
+        .to_string();
+    let human = format!(
+        "server:      {}\nstatus:      {}\nchunks:      {}\nconnections: {}\ntags:        {}",
+        client.base_url(),
+        status,
+        result["stats"]["chunks"],
+        result["stats"]["connections"],
+        result["stats"]["tags"]
+    );
+    output::render(
+        mode,
+        CommandOutput {
+            data: result,
+            human,
+            quiet: vec![status],
+        },
+    )
 }

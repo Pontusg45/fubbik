@@ -223,3 +223,75 @@ async fn cli_cleanup_preview_and_confirm_remove_a_near_empty_chunk(pool: PgPool)
         .unwrap();
     assert_eq!(remaining, 0);
 }
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn cli_output_modes_share_chunk_task_and_status_results(pool: PgPool) {
+    // Given a real API with one chunk and one quick task
+    let app = TestApplication::start(pool).await;
+    let chunk = app
+        .run_cli(&[
+            "chunk",
+            "add",
+            "Output contract",
+            "--content",
+            "Searchable text",
+        ])
+        .await;
+    let chunk_id = chunk["id"].as_str().unwrap();
+    let task = app.run_cli(&["task", "add", "Review output"]).await;
+    let task_id = task["id"].as_str().unwrap();
+
+    // When list, search, task, and status commands use each output mode
+    let list_json = app.run_cli(&["list"]).await;
+    let list_human = app.run_cli_with_flags(&[], &["list"]).await;
+    let list_quiet = app.run_cli_with_flags(&["--quiet"], &["list"]).await;
+    let search_quiet = app
+        .run_cli_with_flags(&["--quiet"], &["search", "Output"])
+        .await;
+    let tasks_quiet = app
+        .run_cli_with_flags(&["--quiet"], &["task", "list"])
+        .await;
+    let health_quiet = app.run_cli_with_flags(&["--quiet"], &["health"]).await;
+    let stats_quiet = app.run_cli_with_flags(&["--quiet"], &["stats"]).await;
+    let status_quiet = app.run_cli_with_flags(&["--quiet"], &["status"]).await;
+    let stale_human = app.run_cli_with_flags(&[], &["stale", "list"]).await;
+
+    // Then JSON, human, and quiet output describe the same stored resources
+    for output in [
+        &list_human,
+        &list_quiet,
+        &search_quiet,
+        &tasks_quiet,
+        &health_quiet,
+        &stats_quiet,
+        &status_quiet,
+        &stale_human,
+    ] {
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert_eq!(list_json[0]["id"], chunk_id);
+    assert!(String::from_utf8_lossy(&list_human.stdout).contains("Output contract"));
+    assert_eq!(
+        String::from_utf8_lossy(&list_quiet.stdout),
+        format!("{chunk_id}\n")
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&search_quiet.stdout),
+        format!("{chunk_id}\n")
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&tasks_quiet.stdout),
+        format!("{task_id}\n")
+    );
+    assert_eq!(String::from_utf8_lossy(&health_quiet.stdout), "ok\n");
+    assert_eq!(String::from_utf8_lossy(&stats_quiet.stdout), "1\n");
+    assert_eq!(String::from_utf8_lossy(&status_quiet.stdout), "ok\n");
+    assert_eq!(
+        String::from_utf8_lossy(&stale_human.stdout),
+        "No stale chunks found.\n"
+    );
+}

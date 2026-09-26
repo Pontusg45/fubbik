@@ -1,21 +1,21 @@
 use anyhow::Result;
 
 use crate::client::Client;
-use crate::output::{self, OutputMode};
+use crate::output::{self, CommandOutput, OutputMode};
 
 pub async fn run(client: &Client, mode: OutputMode) -> Result<()> {
     let stats = client.stats().await?;
-    match mode {
-        OutputMode::Json => output::json(&stats),
-        OutputMode::Quiet => {
-            println!("{}", stats["chunks"]);
-            Ok(())
-        }
-        OutputMode::Human => {
-            println!("chunks:      {}", stats["chunks"]);
-            println!("connections: {}", stats["connections"]);
-            println!("tags:        {}", stats["tags"]);
-            Ok(())
-        }
-    }
+    let human = format!(
+        "chunks:      {}\nconnections: {}\ntags:        {}",
+        stats["chunks"], stats["connections"], stats["tags"]
+    );
+    let quiet = vec![stats["chunks"].to_string()];
+    output::render(
+        mode,
+        CommandOutput {
+            data: stats,
+            human,
+            quiet,
+        },
+    )
 }

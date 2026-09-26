@@ -46,13 +46,31 @@ pub mod watch;
 pub mod why;
 
 use crate::client::Chunk;
+use crate::output::{self, CommandOutput, OutputMode};
+use anyhow::Result;
 use comfy_table::{Table, presets::UTF8_FULL};
 
 /// Shared table renderer so every listing command formats identically.
 pub fn render_table(chunks: &[Chunk]) {
+    println!("{}", format_chunk_table(chunks));
+}
+
+pub fn render_chunks(mode: OutputMode, chunks: Vec<Chunk>) -> Result<()> {
+    let human = format_chunk_table(&chunks);
+    let quiet = chunks.iter().map(|chunk| chunk.id.clone()).collect();
+    output::render(
+        mode,
+        CommandOutput {
+            data: chunks,
+            human,
+            quiet,
+        },
+    )
+}
+
+fn format_chunk_table(chunks: &[Chunk]) -> String {
     if chunks.is_empty() {
-        println!("No chunks found.");
-        return;
+        return "No chunks found.".into();
     }
 
     let mut table = Table::new();
@@ -68,5 +86,5 @@ pub fn render_table(chunks: &[Chunk]) {
             c.updated_at.chars().take(10).collect::<String>(),
         ]);
     }
-    println!("{table}");
+    table.to_string()
 }

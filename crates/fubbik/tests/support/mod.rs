@@ -49,8 +49,13 @@ impl TestApplication {
     }
 
     pub async fn run_cli_raw(&self, args: &[&str]) -> Output {
+        self.run_cli_with_flags(&["--json"], args).await
+    }
+
+    pub async fn run_cli_with_flags(&self, flags: &[&str], args: &[&str]) -> Output {
         tokio::process::Command::new(env!("CARGO_BIN_EXE_fubbik"))
-            .args(["--json", "--url", &self.base_url])
+            .args(flags)
+            .args(["--url", &self.base_url])
             .args(args)
             .output()
             .await
