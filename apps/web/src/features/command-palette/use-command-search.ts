@@ -389,7 +389,8 @@ export function useCommandSearch({
         handlePlanNavigate,
         setSubMode,
         setQuery,
-        setSelectedIndex
+        setSelectedIndex,
+        capabilities
     ]);
 
     return { items, isLoading };
