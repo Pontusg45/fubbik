@@ -53,6 +53,8 @@ Kills whatever is listening on each TCP port. It needs `lsof`.
 
 ### `fk agents link [--dry-run]`
 
+Unix only. On other platforms it fails with `fk agents link requires a Unix-like OS`.
+
 Exposes agent material to Claude Code with relative symlinks, run from anywhere inside the repo (it uses the git toplevel).
 
 - Each directory containing a `SKILL.md` under `agents/skills/` and `agents/project/skills/` is linked into `.claude/skills/<name>`.

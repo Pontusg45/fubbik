@@ -6,7 +6,6 @@
 //! (third-party skill links, worktrees, settings) is left alone.
 
 use std::fs;
-use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
@@ -30,8 +29,27 @@ const SKILL_SOURCES: [(&str, &str); 2] = [
     ("agents/project/skills", "../../agents/project/skills"),
 ];
 
+/// Creates a relative symlink. Unix only: `link` refuses on other targets
+/// before reaching here, but this stub keeps the rest of `fk` compiling.
+#[cfg(unix)]
+fn symlink(target: &Path, link: &Path) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(target, link)
+}
+
+#[cfg(not(unix))]
+fn symlink(_target: &Path, _link: &Path) -> std::io::Result<()> {
+    Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "symlinks require a Unix-like OS",
+    ))
+}
+
 /// Link `agents/` into `.claude/`. With `dry_run`, report without changing disk.
+/// Unix only: on other targets it returns an error and changes nothing.
 pub fn link(repo_root: &Path, dry_run: bool) -> Result<Vec<LinkAction>> {
+    if cfg!(not(unix)) {
+        bail!("fk agents link requires a Unix-like OS");
+    }
     let skills_dir = repo_root.join(".claude/skills");
 
     // (link path, relative target)
