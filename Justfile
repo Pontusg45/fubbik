@@ -86,6 +86,10 @@ rust-test-fast:
 
 alias test-rust-fast := rust-test-fast
 
+# Test only crates changed since a base (default main) plus reverse deps. Flags: --dry-run.
+test-changed *args:
+    ./scripts/test/test-changed.sh {{args}}
+
 # Lint the workspace.
 lint:
     pnpm run lint

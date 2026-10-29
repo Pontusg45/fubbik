@@ -84,6 +84,17 @@ and CLI HTTP contract checks while iterating.
 To run a database-backed Cargo test directly, use
 `./scripts/test/rust-test-db.sh start && DATABASE_URL="$(./scripts/test/rust-test-db.sh url)" cargo test -p fubbik-db --test seed`.
 
+To test only what you touched, run `just test-changed [base]` (base defaults
+to `main`). It maps files changed since the merge base, including uncommitted
+and untracked ones, to workspace crates, adds their transitive reverse
+dependencies, and runs `cargo test -p` for that set. It starts the database
+adapter only when `fubbik-db`, `fubbik-api` or `fubbik` is in the set, and runs
+`pnpm run check-types` plus the web unit tests when `apps/web` or `packages/`
+changed. A change to the root `Cargo.toml`, `Cargo.lock` or `rust-toolchain.toml`
+falls back to the full `scripts/test/test-rust.sh`. Add `--dry-run` to print
+the plan without running it; with nothing changed it prints
+`nothing changed since <base>`.
+
 ### Shared build cache
 
 `just` recipes export `CARGO_TARGET_DIR` so every worktree builds into the main
@@ -104,6 +115,7 @@ is building.
 | `pnpm db:studio`       | Open Drizzle Studio     |
 | `just rust-test`       | Full Rust verification on PG18 + AGE |
 | `just rust-test-fast`  | Database-free Rust library checks |
+| `just test-changed`    | Test changed crates + reverse deps |
 | `pnpm kill:all`        | Free ports 3000 + 3001  |
 | `pnpm service:start`   | Start via launchd       |
 
