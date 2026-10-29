@@ -125,10 +125,10 @@ fn extract(markdown: &str) -> Vec<Convention> {
         },
         Convention {
             title: "Backend: Repository -> Service -> Route pattern",
-            content: "Repositories (packages/db/src/repository/) return Effect<T, DatabaseError>. Services (packages/api/src/*/service.ts) compose repository Effects, add business logic, introduce NotFoundError/AuthError/ValidationError. Routes (packages/api/src/*/routes.ts) call Effect.runPromise(requireSession(ctx).pipe(...)). Errors propagate to global .onError handler.",
+            content: "Repositories (packages/db/src/repository/) return Effect<T, DatabaseError>. Services (legacy/api/src/*/service.ts) compose repository Effects, add business logic, introduce NotFoundError/AuthError/ValidationError. Routes (legacy/api/src/*/routes.ts) call Effect.runPromise(requireSession(ctx).pipe(...)). Errors propagate to global .onError handler.",
             tags: &["convention", "architecture", "backend"],
             applies_to: &[
-                "packages/api/src/**/*.ts",
+                "legacy/api/src/**/*.ts",
                 "packages/db/src/repository/**/*.ts",
             ],
         },
@@ -136,13 +136,13 @@ fn extract(markdown: &str) -> Vec<Convention> {
             title: "Effect for typed error handling",
             content: "Use the Effect library for typed errors in the service layer. Repositories return Effect<T, DatabaseError>. Services introduce NotFoundError, AuthError, ValidationError. The global error handler extracts Effect errors from FiberFailure and maps _tag to HTTP status codes (ValidationError->400, AuthError->401, NotFoundError->404, DatabaseError->500).",
             tags: &["convention", "error-handling", "effect"],
-            applies_to: &["packages/api/src/**/*.ts"],
+            applies_to: &["legacy/api/src/**/*.ts"],
         },
         Convention {
             title: "Elysia t schema for validation, not arktype",
             content: "Use Elysia's built-in `t` schema for request validation. Arktype was removed from the project. All body/query validation should use t.Object, t.String, t.Optional, etc.",
             tags: &["convention", "validation", "backend"],
-            applies_to: &["packages/api/src/**/routes.ts"],
+            applies_to: &["legacy/api/src/**/routes.ts"],
         },
         Convention {
             title: "Frontend feature-based structure",
@@ -155,8 +155,8 @@ fn extract(markdown: &str) -> Vec<Convention> {
             content: "AI features use Ollama directly for embeddings (nomic-embed-text) and generation (llama3.2). The Vercel AI SDK was removed. OLLAMA_URL env var defaults to http://localhost:11434.",
             tags: &["convention", "ai", "ollama"],
             applies_to: &[
-                "packages/api/src/ollama/**/*.ts",
-                "packages/api/src/enrich/**/*.ts",
+                "crates/fubbik-api/src/ai/**",
+                "crates/fubbik-api/src/enrich/**",
             ],
         },
         Convention {

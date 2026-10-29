@@ -109,8 +109,10 @@ Requires PostgreSQL 18 with pgvector, plus Rust, pnpm and bun. Ollama is optiona
 pnpm install
 # set DATABASE_URL in .env (copy .env.example)
 pnpm dev     # web on :3001, API on :3000, applies migrations
-pnpm seed    # optional sample knowledge base
+pnpm seed    # optional: loads the fubbik demo knowledge base
 ```
+
+Forking? `cargo run -p fubbik -- seed --scenario minimal` loads a neutral starter instead of the fubbik demo.
 
 Connect it to Claude Code:
 

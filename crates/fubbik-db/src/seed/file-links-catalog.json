@@ -27,7 +27,7 @@
     },
     {
       "chunkName": "repo-pattern",
-      "pattern": "packages/api/src/**/service.ts"
+      "pattern": "legacy/api/src/**/service.ts"
     },
     {
       "chunkName": "repo-pattern",
@@ -35,15 +35,15 @@
     },
     {
       "chunkName": "typed-errors",
-      "pattern": "packages/api/src/errors.ts"
+      "pattern": "legacy/api/src/errors.ts"
     },
     {
       "chunkName": "typed-errors",
-      "pattern": "packages/api/src/index.ts"
+      "pattern": "legacy/api/src/index.ts"
     },
     {
       "chunkName": "eden-treaty",
-      "pattern": "packages/api/src/index.ts"
+      "pattern": "legacy/api/src/index.ts"
     },
     {
       "chunkName": "eden-treaty",
@@ -55,7 +55,7 @@
     },
     {
       "chunkName": "catalog-pattern",
-      "pattern": "packages/api/src/vocabularies/**"
+      "pattern": "crates/fubbik-api/src/vocabularies/**"
     },
     {
       "chunkName": "catalog-pattern",
@@ -99,7 +99,7 @@
     },
     {
       "chunkName": "ollama",
-      "pattern": "packages/api/src/ollama/**"
+      "pattern": "crates/fubbik-api/src/ai/**"
     },
     {
       "chunkName": "embeddings",
@@ -107,7 +107,7 @@
     },
     {
       "chunkName": "semantic-search",
-      "pattern": "packages/api/src/chunks/routes.ts"
+      "pattern": "crates/fubbik-api/src/chunks/routes.rs"
     },
     {
       "chunkName": "semantic-neighbors",
@@ -115,11 +115,11 @@
     },
     {
       "chunkName": "enrichment",
-      "pattern": "packages/api/src/enrich/**"
+      "pattern": "crates/fubbik-api/src/enrich/**"
     },
     {
       "chunkName": "context-export",
-      "pattern": "packages/api/src/context-export/**"
+      "pattern": "crates/fubbik-api/src/context_export/**"
     },
     {
       "chunkName": "chunks-concept",
@@ -135,7 +135,7 @@
     },
     {
       "chunkName": "health-scores",
-      "pattern": "packages/api/src/chunks/health-score.ts"
+      "pattern": "crates/fubbik-api/src/chunks/service.rs"
     },
     {
       "chunkName": "staleness-detection",
@@ -163,7 +163,7 @@
     },
     {
       "chunkName": "analyze-items",
-      "pattern": "packages/api/src/plans/analyze.ts"
+      "pattern": "crates/fubbik-api/src/plans/service.rs"
     },
     {
       "chunkName": "task-dependencies",
@@ -179,7 +179,7 @@
     },
     {
       "chunkName": "activity-audit",
-      "pattern": "packages/api/src/plans/**"
+      "pattern": "crates/fubbik-api/src/plans/**"
     },
     {
       "chunkName": "requirements-bdd",
@@ -187,7 +187,7 @@
     },
     {
       "chunkName": "mcp-server",
-      "pattern": "packages/mcp/**"
+      "pattern": "crates/fubbik-mcp/**"
     },
     {
       "chunkName": "vscode-ext",
@@ -195,15 +195,15 @@
     },
     {
       "chunkName": "cli-overview",
-      "pattern": "apps/cli/**"
+      "pattern": "crates/fubbik-cli/**"
     },
     {
       "chunkName": "claude-md-sync",
-      "pattern": "apps/cli/src/lib/**"
+      "pattern": "crates/fubbik-cli/src/commands/context.rs"
     },
     {
       "chunkName": "git-hooks",
-      "pattern": "apps/cli/src/commands/hooks.ts"
+      "pattern": "crates/fubbik-cli/src/commands/hooks.rs"
     },
     {
       "chunkName": "seed-system",
@@ -223,7 +223,7 @@
     },
     {
       "chunkName": "repo-pattern",
-      "path": "packages/api/src/chunks/service.ts",
+      "path": "crates/fubbik-api/src/chunks/service.rs",
       "relation": "documents"
     },
     {
