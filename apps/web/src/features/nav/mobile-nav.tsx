@@ -28,13 +28,16 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-const primaryItems = [
+import { filterNavItems, type NavFeature } from "./navigation-items";
+import { useCapabilities } from "./use-capabilities";
+
+const primaryItems: { label: string; to: string; icon: typeof Menu; feature?: NavFeature }[] = [
     { label: "Dashboard", to: "/dashboard" as const, icon: LayoutDashboard },
-    { label: "Features", to: "/features" as const, icon: Sparkles },
+    { label: "Features", to: "/features" as const, icon: Sparkles, feature: "overlays" },
     { label: "Chunks", to: "/chunks" as const, icon: Blocks },
     { label: "Graph", to: "/graph" as const, icon: Network },
-    { label: "Plans", to: "/plans" as const, icon: ClipboardList },
-    { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
+    { label: "Plans", to: "/plans" as const, icon: ClipboardList, feature: "plans" },
+    { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck, feature: "requirements" },
     { label: "Docs", to: "/docs" as const, icon: FileText },
     { label: "Search", to: "/search" as const, icon: Search }
 ];
@@ -57,6 +60,7 @@ const manageItems = [
 export function MobileNav() {
     const [open, setOpen] = useState(false);
     const [manageOpen, setManageOpen] = useState(false);
+    const capabilities = useCapabilities();
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>
@@ -69,7 +73,7 @@ export function MobileNav() {
                 </div>
                 <Separator />
                 <nav className="space-y-1 p-2">
-                    {primaryItems.map(item => (
+                    {filterNavItems(primaryItems, capabilities).map(item => (
                         <Link
                             key={item.to}
                             to={item.to}
