@@ -197,12 +197,11 @@ export function buildRecentChunkItems(
     return items;
 }
 
-export function buildPageItems(
-    lowerQuery: string,
-    onSelect: (path: string) => void,
-    enabled: Set<string> | null = null
-): CommandItem[] {
-    const filtered = filterNavItems(PAGE_ITEMS.map(p => ({ ...p, to: p.path })), enabled).filter(p => !lowerQuery || p.title.toLowerCase().includes(lowerQuery));
+export function buildPageItems(lowerQuery: string, onSelect: (path: string) => void, enabled: Set<string> | null = null): CommandItem[] {
+    const filtered = filterNavItems(
+        PAGE_ITEMS.map(p => ({ ...p, to: p.path })),
+        enabled
+    ).filter(p => !lowerQuery || p.title.toLowerCase().includes(lowerQuery));
     return filtered.map(page => ({
         id: page.id,
         title: page.title,

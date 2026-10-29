@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fetchCapabilities, filterNavItems, isFeatureEnabled } from "./use-capabilities";
+import { featureForPath, fetchCapabilities, filterNavItems, isFeatureEnabled } from "./use-capabilities";
 
 const items = [
     { label: "Chunks", to: "/chunks" },
@@ -51,5 +51,12 @@ describe("isFeatureEnabled", () => {
     it("reports_known_switches", () => {
         expect(isFeatureEnabled(new Set(["plans"]), "plans")).toBe(true);
         expect(isFeatureEnabled(new Set(["plans"]), "overlays")).toBe(false);
+    });
+});
+
+describe("featureForPath", () => {
+    it("tasks_route_maps_to_plans", () => {
+        expect(featureForPath("/tasks")).toBe("plans");
+        expect(featureForPath("/tasks/abc")).toBe("plans");
     });
 });

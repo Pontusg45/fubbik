@@ -20,6 +20,7 @@ export const FEATURE_BY_ROUTE: Record<string, Feature> = {
     "/requirements": "requirements",
     "/coverage": "requirements",
     "/matrices": "matrices",
+    "/tasks": "plans",
     "/learn": "learning_paths",
     "/features": "overlays"
 };
@@ -53,8 +54,8 @@ export async function fetchCapabilities(
     }
 }
 
-/** Enabled feature keys from `GET /api/capabilities`; `null` while loading or on error (callers show everything). */
-export function useCapabilities(): Set<string> | null {
+/** Capabilities plus whether the first fetch is still in flight. */
+export function useCapabilitiesStatus(): { enabled: Set<string> | null; pending: boolean } {
     const query = useQuery({
         queryKey: ["capabilities"],
         queryFn: () => fetchCapabilities(),
@@ -62,7 +63,12 @@ export function useCapabilities(): Set<string> | null {
         retry: false,
         refetchOnWindowFocus: false
     });
-    return query.data ?? null;
+    return { enabled: query.data ?? null, pending: query.isPending };
+}
+
+/** Enabled feature keys from `GET /api/capabilities`; `null` while loading or on error (callers show everything). */
+export function useCapabilities(): Set<string> | null {
+    return useCapabilitiesStatus().enabled;
 }
 
 /**

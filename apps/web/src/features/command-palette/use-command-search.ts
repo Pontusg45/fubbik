@@ -309,20 +309,28 @@ export function useCommandSearch({
         // Recent items (shown when query is empty)
         if (!query.trim()) {
             result.push(
-                ...buildRecentPageItems(recentPages, path => {
-                    navigate({ to: path });
-                    close();
-                }, capabilities)
+                ...buildRecentPageItems(
+                    recentPages,
+                    path => {
+                        navigate({ to: path });
+                        close();
+                    },
+                    capabilities
+                )
             );
             result.push(...buildRecentChunkItems(recentChunksQuery.data ?? [], handleChunkNavigate));
         }
 
         // Pages
         result.push(
-            ...buildPageItems(lowerQuery, path => {
-                navigate({ to: path });
-                close();
-            }, capabilities)
+            ...buildPageItems(
+                lowerQuery,
+                path => {
+                    navigate({ to: path });
+                    close();
+                },
+                capabilities
+            )
         );
 
         // Chunks from API search
@@ -338,16 +346,20 @@ export function useCommandSearch({
 
         // Actions
         result.push(
-            ...buildActionItems(lowerQuery, action => {
-                if (action.subMode) {
-                    setSubMode(action.subMode);
-                    setQuery("");
-                    setSelectedIndex(0);
-                } else {
-                    navigate({ to: action.path, search: action.search ?? {} });
-                    close();
-                }
-            }, capabilities)
+            ...buildActionItems(
+                lowerQuery,
+                action => {
+                    if (action.subMode) {
+                        setSubMode(action.subMode);
+                        setQuery("");
+                        setSelectedIndex(0);
+                    } else {
+                        navigate({ to: action.path, search: action.search ?? {} });
+                        close();
+                    }
+                },
+                capabilities
+            )
         );
 
         // Quick note creation
