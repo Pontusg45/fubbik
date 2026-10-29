@@ -1,6 +1,6 @@
 # Legacy
 
-This folder holds the retired TypeScript code — the Node/Bun backend (`server/`, `api/`, `auth/`), the CLI (`cli/`) and the MCP server (`mcp/`) — and the Node → Rust migration evidence (`migration/`). Nothing in the running product depends on it. The Rust `fubbik` binary replaces the CLI, and `fubbik mcp` replaces the MCP server.
+This folder holds the retired TypeScript code — the Node/Bun backend (`server/`, `api/`, `auth/`), the CLI (`cli/`), the MCP server (`mcp/`) and the Node database seed (`db-seed/`, moved from `packages/db/src/seed`) — and the Node → Rust migration evidence (`migration/`). Nothing in the running product depends on it. The Rust `fubbik` binary replaces the CLI, and `fubbik mcp` replaces the MCP server.
 
 A few dev-time checks and scripts still read it.
 

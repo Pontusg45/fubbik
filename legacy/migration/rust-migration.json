@@ -228,13 +228,13 @@
         {
             "id": "database-seed",
             "status": "pending",
-            "evidence": "packages/db/src/seed/index.ts",
+            "evidence": "legacy/db-seed/index.ts",
             "exitCriterion": "Development and container seed workflows invoke a Rust command."
         },
         {
             "id": "production-web-serving",
             "status": "pending",
-            "evidence": "docker/build/web.Dockerfile",
+            "evidence": "docker/build/server.Dockerfile",
             "exitCriterion": "The production Rust server embeds or serves the built SPA with fallback routing."
         },
         {

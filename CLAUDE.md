@@ -18,7 +18,7 @@ This file provides context about the project for AI assistants.
 ## Tech Stack
 
 - **Runtime**: one Rust binary, `fubbik` (`crates/fubbik`), for the server, CLI and MCP server; Vite for the web app; bun for a few
-  `packages/db` scripts (`pnpm scan`, `seed:legacy`) and the web Docker image's runtime stage
+  `packages/db` scripts (`pnpm scan`)
 - **Package Manager**: pnpm (TypeScript workspaces) + cargo (Rust workspace, `crates/*`)
 - **Task runner**: `just` (`Justfile`); the root `package.json` scripts delegate to it or to turbo
 
