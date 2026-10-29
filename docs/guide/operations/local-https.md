@@ -24,7 +24,7 @@ Pick a domain you control locally, for example `<your-domain>.test`, and map it 
 
 ## Tell fubbik about the hostnames
 
-Set these in the gitignored root `.env` (see `.env.example`):
+Set these in the gitignored root `.env` (all variables are listed in [Environment Variables](../getting-started/configuration/environment.md)):
 
 ```bash
 # Extra hostnames the Vite dev server accepts (comma-separated). localhost is always allowed.
@@ -38,5 +38,5 @@ Restart the dev server after changing either value.
 
 ## Other personal settings in `.env`
 
-- `FUBBIK_SEED_SPACE_PATH` - local path of the seeded code space. Defaults to the current directory when seeding.
+- `FUBBIK_SEED_SPACE_PATH` (see [Environment Variables](../getting-started/configuration/environment.md)) - local path of the seeded code space. Defaults to the current directory when seeding.
 - `FUBBIK_SEED_REMOTE_URL` - remote of the seeded code space. Defaults to `git remote get-url origin` in the current directory, or none.

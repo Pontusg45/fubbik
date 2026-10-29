@@ -20,6 +20,10 @@ description: Required and optional environment variables
 - `CORS_ORIGIN` — Comma-separated allowed origins (default: `http://localhost:3001`)
 - `OLLAMA_URL` — Ollama server URL (default: `http://localhost:11434`)
 - `STALENESS_SCAN_INTERVAL_HOURS` — Hours between automatic staleness scans (default: `24`, set to `0` to disable)
+- `FUBBIK_SEED_SPACE_PATH` — Local path of the seeded code space (default: the canonicalised current directory)
+- `FUBBIK_SEED_REMOTE_URL` — Remote URL of the seeded code space (default: `git remote get-url origin` in the current directory, or none)
+- `FUBBIK_WEB_ALLOWED_HOSTS` — Comma-separated extra hostnames for the Vite dev server's `server.allowedHosts`, e.g. `app.example.test`
+  (default: none; localhost is always allowed)
 
 ## Local Development with Caddy
 
