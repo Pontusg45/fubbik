@@ -2,8 +2,8 @@
 
 This file provides context about the project for AI assistants.
 
-> **New to this codebase?** Use the `fubbik-dev` skill (`agents/project/skills/fubbik-dev/`) — its frontend patterns and pitfalls still
-> apply. Its backend patterns describe the retired TypeScript backend in `legacy/`, not the live Rust crates.
+> **New to this codebase?** Use the `fubbik-dev` skill (`agents/project/skills/fubbik-dev/`): where code goes in the Rust crates and the
+> web app, the patterns to copy, the generated files to regenerate, and known pitfalls.
 
 ## Git Rules
 
@@ -121,7 +121,9 @@ The central entity — discrete units of knowledge (conventions, architecture de
 
 ### Spaces & Workspaces
 
-Chunks can be organized per-space. A space is identified by a `kind` discriminator (`code | wiki | notes | research`) and — for `code` kind spaces — a git remote URL (normalized) or local paths stored in the `space_code_metadata` side-table. Chunks can belong to multiple spaces or none (global).
+Chunks can be organized per-space. A space is identified by a `kind` discriminator (`code | wiki | notes | research`) and — for `code`
+kind spaces — a git remote URL (normalized) or local paths stored in the `space_code_metadata` side-table. Chunks can belong to multiple
+spaces or none (global).
 
 - `space` table with `remoteUrl` (deprecated, now in `space_code_metadata`), `localPaths`, `name`, `kind`
 - `space_code_metadata` side-table holding `remoteUrl`, `localPaths`, `defaultBranch` for `kind = 'code'` spaces
@@ -338,7 +340,8 @@ ai = true
 - `ai = false` unmounts only the `/api/ai` routes. Enrich, semantic search, check-similar and vocabulary suggest stay on; they already
   degrade without Ollama
 - `GET /api/capabilities` (unauthenticated) returns `{ "features": [...] }` with the enabled keys. The web app reads it through
-  `apps/web/src/features/nav/use-capabilities.ts` and hides nav entries for disabled groups
+  `apps/web/src/features/nav/use-capabilities.ts`, hides nav and command-palette entries for disabled groups, and shows a turned-off page
+  for their routes (`FeatureRouteGuard`, mounted as `InnerWrap` in `apps/web/src/router.tsx`)
 
 ## API Endpoints
 
@@ -351,8 +354,8 @@ ai = true
 
 ### Chunks
 
-- `GET /api/chunks` — list (supports `spaceId`, `workspaceId`, `global`, `allSpaces`, `search`, `type`, `tags`, `tagMode=any|all`,
-  `sort`, etc.)
+- `GET /api/chunks` — list (supports `spaceId`, `search`, `type`, `tags` (comma-separated, any-of), `origin`, `reviewStatus`, `after`,
+  `enrichment`, `minConnections`, `sort`, `limit`, `offset`); `tagMode=any|all` exists only on `GET /api/chunks/grouped`
 - `POST /api/chunks` — create (with optional `spaceIds`, `rationale`, `alternatives`, `consequences`)
 - `GET /api/chunks/:id` — detail (includes connections, spaces, appliesTo, fileReferences, healthScore)
 - `PATCH /api/chunks/:id` — update (auto-re-enriches on title/content change)
@@ -489,8 +492,9 @@ ai = true
 - `POST /api/scope-keys` — register a scope key (key, description, valueType, allowedValues)
 - `DELETE /api/scope-keys/:id` — delete a scope key
 
-The Rust server serves the OpenAPI document at `GET /api/openapi.json` and a Swagger UI page at `GET /docs` (unauthenticated; UI loaded from the jsdelivr CDN at a pinned `swagger-ui-dist` version, see `api_docs.rs`). `fubbik openapi` prints the OpenAPI document; the checked-in copy is `openapi.json`, from which
-`pnpm gen:api` generates `packages/client/src/api-types.ts`.
+The Rust server serves the OpenAPI document at `GET /api/openapi.json` and a Swagger UI page at `GET /docs` (both unauthenticated; the UI
+loads from the jsdelivr CDN at a pinned `swagger-ui-dist` version, see `crates/fubbik-api/src/api_docs.rs`). `fubbik openapi` prints the
+OpenAPI document; the checked-in copy is `openapi.json`, from which `pnpm gen:api` generates `packages/client/src/api-types.ts`.
 
 ## Web Pages
 
@@ -523,7 +527,7 @@ The Rust server serves the OpenAPI document at `GET /api/openapi.json` and a Swa
 - `/settings` — user/space/instance settings
 - `/activity` — activity log with action type + entity type filters
 - `/vocabulary` — controlled vocabulary management
-- `/docs` — imported document browser, plus an "API" tab that embeds the server's `/docs` (which the Rust server does not serve)
+- `/docs` — imported document browser, plus an "API" tab that embeds the server's Swagger UI (`GET /docs` on the API)
 
 ## CLI Commands
 
@@ -555,8 +559,10 @@ Knowledge base:
 - `fubbik space add/list/remove/current` — space management (`codebase` is an alias)
 - `fubbik export [--format json|md]` / `fubbik import <path>` — bulk operations (import reads JSON or Markdown files or directories);
   `fubbik bulk-add` imports JSONL; `fubbik export-site` generates a static HTML site
-- `fubbik docs extract/list/show/import/import-dir/sync/render` — imported Markdown documents (`docs import` takes a file or a directory; a directory is walked recursively, and `import-dir` shares the walk. Both skip
-  `node_modules`, `target`, `.git`, `dist` and `legacy`, name the skipped directories on stderr, and exit non-zero if any file failed)
+- `fubbik docs extract/list/show/import/import-dir/sync/render` — imported Markdown documents. `docs import` takes a file or a
+  directory; a directory is walked recursively and imported one file at a time, failures are listed on stderr, and the command exits
+  non-zero if any file failed. `import-dir` shares the walk but sends every file in one batch request, and fails only if that request
+  fails. Both skip `node_modules`, `target`, `.git`, `dist` and `legacy`, and name the skipped directories on stderr
 - `fubbik enrich [<id>] [--all]` — AI enrichment
 - `fubbik health/stats/status` — system info
 - `fubbik stale list/dismiss`, `fubbik lint`, `fubbik cleanup`, `fubbik gaps`, `fubbik recap`, `fubbik kb-diff`, `fubbik updates` —

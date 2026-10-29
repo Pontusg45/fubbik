@@ -5,7 +5,9 @@
 - Node.js v22+
 - Bun runtime
 - pnpm package manager
+- Rust (toolchain pinned in `rust-toolchain.toml`) and `just`
 - Docker (the test adapter supplies PostgreSQL 18, pgvector, AGE, and ICU)
+- `jq` (used by `just test-changed`)
 - (Optional) Ollama for AI features
 
 ## Setup
@@ -21,7 +23,7 @@
 ```
 fubbik/
 ├── apps/
-│   ├── web/         # Frontend (TanStack Start + React)
+│   ├── web/         # Frontend (TanStack Router + React, Vite SPA)
 │   ├── cli/         # TypeScript CLI workflows
 │   └── vscode/      # VS Code extension
 ├── packages/
@@ -32,7 +34,7 @@ fubbik/
 │   └── config/      # Shared TypeScript config
 ├── crates/          # Rust API, database, CLI and core libraries
 │   ├── kit/         # `fk` terminal CLI
-│   └── review-harness/  # Review linting tool (skeleton)
+│   └── review-harness/  # Review linting tool (rules in `review-rules.toml`)
 ├── agents/          # Authored skills, commands and MCP config for AI agents
 ├── scripts/
 │   ├── test/        # Rust test and test-database scripts
@@ -69,6 +71,9 @@ Create `crates/fubbik-api/src/your_feature/service.rs`.
 ### 4. Routes
 
 Create `crates/fubbik-api/src/your_feature/routes.rs` and register its router.
+Add its handlers and types to `crates/fubbik-api/src/openapi.rs`, then
+regenerate `openapi.json` (`cargo run -q -p fubbik -- openapi > openapi.json`)
+and the web client types (`pnpm gen:api`).
 
 ### 5. Web UI
 
@@ -85,15 +90,15 @@ To run a database-backed Cargo test directly, use
 `./scripts/test/rust-test-db.sh start && DATABASE_URL="$(./scripts/test/rust-test-db.sh url)" cargo test -p fubbik-db --test seed`.
 
 To test only what you touched, run `just test-changed [base]` (base defaults
-to `main`). It maps files changed since the merge base, including uncommitted
-and untracked ones, to workspace crates, adds their transitive reverse
-dependencies, and runs `cargo test -p` for that set. It starts the database
-adapter only when `fubbik-db`, `fubbik-api` or `fubbik` is in the set, and runs
-`pnpm run check-types` plus the web unit tests when `apps/web` or `packages/`
-changed. A change to the root `Cargo.toml`, `Cargo.lock` or `rust-toolchain.toml`
-falls back to the full `scripts/test/test-rust.sh`. Add `--dry-run` to print
-the plan without running it; with nothing changed it prints
-`nothing changed since <base>`.
+to `main`; requires `jq` on your `PATH`). It maps files changed since the merge
+base, including uncommitted and untracked ones, to workspace crates, adds their
+transitive reverse dependencies, and runs `cargo test -p` for that set. It
+starts the database adapter only when `fubbik-db`, `fubbik-api` or `fubbik` is
+in the set, and runs `pnpm run check-types` plus the web unit tests when
+`apps/web` or `packages/` changed. A change to the root `Cargo.toml`,
+`Cargo.lock` or `rust-toolchain.toml` falls back to the full
+`scripts/test/test-rust.sh`. Add `--dry-run` to print the plan without running
+it; with nothing changed it prints `nothing changed since <base>`.
 
 ### Shared build cache
 

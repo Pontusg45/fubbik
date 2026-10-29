@@ -261,7 +261,7 @@ rollback, log collection, seeding, and release archives.
 ```
 fubbik/
 ├── apps/
-│   ├── web/         # Frontend (TanStack Start + React)
+│   ├── web/         # Frontend (TanStack Router + React, Vite SPA)
 │   └── vscode/      # VS Code extension
 ├── packages/
 │   ├── client/      # Generated OpenAPI client and wire contracts
