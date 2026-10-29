@@ -1,7 +1,7 @@
 # Node contract fixtures — Rust phase 2a, task 1
 
 Captured from the live Node server (`http://localhost:3000`) via
-`scripts/capture-node-contract.sh`, GET requests only. Mutating endpoints
+`legacy/migration/scripts/capture-node-contract.sh`, GET requests only. Mutating endpoints
 (POST/PATCH/DELETE) are documented from route/service/repository source in
 `_mutating.md`, never executed against live data. See `_questions.md` for
 the three required questions plus additional timestamp/casing/shape

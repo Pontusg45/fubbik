@@ -16,7 +16,7 @@ Define which code areas a chunk is relevant to using glob patterns:
 
 - `src/auth/**` — all files in the auth directory
 - `*.test.ts` — all test files
-- `packages/api/src/*/routes.ts` — all route files
+- `crates/fubbik-api/src/*/routes.rs` — all route files
 
 These patterns are used by the context pipeline to boost chunk relevance when working on matching files.
 

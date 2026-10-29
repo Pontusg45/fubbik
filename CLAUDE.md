@@ -218,6 +218,8 @@ values. Used for UI autocomplete and optional validation. Scope remains free-for
 
 ### Backend: Repository -> Service -> Route
 
+> Retired reference: this describes the TypeScript backend now in `legacy/api/`. The live implementation is the Rust crates (`crates/fubbik-api`, `crates/fubbik-db`).
+
 - **Repositories** (`packages/db/src/repository/`): Return `Effect<T, DatabaseError>`. Pure data access, no business logic.
 - **Services** (`legacy/api/src/*/service.ts`): Compose repository Effects, add business logic, introduce
   `NotFoundError`/`AuthError`/`ValidationError`.
@@ -247,6 +249,8 @@ values. Used for UI autocomplete and optional validation. Scope remains free-for
 - Commands: search, quick-add note, open graph/dashboard in browser
 
 ### Context Pipeline (Unified)
+
+> Retired reference: this describes the TypeScript backend now in `legacy/api/`. The live implementation is the Rust crates (`crates/fubbik-api`, `crates/fubbik-db`).
 
 All context retrieval flows through a single pipeline in `legacy/api/src/context/`:
 
@@ -549,9 +553,10 @@ Required for chunk enrichment (summary, aliases, not_about generation), semantic
 - `pnpm run check-types` — type-check all packages (uses `tsgo`)
 - `pnpm db:push` — push database schema
 - `pnpm db:studio` — open database UI
-- `pnpm kill:server` — kill process on port 3000
-- `pnpm kill:web` — kill process on port 3001
-- `pnpm kill:all` — kill both
+- `pnpm kill:server` — kill process on port 3000 (calls `fk port kill`)
+- `pnpm kill:web` — kill process on port 3001 (calls `fk port kill`)
+- `pnpm kill:all` — kill both (calls `fk port kill`)
+- `fk sync` (fast-forward only), `fk push` (asks before pushing), `fk branch <name>`, `fk port kill <port>` (listeners only) — built from `crates/kit`, run with `cargo run -q -p kit -- <cmd>`
 
 ## Local Development with Caddy
 
