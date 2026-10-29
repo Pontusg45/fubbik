@@ -1,3 +1,8 @@
+---
+name: build-knowledge-system
+description: Use when asked to build a full fubbik knowledge base from a codebase — chunks, connections, tags, requirements, matrices and enrichment.
+---
+
 # Build a Full Fubbik Knowledge System from a Codebase
 
 Orchestration skill for AI agents. Given a codebase, systematically analyze it, populate a fubbik knowledge base with chunks, connections,

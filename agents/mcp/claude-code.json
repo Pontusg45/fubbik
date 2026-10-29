@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "fubbik": {
+            "command": "fubbik",
+            "args": ["mcp"],
+            "env": {
+                "FUBBIK_SERVER_URL": "http://localhost:3000"
+            }
+        }
+    }
+}
