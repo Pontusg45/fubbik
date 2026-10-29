@@ -94,8 +94,14 @@ impl Features {
     }
 }
 
+/// The top-level tables `fubbik.toml` may contain. A new section is added
+/// here and as a field on `RawConfig`.
+pub const SECTIONS: &[&str] = &["features"];
+
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
+    #[error("unknown section \"{key}\"; valid sections: {valid}", valid = SECTIONS.join(", "))]
+    UnknownSection { key: String },
     #[error("unknown feature \"{key}\"; valid features: {valid}", valid = valid_keys())]
     UnknownFeature { key: String },
     #[error("feature \"{feature}\" requires \"{requires}\"")]
@@ -122,17 +128,23 @@ pub struct Config {
     pub features: Features,
 }
 
-/// The file's raw shape. Other top-level tables are ignored, so later
-/// sections can be added without breaking older binaries.
+/// The file's raw shape. Any top-level key not in `SECTIONS` lands in
+/// `other` and is rejected, so a typo such as `[feature]` cannot silently
+/// leave every feature on.
 #[derive(serde::Deserialize)]
 struct RawConfig {
     #[serde(default)]
     features: BTreeMap<String, bool>,
+    #[serde(flatten)]
+    other: BTreeMap<String, toml::Value>,
 }
 
 impl Config {
     pub fn from_toml_str(source: &str) -> Result<Config, ConfigError> {
         let raw: RawConfig = toml::from_str(source)?;
+        if let Some(key) = raw.other.into_keys().next() {
+            return Err(ConfigError::UnknownSection { key });
+        }
 
         let mut features = Features::default();
         for (key, on) in raw.features {
@@ -191,19 +203,28 @@ mod tests {
         Feature::ALL.iter().all(|f| features.enabled(*f))
     }
 
+    /// Restores the current directory when dropped, so a panicking test
+    /// cannot leave the process in a temp dir for the tests after it.
+    struct RestoreCwd(std::path::PathBuf);
+
+    impl Drop for RestoreCwd {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.0);
+        }
+    }
+
     #[test]
     fn missing_file_enables_everything() {
         let _guard = PROCESS_STATE.lock().unwrap_or_else(|e| e.into_inner());
         // Given
         let dir = tempfile::tempdir().unwrap();
-        let previous = std::env::current_dir().unwrap();
+        let _restore = RestoreCwd(std::env::current_dir().unwrap());
         // SAFETY: serialised by PROCESS_STATE; no other thread reads the env.
         unsafe { std::env::remove_var("FUBBIK_CONFIG") };
         std::env::set_current_dir(dir.path()).unwrap();
 
         // When
         let result = Config::load();
-        std::env::set_current_dir(previous).unwrap();
 
         // Then
         let config = result.unwrap();
@@ -265,6 +286,21 @@ mod tests {
             error.to_string(),
             "unknown feature \"plan\"; valid features: plans, requirements, matrices, \
              coordination, learning_paths, overlays, ai"
+        );
+    }
+
+    #[test]
+    fn unknown_section_is_rejected() {
+        // Given
+        let source = "[feature]\nai = false\n";
+
+        // When
+        let error = Config::from_toml_str(source).unwrap_err();
+
+        // Then
+        assert_eq!(
+            error.to_string(),
+            "unknown section \"feature\"; valid sections: features"
         );
     }
 
