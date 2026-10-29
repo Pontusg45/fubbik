@@ -17,7 +17,8 @@ on afterwards, see [extending.md](extending.md).
    `requirements`, and `coordination` needs `plans`. Unknown keys are errors. The server reads `./fubbik.toml`, or the file named by
    `FUBBIK_CONFIG`. A disabled feature's API routes and background jobs are not mounted and the web nav hides it
    (`GET /api/capabilities` lists what is on). The database schema is always complete. `ai = false` only unmounts `/api/ai`; enrichment and
-   semantic search stay on and degrade without Ollama.
+   semantic search stay on and degrade without Ollama. The Docker server image copies a committed `fubbik.toml` into its working directory;
+   see [Self-hosted operations](operations/self-hosted.md#feature-switches) for that and for mounting one with `FUBBIK_CONFIG`.
 
 4. **Load a neutral starter.** Run `cargo run -p fubbik -- seed --scenario minimal` instead of `pnpm seed`, which loads the fubbik demo
    knowledge base. Other scenarios are `demo` (default) and `extended`.

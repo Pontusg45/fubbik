@@ -67,6 +67,13 @@ ENV FUBBIK_WEB_ASSETS_DIR=/app/web
 COPY --from=builder --chown=fubbik:fubbik /tmp/fubbik /usr/local/bin/fubbik
 COPY --from=web-builder --chown=fubbik:fubbik /app/apps/web/dist /app/web
 
+# A fork's committed `fubbik.toml` lands in the WORKDIR, where `fubbik serve`
+# reads `./fubbik.toml`. COPY cannot be conditional, so the always-present
+# example is the anchor and the `fubbik.toml*` glob adds the real file only
+# when it exists. The example itself is never read. To use a file outside the
+# image instead, mount it and set `FUBBIK_CONFIG` to its path.
+COPY --chown=fubbik:fubbik fubbik.example.toml fubbik.toml* ./
+
 EXPOSE 3000
 
 USER fubbik

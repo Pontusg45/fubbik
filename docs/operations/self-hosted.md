@@ -16,6 +16,30 @@ The container health check uses `/api/health`. A direct browser route such as
 `/graph` should also return the HTML shell. For a sustained log stream, use
 `docker compose -f docker-compose.selfhost.yml logs -f server`.
 
+## Feature switches
+
+`fubbik serve` reads `./fubbik.toml`, or the file named by `FUBBIK_CONFIG`
+(see `fubbik.example.toml`). There are two ways to give the container one:
+
+- **Bake it in.** Commit `fubbik.toml` at the repo root and rebuild the image.
+  `docker/build/server.Dockerfile` copies it into the image's working
+  directory (`/app`), where the server finds it. Without the file the image
+  runs with every feature on.
+- **Mount it.** Leave the image as is, mount a file and point
+  `FUBBIK_CONFIG` at it. This takes precedence over a baked-in file:
+
+  ```yaml
+  server:
+      environment:
+          FUBBIK_CONFIG: /etc/fubbik/fubbik.toml
+      volumes:
+          - ./fubbik.toml:/etc/fubbik/fubbik.toml:ro
+  ```
+
+The file is read once at startup, so restart the server after changing it.
+An invalid file (an unknown key, or `matrices` on with `requirements` off)
+stops the server from starting; check `docker compose -f docker-compose.selfhost.yml logs server`.
+
 ## Backup and restore
 
 Create a PostgreSQL custom-format backup before every upgrade and retain it
