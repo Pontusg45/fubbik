@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { SkeletonList } from "@/components/ui/skeleton-list";
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { PathView } from "@/features/search/path-view";
 import { SearchGraph } from "@/features/search/search-graph";
 import { api } from "@/utils/api";
@@ -88,6 +89,8 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
     const [tagInput, setTagInput] = useState("");
 
     const [showReqSearch, setShowReqSearch] = useState(false);
+    // Hide "Link to Requirement" only when requirements are known to be off.
+    const requirementsEnabled = useFeatureEnabled("requirements");
     const [reqSearch, setReqSearch] = useState("");
 
     const [showConnectPanel, setShowConnectPanel] = useState(false);
@@ -121,7 +124,7 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
             const result = unwrapEden(await api.api.requirements.get({ query: { search: reqSearch, limit: "10" } }));
             return result.requirements;
         },
-        enabled: showReqSearch && reqSearch.trim().length > 0
+        enabled: requirementsEnabled !== false && showReqSearch && reqSearch.trim().length > 0
     });
 
     const linkRequirementMutation = useMutation({
@@ -224,55 +227,57 @@ function SearchBulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
                 </Button>
             )}
 
-            <Popover
-                open={showReqSearch}
-                onOpenChange={open => {
-                    setShowReqSearch(open);
-                    if (open) {
-                        setShowTagInput(false);
-                        setShowConnectPanel(false);
-                    }
-                }}
-            >
-                <PopoverTrigger render={<Button variant="outline" size="sm" />}>
-                    <Cable className="size-3.5" />
-                    Link to Requirement
-                </PopoverTrigger>
-                <PopoverContent side="top" align="center" className="w-72">
-                    <div className="space-y-2">
-                        <label className="text-muted-foreground block text-xs font-medium">Search requirements</label>
-                        <div className="relative">
-                            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
-                            <input
-                                type="text"
-                                value={reqSearch}
-                                onChange={e => setReqSearch(e.target.value)}
-                                placeholder="Requirement title..."
-                                className="bg-background w-full rounded-md border py-1.5 pr-3 pl-8 text-sm"
-                                autoFocus
-                            />
-                        </div>
-                        {reqResults.length > 0 && (
-                            <div className="max-h-48 space-y-0.5 overflow-y-auto rounded-md border p-1">
-                                {reqResults.map(req => (
-                                    <button
-                                        key={req.id}
-                                        type="button"
-                                        onClick={() => handleLinkRequirement(req)}
-                                        disabled={linkRequirementMutation.isPending}
-                                        className="hover:bg-muted w-full rounded-md px-2.5 py-1.5 text-left text-sm transition-colors"
-                                    >
-                                        {req.title}
-                                    </button>
-                                ))}
+            {requirementsEnabled !== false && (
+                <Popover
+                    open={showReqSearch}
+                    onOpenChange={open => {
+                        setShowReqSearch(open);
+                        if (open) {
+                            setShowTagInput(false);
+                            setShowConnectPanel(false);
+                        }
+                    }}
+                >
+                    <PopoverTrigger render={<Button variant="outline" size="sm" />}>
+                        <Cable className="size-3.5" />
+                        Link to Requirement
+                    </PopoverTrigger>
+                    <PopoverContent side="top" align="center" className="w-72">
+                        <div className="space-y-2">
+                            <label className="text-muted-foreground block text-xs font-medium">Search requirements</label>
+                            <div className="relative">
+                                <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
+                                <input
+                                    type="text"
+                                    value={reqSearch}
+                                    onChange={e => setReqSearch(e.target.value)}
+                                    placeholder="Requirement title..."
+                                    className="bg-background w-full rounded-md border py-1.5 pr-3 pl-8 text-sm"
+                                    autoFocus
+                                />
                             </div>
-                        )}
-                        {reqSearch.trim().length > 0 && reqResults.length === 0 && !reqSearchQuery.isLoading && (
-                            <p className="text-muted-foreground py-2 text-center text-xs">No requirements found</p>
-                        )}
-                    </div>
-                </PopoverContent>
-            </Popover>
+                            {reqResults.length > 0 && (
+                                <div className="max-h-48 space-y-0.5 overflow-y-auto rounded-md border p-1">
+                                    {reqResults.map(req => (
+                                        <button
+                                            key={req.id}
+                                            type="button"
+                                            onClick={() => handleLinkRequirement(req)}
+                                            disabled={linkRequirementMutation.isPending}
+                                            className="hover:bg-muted w-full rounded-md px-2.5 py-1.5 text-left text-sm transition-colors"
+                                        >
+                                            {req.title}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {reqSearch.trim().length > 0 && reqResults.length === 0 && !reqSearchQuery.isLoading && (
+                                <p className="text-muted-foreground py-2 text-center text-xs">No requirements found</p>
+                            )}
+                        </div>
+                    </PopoverContent>
+                </Popover>
+            )}
 
             {selectedIds.size >= 2 && (
                 <Popover

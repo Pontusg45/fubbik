@@ -15,6 +15,7 @@ import { DraftIndicator } from "@/features/chunks/draft-indicator";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { useActiveFeatures } from "@/features/feature-flags/use-active-features";
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { getUser } from "@/functions/get-user";
 // Rust serves the enriched detail shape and accepts the extended PATCH body,
 // including tags and alternatives. The related writes take the same bare
@@ -111,11 +112,13 @@ function EditChunk() {
     const draftRef = useRef(loadDraft<EditChunkDraft>(draftKey));
 
     const { activeFeatureIds } = useActiveFeatures();
+    const overlaysEnabled = useFeatureEnabled("overlays");
 
     const { data: featuresData } = useQuery({
         queryKey: ["features"],
         queryFn: async () => unwrapEden(await api.api.features.get({ query: {} })),
-        staleTime: 60_000
+        staleTime: 60_000,
+        enabled: overlaysEnabled !== false
     });
 
     const { data, isLoading, error } = useQuery({

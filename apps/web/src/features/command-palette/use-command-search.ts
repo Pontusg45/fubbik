@@ -5,6 +5,7 @@ import React, { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
@@ -138,6 +139,10 @@ export function useCommandSearch({
         enabled: open && isTagSearch
     });
 
+    // Skip gated groups only when the server reports them off.
+    const requirementsEnabled = useFeatureEnabled("requirements");
+    const plansEnabled = useFeatureEnabled("plans");
+
     // Search requirements via API
     const requirementsSearch = useQuery({
         queryKey: ["command-palette-requirements", debouncedQuery],
@@ -153,7 +158,8 @@ export function useCommandSearch({
                 return null;
             }
         },
-        enabled: open && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch && subMode === null
+        enabled:
+            open && requirementsEnabled !== false && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch && subMode === null
     });
 
     // Fetch all plans and filter client-side (API doesn't support search param)
@@ -166,7 +172,7 @@ export function useCommandSearch({
                 return [];
             }
         },
-        enabled: open && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch && subMode === null,
+        enabled: open && plansEnabled !== false && debouncedQuery.length > 1 && !isTagSearch && !isFederatedSearch && subMode === null,
         staleTime: 30_000
     });
 

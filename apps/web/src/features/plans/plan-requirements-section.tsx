@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -14,7 +15,13 @@ export interface PlanRequirementsSectionProps {
     onUpdate: () => void;
 }
 
-export function PlanRequirementsSection({ planId, requirements, onUpdate }: PlanRequirementsSectionProps) {
+/** Renders nothing when the server reports `requirements` off (plans can run without requirements). */
+export function PlanRequirementsSection(props: PlanRequirementsSectionProps) {
+    if (useFeatureEnabled("requirements") === false) return null;
+    return <PlanRequirementsSectionBody {...props} />;
+}
+
+function PlanRequirementsSectionBody({ planId, requirements, onUpdate }: PlanRequirementsSectionProps) {
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerQuery, setPickerQuery] = useState("");
 

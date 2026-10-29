@@ -4,6 +4,7 @@ import { Bot, MessageSquareText, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -11,11 +12,14 @@ export type { CoordinationBoard, CoordinationClaim, CoordinationRun } from "@fub
 
 export function usePlanCoordination(planId: string) {
     const [visible, setVisible] = useState(() => typeof document === "undefined" || document.visibilityState === "visible");
+    // Plans can run without coordination; don't poll an unmounted board route.
+    const enabled = useFeatureEnabled("coordination") !== false;
     const query = useQuery({
         queryKey: ["plan-coordination", planId],
         queryFn: async () => unwrapEden(await api.api.plans({ planId }).board.get()),
         refetchInterval: visible ? 5_000 : false,
-        staleTime: 2_000
+        staleTime: 2_000,
+        enabled
     });
     const { refetch } = query;
 
@@ -23,11 +27,11 @@ export function usePlanCoordination(planId: string) {
         const update = () => {
             const next = document.visibilityState === "visible";
             setVisible(next);
-            if (next) void refetch();
+            if (next && enabled) void refetch();
         };
         document.addEventListener("visibilitychange", update);
         return () => document.removeEventListener("visibilitychange", update);
-    }, [refetch]);
+    }, [refetch, enabled]);
 
     return query;
 }

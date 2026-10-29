@@ -1,15 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export function useActiveFeatures() {
     const queryClient = useQueryClient();
+    // Skip the query only when overlays are known to be off; unknown keeps querying.
+    const overlaysEnabled = useFeatureEnabled("overlays");
 
     const { data: activeFeatureIds = [] } = useQuery({
         queryKey: ["features", "active"],
         queryFn: async () => unwrapEden(await api.api.features.active.get()),
-        staleTime: 60_000
+        staleTime: 60_000,
+        enabled: overlaysEnabled !== false
     });
 
     const toggleMutation = useMutation({

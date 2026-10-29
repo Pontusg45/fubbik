@@ -27,13 +27,44 @@ export function filterNavItems<T extends { to: string }>(items: T[], enabled: Se
     });
 }
 
+/**
+ * Fetches `GET /api/capabilities`. Never throws: a 404 (an older server
+ * without the endpoint) or a network error resolves to `null`, so the global
+ * `QueryCache.onError` toast never fires for this query.
+ */
+export async function fetchCapabilities(
+    get: () => Promise<{ data: unknown; error: unknown }> = () => api.api.capabilities.get()
+): Promise<Set<string> | null> {
+    try {
+        const { features } = unwrapEden(await get()) as { features: string[] };
+        return Array.isArray(features) ? new Set<string>(features) : null;
+    } catch {
+        return null;
+    }
+}
+
 /** Enabled feature keys from `GET /api/capabilities`; `null` while loading or on error (callers show everything). */
 export function useCapabilities(): Set<string> | null {
     const query = useQuery({
         queryKey: ["capabilities"],
-        queryFn: async () => new Set<string>(unwrapEden(await api.api.capabilities.get()).features),
+        queryFn: () => fetchCapabilities(),
         staleTime: 5 * 60 * 1000,
-        retry: false
+        retry: false,
+        refetchOnWindowFocus: false
     });
-    return query.isSuccess ? query.data : null;
+    return query.data ?? null;
+}
+
+/**
+ * The single rule for gating UI on a feature switch: `true`/`false` once
+ * capabilities are known, `null` while they are unknown (loading, or a server
+ * without `/api/capabilities`). Callers skip work only on `false`, so an
+ * unknown state keeps today's behaviour.
+ */
+export function isFeatureEnabled(capabilities: Set<string> | null, feature: Feature): boolean | null {
+    return capabilities === null ? null : capabilities.has(feature);
+}
+
+export function useFeatureEnabled(feature: Feature): boolean | null {
+    return isFeatureEnabled(useCapabilities(), feature);
 }

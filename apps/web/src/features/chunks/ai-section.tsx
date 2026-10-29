@@ -7,9 +7,16 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { api } from "@/utils/api";
 
+/** Renders nothing when the server reports `ai` off, so its buttons cannot hit unmounted routes. */
 export function AiSection({ chunkId }: { chunkId: string }) {
+    if (useFeatureEnabled("ai") === false) return null;
+    return <AiSectionBody chunkId={chunkId} />;
+}
+
+function AiSectionBody({ chunkId }: { chunkId: string }) {
     const [summary, setSummary] = useState<string | null>(null);
     const [suggestions, setSuggestions] = useState<{ id: string; relation: string }[] | null>(null);
 

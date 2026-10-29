@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { CheckCircle, Circle, Clock, SkipForward, Ban } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -32,7 +33,13 @@ interface PlanWithSteps {
     }>;
 }
 
+/** Renders nothing when the server reports `plans` off (requirements can run without plans). */
 export function RequirementPlans({ requirementId }: { requirementId: string }) {
+    if (useFeatureEnabled("plans") === false) return null;
+    return <RequirementPlansBody requirementId={requirementId} />;
+}
+
+function RequirementPlansBody({ requirementId }: { requirementId: string }) {
     const plansQuery = useQuery({
         queryKey: ["plans"],
         queryFn: async () => {

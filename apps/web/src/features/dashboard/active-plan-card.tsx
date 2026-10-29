@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { PlanStatusPill } from "@/features/plans/plan-status-pill";
 import type { PlanStatusValue } from "@/features/plans/plan-status-pill";
 import type { TaskStatus } from "@/features/plans/plan-task-card";
@@ -33,7 +34,13 @@ function taskIcon(status: TaskStatus) {
     }
 }
 
+/** Renders nothing, and queries nothing, when the server reports `plans` off. */
 export function ActivePlanCard() {
+    if (useFeatureEnabled("plans") === false) return null;
+    return <ActivePlanCardBody />;
+}
+
+function ActivePlanCardBody() {
     const queryClient = useQueryClient();
 
     const inProgressQuery = useQuery({

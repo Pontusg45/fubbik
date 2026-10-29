@@ -15,6 +15,7 @@ import { SimilarChunksWarning } from "@/features/chunks/similar-chunks-warning";
 import { chunkTemplates } from "@/features/chunks/templates";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { getUser } from "@/functions/get-user";
 import { useApiListQuery } from "@/hooks/use-api-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -60,6 +61,8 @@ function NewChunk() {
     const [tags, setTags] = useState<string[]>(draft?.tags ?? []);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [aiPrompt, setAiPrompt] = useState("");
+    // Hide "AI Generate" only when the server reports `ai` off.
+    const aiEnabled = useFeatureEnabled("ai");
     const debouncedTitle = useDebouncedValue(title, 500);
 
     // New fields
@@ -274,37 +277,39 @@ function NewChunk() {
 
             <h1 className="mb-6 text-2xl font-bold tracking-tight">New Chunk</h1>
 
-            <Card className="mb-6">
-                <CardPanel className="p-6">
-                    <div className="mb-3 flex items-center gap-2">
-                        <Sparkles className="size-4" />
-                        <span className="text-sm font-medium">AI Generate</span>
-                    </div>
-                    <div className="flex gap-2">
-                        <Input
-                            type="text"
-                            value={aiPrompt}
-                            onChange={e => setAiPrompt(e.target.value)}
-                            onKeyDown={e => {
-                                if (e.key === "Enter" && aiPrompt.trim()) {
-                                    e.preventDefault();
-                                    generateMutation.mutate();
-                                }
-                            }}
-                            placeholder="Describe what you want..."
-                            className="flex-1"
-                        />
-                        <Button
-                            variant="outline"
-                            onClick={() => generateMutation.mutate()}
-                            disabled={generateMutation.isPending || !aiPrompt.trim()}
-                        >
-                            {generateMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                            {generateMutation.isPending ? "Generating..." : "Generate"}
-                        </Button>
-                    </div>
-                </CardPanel>
-            </Card>
+            {aiEnabled !== false && (
+                <Card className="mb-6">
+                    <CardPanel className="p-6">
+                        <div className="mb-3 flex items-center gap-2">
+                            <Sparkles className="size-4" />
+                            <span className="text-sm font-medium">AI Generate</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <Input
+                                type="text"
+                                value={aiPrompt}
+                                onChange={e => setAiPrompt(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === "Enter" && aiPrompt.trim()) {
+                                        e.preventDefault();
+                                        generateMutation.mutate();
+                                    }
+                                }}
+                                placeholder="Describe what you want..."
+                                className="flex-1"
+                            />
+                            <Button
+                                variant="outline"
+                                onClick={() => generateMutation.mutate()}
+                                disabled={generateMutation.isPending || !aiPrompt.trim()}
+                            >
+                                {generateMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                                {generateMutation.isPending ? "Generating..." : "Generate"}
+                            </Button>
+                        </div>
+                    </CardPanel>
+                </Card>
+            )}
 
             <Card className="mb-6">
                 <CardPanel className="p-6">

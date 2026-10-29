@@ -11,12 +11,19 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 import { useActiveFeatures } from "./use-active-features";
 
+/** Renders nothing, and queries nothing, when the server reports `overlays` off. */
 export function FeatureSwitcher() {
+    if (useFeatureEnabled("overlays") === false) return null;
+    return <FeatureSwitcherMenu />;
+}
+
+function FeatureSwitcherMenu() {
     const { activeFeatureIds, toggleFeature, isActive } = useActiveFeatures();
 
     const { data: features } = useQuery({
