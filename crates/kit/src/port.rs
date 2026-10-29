@@ -13,10 +13,11 @@ pub enum KillOutcome {
     WouldKill { pids: Vec<u32> },
 }
 
-/// Pids using `port`, from `lsof -ti tcp:<port>`. Empty when nothing is.
+/// Pids listening on `port`, from `lsof -ti tcp:<port> -sTCP:LISTEN`.
+/// Clients connected to the port are not matched. Empty when nothing listens.
 pub fn pids(port: u16) -> Result<Vec<u32>> {
     let out = Command::new("lsof")
-        .args(["-ti", &format!("tcp:{port}")])
+        .args(["-ti", &format!("tcp:{port}"), "-sTCP:LISTEN"])
         .output()
         .map_err(|e| {
             if e.kind() == ErrorKind::NotFound {
