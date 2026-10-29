@@ -40,10 +40,10 @@ The tools form a loop. Each pass leaves the knowledge base a little better for t
 | ----------------------------- | ------------ | --------------------------------- |
 | 🧠 Knowledge base             | Available    | Yes. This is the core.            |
 | 📋 Planning and coordination  | Available    | Needs the knowledge base          |
-| 🔍 Review harness             | Skeleton     | Yes. Standalone Rust binary       |
+| 🔍 Review harness             | Available    | Yes. Standalone Rust binary       |
 | 🧪 GUI test framework         | Available    | Yes. Plain Playwright             |
 | 🎨 Storybook prototyping      | Planned      | Needs only the web app            |
-| ⚡ `fk` terminal CLI          | Skeleton     | Yes. Standalone Rust binary       |
+| ⚡ `fk` terminal CLI          | Available    | Yes. Standalone Rust binary       |
 | 🔌 MCP, CLI, web, VS Code     | Available    | Interfaces to the knowledge base  |
 
 ### 🧠 Knowledge base
@@ -61,16 +61,26 @@ The tools form a loop. Each pass leaves the knowledge base a little better for t
 - **Agent coordination boards**: shared boards where a lead agent and its sub-agents claim tasks, post notes and questions, and hand off
   work without stepping on each other.
 
-### 🔍 Review harness _(skeleton)_
+### 🔍 Review harness
 
 A linting and review layer that checks AI-written changes against your project's rules before they land. It catches the mistakes an AI
 tends to make over and over and turns your conventions into checks it can't skip. It lives in `crates/review-harness`: implement the
-`Check` trait, register it in `src/checks/mod.rs`, and run `cargo run -p review-harness -- run`. No checks are registered yet. Planned
-starter rules, taken from this repo's own conventions:
+`Check` trait, register it in `src/checks/mod.rs`, or just write regex rules in `review-rules.toml`, and run
+`cargo run -p review-harness -- run`. See the [review harness README](crates/review-harness/README.md). This repo's own rules include:
 
 - No Radix `asChild`. Use the base-ui `render` prop.
 - No `arktype` in the API layer. Use Elysia's `t` schema.
-- Test bodies are marked with `// Given`, `// When`, `// Then`.
+
+### Use the tools without forking
+
+`fk` and the review harness are standalone Rust binaries. Install them straight from the repo, with no database or server:
+
+```bash
+cargo install --git https://github.com/Pontusg45/fubbik kit             # installs `fk`
+cargo install --git https://github.com/Pontusg45/fubbik review-harness
+```
+
+See the [`fk` README](crates/kit/README.md) and the [review harness README](crates/review-harness/README.md).
 
 ### 🧪 GUI test framework
 
@@ -82,7 +92,7 @@ an AI prove a UI change works in the real app, not just in unit tests. Run it wi
 A sandbox where an AI can build and try out components on their own before wiring them into the app. You review the result visually first,
 which keeps throwaway experiments out of your codebase.
 
-### ⚡ `fk` terminal CLI _(skeleton)_
+### ⚡ `fk` terminal CLI
 
 A small Rust binary (`crates/kit`) for the git and dev chores an AI agent runs most. Every command takes a global `--json` flag.
 
@@ -129,6 +139,8 @@ Or run the whole stack in Docker: `docker compose -f docker-compose.selfhost.yml
 Fubbik is shaped around one developer's way of working with AI. **If it interests you, the recommended way to use it is to fork this repo
 and adapt it to your own workflow.** Keep the tools that help, remove the ones that don't, and change the conventions to fit your team and
 stack.
+
+Follow the [forking checklist](docs/forking.md) step by step. For what is safe to build on, see [extending fubbik](docs/extending.md).
 
 Good places to start in a fork:
 
