@@ -1,0 +1,13 @@
+[package]
+name = "review-harness"
+edition.workspace = true
+version.workspace = true
+description = "Convention checks for AI-written changes"
+
+[[bin]]
+name = "review-harness"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true

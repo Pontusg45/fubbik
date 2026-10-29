@@ -1,48 +1,138 @@
 # Fubbik
 
-> A local-first knowledge framework built for both humans and machines.
+> **Making your AI less of an Fubbik.**
 
-Fubbik is a proof-of-concept tool for storing, navigating, and evolving structured knowledge. Information lives as discrete **chunks** —
-each with its own metadata, history, and relationships — giving you a foundation that works equally well whether you're querying from a
-terminal or exploring visually in a GUI.
+AI coding agents forget your conventions, make the same mistakes again, and can't tell whether a UI change really works. Fubbik is a
+collection of framework tools for working with AI. It gives agents the knowledge they need, checks their output against your rules, and
+lets them prove their changes work before they land.
+
+For example, a convention in this repo says UI components use base-ui's `render` prop, not Radix's `asChild`. Without Fubbik, an agent
+reaches for `asChild` because most of its training data does. With Fubbik, the agent gets that convention, and the reason for it, as
+context before it starts. If it slips anyway, the review harness flags it.
+
+Fubbik is an **opinionated, personal toolkit**, not a general-purpose product. See [Making it yours](#making-it-yours).
 
 ---
 
-## Features
+## How it fits together
 
-### 🧩 Chunk-Based Storage
+The tools form a loop. Each pass leaves the knowledge base a little better for the next agent.
 
-Everything in Fubbik is a chunk. Chunks are self-contained units of information that can reference each other, be tagged, typed, and
-composed into larger structures. No rigid schemas — just content with shape.
+```
+        ┌──────────────────────────────────────────────────────────┐
+        │                                                          │
+        ▼                                                          │
+  Knowledge base ──► Context ──► AI writes code ──► Review harness │
+  (chunks, plans,    (budgeted,                     (lint against  │
+   requirements)      per file/task)                 your rules)   │
+                                                         │         │
+                                                         ▼         │
+                                     GUI tests + Storybook prototypes
+                                     (prove it works, review visually)
+                                                         │         │
+                                                         └─────────┘
+                                          new knowledge, flagged staleness
+```
 
-### 🤖 AI & Human Friendly
+## The toolkit
 
-Fubbik ships with a **CLI** optimized for programmatic and AI-agent access — clean output, pipeable, scriptable. The **GUI** is built for
-human exploration: browsing, editing, and visualizing your data without needing to touch a terminal.
+| Tool                          | Status       | Stands alone?                     |
+| ----------------------------- | ------------ | --------------------------------- |
+| 🧠 Knowledge base             | Available    | Yes. This is the core.            |
+| 📋 Planning and coordination  | Available    | Needs the knowledge base          |
+| 🔍 Review harness             | Skeleton     | Yes. Standalone Rust binary       |
+| 🧪 GUI test framework         | Available    | Yes. Plain Playwright             |
+| 🎨 Storybook prototyping      | Planned      | Needs only the web app            |
+| 🔌 MCP, CLI, web, VS Code     | Available    | Interfaces to the knowledge base  |
 
-### 🏠 Local First
+### 🧠 Knowledge base
 
-Your data lives on your machine. No accounts, no cloud sync required. Fubbik is designed to work fully offline, with your knowledge base
-stored in a portable, open format you own and control.
+- **Knowledge chunks**: short, typed records of conventions, architecture decisions and runbooks. Each one is linked to the files it covers
+  and can record why a decision was made, what the alternatives were and what follows from it. Your AI gets the reasoning along with the rule.
+- **Context on demand**: picks the chunks relevant to a file, plan or concept and fits them into a token budget. It can also generate
+  `CLAUDE.md` files and save frozen snapshots.
+- **Freshness checks**: chunks get flagged when their linked code changes or they get old, so stale knowledge doesn't mislead your AI.
 
-### 📋 Transaction Logs
+### 📋 Planning and coordination
 
-Every change is recorded. Fubbik maintains an append-only transaction log so you can audit history, replay changes, or roll back to any
-previous state. Nothing is silently overwritten.
+- **Plans and specs**: plans with tasks and dependencies, BDD-style requirements (Given/When/Then), and behavioral matrices that tie
+  expected behavior to code and test results. This gives agents a clear definition of done.
+- **Agent coordination boards**: shared boards where a lead agent and its sub-agents claim tasks, post notes and questions, and hand off
+  work without stepping on each other.
 
-### 🏷️ Dynamic Metadata
+### 🔍 Review harness _(skeleton)_
 
-Chunks carry metadata that evolves with your needs. Add, remove, or reshape metadata fields at any time without migrations. Fubbik adapts to
-your data model as it grows.
+A linting and review layer that checks AI-written changes against your project's rules before they land. It catches the mistakes an AI
+tends to make over and over and turns your conventions into checks it can't skip. It lives in `crates/review-harness`: implement the
+`Check` trait, register it in `src/checks/mod.rs`, and run `cargo run -p review-harness -- run`. No checks are registered yet. Planned
+starter rules, taken from this repo's own conventions:
 
-### 🕸️ Visualizable Knowledge Graphs
+- No Radix `asChild`. Use the base-ui `render` prop.
+- No `arktype` in the API layer. Use Elysia's `t` schema.
+- Test bodies are marked with `// Given`, `// When`, `// Then`.
 
-Relationships between chunks form a graph you can actually see. Fubbik's graph view lets you explore connections, spot clusters, and
-navigate your knowledge base spatially — not just as a flat list.
+### 🧪 GUI test framework
 
-## Status
+An end-to-end testing setup built on Playwright, organized as screen objects (`apps/web/e2e/support/screens/`) with shared fixtures. It lets
+an AI prove a UI change works in the real app, not just in unit tests. Run it with `pnpm run test:e2e`.
 
-Fubbik is currently a **proof of concept**. APIs, storage formats, and interfaces are subject to change.
+### 🎨 Storybook prototyping _(planned)_
+
+A sandbox where an AI can build and try out components on their own before wiring them into the app. You review the result visually first,
+which keeps throwaway experiments out of your codebase.
+
+### 🔌 Interfaces
+
+- **MCP server** (`fubbik mcp`): tools for AI agents, covering knowledge, context, requirements, plans, coordination boards and matrices.
+  See the [MCP guide](docs/guide/operations/integrations/mcp.md).
+- **CLI**: pipeable and scriptable, with `--json` output, git hooks and `CLAUDE.md` sync.
+- **Web UI**: dashboard, knowledge graph, editors, plans and matrices.
+- **VS Code extension**: shows the chunks relevant to the file you have open.
+
+---
+
+## Quickstart
+
+Requires PostgreSQL 18 with pgvector, plus Rust, pnpm and bun. Ollama is optional and powers AI enrichment and semantic search.
+
+```bash
+pnpm install
+# set DATABASE_URL in apps/server/.env
+pnpm dev     # web on :3001, API on :3000, applies migrations
+pnpm seed    # optional sample knowledge base
+```
+
+Connect it to Claude Code:
+
+```bash
+claude mcp add fubbik -e FUBBIK_SERVER_URL=http://localhost:3000 -- fubbik mcp
+```
+
+Or run the whole stack in Docker: `docker compose -f docker-compose.selfhost.yml up -d` (see [Self-hosting](#self-hosting)).
+
+---
+
+## Making it yours
+
+Fubbik is shaped around one developer's way of working with AI. **If it interests you, the recommended way to use it is to fork this repo
+and adapt it to your own workflow.** Keep the tools that help, remove the ones that don't, and change the conventions to fit your team and
+stack.
+
+Good places to start in a fork:
+
+| What                   | Where                                                    |
+| ---------------------- | -------------------------------------------------------- |
+| AI instructions        | `CLAUDE.md`                                              |
+| Starter knowledge      | the seed data (`pnpm seed`, `crates/fubbik`)             |
+| Chunk templates        | the built-in templates, or your own via `/templates`     |
+| GUI test screens       | `apps/web/e2e/support/screens/`                          |
+| Review rules           | `crates/review-harness/src/checks/`                      |
+
+**What it costs to run:** a Postgres 18 database with pgvector, and optionally Ollama. The Rust backend in `crates/` is the active one. The
+TypeScript server and API packages are kept only as a retired reference for parity checks, and a fork can delete them.
+
+Fubbik is MIT-licensed. Forks are the expected way to use it. Issues and ideas are welcome, but don't expect it to grow into a
+general-purpose product.
 
 ---
 
