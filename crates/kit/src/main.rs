@@ -5,7 +5,7 @@ use anyhow::{Result, bail};
 use clap::{Parser, Subcommand};
 use kit::git::Git;
 use kit::sync::SyncOutcome;
-use kit::{branch, port, push, sync};
+use kit::{agents, branch, port, push, sync};
 
 #[derive(Parser)]
 #[command(name = "fk", about = "Everyday commands, safe by default")]
@@ -40,6 +40,20 @@ enum Command {
     Port {
         #[command(subcommand)]
         command: PortCommand,
+    },
+    /// Manage agent skills and commands
+    Agents {
+        #[command(subcommand)]
+        command: AgentsCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum AgentsCommand {
+    /// Symlink agents/ skills and commands into .claude/
+    Link {
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 
@@ -140,8 +154,39 @@ fn run(cli: Cli) -> Result<()> {
                 bail!("{failed} port(s) failed");
             }
         }
+        Command::Agents {
+            command: AgentsCommand::Link { dry_run },
+        } => {
+            let root = repo_root()?;
+            let actions = agents::link(&root, dry_run)?;
+            if cli.json {
+                println!("{}", serde_json::to_string_pretty(&actions)?);
+            } else {
+                for a in &actions {
+                    println!("{}", agents::describe(&root, a, dry_run));
+                }
+            }
+        }
     }
     Ok(())
+}
+
+/// The git toplevel, falling back to the current directory outside git.
+fn repo_root() -> Result<std::path::PathBuf> {
+    let cwd = std::env::current_dir()?;
+    let out = std::process::Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(&cwd)
+        .output();
+    if let Ok(out) = out
+        && out.status.success()
+    {
+        let top = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if !top.is_empty() {
+            return Ok(top.into());
+        }
+    }
+    Ok(cwd)
 }
 
 fn open_git() -> Result<Git> {
