@@ -27,17 +27,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { filterNavItems, useCapabilities } from "@/features/nav/use-capabilities";
 
-import { filterNavItems, type NavFeature } from "./navigation-items";
-import { useCapabilities } from "./use-capabilities";
-
-const primaryItems: { label: string; to: string; icon: typeof Menu; feature?: NavFeature }[] = [
+const primaryItems = [
     { label: "Dashboard", to: "/dashboard" as const, icon: LayoutDashboard },
-    { label: "Features", to: "/features" as const, icon: Sparkles, feature: "overlays" },
+    { label: "Features", to: "/features" as const, icon: Sparkles },
     { label: "Chunks", to: "/chunks" as const, icon: Blocks },
     { label: "Graph", to: "/graph" as const, icon: Network },
-    { label: "Plans", to: "/plans" as const, icon: ClipboardList, feature: "plans" },
-    { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck, feature: "requirements" },
+    { label: "Plans", to: "/plans" as const, icon: ClipboardList },
+    { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
     { label: "Docs", to: "/docs" as const, icon: FileText },
     { label: "Search", to: "/search" as const, icon: Search }
 ];
