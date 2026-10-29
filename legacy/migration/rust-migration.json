@@ -94,7 +94,7 @@
         },
         "cliCommands": {
             "inventory": {
-                "root": "apps/cli/src/commands",
+                "root": "legacy/cli/src/commands",
                 "suffix": ".ts",
                 "excludeSuffix": ".test.ts"
             },
@@ -185,7 +185,7 @@
         },
         "mcpSources": {
             "inventory": {
-                "root": "packages/mcp/src",
+                "root": "legacy/mcp/src",
                 "suffix": ".ts",
                 "excludeSuffix": ".test.ts"
             },
@@ -305,12 +305,12 @@
         }
     },
     "legacyPackages": [
-        "apps/cli",
+        "legacy/cli",
         "legacy/server",
         "legacy/api",
         "legacy/auth",
         "packages/db",
-        "packages/mcp"
+        "legacy/mcp"
     ],
     "cutoverGates": [
         {

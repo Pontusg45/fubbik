@@ -3,14 +3,12 @@
     "private": true,
     "workspaces": {
         "packages": [
-            "apps/cli",
             "apps/vscode",
             "apps/web",
             "packages/client",
             "packages/config",
             "packages/db",
-            "packages/env",
-            "packages/mcp"
+            "packages/env"
         ],
         "catalog": {
             "dotenv": "^17.2.2",

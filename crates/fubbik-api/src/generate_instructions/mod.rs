@@ -10,7 +10,7 @@
 //! registers this handler at `/api/codebases/:id/generate-instructions`
 //! (`legacy/api/src/generate-instructions/routes.ts:8`) — there is no
 //! `/api/spaces/:id/generate-instructions` route in Node at all, even
-//! though `apps/cli/src/commands/generate.ts:35,58,81` calls exactly that
+//! though `legacy/cli/src/commands/generate.ts:35,58,81` calls exactly that
 //! `/api/spaces/...` URL for all three formats. Confirmed as a live bug in
 //! Node (Phase 4a's `codebases` -> `spaces` rename updated the CLI's call
 //! sites but missed this one route registration), not a deliberate alias:

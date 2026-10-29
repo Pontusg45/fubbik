@@ -17,14 +17,12 @@ ENV DOTENV_DISABLE=1
 ENV TURBO_CACHE_DIR=/root/.cache/turbo
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/cli/package.json ./apps/cli/
 COPY apps/web/package.json ./apps/web/
 COPY apps/vscode/package.json ./apps/vscode/
 COPY packages/client/package.json ./packages/client/
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
 COPY packages/env/package.json ./packages/env/
-COPY packages/mcp/package.json ./packages/mcp/
 
 RUN --mount=type=cache,id=fubbik-pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm fetch

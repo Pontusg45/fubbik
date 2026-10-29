@@ -50,7 +50,7 @@ pub async fn generate_instructions_route(
 /// this route either, since it forwards the opposite direction and this
 /// handler isn't one of the ones it re-exports.
 ///
-/// Yet Node's own CLI (`apps/cli/src/commands/generate.ts:35,58,81`) calls
+/// Yet Node's own CLI (`legacy/cli/src/commands/generate.ts:35,58,81`) calls
 /// `/api/spaces/${spaceId}/generate-instructions` at all three call sites
 /// — matching how every *other* CLI call in that codebase addresses spaces
 /// (`api/spaces`, never `api/codebases`). So in a live Node deployment,

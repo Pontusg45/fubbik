@@ -6,7 +6,7 @@
 //! module doc comment:
 //!
 //! - This port serves `/api/spaces/{id}/generate-instructions`, the path
-//!   `apps/cli/src/commands/generate.ts:35,58,81` actually calls. Node
+//!   `legacy/cli/src/commands/generate.ts:35,58,81` actually calls. Node
 //!   only ever registers `/api/codebases/:id/generate-instructions`, so
 //!   the CLI's three `generate` commands 404 against a real Node server.
 //! - This port 404s when `id` isn't a space the caller owns

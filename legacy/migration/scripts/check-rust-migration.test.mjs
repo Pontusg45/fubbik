@@ -27,7 +27,7 @@ test("an untracked legacy source fails the contract", () => {
         objective: "test",
         areas: {
             cli: {
-                inventory: { root: "apps/cli/src/commands", suffix: ".ts", excludeSuffix: ".test.ts" },
+                inventory: { root: "legacy/cli/src/commands", suffix: ".ts", excludeSuffix: ".test.ts" },
                 statuses: { pending: [] },
                 exitCriterion: "all commands are classified"
             }

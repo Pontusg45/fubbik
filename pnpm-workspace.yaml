@@ -1,12 +1,10 @@
 packages:
-    - apps/cli
     - apps/vscode
     - apps/web
     - packages/client
     - packages/config
     - packages/db
     - packages/env
-    - packages/mcp
 
 catalog:
     dotenv: ^17.2.2
