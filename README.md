@@ -43,6 +43,7 @@ The tools form a loop. Each pass leaves the knowledge base a little better for t
 | 🔍 Review harness             | Skeleton     | Yes. Standalone Rust binary       |
 | 🧪 GUI test framework         | Available    | Yes. Plain Playwright             |
 | 🎨 Storybook prototyping      | Planned      | Needs only the web app            |
+| ⚡ `fk` terminal CLI          | Skeleton     | Yes. Standalone Rust binary       |
 | 🔌 MCP, CLI, web, VS Code     | Available    | Interfaces to the knowledge base  |
 
 ### 🧠 Knowledge base
@@ -81,6 +82,15 @@ an AI prove a UI change works in the real app, not just in unit tests. Run it wi
 A sandbox where an AI can build and try out components on their own before wiring them into the app. You review the result visually first,
 which keeps throwaway experiments out of your codebase.
 
+### ⚡ `fk` terminal CLI _(skeleton)_
+
+A small Rust binary (`crates/kit`) for the git and dev chores an AI agent runs most. Every command takes a global `--json` flag.
+
+- `fk sync [--dry-run]`: fast-forward only. It refuses when the branch has diverged from its upstream.
+- `fk push [--yes]`: lists the commits, then asks before pushing. With no terminal it refuses unless `--yes` is passed.
+- `fk branch <name> [--from <base>]`: creates a branch, and refuses when the tree has uncommitted changes.
+- `fk port kill <port>... [--dry-run]`: kills only processes listening on the port. A free port is not an error.
+
 ### 🔌 Interfaces
 
 - **MCP server** (`fubbik mcp`): tools for AI agents, covering knowledge, context, requirements, plans, coordination boards and matrices.
@@ -97,7 +107,7 @@ Requires PostgreSQL 18 with pgvector, plus Rust, pnpm and bun. Ollama is optiona
 
 ```bash
 pnpm install
-# set DATABASE_URL in apps/server/.env
+# set DATABASE_URL in .env (copy .env.example)
 pnpm dev     # web on :3001, API on :3000, applies migrations
 pnpm seed    # optional sample knowledge base
 ```
@@ -122,14 +132,15 @@ Good places to start in a fork:
 
 | What                   | Where                                                    |
 | ---------------------- | -------------------------------------------------------- |
-| AI instructions        | `CLAUDE.md`                                              |
+| AI instructions        | `CLAUDE.md` and `agents/`                                |
 | Starter knowledge      | the seed data (`pnpm seed`, `crates/fubbik`)             |
 | Chunk templates        | the built-in templates, or your own via `/templates`     |
 | GUI test screens       | `apps/web/e2e/support/screens/`                          |
 | Review rules           | `crates/review-harness/src/checks/`                      |
+| Retired TypeScript     | `legacy/` is safe to delete after reading `legacy/README.md` |
 
 **What it costs to run:** a Postgres 18 database with pgvector, and optionally Ollama. The Rust backend in `crates/` is the active one. The
-TypeScript server and API packages are kept only as a retired reference for parity checks, and a fork can delete them.
+retired TypeScript server and API are kept in `legacy/` for parity checks, and a fork can delete them.
 
 Fubbik is MIT-licensed. Forks are the expected way to use it. Issues and ideas are welcome, but don't expect it to grow into a
 general-purpose product.
@@ -160,7 +171,7 @@ recognized Drizzle bookkeeping—fails without changing migration history; back
 up and finish the legacy migrations before retrying.
 
 1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
+2. Update your `.env` file (copy `.env.example`) with your PostgreSQL connection details.
 
 3. Run the development server (it applies pending migrations automatically):
 
@@ -236,17 +247,24 @@ rollback, log collection, seeding, and release archives.
 ```
 fubbik/
 ├── apps/
-│   ├── web/         # Frontend application (React + TanStack Start)
-│   ├── server/      # Retired TypeScript reference (outside active workspace)
-│   └── cli/         # Reference for remaining local discovery workflows
+│   ├── web/         # Frontend (TanStack Start + React)
+│   ├── cli/         # TypeScript CLI workflows
+│   └── vscode/      # VS Code extension
 ├── packages/
-│   ├── api/         # Retired Elysia reference (outside active workspace)
-│   ├── auth/        # Retired Better Auth reference (outside active workspace)
-│   ├── client/      # Generated Rust OpenAPI client and shared wire contracts
-│   ├── config/      # Shared TypeScript config
-│   ├── db/          # Legacy schema and seed reference for parity checks
-│   └── env/         # Environment validation (Arktype + t3-env)
-├── crates/          # Primary Rust API, database, CLI, and core libraries
+│   ├── client/      # Generated OpenAPI client and wire contracts
+│   ├── db/          # Typed seed adapter and legacy schema reference
+│   ├── env/         # Environment validation
+│   ├── mcp/         # MCP server for AI agents
+│   └── config/      # Shared TypeScript config
+├── crates/          # Rust API, database, CLI and core libraries
+│   ├── kit/         # `fk` terminal CLI
+│   └── review-harness/  # Review linting tool (skeleton)
+├── agents/          # Authored skills, commands and MCP config for AI agents
+├── scripts/
+│   ├── test/        # Rust test and test-database scripts
+│   └── release/     # Release packaging and smoke tests
+├── legacy/          # Retired TypeScript server, API, auth and migration evidence
+└── docs/
 ```
 
 ## Test conventions

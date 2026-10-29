@@ -22,25 +22,31 @@
 fubbik/
 ├── apps/
 │   ├── web/         # Frontend (TanStack Start + React)
-│   ├── server/      # Retired TypeScript reference
-│   ├── cli/         # Legacy TypeScript CLI workflows
+│   ├── cli/         # TypeScript CLI workflows
 │   └── vscode/      # VS Code extension
 ├── packages/
-│   ├── api/         # Retired Elysia reference
-│   ├── auth/        # Retired Better Auth reference
 │   ├── client/      # Generated OpenAPI client and wire contracts
 │   ├── db/          # Typed seed adapter and legacy schema reference
 │   ├── env/         # Environment validation
 │   ├── mcp/         # MCP server for AI agents
 │   └── config/      # Shared TypeScript config
+├── crates/          # Rust API, database, CLI and core libraries
+│   ├── kit/         # `fk` terminal CLI
+│   └── review-harness/  # Review linting tool (skeleton)
+├── agents/          # Authored skills, commands and MCP config for AI agents
+├── scripts/
+│   ├── test/        # Rust test and test-database scripts
+│   └── release/     # Release packaging and smoke tests
+├── legacy/          # Retired TypeScript server, API, auth and migration evidence
+└── docs/
 ```
 
 ## Architecture
 
 The active Rust backend follows **repository → service → route** under
 `crates/fubbik-db` and `crates/fubbik-api`. SQLx migrations are the sole schema
-authority. The old TypeScript backend directories remain as historical porting
-references but are excluded from the workspace and CI.
+authority. The old TypeScript backend lives in `legacy/` as a historical porting
+reference and is excluded from the workspace and CI.
 
 - **Repository** (`crates/fubbik-db/src/repo/`): tenant-scoped PostgreSQL behavior
 - **Service** (`crates/fubbik-api/src/*/service.rs`): domain orchestration

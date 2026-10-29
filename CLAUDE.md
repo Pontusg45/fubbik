@@ -57,17 +57,23 @@ This file provides context about the project for AI assistants.
 ```
 fubbik/
 ├── apps/
-│   ├── web/         # Frontend application (TanStack Start)
-│   ├── server/      # Backend API server (Elysia)
-│   ├── cli/         # CLI application (Commander.js)
-│   └── vscode/      # VS Code / Cursor extension
+│   ├── web/         # Frontend (TanStack Start + React)
+│   ├── cli/         # TypeScript CLI workflows
+│   └── vscode/      # VS Code extension
 ├── packages/
-│   ├── api/         # API layer (Elysia routes, Eden types)
-│   ├── auth/        # Authentication (Better Auth)
-│   ├── config/      # Shared TypeScript config
-│   ├── db/          # Database schema (Drizzle ORM)
+│   ├── client/      # Generated OpenAPI client and wire contracts
+│   ├── db/          # Typed seed adapter and legacy schema reference
 │   ├── env/         # Environment validation
-│   └── mcp/         # MCP server (AI agent tools)
+│   ├── mcp/         # MCP server for AI agents
+│   └── config/      # Shared TypeScript config
+├── crates/          # Rust API, database, CLI and core libraries
+│   ├── kit/         # `fk` terminal CLI
+│   └── review-harness/  # Review linting tool (skeleton)
+├── agents/          # Authored skills, commands and MCP config for AI agents
+├── scripts/
+│   ├── test/        # Rust test and test-database scripts
+│   └── release/     # Release packaging and smoke tests
+├── legacy/          # Retired TypeScript server, API, auth and migration evidence
 └── docs/
     └── superpowers/
         ├── specs/   # Design specifications
@@ -213,11 +219,11 @@ values. Used for UI autocomplete and optional validation. Scope remains free-for
 ### Backend: Repository -> Service -> Route
 
 - **Repositories** (`packages/db/src/repository/`): Return `Effect<T, DatabaseError>`. Pure data access, no business logic.
-- **Services** (`packages/api/src/*/service.ts`): Compose repository Effects, add business logic, introduce
+- **Services** (`legacy/api/src/*/service.ts`): Compose repository Effects, add business logic, introduce
   `NotFoundError`/`AuthError`/`ValidationError`.
-- **Routes** (`packages/api/src/*/routes.ts`): Call `Effect.runPromise(requireSession(ctx).pipe(...))`. Errors propagate to global
+- **Routes** (`legacy/api/src/*/routes.ts`): Call `Effect.runPromise(requireSession(ctx).pipe(...))`. Errors propagate to global
   `.onError` handler.
-- **Global error handler** (`packages/api/src/index.ts`): Extracts Effect errors from FiberFailure, maps `_tag` to HTTP status codes
+- **Global error handler** (`legacy/api/src/index.ts`): Extracts Effect errors from FiberFailure, maps `_tag` to HTTP status codes
   (ValidationError->400, AuthError->401, NotFoundError->404, DatabaseError->500).
 
 ### Frontend: Feature-based Structure
@@ -242,7 +248,7 @@ values. Used for UI autocomplete and optional validation. Scope remains free-for
 
 ### Context Pipeline (Unified)
 
-All context retrieval flows through a single pipeline in `packages/api/src/context/`:
+All context retrieval flows through a single pipeline in `legacy/api/src/context/`:
 
 ```
 Input Source → Chunk Resolver → Enrichment (health, stale, features) → Scorer + Budgeter → Formatter → Output
