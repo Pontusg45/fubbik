@@ -11,7 +11,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-./scripts/rust-test-db.sh start >/dev/null
+./scripts/test/rust-test-db.sh start >/dev/null
 psql "${TEST_DB_ADMIN_URL}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE ${TEST_DB_NAME} TEMPLATE template0 LOCALE_PROVIDER icu ICU_LOCALE 'en-US'" >/dev/null
 docker build -t "${IMAGE_NAME}" -f docker/build/seed.Dockerfile .
 

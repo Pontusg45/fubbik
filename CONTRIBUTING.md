@@ -76,7 +76,7 @@ full Rust workspace suite. Use `just rust-test-fast` for database-free library
 and CLI HTTP contract checks while iterating.
 
 To run a database-backed Cargo test directly, use
-`./scripts/rust-test-db.sh start && DATABASE_URL="$(./scripts/rust-test-db.sh url)" cargo test -p fubbik-db --test seed`.
+`./scripts/test/rust-test-db.sh start && DATABASE_URL="$(./scripts/test/rust-test-db.sh url)" cargo test -p fubbik-db --test seed`.
 
 ## Common Commands
 

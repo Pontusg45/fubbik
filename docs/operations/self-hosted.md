@@ -61,17 +61,17 @@ assumed to understand a new schema.
 
 ## Release archives
 
-`scripts/package-release.sh VERSION` bundles a version-matched Rust binary,
+`scripts/release/package-release.sh VERSION` bundles a version-matched Rust binary,
 static web assets, Bash/Zsh/Fish completions, and a SHA-256 checksum. The
 release workflow builds one archive on Linux and one on macOS. Verify an
-archive before installation with `scripts/smoke-release-archive.sh PATH`.
+archive before installation with `scripts/release/smoke-release-archive.sh PATH`.
 For a database-backed check of the unpacked binary, API, browser assets,
 CLI, and shutdown, use a disposable PostgreSQL 18 database with pgvector and
 AGE and run:
 
 ```sh
 FUBBIK_RELEASE_SMOKE_DATABASE_URL=postgresql://user:password@localhost:5432/fubbik_smoke \
-  scripts/smoke-release-archive.sh PATH
+  scripts/release/smoke-release-archive.sh PATH
 ```
 
 Unpack it, place `fubbik` on `PATH`, and set `FUBBIK_WEB_ASSETS_DIR` to the

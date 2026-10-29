@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root"
 
 # The database-backed workspace creates many test binaries. Keep the check
@@ -15,7 +15,7 @@ managed_db=false
 test_log="$(mktemp)"
 cleanup() {
     if "$managed_db"; then
-        ./scripts/rust-test-db.sh stop || true
+        ./scripts/test/rust-test-db.sh stop || true
     fi
     rm -f "$test_log"
 }
@@ -23,17 +23,17 @@ trap cleanup EXIT
 
 if [[ "${FUBBIK_TEST_DB_EXTERNAL:-false}" == "true" ]]; then
     if [[ -z "${DATABASE_URL:-}" ]]; then
-        echo 'DATABASE_URL is required for external database mode. Run: ./scripts/rust-test-db.sh start && DATABASE_URL="$(./scripts/rust-test-db.sh url)" FUBBIK_TEST_DB_EXTERNAL=true just rust-test' >&2
+        echo 'DATABASE_URL is required for external database mode. Run: ./scripts/test/rust-test-db.sh start && DATABASE_URL="$(./scripts/test/rust-test-db.sh url)" FUBBIK_TEST_DB_EXTERNAL=true just rust-test' >&2
         exit 1
     fi
     psql "$DATABASE_URL" -Atqc 'SELECT 1' | grep -qx '1' || {
-        echo "External test database is not reachable at DATABASE_URL. Run: ./scripts/rust-test-db.sh start" >&2
+        echo "External test database is not reachable at DATABASE_URL. Run: ./scripts/test/rust-test-db.sh start" >&2
         exit 1
     }
 else
-    ./scripts/rust-test-db.sh start >/dev/null
+    ./scripts/test/rust-test-db.sh start >/dev/null
     managed_db=true
-    export DATABASE_URL="$(./scripts/rust-test-db.sh url)"
+    export DATABASE_URL="$(./scripts/test/rust-test-db.sh url)"
 fi
 export SQLX_OFFLINE=true
 

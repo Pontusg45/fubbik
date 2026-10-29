@@ -47,9 +47,9 @@ Arguments after `test:e2e` or `test:components` are forwarded to Playwright. For
 The site runner **starts the application servers but does not start PostgreSQL**. Start the dedicated database before running site tests and stop it afterward:
 
 ```sh
-./scripts/rust-test-db.sh start
+./scripts/test/rust-test-db.sh start
 pnpm --filter web run test:e2e
-./scripts/rust-test-db.sh stop
+./scripts/test/rust-test-db.sh stop
 ```
 
 The script manages only the `fubbik-rust-test-db` container, normally bound to `localhost:5434`. Its `url` and `verify` commands print the connection string and check the running profile. The default database URL in `playwright.config.ts` points to this scratch database. Set `E2E_DATABASE_URL` only to a separate disposable test database; the Rust server applies migrations to whichever database that variable names. Do not point it at a development or production database. CI instead provides its own PostgreSQL service through `E2E_DATABASE_URL`.
@@ -380,7 +380,7 @@ Start with the failed case in the terminal output or `apps/web/playwright-report
 4. Replace timing guesses with an observable condition: a locator state, a response registered before the click, a URL, or a persisted API value. A screenshot documents state; it does not prove a request completed.
 5. Re-run the targeted test after the fix, then the relevant suite. Keep failure injection scoped with `network.withFailure()` so retries and later assertions reach the real API.
 
-If the site suite cannot start, confirm the scratch database with `./scripts/rust-test-db.sh verify`, check that ports `3100` and `3001` are free, and inspect the Rust/Vite startup output. If the component suite cannot start, check port `4178` and the installed browser binaries. Both Playwright configurations deliberately fail rather than reuse an already-running server. Use the test database script's `stop` command for cleanup after an interrupted local run; do not remove unrelated containers.
+If the site suite cannot start, confirm the scratch database with `./scripts/test/rust-test-db.sh verify`, check that ports `3100` and `3001` are free, and inspect the Rust/Vite startup output. If the component suite cannot start, check port `4178` and the installed browser binaries. Both Playwright configurations deliberately fail rather than reuse an already-running server. Use the test database script's `stop` command for cleanup after an interrupted local run; do not remove unrelated containers.
 
 ## CI and maintenance
 

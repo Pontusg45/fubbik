@@ -64,15 +64,15 @@ test:
 
 # Start the canonical PostgreSQL 18 + vector + AGE Rust test adapter.
 rust-test-db-start:
-    ./scripts/rust-test-db.sh start
+    ./scripts/test/rust-test-db.sh start
 
 # Stop and remove the canonical Rust test database.
 rust-test-db-stop:
-    ./scripts/rust-test-db.sh stop
+    ./scripts/test/rust-test-db.sh stop
 
 # Run the complete Rust suite against the canonical database adapter.
 rust-test:
-    ./scripts/test-rust.sh
+    ./scripts/test/test-rust.sh
 
 alias test-rust := rust-test
 

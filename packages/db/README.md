@@ -3,9 +3,9 @@
 Run the PostgreSQL integration tests against the dedicated test adapter:
 
 ```sh
-./scripts/rust-test-db.sh start
+./scripts/test/rust-test-db.sh start
 pnpm --filter @fubbik/db test
-./scripts/rust-test-db.sh stop
+./scripts/test/rust-test-db.sh stop
 ```
 
 The adapter provides PostgreSQL 18, pgvector, and Apache AGE. Vitest creates a uniquely named database, applies the committed Rust SQL migrations, supplies that connection to every worker, and drops the database after the run. It never migrates the database named by the application’s `DATABASE_URL`.

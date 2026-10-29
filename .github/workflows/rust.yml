@@ -29,7 +29,7 @@ jobs:
               with:
                   node-version: "22"
             - name: Run the same complete Rust check as local development
-              run: ./scripts/test-rust.sh
+              run: ./scripts/test/test-rust.sh
             - uses: actions/setup-java@v4
               with:
                   distribution: temurin
@@ -40,12 +40,12 @@ jobs:
                   PATH="$RUNNER_TEMP/source-doc-tools/node_modules/.bin:$PATH" node --test crates/fubbik-cli/tests/source-docs.test.mjs
             - name: Prove operation without Apache AGE
               run: |
-                  ./scripts/rust-test-db.sh stop
-                  ./scripts/rust-test-db.sh start without-age
+                  ./scripts/test/rust-test-db.sh stop
+                  ./scripts/test/rust-test-db.sh start without-age
                   FUBBIK_EXPECT_NO_AGE=1 cargo test -p fubbik-db --test age unavailable_profile_degrades_without_error -- --exact
             - name: Stop test database
               if: always()
-              run: ./scripts/rust-test-db.sh stop
+              run: ./scripts/test/rust-test-db.sh stop
 
     runtime-smoke:
         needs: test
@@ -53,4 +53,4 @@ jobs:
         steps:
             - uses: actions/checkout@v4
             - name: Build and inspect production images
-              run: ./scripts/smoke-production-image.sh
+              run: ./scripts/release/smoke-production-image.sh

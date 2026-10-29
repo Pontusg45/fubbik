@@ -38,9 +38,9 @@ jobs:
               shell: bash
               run: |
                   target="$(rustc -vV | awk '/^host:/ {print $2}')"
-                  ./scripts/package-release.sh "$RELEASE_VERSION" "$target"
+                  ./scripts/release/package-release.sh "$RELEASE_VERSION" "$target"
                   for archive in dist/release/*.tar.gz; do
-                      ./scripts/smoke-release-archive.sh "$archive"
+                      ./scripts/release/smoke-release-archive.sh "$archive"
                   done
             - uses: actions/upload-artifact@v4
               with:
