@@ -24,13 +24,11 @@
 fubbik/
 ├── apps/
 │   ├── web/         # Frontend (TanStack Router + React, Vite SPA)
-│   ├── cli/         # TypeScript CLI workflows
 │   └── vscode/      # VS Code extension
 ├── packages/
 │   ├── client/      # Generated OpenAPI client and wire contracts
-│   ├── db/          # Typed seed adapter and legacy schema reference
+│   ├── db/          # Legacy Drizzle schema reference (Studio, Rust test fixtures)
 │   ├── env/         # Environment validation
-│   ├── mcp/         # MCP server for AI agents
 │   └── config/      # Shared TypeScript config
 ├── crates/          # Rust API, database, CLI and core libraries
 │   ├── kit/         # `fk` terminal CLI
