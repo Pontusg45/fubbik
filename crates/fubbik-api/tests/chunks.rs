@@ -390,7 +390,7 @@ async fn list_envelope_echoes_clamped_limit(pool: sqlx::PgPool) {
     assert_eq!(
         json["limit"], 100,
         "limit must be clamped to the max of 100, matching Node's \
-         `Math.min(Number(query.limit ?? 50), 100)` (packages/api/src/chunks/service.ts:50)"
+         `Math.min(Number(query.limit ?? 50), 100)` (legacy/api/src/chunks/service.ts:50)"
     );
     assert_eq!(json["offset"], 0, "offset must not go negative");
 }
