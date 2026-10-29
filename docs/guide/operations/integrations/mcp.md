@@ -21,7 +21,7 @@ Add to your AI tool's MCP settings:
             "command": "fubbik",
             "args": ["mcp"],
             "env": {
-                "FUBBIK_SERVER_URL": "http://localhost:3100"
+                "FUBBIK_SERVER_URL": "http://localhost:3000"
             }
         }
     }

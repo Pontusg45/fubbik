@@ -17,7 +17,7 @@ pub fn init(server: Option<&str>, force: bool, mode: OutputMode) -> Result<()> {
     let settings = Config {
         server_url: Some(
             server
-                .unwrap_or("http://localhost:3100")
+                .unwrap_or("http://localhost:3000")
                 .trim_end_matches('/')
                 .into(),
         ),

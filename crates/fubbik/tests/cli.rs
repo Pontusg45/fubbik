@@ -430,7 +430,7 @@ fn unknown_subcommand_dispatches_to_a_fubbik_plugin() {
     );
     assert_eq!(
         String::from_utf8_lossy(&out.stdout),
-        "echo-test|hello|1|json|http://localhost:3100\n"
+        "echo-test|hello|1|json|http://localhost:3000\n"
     );
 
     std::fs::remove_file(plugin).ok();

@@ -4,6 +4,7 @@ use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 
 pub const FILE_NAME: &str = "fubbik.config.json";
+pub const DEFAULT_SERVER_URL: &str = "http://localhost:3000";
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -116,16 +117,32 @@ pub fn resolve_base_url(explicit: Option<&str>) -> Result<String> {
         return Ok(url.trim_end_matches('/').into());
     }
     let (config, _) = load()?;
-    Ok(config
+    Ok(server_url_or_default(&config))
+}
+
+fn server_url_or_default(config: &Config) -> String {
+    config
         .server_url
-        .unwrap_or_else(|| "http://localhost:3100".into())
+        .as_deref()
+        .unwrap_or(DEFAULT_SERVER_URL)
         .trim_end_matches('/')
-        .into())
+        .into()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_server_url_is_port_3000() {
+        // Given a configuration with no server URL set (no env, no file read)
+        let config = Config::default();
+        // When the URL is resolved from that configuration
+        let url = server_url_or_default(&config);
+        // Then it falls back to the standard API port
+        assert_eq!(url, "http://localhost:3000");
+        assert_eq!(DEFAULT_SERVER_URL, "http://localhost:3000");
+    }
 
     #[test]
     fn finds_nearest_parent_config() {

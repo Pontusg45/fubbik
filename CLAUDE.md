@@ -307,7 +307,7 @@ Input Source → Chunk Resolver → Enrichment (health, stale, features) → Sco
 
 - Located at `crates/fubbik-mcp/`; run by `fubbik mcp` (JSON-RPC over stdio). `fubbik mcp-tools` lists the tools (53 today)
 - It is an HTTP client of the API (`src/api.rs`, `ApiClient`), not a database client. Server URL: `--url`, else `FUBBIK_SERVER_URL`, else
-  the CLI's configured URL, else `http://localhost:3100`. `agents/mcp/claude-code.json` is a ready-made Claude Code config
+  the CLI's configured URL, else `http://localhost:3000`. `agents/mcp/claude-code.json` is a ready-made Claude Code config
 - Core tools (chunks, context, snapshots, requirements, vocabulary, quick tasks) are defined in `src/lib.rs` (`tools()`); plan, matrix and
   coordination tools live in `src/tools/{plan,matrix,coordination}.rs`, each with `definitions()` and `handles(name)`
 - Key tools: `get_context`, `get_context_for_task`, `create_plan`, `add_plan_task`, `create_requirements_batch`, `get_matrix_view`,
@@ -534,7 +534,7 @@ plugin executables (`fubbik plugin list`).
 
 Server and tooling:
 
-- `fubbik serve [--port <n>] [--host <addr>]` — run the API server and web UI (default `127.0.0.1:3100`; `PORT`/`HOST` env)
+- `fubbik serve [--port <n>] [--host <addr>]` — run the API server and web UI (default `127.0.0.1:3000`; `PORT`/`HOST` env)
 - `fubbik seed [--scenario minimal|demo|extended] [--only <modules>] [--skip <modules>] [--reset auto|none]` — seed the database
 - `fubbik mcp` — run the MCP server over stdio; `fubbik mcp-tools` lists its tools
 - `fubbik openapi` — print the OpenAPI document to stdout
@@ -631,7 +631,7 @@ Required for chunk enrichment (summary, aliases, not_about generation), semantic
 Personal settings live in `.env` (see `docs/guide/getting-started/configuration/environment.md`); project feature switches live in
 `fubbik.toml` (see "Feature switches").
 
-- `PORT` — Server port for `fubbik serve` (default: `3100`; `just dev` / `pnpm dev` pass `--port 3000`)
+- `PORT` — Server port for `fubbik serve` (default: `3000`)
 - `HOST` — Bind address for `fubbik serve` (default: `127.0.0.1`)
 - `CORS_ORIGIN` — Comma-separated allowed origins (default: `http://localhost:3001`)
 - `DATABASE_URL` — PostgreSQL connection string (required by `serve` and `seed`)

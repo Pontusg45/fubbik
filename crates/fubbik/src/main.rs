@@ -22,7 +22,7 @@ struct Cli {
 enum Commands {
     /// Run the API server and web UI
     Serve {
-        #[arg(long, env = "PORT", default_value = "3100")]
+        #[arg(long, env = "PORT", default_value = "3000")]
         port: u16,
         /// Address to bind to. Defaults to loopback-only: combined with
         /// FUBBIK_IMPLICIT_DEV_SESSION=true (under which any invalid
@@ -274,7 +274,7 @@ async fn main() -> anyhow::Result<()> {
                 .or_else(|| std::env::var("FUBBIK_SERVER_URL").ok())
                 .map(Ok)
                 .unwrap_or_else(|| fubbik_cli::config::resolve_base_url(None))
-                .unwrap_or_else(|_| "http://localhost:3100".into());
+                .unwrap_or_else(|_| "http://localhost:3000".into());
             fubbik_mcp::run(&base).await
         }
         Commands::McpTools => {
@@ -363,7 +363,7 @@ async fn main() -> anyhow::Result<()> {
                     explicit_url
                         .clone()
                         .or_else(|| std::env::var("FUBBIK_URL").ok())
-                        .unwrap_or_else(|| "http://localhost:3100".into())
+                        .unwrap_or_else(|| "http://localhost:3000".into())
                 }
                 Err(error) => return Err(error),
             };

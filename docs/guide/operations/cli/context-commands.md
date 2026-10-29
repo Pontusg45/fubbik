@@ -56,7 +56,7 @@ fubbik completions fish
 ## Project Configuration
 
 ```bash
-fubbik init --server http://localhost:3100
+fubbik init --server http://localhost:3000
 fubbik config show
 fubbik config set context.max-tokens 8000
 fubbik config set claude-md.output .claude/CLAUDE.md

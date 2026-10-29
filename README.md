@@ -197,7 +197,7 @@ Open [http://localhost:3001](http://localhost:3001) in your browser to see the w
 [http://localhost:3000](http://localhost:3000). API documentation (Swagger) is available at
 [http://localhost:3000/docs](http://localhost:3000/docs).
 
-The server port can be configured via the `PORT` environment variable (default: `3100`).
+The server port can be configured via the `PORT` environment variable (default: `3000`).
 
 ### Rust CLI
 

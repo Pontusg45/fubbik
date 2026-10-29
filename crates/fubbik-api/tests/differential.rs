@@ -2,7 +2,7 @@
 //!
 //! Run with both stacks live:
 //!   FUBBIK_NODE_URL=http://localhost:3000 \
-//!   FUBBIK_RUST_URL=http://localhost:3100 \
+//!   FUBBIK_RUST_URL=http://localhost:3000 \
 //!   cargo test -p fubbik-api --test differential -- --ignored --nocapture
 //!
 //! With the env vars unset (the default for `cargo test`), the live-comparison

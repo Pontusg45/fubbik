@@ -1057,7 +1057,7 @@ mod tests {
     #[tokio::test]
     async fn initialize_negotiates_a_tools_capable_server() {
         // Given a Rust MCP server
-        let server = Server::new("http://localhost:3100");
+        let server = Server::new("http://localhost:3000");
         // When a client initializes the protocol
         let response = server
             .handle(json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))

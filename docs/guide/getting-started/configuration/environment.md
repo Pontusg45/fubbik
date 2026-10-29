@@ -15,7 +15,7 @@ description: Required and optional environment variables
 
 ## Optional
 
-- `PORT` — Server port (default: `3100`; `just dev` passes `--port 3000`)
+- `PORT` — Server port (default: `3000`)
 - `BETTER_AUTH_URL` — Not read by the Rust server; it is only used by the retired TypeScript code in `legacy/`, so you can leave it unset
 - `CORS_ORIGIN` — Comma-separated allowed origins (default: `http://localhost:3001`)
 - `OLLAMA_URL` — Ollama server URL (default: `http://localhost:11434`)
