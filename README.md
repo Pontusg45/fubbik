@@ -69,7 +69,7 @@ tends to make over and over and turns your conventions into checks it can't skip
 `cargo run -p review-harness -- run`. See the [review harness README](crates/review-harness/README.md). This repo's own rules include:
 
 - No Radix `asChild`. Use the base-ui `render` prop.
-- No `arktype` in the API layer. Use Elysia's `t` schema.
+- No `arktype` outside the web sign-in/sign-up forms and `packages/env`.
 
 ### Use the tools without forking
 
@@ -150,7 +150,7 @@ Good places to start in a fork:
 | Starter knowledge      | the seed data (`pnpm seed`, `crates/fubbik`)             |
 | Chunk templates        | the built-in templates, or your own via `/templates`     |
 | GUI test screens       | `apps/web/e2e/support/screens/`                          |
-| Review rules           | `crates/review-harness/src/checks/`                      |
+| Review rules           | `review-rules.toml` (compiled checks in `crates/review-harness/src/checks/`) |
 | Retired TypeScript     | `legacy/` is safe to delete after reading `legacy/README.md` |
 
 **What it costs to run:** a Postgres 18 database with pgvector, and optionally Ollama. The Rust backend in `crates/` is the active one. The
@@ -197,7 +197,7 @@ Open [http://localhost:3001](http://localhost:3001) in your browser to see the w
 [http://localhost:3000](http://localhost:3000). API documentation (Swagger) is available at
 [http://localhost:3000/docs](http://localhost:3000/docs).
 
-The server port can be configured via the `PORT` environment variable (default: `3000`).
+The server port can be configured via the `PORT` environment variable (default: `3100`).
 
 ### Rust CLI
 
@@ -262,22 +262,20 @@ rollback, log collection, seeding, and release archives.
 fubbik/
 ├── apps/
 │   ├── web/         # Frontend (TanStack Start + React)
-│   ├── cli/         # TypeScript CLI workflows
 │   └── vscode/      # VS Code extension
 ├── packages/
 │   ├── client/      # Generated OpenAPI client and wire contracts
 │   ├── db/          # Typed seed adapter and legacy schema reference
 │   ├── env/         # Environment validation
-│   ├── mcp/         # MCP server for AI agents
 │   └── config/      # Shared TypeScript config
 ├── crates/          # Rust API, database, CLI and core libraries
 │   ├── kit/         # `fk` terminal CLI
-│   └── review-harness/  # Review linting tool (skeleton)
+│   └── review-harness/  # Review linting tool (rules in `review-rules.toml`)
 ├── agents/          # Authored skills, commands and MCP config for AI agents
 ├── scripts/
 │   ├── test/        # Rust test and test-database scripts
 │   └── release/     # Release packaging and smoke tests
-├── legacy/          # Retired TypeScript server, API, auth and migration evidence
+├── legacy/          # Retired TypeScript server, API, auth, CLI, MCP and migration evidence
 └── docs/
 ```
 

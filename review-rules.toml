@@ -11,11 +11,11 @@ message = "use the base-ui `render` prop, not Radix `asChild`"
 
 [[rule]]
 name = "no-arktype"
-description = "Validation uses Elysia `t`; arktype survives only in web auth forms and env validation"
+description = "arktype is confined to the web sign-in/sign-up forms and env validation"
 pattern = '''from ["']arktype["']'''
 roots = ["apps", "packages"]
 extensions = [".ts", ".tsx"]
-message = "use Elysia `t`; arktype was removed"
+message = "arktype is allowed only in apps/web/src/features/auth/ and packages/env/; do not add it elsewhere"
 # Live uses found by `git grep`: the two sign-in/sign-up forms and env validation.
 allow = ["apps/web/src/features/auth/", "packages/env/"]
 

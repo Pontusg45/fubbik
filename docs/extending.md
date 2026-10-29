@@ -29,7 +29,11 @@ Feature switches are stable. To add a switchable group:
 2. Wrap the group's routers in an `if switches.enabled(Feature::...)` block in `router()` in `crates/fubbik-api/src/lib.rs`. Gate its
    background jobs the same way.
 3. Document the key in `fubbik.example.toml`.
-4. Add the key to `Feature` and to `FEATURE_BY_ROUTE` in `apps/web/src/features/nav/use-capabilities.ts` so the nav hides it.
+4. Add the key to `Feature` and to `FEATURE_BY_ROUTE` in `apps/web/src/features/nav/use-capabilities.ts` so the nav hides it. Gate any
+   query a core page makes to the group with `useFeatureEnabled` from the same file, skipping only when it returns `false`.
+
+The MCP tools in `crates/fubbik-mcp` and the `fubbik plan …` / `fubbik matrix …` CLI commands do not consult the switches: when a group is
+off they still call the API and get a 404.
 
 The database schema stays complete whatever the switches say; do not make migrations conditional.
 
