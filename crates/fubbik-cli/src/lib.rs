@@ -460,7 +460,7 @@ pub enum DocsCommand {
     },
     /// Show a document and its chunks
     Show { id: String },
-    /// Import one Markdown file
+    /// Import one Markdown file, or every Markdown file under a directory
     Import {
         path: PathBuf,
         #[arg(short, long, visible_alias = "codebase")]

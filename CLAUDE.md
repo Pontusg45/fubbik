@@ -18,7 +18,7 @@ This file provides context about the project for AI assistants.
 ## Tech Stack
 
 - **Runtime**: one Rust binary, `fubbik` (`crates/fubbik`), for the server, CLI and MCP server; Vite for the web app; bun for a few
-  `packages/db` scripts (`pnpm scan`)
+  `packages/db` scripts
 - **Package Manager**: pnpm (TypeScript workspaces) + cargo (Rust workspace, `crates/*`)
 - **Task runner**: `just` (`Justfile`); the root `package.json` scripts delegate to it or to turbo
 
@@ -555,7 +555,7 @@ Knowledge base:
 - `fubbik space add/list/remove/current` — space management (`codebase` is an alias)
 - `fubbik export [--format json|md]` / `fubbik import <path>` — bulk operations (import reads JSON or Markdown files or directories);
   `fubbik bulk-add` imports JSONL; `fubbik export-site` generates a static HTML site
-- `fubbik docs extract/list/show/import/import-dir/sync/render` — imported Markdown documents
+- `fubbik docs extract/list/show/import/import-dir/sync/render` — imported Markdown documents (`docs import` takes a file or a directory; a directory is walked recursively, skipping `node_modules`, `target`, `.git`, `dist` and `legacy`, and exits non-zero if any file failed)
 - `fubbik enrich [<id>] [--all]` — AI enrichment
 - `fubbik health/stats/status` — system info
 - `fubbik stale list/dismiss`, `fubbik lint`, `fubbik cleanup`, `fubbik gaps`, `fubbik recap`, `fubbik kb-diff`, `fubbik updates` —

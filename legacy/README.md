@@ -12,6 +12,5 @@ These skip automatically when the folder is absent:
 A fork removes these by hand when deleting this folder:
 
 - the `check:rust-migration` and `test:rust-migration` scripts in the root `package.json`, which point at `legacy/migration/scripts/`
-- `pnpm scan`: the `scan` script in the root `package.json` and in `packages/db/package.json`, plus `packages/db/src/scan.ts`, which imports the CLI scanner from `legacy/cli/src/lib/scanner`
 
 CI's `legacy-removable` job proves the rest of the repo builds and type-checks without this folder.

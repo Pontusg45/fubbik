@@ -38,7 +38,6 @@
         "db:stop": "turbo run db:stop --filter=@fubbik/db",
         "db:down": "turbo run db:down --filter=@fubbik/db",
         "seed": "cargo run --locked -p fubbik -- seed",
-        "scan": "turbo run scan --filter=@fubbik/db",
         "test": "turbo run test",
         "test:e2e": "turbo run test:e2e",
         "check:rust-migration": "node legacy/migration/scripts/check-rust-migration.mjs",

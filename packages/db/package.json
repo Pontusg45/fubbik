@@ -17,7 +17,6 @@
     "scripts": {
         "check-types": "tsgo -b",
         "lint": "oxlint src",
-        "scan": "bun run src/scan.ts",
         "db:studio": "drizzle-kit studio",
         "schema:verify": "bun run scripts/verify-schema.ts",
         "db:start": "docker compose -f ../../docker-compose.yml up db -d",
