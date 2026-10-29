@@ -84,6 +84,14 @@ and CLI HTTP contract checks while iterating.
 To run a database-backed Cargo test directly, use
 `./scripts/test/rust-test-db.sh start && DATABASE_URL="$(./scripts/test/rust-test-db.sh url)" cargo test -p fubbik-db --test seed`.
 
+### Shared build cache
+
+`just` recipes export `CARGO_TARGET_DIR` so every worktree builds into the main
+checkout's `target/` and shares one cache. Plain `cargo` does not share it
+unless you export `CARGO_TARGET_DIR` the same way. Concurrent builds wait on
+Cargo's lock. Never `cargo clean` the shared directory while another worktree
+is building.
+
 ## Common Commands
 
 | Command                | Description             |
