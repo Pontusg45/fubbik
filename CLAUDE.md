@@ -25,7 +25,7 @@ This file provides context about the project for AI assistants.
 ### Frontend
 
 - Framework: TanStack Router, as a client-rendered SPA built by Vite (`apps/web/src/main.tsx`; no SSR entry). The dev server (port 3001)
-  proxies `/api` and `/docs` to the API (`API_PROXY_TARGET`, default `http://127.0.0.1:3000`)
+  proxies `/api` (including the Swagger UI at `/api/docs`) to the API (`API_PROXY_TARGET`, default `http://127.0.0.1:3000`)
 - CSS: tailwind
 - UI Library: shadcn-ui (built on @base-ui/react — uses `render` prop, NOT `asChild`)
 - Graph: @xyflow/react (React Flow)
@@ -492,7 +492,7 @@ ai = true
 - `POST /api/scope-keys` — register a scope key (key, description, valueType, allowedValues)
 - `DELETE /api/scope-keys/:id` — delete a scope key
 
-The Rust server serves the OpenAPI document at `GET /api/openapi.json` and a Swagger UI page at `GET /docs` (both unauthenticated; the UI
+The Rust server serves the OpenAPI document at `GET /api/openapi.json` and a Swagger UI page at `GET /api/docs` (both unauthenticated; the UI
 loads from the jsdelivr CDN at a pinned `swagger-ui-dist` version, see `crates/fubbik-api/src/api_docs.rs`). `fubbik openapi` prints the
 OpenAPI document; the checked-in copy is `openapi.json`, from which `pnpm gen:api` generates `packages/client/src/api-types.ts`.
 
@@ -527,7 +527,7 @@ OpenAPI document; the checked-in copy is `openapi.json`, from which `pnpm gen:ap
 - `/settings` — user/space/instance settings
 - `/activity` — activity log with action type + entity type filters
 - `/vocabulary` — controlled vocabulary management
-- `/docs` — imported document browser, plus an "API" tab that embeds the server's Swagger UI (`GET /docs` on the API)
+- `/docs` — imported document browser, plus an "API" tab that embeds the server's Swagger UI (`GET /api/docs` on the API)
 
 ## CLI Commands
 

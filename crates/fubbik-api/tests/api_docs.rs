@@ -1,4 +1,4 @@
-//! `GET /api/openapi.json` and `GET /docs`. Neither touches the database
+//! `GET /api/openapi.json` and `GET /api/docs`. Neither touches the database
 //! or needs a session, so the pool is lazy and never connects.
 
 use axum::body::Body;
@@ -60,7 +60,7 @@ async fn docs_page_serves_swagger_ui() {
     let version = fubbik_api::api_docs::SWAGGER_UI_VERSION;
 
     // When
-    let (status, content_type, body) = get("/docs").await;
+    let (status, content_type, body) = get("/api/docs").await;
 
     // Then
     assert_eq!(status, StatusCode::OK);
@@ -80,9 +80,20 @@ async fn docs_page_serves_swagger_ui() {
 #[tokio::test]
 async fn docs_page_links_raw_spec() {
     // Given / When
-    let (_, _, body) = get("/docs").await;
+    let (_, _, body) = get("/api/docs").await;
 
     // Then
     let html = String::from_utf8(body).unwrap();
     assert!(html.contains(r#"<a href="/api/openapi.json">Raw OpenAPI JSON</a>"#));
+}
+
+#[tokio::test]
+async fn spa_docs_path_is_not_served_by_api() {
+    // Given: the web app owns `/docs`; Swagger UI lives under `/api/docs`.
+
+    // When
+    let (status, _, _) = get("/docs").await;
+
+    // Then
+    assert_eq!(status, StatusCode::NOT_FOUND);
 }

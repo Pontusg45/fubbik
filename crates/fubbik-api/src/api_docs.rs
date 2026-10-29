@@ -1,4 +1,4 @@
-//! `GET /api/openapi.json` and `GET /docs` — the machine-readable spec and a
+//! `GET /api/openapi.json` and `GET /api/docs` — the machine-readable spec and a
 //! Swagger UI page that renders it.
 //!
 //! **Deliberately unauthenticated**, like `capabilities`: the spec describes
@@ -64,5 +64,5 @@ pub async fn docs() -> Html<&'static str> {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/openapi.json", get(openapi_json))
-        .route("/docs", get(docs))
+        .route("/api/docs", get(docs))
 }

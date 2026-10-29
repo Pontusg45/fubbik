@@ -8,7 +8,7 @@ description: Programmatic access via the Elysia REST API
 
 # REST API
 
-The fubbik API is a REST API built with Elysia. Full OpenAPI/Swagger docs are available at `http://localhost:3000/docs`.
+The fubbik API is a REST API built with Elysia. Full OpenAPI/Swagger docs are available at `http://localhost:3000/api/docs`.
 
 ## Key Endpoints
 

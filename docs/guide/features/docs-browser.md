@@ -29,4 +29,4 @@ See the [Import/Export section](../operations/import-export/) for details.
 
 ## API Reference
 
-The docs browser also supports viewing API documentation through Swagger UI at `http://localhost:3000/docs`.
+The docs browser also supports viewing API documentation through Swagger UI at `http://localhost:3000/api/docs`.
