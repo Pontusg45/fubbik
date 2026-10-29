@@ -207,18 +207,18 @@
     },
     {
       "chunkName": "seed-system",
-      "pattern": "packages/db/src/seed/**"
+      "pattern": "crates/fubbik-db/src/seed/**"
     }
   ],
   "refs": [
     {
       "chunkName": "seed-system",
-      "path": "packages/db/src/seed/index.ts",
+      "path": "crates/fubbik-db/src/seed/mod.rs",
       "relation": "documents"
     },
     {
       "chunkName": "seed-system",
-      "path": "packages/db/src/seed/modules/core.ts",
+      "path": "crates/fubbik-db/src/seed/core.rs",
       "relation": "documents"
     },
     {
