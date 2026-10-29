@@ -32,14 +32,14 @@ pub struct ParseResponse {
 }
 
 /// Query params for `GET /api/search/parse`
-/// (`packages/api/src/search/routes.ts:45-53`): `q` only, required.
+/// (`legacy/api/src/search/routes.ts:45-53`): `q` only, required.
 #[derive(Deserialize, IntoParams)]
 pub struct ParseQuery {
     pub q: String,
 }
 
 /// Body of `POST /api/search/query`
-/// (`packages/api/src/search/routes.ts:34-43`). `join` is accepted and
+/// (`legacy/api/src/search/routes.ts:34-43`). `join` is accepted and
 /// **completely ignored** — see `search::service`'s module doc for why:
 /// Node's schema declares it (`t.Optional(t.Union([t.Literal("and"), t.Literal("or")]))`)
 /// but `service.ts`'s `executeSearch` never reads `searchQuery.join`
@@ -59,7 +59,7 @@ pub struct SearchQueryBody {
 }
 
 /// `POST /api/search/query`'s response envelope, matching Node's
-/// `SearchResult` (`packages/api/src/search/types.ts:48-59`).
+/// `SearchResult` (`legacy/api/src/search/types.ts:48-59`).
 #[derive(Serialize, ToSchema, Default, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResult {
@@ -133,7 +133,7 @@ pub struct DuplicateHint {
 }
 
 /// Query params for `GET /api/search/autocomplete`
-/// (`packages/api/src/search/routes.ts`'s query schema: `field`, `prefix`,
+/// (`legacy/api/src/search/routes.ts`'s query schema: `field`, `prefix`,
 /// both required plain strings).
 #[derive(Deserialize, IntoParams)]
 pub struct AutocompleteQuery {
@@ -149,7 +149,7 @@ pub struct ListSavedQuery {
 }
 
 /// The `query` object nested in `POST /api/search/saved`'s body, matching
-/// Node's schema exactly (`packages/api/src/search/routes.ts:93-101`):
+/// Node's schema exactly (`legacy/api/src/search/routes.ts:93-101`):
 /// `clauses`, `join`, `sort`, `spaceId`, all validated at write time. Once
 /// stored, `saved_query.query` is opaque JSONB never re-validated on read
 /// (see `fubbik_db::repo::saved_query`'s module doc) — this type exists
@@ -167,7 +167,7 @@ pub struct SavedQueryPayload {
 }
 
 /// Body of `POST /api/search/saved`
-/// (`packages/api/src/search/routes.ts:93-103`).
+/// (`legacy/api/src/search/routes.ts:93-103`).
 #[derive(Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateSavedQueryBody {

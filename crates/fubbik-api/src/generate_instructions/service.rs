@@ -1,4 +1,4 @@
-//! Ports `generateInstructions` (`packages/api/src/generate-instructions/
+//! Ports `generateInstructions` (`legacy/api/src/generate-instructions/
 //! service.ts:29-79`) plus its `categorizeChunks`/`formatClaude`/
 //! `formatAgents`/`formatCursor` helpers, end to end.
 

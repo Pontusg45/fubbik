@@ -3,7 +3,7 @@ use std::collections::HashMap;
 /// Bare `{key: value}` map — the response shape of every "get all settings
 /// for a scope" endpoint (`GET /api/settings/user`, `/codebase`,
 /// `/instance`), matching Node's `Record<string, unknown>` reduction
-/// (`packages/api/src/settings/service.ts`). Not an envelope, not an
+/// (`legacy/api/src/settings/service.ts`). Not an envelope, not an
 /// array — see `legacy/migration/fixtures/node-contract-2b/_questions.md` Q3:
 /// `settings-user.json` / `settings-codebase.json` / `settings-instance.json`
 /// are all bare objects (`{}` in the captured, empty-table fixtures).
@@ -23,7 +23,7 @@ use std::collections::HashMap;
 pub type SettingsMap = HashMap<String, serde_json::Value>;
 
 /// Body of `PATCH /api/settings/user` and `PATCH /api/settings/instance`
-/// (`packages/api/src/settings/routes.ts`): both share the identical
+/// (`legacy/api/src/settings/routes.ts`): both share the identical
 /// `{ key, value }` shape. `value` is a bare `serde_json::Value`, not a
 /// typed union — Node's schema is `value: t.Unknown()`, i.e. **no
 /// validation at all** on the value's shape, despite the typed
@@ -39,7 +39,7 @@ pub struct SetSettingBody {
 }
 
 /// Body of `PATCH /api/settings/codebase`
-/// (`packages/api/src/settings/routes.ts:38-54`). `codebaseId` here is a
+/// (`legacy/api/src/settings/routes.ts:38-54`). `codebaseId` here is a
 /// `spaceId` — the field name is a legacy holdover predating the
 /// codebase->space rename elsewhere in the codebase (see the top-level
 /// CLAUDE.md's "Spaces & Workspaces" section and `codebase_settings`'s
@@ -60,7 +60,7 @@ pub struct CodebaseQuery {
 }
 
 /// Shape of every settings `PATCH` response — `{ "message": "Updated" }`,
-/// status 200, on all three scopes (`packages/api/src/settings/routes.ts`).
+/// status 200, on all three scopes (`legacy/api/src/settings/routes.ts`).
 /// Distinct wording from the `{ "message": "Deleted" }` convention used by
 /// delete endpoints elsewhere in this crate.
 #[derive(serde::Serialize, utoipa::ToSchema)]
@@ -73,7 +73,7 @@ pub struct MessageResponse {
 /// (`legacy/migration/fixtures/node-contract-2b/_questions.md` Q2). Every field
 /// independently defaults to `true` when its key is absent from
 /// `instance_settings`, matching Node's `(map.x as boolean) ?? true`
-/// fallback (`packages/api/src/settings/service.ts:59-75`) for the
+/// fallback (`legacy/api/src/settings/service.ts:59-75`) for the
 /// documented case — a key that is simply absent. Confirmed live against
 /// the empty-table fixture: `settings-features.json` returns all five
 /// `true` even though `instance_settings` has zero rows.

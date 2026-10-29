@@ -2,7 +2,7 @@ use fubbik_db::repo::chunk::Chunk;
 use fubbik_db::repo::document::Document;
 use fubbik_db::timestamp::UtcTimestamp;
 
-/// `GET /api/documents` query, matching `packages/api/src/documents/routes.ts:16-20`.
+/// `GET /api/documents` query, matching `legacy/api/src/documents/routes.ts:16-20`.
 #[derive(serde::Deserialize, utoipa::IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct ListDocumentsQuery {
@@ -10,7 +10,7 @@ pub struct ListDocumentsQuery {
 }
 
 /// `GET /api/documents/search` query, matching
-/// `packages/api/src/documents/routes.ts:30-35`. `q`'s `minLength: 2` is
+/// `legacy/api/src/documents/routes.ts:30-35`. `q`'s `minLength: 2` is
 /// enforced in `routes::search_documents` (see that function's doc
 /// comment for why, unlike this port's usual "Elysia-only caps go
 /// unenforced" precedent).
@@ -22,7 +22,7 @@ pub struct SearchDocumentsQuery {
 }
 
 /// Body of `POST /api/documents/import`
-/// (`packages/api/src/documents/routes.ts:57-63`). `sourcePath`/`content`
+/// (`legacy/api/src/documents/routes.ts:57-63`). `sourcePath`/`content`
 /// length caps (`maxLength: 500`/`200000`) are Elysia-only request
 /// validation Node never re-checks past the transport layer; matching
 /// this port's established precedent (see
@@ -30,7 +30,7 @@ pub struct SearchDocumentsQuery {
 /// unenforced here — an over-long value is simply stored as-is.
 ///
 /// Node's route never accepts or forwards a `templateId`
-/// (`packages/api/src/documents/service.ts`'s `importDocument` takes one,
+/// (`legacy/api/src/documents/service.ts`'s `importDocument` takes one,
 /// but no caller — HTTP or otherwise — ever supplies it), so this body has
 /// no such field either; see `service::import_document`'s doc comment.
 #[derive(serde::Deserialize, utoipa::ToSchema)]
@@ -42,7 +42,7 @@ pub struct ImportDocumentBody {
 }
 
 /// One entry of `POST /api/documents/import-dir`'s `files` array
-/// (`packages/api/src/documents/routes.ts:78-85`).
+/// (`legacy/api/src/documents/routes.ts:78-85`).
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportFileEntry {
@@ -60,7 +60,7 @@ pub struct ImportDirBody {
 }
 
 /// Body of `POST /api/documents/{id}/sync`
-/// (`packages/api/src/documents/routes.ts:100-106`).
+/// (`legacy/api/src/documents/routes.ts:100-106`).
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncDocumentBody {
@@ -70,7 +70,7 @@ pub struct SyncDocumentBody {
 
 /// `"unchanged" | "created" | "synced"` — the three literal values
 /// `importDocument`/`syncDocument` actually return
-/// (`packages/api/src/documents/service.ts:53,59,114,157,168,237`). There
+/// (`legacy/api/src/documents/service.ts:53,59,114,157,168,237`). There
 /// is no `"updated"` variant: a re-sync with content changes reports
 /// `status: "synced"` regardless of whether any section was individually
 /// created vs. updated (see `created`/`updated` counts for that detail).
@@ -85,7 +85,7 @@ pub enum ImportStatus {
 /// Shape of `POST /api/documents/import` and each element of
 /// `POST /api/documents/import-dir`'s response array, matching Node's
 /// `importDocument` return object exactly
-/// (`packages/api/src/documents/service.ts:45-158`).
+/// (`legacy/api/src/documents/service.ts:45-158`).
 #[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportResult {
@@ -97,7 +97,7 @@ pub struct ImportResult {
 }
 
 /// Shape of `POST /api/documents/{id}/sync`, matching Node's
-/// `syncDocument` return object (`packages/api/src/documents/service.ts:161-239`).
+/// `syncDocument` return object (`legacy/api/src/documents/service.ts:161-239`).
 /// **`document` is the pre-sync snapshot, not the freshly-updated row** —
 /// see `service::sync_document`'s doc comment; this is Node's actual
 /// return expression (`doc` is never reassigned after the `updateDocument`
@@ -112,7 +112,7 @@ pub struct SyncResult {
 }
 
 /// Shape of `GET /api/documents/{id}/render`, matching Node's
-/// `renderDocument` return object (`packages/api/src/documents/service.ts:241-278`):
+/// `renderDocument` return object (`legacy/api/src/documents/service.ts:241-278`):
 /// `{ document, markdown }`, nested — **not** flattened, unlike
 /// [`DocumentDetail`].
 #[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
@@ -124,7 +124,7 @@ pub struct RenderResult {
 
 /// Shape of `GET /api/documents/{id}`, matching Node's `getDocument`
 /// return expression: `{ ...doc, chunks }`
-/// (`packages/api/src/documents/service.ts:288-295`) — a genuine object
+/// (`legacy/api/src/documents/service.ts:288-295`) — a genuine object
 /// spread, so the document's own fields sit at the *top level* alongside
 /// `chunks`, not nested under a `document` key. Modelled as an explicit
 /// flat struct (rather than `#[serde(flatten)]` on a nested `Document`)

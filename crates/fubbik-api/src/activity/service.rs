@@ -4,7 +4,7 @@ use fubbik_db::repo::space;
 use sqlx::PgPool;
 
 /// **Deliberate divergence from Node.** Node's `GET /activity`
-/// (`packages/api/src/activity/routes.ts`) scopes the list by `user_id`
+/// (`legacy/api/src/activity/routes.ts`) scopes the list by `user_id`
 /// but applies `spaceId` as a bare equality filter with no check that the
 /// space belongs to the caller — a `spaceId` for another user's space
 /// simply matches none of the caller's own rows and comes back as a 200

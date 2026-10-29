@@ -1,6 +1,6 @@
 //! `activity_log` is a read-only audit trail from the HTTP surface's point
 //! of view: Node exposes exactly one route, `GET /activity`
-//! (`packages/api/src/activity/routes.ts`). `createActivity`
+//! (`legacy/api/src/activity/routes.ts`). `createActivity`
 //! (`packages/db/src/repository/activity.ts:31-44`) exists only as an
 //! internal function other domains call directly for fire-and-forget audit
 //! logging — there is no `POST /activity` route in Node, and this port

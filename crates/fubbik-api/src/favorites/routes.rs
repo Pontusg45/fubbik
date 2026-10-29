@@ -23,7 +23,7 @@ pub async fn list_favorites(
 /// Status is set to 201 unconditionally, even when the chunk was already
 /// favorited and the body is `null` — matching Node's `Effect.tap` block,
 /// which sets `ctx.set.status = 201` before ever inspecting the result
-/// (`packages/api/src/favorites/routes.ts:11-29`, `_mutating.md`). This is
+/// (`legacy/api/src/favorites/routes.ts:11-29`, `_mutating.md`). This is
 /// a deliberately preserved quirk, not a bug: do not "improve" it to
 /// 200/409/an idempotent echo of the existing row.
 #[utoipa::path(post, path = "/api/favorites", request_body = CreateFavoriteBody,

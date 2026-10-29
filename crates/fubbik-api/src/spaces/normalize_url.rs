@@ -1,4 +1,4 @@
-//! Port of `packages/api/src/spaces/normalize-url.ts`. Used both when
+//! Port of `legacy/api/src/spaces/normalize-url.ts`. Used both when
 //! storing a `code`-kind space's `remoteUrl` (create/update) and when
 //! resolving `GET /api/spaces/detect?remoteUrl=` — the same function on
 //! both sides is what makes `detect` able to find a space created through

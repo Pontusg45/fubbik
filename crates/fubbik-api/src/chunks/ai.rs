@@ -1,9 +1,9 @@
 //! The chunk endpoint that needs an embedding.
 //!
 //! Ports the embedding-dependent half of
-//! `packages/api/src/chunks/chunk-search.ts` (`semanticSearch`,
+//! `legacy/api/src/chunks/chunk-search.ts` (`semanticSearch`,
 //! `chunk-search.ts:59-73`) plus its route registration
-//! (`packages/api/src/chunks/routes.ts:192-206`).
+//! (`legacy/api/src/chunks/routes.ts:192-206`).
 use fubbik_ai::OllamaClient;
 use fubbik_core::error::{AppError, AppResult};
 use fubbik_db::repo::semantic::{self, SemanticHit};

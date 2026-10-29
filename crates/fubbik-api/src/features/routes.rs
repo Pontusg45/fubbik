@@ -1,5 +1,5 @@
 //! HTTP surface for the `features` domain — the 13 endpoints of
-//! `packages/api/src/features/routes.ts`.
+//! `legacy/api/src/features/routes.ts`.
 //!
 //! Three of them hang off `/api/chunks/...` rather than `/api/features/...`
 //! (the delta CRUD), which is why this router owns routes in another
@@ -37,7 +37,7 @@ pub async fn list_features(
 }
 
 /// 201, matching Node's explicit `ctx.set.status = 201`
-/// (`packages/api/src/features/routes.ts:36-40`) — the only endpoint in
+/// (`legacy/api/src/features/routes.ts:36-40`) — the only endpoint in
 /// this domain that is not 200.
 #[utoipa::path(post, path = "/api/features", request_body = CreateFeatureBody,
     responses((status = 201, body = Feature)))]
@@ -52,7 +52,7 @@ pub async fn create_feature(
 
 /// A bare array of feature ids — not objects. Node maps
 /// `rows.map(r => r.featureId)` before responding
-/// (`packages/api/src/features/service.ts:145-147`).
+/// (`legacy/api/src/features/service.ts:145-147`).
 #[utoipa::path(get, path = "/api/features/active",
     responses((status = 200, body = Vec<String>)))]
 pub async fn get_active_features(

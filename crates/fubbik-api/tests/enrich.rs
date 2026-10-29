@@ -1,5 +1,5 @@
 //! HTTP-level tests for `POST /api/chunks/{id}/enrich` and
-//! `POST /api/chunks/enrich-all` (`packages/api/src/enrich/routes.ts`).
+//! `POST /api/chunks/enrich-all` (`legacy/api/src/enrich/routes.ts`).
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};

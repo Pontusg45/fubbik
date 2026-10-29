@@ -1,6 +1,6 @@
 use fubbik_db::repo::template::{FieldMapping, MatchRules};
 
-/// Body of `POST /api/templates` (`packages/api/src/templates/routes.ts:48-73`).
+/// Body of `POST /api/templates` (`legacy/api/src/templates/routes.ts:48-73`).
 ///
 /// `description`/`matchRules`/`fieldMappings` are all `t.Optional(t.Union([
 /// Schema, t.Null()]))` in Node, but on *create* there's no existing value
@@ -33,7 +33,7 @@ pub struct CreateTemplateBody {
     pub tags: Option<Vec<String>>,
 }
 
-/// Body of `PATCH /api/templates/{id}` (`packages/api/src/templates/routes.ts:74-94`).
+/// Body of `PATCH /api/templates/{id}` (`legacy/api/src/templates/routes.ts:74-94`).
 ///
 /// `description`/`matchRules`/`fieldMappings` are tri-state: omitted
 /// (`None`) leaves the column untouched, explicit `null` (`Some(None)`)

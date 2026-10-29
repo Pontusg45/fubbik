@@ -1,7 +1,7 @@
 //! HTTP-level tests for the `staleness` domain.
 //!
 //! Routes live under `/api/chunks/...`, not `/api/staleness/...`
-//! (`packages/api/src/staleness/routes.ts`). Two response-shape quirks
+//! (`legacy/api/src/staleness/routes.ts`). Two response-shape quirks
 //! captured from the running Node server
 //! (`legacy/migration/fixtures/node-contract-2c/chunks-stale.json`,
 //! `chunks-stale-count.json`) are load-bearing here:
@@ -537,7 +537,7 @@ async fn scan_impact_is_idempotent(pool: sqlx::PgPool) {
     assert_eq!(flags.as_array().unwrap().len(), 1);
 }
 
-/// Node's route (`packages/api/src/staleness/routes.ts:93-105`) calls
+/// Node's route (`legacy/api/src/staleness/routes.ts:93-105`) calls
 /// `flagImpactRipple(ctx.params.id, ...)` with no ownership check on the
 /// chunk id at all — this port adds one, the same divergence #14/#15
 /// pattern as `dismiss`/`suppress_duplicate`.

@@ -1,12 +1,12 @@
 //! Projects behavior rules into the AGE graph on a schedule.
 //!
-//! Ports `packages/api/src/matrices/graph-sync.ts`, with two deliberate
+//! Ports `legacy/api/src/matrices/graph-sync.ts`, with two deliberate
 //! divergences recorded in
 //! `docs/superpowers/specs/2026-08-26-rust-phase-4a-design.md`:
 //!
 //! 1. Its own interval variable, `BEHAVIOR_GRAPH_SYNC_INTERVAL_HOURS`. Node
 //!    gates this job behind `STALENESS_SCAN_INTERVAL_HOURS`
-//!    (`packages/api/src/startup.ts:60`), which names a different job.
+//!    (`legacy/api/src/startup.ts:60`), which names a different job.
 //! 2. Every user, not only the implicit dev user (`startup.ts:52`). On a
 //!    single-user install these are identical; on any other, Node's version
 //!    silently syncs nothing for everyone else.
@@ -145,7 +145,7 @@ pub fn spawn_behavior_sync(pool: PgPool, background: crate::background::Backgrou
     let cancellation = background.cancellation_token();
     background.spawn(async move {
         // 40s, matching Node's offset from the staleness scan
-        // (`packages/api/src/startup.ts:78`) — the two jobs both touch AGE and
+        // (`legacy/api/src/startup.ts:78`) — the two jobs both touch AGE and
         // staggering them keeps a cold start from contending.
         tokio::select! {
             _ = cancellation.cancelled() => return,

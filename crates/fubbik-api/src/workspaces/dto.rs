@@ -1,6 +1,6 @@
 use fubbik_db::repo::workspace::{Workspace, WorkspaceSpaceSummary};
 
-/// Body of `POST /api/workspaces` (`packages/api/src/workspaces/routes.ts:11-30`):
+/// Body of `POST /api/workspaces` (`legacy/api/src/workspaces/routes.ts:11-30`):
 /// `name` (required, trimmed and validated non-blank at the service layer —
 /// see `service::create`) and `description` (optional, passed through
 /// as-is).
@@ -11,7 +11,7 @@ pub struct CreateWorkspaceBody {
     pub description: Option<String>,
 }
 
-/// Body of `PATCH /api/workspaces/{id}` (`packages/api/src/workspaces/routes.ts:36-50`).
+/// Body of `PATCH /api/workspaces/{id}` (`legacy/api/src/workspaces/routes.ts:36-50`).
 ///
 /// `description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),
 /// t.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`
@@ -35,7 +35,7 @@ where
     T::deserialize(deserializer).map(Some)
 }
 
-/// Body of `POST /api/workspaces/{id}/spaces` (`packages/api/src/workspaces/routes.ts:60-78`).
+/// Body of `POST /api/workspaces/{id}/spaces` (`legacy/api/src/workspaces/routes.ts:60-78`).
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AddSpaceBody {
@@ -43,7 +43,7 @@ pub struct AddSpaceBody {
 }
 
 /// Response shape of `GET /api/workspaces/{id}`, matching Node's spread
-/// `{ ...found, spaces }` (`packages/api/src/workspaces/service.ts:19-28`)
+/// `{ ...found, spaces }` (`legacy/api/src/workspaces/service.ts:19-28`)
 /// — the workspace row's own fields at the top level, plus a `spaces`
 /// array, NOT nested under a `workspace` key (contrast
 /// `fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).

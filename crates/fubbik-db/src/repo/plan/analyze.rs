@@ -32,7 +32,7 @@ pub struct PlanAnalyzeItem {
 
 /// Ordered `kind ASC, "order" ASC, id ASC` — the API layer groups these into
 /// the five fixed `{chunk,file,risk,assumption,question}` buckets, matching
-/// Node's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`). Node's
+/// Node's `groupByKind` (`legacy/api/src/plans/analyze.ts:14-28`). Node's
 /// own `orderBy(asc(planAnalyzeItem.kind), asc(planAnalyzeItem.order))`
 /// (`plan.ts:342`) has no further tiebreaker; `"order"` defaults to `0` and
 /// is (re)set to plain array indices by `reorder_analyze_items`, so ties are
@@ -122,7 +122,7 @@ pub async fn create_analyze_item(
 /// Partial update of `text`/`metadata`/`chunk_id`/`file_path` — `kind` is
 /// deliberately not settable here, matching Node's `updateAnalyzeItem`
 /// (`plan.ts:362-372`), whose route body schema
-/// (`packages/api/src/plans/analyze.ts:79-91`) has no `kind` field at all.
+/// (`legacy/api/src/plans/analyze.ts:79-91`) has no `kind` field at all.
 /// Plain `COALESCE` per field (not tri-state): Node's body schema declares
 /// every field `t.Optional(t.String())`/`t.Optional(t.Record(...))` with no
 /// `t.Null()` union, so there is no client-facing way to *clear* any of

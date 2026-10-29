@@ -6,7 +6,7 @@
 //! would otherwise mask a removed SQL guard from a test at this layer, so
 //! that's where those guard-removal proofs live. This file covers the five
 //! HTTP routes: response shapes (bare arrays / bare rows, no envelope,
-//! matching Node's `packages/api/src/use-cases/routes.ts`), status codes,
+//! matching Node's `legacy/api/src/use-cases/routes.ts`), status codes,
 //! and the nesting-depth / self-parent validation rules end to end.
 
 use axum::body::Body;

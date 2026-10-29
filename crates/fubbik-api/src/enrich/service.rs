@@ -1,4 +1,4 @@
-//! Ports `packages/api/src/enrich/service.ts`.
+//! Ports `legacy/api/src/enrich/service.ts`.
 //!
 //! The prompt lives here, not in `fubbik-ai`: it encodes what a fubbik
 //! chunk is, which is domain knowledge the transport crate has no business

@@ -1,4 +1,4 @@
-//! Direct port of `packages/api/src/requirements/validator.ts`'s
+//! Direct port of `legacy/api/src/requirements/validator.ts`'s
 //! `validateSteps` — enforces BDD phase ordering (given -> when -> then,
 //! with `and`/`but` inheriting whatever phase precedes them) on a
 //! requirement's step list. Pure function, no SQL, no I/O.
@@ -8,7 +8,7 @@ use fubbik_db::repo::requirement::{RequirementStep, StepKeyword};
 /// One validation failure. `step` is the zero-based index into the input
 /// steps array, or `-1` for the two whole-sequence checks ("must contain a
 /// `when`"/"must contain a `then`") — matches Node's `StepError` exactly
-/// (`packages/api/src/requirements/validator.ts:3-6`).
+/// (`legacy/api/src/requirements/validator.ts:3-6`).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
 pub struct StepError {
     pub step: i32,
@@ -23,7 +23,7 @@ enum Phase {
 }
 
 /// Matches Node's `validateSteps` algorithm and error text verbatim
-/// (`packages/api/src/requirements/validator.ts:10-66`).
+/// (`legacy/api/src/requirements/validator.ts:10-66`).
 pub fn validate_steps(steps: &[RequirementStep]) -> Vec<StepError> {
     let mut errors = Vec::new();
 

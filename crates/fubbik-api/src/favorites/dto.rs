@@ -1,4 +1,4 @@
-/// Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):
+/// Body of `POST /api/favorites` (`legacy/api/src/favorites/routes.ts:12-14`):
 /// `chunkId` only, a plain `String` with no length cap. Node's schema
 /// declares `t.String({ maxLength: 100 })`, but this port does not enforce
 /// that bound — an accepted, deliberate divergence (a `chunkId` over 100
@@ -11,7 +11,7 @@ pub struct CreateFavoriteBody {
 }
 
 /// One entry of `PUT /api/favorites/reorder`'s bare-array body
-/// (`packages/api/src/favorites/routes.ts:39-44`). The body is a plain
+/// (`legacy/api/src/favorites/routes.ts:39-44`). The body is a plain
 /// `t.Array(...)`, not wrapped in an object — see `ReorderBody` below.
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]

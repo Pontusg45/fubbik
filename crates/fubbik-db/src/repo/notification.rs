@@ -33,7 +33,7 @@ pub struct Notification {
 
 /// Lists a user's notifications, optionally restricted to unread ones, with
 /// Node's default cap of 50 rows when the caller doesn't specify a limit
-/// (`packages/api/src/notifications/routes.ts`'s `t.Optional(t.Numeric())`
+/// (`legacy/api/src/notifications/routes.ts`'s `t.Optional(t.Numeric())`
 /// query param, defaulted at the service layer).
 ///
 /// `ORDER BY created_at DESC, id ASC` is a total order: `created_at` is not

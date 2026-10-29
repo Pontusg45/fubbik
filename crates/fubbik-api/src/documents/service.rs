@@ -24,7 +24,7 @@ fn hash_content(content: &str) -> String {
 
 /// Imports (or re-syncs, or no-ops on an unchanged hash) a single markdown
 /// document — matching Node's `importDocument`
-/// (`packages/api/src/documents/service.ts:45-159`). This public entry point
+/// (`legacy/api/src/documents/service.ts:45-159`). This public entry point
 /// keeps the documents API's non-template contract; bulk chunk imports call
 /// [`import_document_with_template`] to opt into the same template branch
 /// used by Node's import wizard.
@@ -224,7 +224,7 @@ pub async fn import_document_with_template(
 
 /// Re-splits `raw_content` against an existing document, diffing sections
 /// by normalised (trim + lowercase) title — matching Node's `syncDocument`
-/// (`packages/api/src/documents/service.ts:161-239`) exactly, including
+/// (`legacy/api/src/documents/service.ts:161-239`) exactly, including
 /// two divergent-looking-but-faithful details:
 ///
 /// - **The returned `document` is the pre-sync snapshot.** Node fetches
@@ -358,7 +358,7 @@ pub async fn sync_document(
     })
 }
 
-/// Matches Node's `renderDocument` (`packages/api/src/documents/service.ts:241-278`).
+/// Matches Node's `renderDocument` (`legacy/api/src/documents/service.ts:241-278`).
 pub async fn render_document(
     pool: &PgPool,
     user_id: &str,
@@ -418,7 +418,7 @@ pub async fn render_document(
     })
 }
 
-/// Matches Node's `getDocument` (`packages/api/src/documents/service.ts:288-295`)
+/// Matches Node's `getDocument` (`legacy/api/src/documents/service.ts:288-295`)
 /// — see `super::dto::DocumentDetail` for the flattened-shape note.
 pub async fn get_document(
     pool: &PgPool,
@@ -443,7 +443,7 @@ pub async fn list_documents_with_tags(
     document::list_with_tags(pool, user_id, space_id).await
 }
 
-/// Matches Node's `searchDocuments` (`packages/api/src/documents/service.ts:297-299`),
+/// Matches Node's `searchDocuments` (`legacy/api/src/documents/service.ts:297-299`),
 /// which always calls the repo with a hardcoded limit of `20` — there is no
 /// route-level override.
 pub async fn search_documents(
@@ -456,7 +456,7 @@ pub async fn search_documents(
 }
 
 /// Matches Node's `removeDocument`
-/// (`packages/api/src/documents/service.ts:301-307`). A single guard:
+/// (`legacy/api/src/documents/service.ts:301-307`). A single guard:
 /// `document::delete`'s own `WHERE id = $1 AND user_id = $2` — there is no
 /// redundant pre-check here duplicating it (see `document::find_by_id`'s
 /// doc comment on why this port scopes cross-user access in SQL directly,

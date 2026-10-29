@@ -134,7 +134,7 @@ export interface paths {
         put?: never;
         /**
          * **201**, not 200 — Node sets `ctx.set.status = 201` in an `Effect.tap`
-         *     after `createChunk` (`packages/api/src/chunks/routes.ts`), and this port
+         *     after `createChunk` (`legacy/api/src/chunks/routes.ts`), and this port
          *     had been answering 200. Aligned here rather than left as a quiet
          *     divergence; `POST /api/features` and `POST /api/requirements` are
          *     already 201 in this crate, so 200 was also inconsistent internally.
@@ -529,7 +529,7 @@ export interface paths {
          * Returns the **enriched** detail shape ([`ChunkDetail`]), not the bare
          *     `chunk` row — matching Node. The active feature ids are loaded here
          *     rather than in a global middleware: Node resolves them for every request
-         *     (`packages/api/src/index.ts:207-218`), but this is the only Rust route
+         *     (`legacy/api/src/index.ts:207-218`), but this is the only Rust route
          *     that reads them implicitly, so a per-route load avoids paying for a
          *     query on all ~200 other endpoints.
          */
@@ -758,7 +758,7 @@ export interface paths {
         put?: never;
         /**
          * `title` falls back to `"Unknown"` when absent — matches Node's
-         *     `ctx.body.title ?? "Unknown"` (`packages/api/src/staleness/routes.ts:98`).
+         *     `ctx.body.title ?? "Unknown"` (`legacy/api/src/staleness/routes.ts:98`).
          */
         post: operations["scan_impact"];
         delete?: never;
@@ -793,7 +793,7 @@ export interface paths {
         /**
          * Deprecated alias: `GET /api/codebases/{id}/generate-instructions`.
          * @description **This is Node's *actual* (and only) registration.** Node's
-         *     `generateInstructionsRoutes` (`packages/api/src/generate-instructions/
+         *     `generateInstructionsRoutes` (`legacy/api/src/generate-instructions/
          *     routes.ts:8`) registers exactly one path, `/codebases/:id/generate-
          *     instructions` — it never registers `/spaces/:id/generate-instructions`
          *     at all, and `codebaseRoutes` (the `/api/codebases` -> `/api/spaces`
@@ -1184,7 +1184,7 @@ export interface paths {
         };
         /**
          * `q` must be at least 2 characters, matching Node's `t.String({ minLength:
-         *     2 })` (`packages/api/src/documents/routes.ts:32`) — enforced here rather
+         *     2 })` (`legacy/api/src/documents/routes.ts:32`) — enforced here rather
          *     than left unchecked, unlike this port's usual "Elysia-only length caps
          *     go unenforced" precedent (see `ImportDocumentBody`'s doc comment):
          *     `minLength` here shapes actual query behaviour (an unbounded `ILIKE
@@ -1266,7 +1266,7 @@ export interface paths {
          * Status is set to 201 unconditionally, even when the chunk was already
          *     favorited and the body is `null` — matching Node's `Effect.tap` block,
          *     which sets `ctx.set.status = 201` before ever inspecting the result
-         *     (`packages/api/src/favorites/routes.ts:11-29`, `_mutating.md`). This is
+         *     (`legacy/api/src/favorites/routes.ts:11-29`, `_mutating.md`). This is
          *     a deliberately preserved quirk, not a bug: do not "improve" it to
          *     200/409/an idempotent echo of the existing row.
          */
@@ -1326,7 +1326,7 @@ export interface paths {
         put?: never;
         /**
          * 201, matching Node's explicit `ctx.set.status = 201`
-         *     (`packages/api/src/features/routes.ts:36-40`) — the only endpoint in
+         *     (`legacy/api/src/features/routes.ts:36-40`) — the only endpoint in
          *     this domain that is not 200.
          */
         post: operations["create_feature"];
@@ -1346,7 +1346,7 @@ export interface paths {
         /**
          * A bare array of feature ids — not objects. Node maps
          *     `rows.map(r => r.featureId)` before responding
-         *     (`packages/api/src/features/service.ts:145-147`).
+         *     (`legacy/api/src/features/service.ts:145-147`).
          */
         get: operations["get_active_features"];
         put: operations["set_active_features"];
@@ -2589,7 +2589,7 @@ export interface paths {
         /**
          * Both paths live under `/api/requirements/...` even though this is its own
          *     domain module — that is Node's URL layout
-         *     (`packages/api/src/coverage/routes.ts:9,28`), mounted from a separate
+         *     (`legacy/api/src/coverage/routes.ts:9,28`), mounted from a separate
          *     `coverageRoutes` Elysia instance the same way. They are static segments,
          *     so axum's router prefers them over `requirements::routes`' `/{id}`
          *     (same arrangement `/api/requirements/stats` already relies on).
@@ -3001,7 +3001,7 @@ export interface paths {
         };
         /**
          * Unauthenticated, matching Node exactly
-         *     (`packages/api/src/settings/routes.ts:8` — `GET /settings/features` has
+         *     (`legacy/api/src/settings/routes.ts:8` — `GET /settings/features` has
          *     no `requireSession`). See `get_instance_settings` for the full note on
          *     why this crate has two deliberately open `GET`s in this domain.
          */
@@ -3023,9 +3023,9 @@ export interface paths {
         };
         /**
          * **Deliberately unauthenticated** — matches Node exactly
-         *     (`packages/api/src/settings/routes.ts:55`: `GET /settings/instance` has
+         *     (`legacy/api/src/settings/routes.ts:55`: `GET /settings/instance` has
          *     no `requireSession`, and there is no global auth middleware in
-         *     `packages/api/src/index.ts` to backstop it). This was escalated to and
+         *     `legacy/api/src/index.ts` to backstop it). This was escalated to and
          *     decided by the human partner explicitly (captured, then corrected on
          *     review, in `legacy/migration/fixtures/node-contract-2b/_questions.md` Q2): faithful
          *     port, `GET` open, `PATCH` session-gated (see `set_instance_setting`
@@ -3047,7 +3047,7 @@ export interface paths {
          * Session-gated (unlike its `GET` sibling above), but with **no
          *     role/admin check** — any authenticated user can flip instance-wide
          *     flags like `aiEnabled`, matching Node's `requireSession`-only guard
-         *     (`packages/api/src/settings/routes.ts:56-60`). This is also a faithful
+         *     (`legacy/api/src/settings/routes.ts:56-60`). This is also a faithful
          *     port, not an oversight.
          */
         patch: operations["set_instance_setting"];
@@ -3168,7 +3168,7 @@ export interface paths {
         /**
          * `GET /api/stats` returns a **bare object** — not an array, and not the
          *     `{chunks,total,limit,offset}` envelope `GET /api/chunks` uses. Matches
-         *     Node's `statsRoutes` (`packages/api/src/stats/routes.ts`), which returns
+         *     Node's `statsRoutes` (`legacy/api/src/stats/routes.ts`), which returns
          *     `statsService.getUserStats(session.user.id)` directly as the response
          *     body.
          */
@@ -3366,7 +3366,7 @@ export interface paths {
         };
         /**
          * Bare array, matching Node's `listUseCases` return
-         *     (`packages/api/src/use-cases/routes.ts:9-16`) — not the `{chunks,...}`
+         *     (`legacy/api/src/use-cases/routes.ts:9-16`) — not the `{chunks,...}`
          *     envelope, same shape convention as `notifications`/`workspaces`.
          */
         get: operations["list_use_cases"];
@@ -3426,7 +3426,7 @@ export interface paths {
         /**
          * `spaceId` absent -> `[]` without ever reaching the service layer,
          *     matching Node's `if (!ctx.query.spaceId) return [];`
-         *     (`packages/api/src/vocabulary/routes.ts:30`) exactly — note this is
+         *     (`legacy/api/src/vocabulary/routes.ts:30`) exactly — note this is
          *     *not* a 404 the way every other endpoint in this domain treats a
          *     missing/foreign space.
          */
@@ -3576,7 +3576,7 @@ export interface components {
          *     originally stored as `string[]`; both the legacy shape and the newer
          *     `{text,done}[]` shape are read and always normalised to this object
          *     shape on the way out — matching Node's `normaliseAcceptanceCriteria`
-         *     (`packages/api/src/plans/service.ts:110-122`).
+         *     (`legacy/api/src/plans/service.ts:110-122`).
          */
         AcceptanceCriterion: {
             done: boolean;
@@ -3618,7 +3618,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /requirements/{id}/dependencies`
-         *     (`packages/api/src/requirements/dependency-routes.ts:20-22`).
+         *     (`legacy/api/src/requirements/dependency-routes.ts:20-22`).
          */
         AddDependencyBody: {
             dependsOnId: string;
@@ -3627,7 +3627,7 @@ export interface components {
         AddRequirementBody: {
             requirementId: string;
         };
-        /** @description Body of `POST /api/workspaces/{id}/spaces` (`packages/api/src/workspaces/routes.ts:60-78`). */
+        /** @description Body of `POST /api/workspaces/{id}/spaces` (`legacy/api/src/workspaces/routes.ts:60-78`). */
         AddSpaceBody: {
             spaceId: string;
         };
@@ -3685,7 +3685,7 @@ export interface components {
          *     confirmed against real bytes in `legacy/migration/fixtures/node-contract-2c/
          *     plans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],
          *     risk:[],assumption:[],question:[]}`, never an omitted key. Matches
-         *     Node's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which
+         *     Node's `groupByKind` (`legacy/api/src/plans/analyze.ts:14-28`), which
          *     initialises all five keys unconditionally before bucketing.
          */
         AnalyzeGrouped: {
@@ -3718,7 +3718,7 @@ export interface components {
          *
          *     The body is a **bare array** of these, not `{patterns: [...]}` — that is
          *     what Node's route schema declares
-         *     (`packages/api/src/applies-to/routes.ts:19-27`) and what the web edit
+         *     (`legacy/api/src/applies-to/routes.ts:19-27`) and what the web edit
          *     page has always sent. Rust previously published `{patterns: string[]}`,
          *     so every real request 400'd; the edit page swallowed it in a
          *     `catch { /* non-critical *\/ }` and silently never saved patterns at all.
@@ -3733,7 +3733,7 @@ export interface components {
         };
         /**
          * @description `arrowStyle` on the connection-relation bodies — a genuine Elysia
-         *     `t.Union` of literals (`packages/api/src/vocabularies/routes.ts:30,40`),
+         *     `t.Union` of literals (`legacy/api/src/vocabularies/routes.ts:30,40`),
          *     so an enum here matches the contract rather than inventing a constraint.
          *
          *     Modelled *only* on the input side: the stored `arrow_style` column is
@@ -3750,7 +3750,7 @@ export interface components {
         };
         /**
          * @description Shape of `POST /requirements/batch`, matching Node's `batchCreateRequirements`
-         *     return object (`packages/api/src/requirements/batch-service.ts:97-101`).
+         *     return object (`legacy/api/src/requirements/batch-service.ts:97-101`).
          */
         BatchCreateResponse: {
             created: number;
@@ -3764,7 +3764,7 @@ export interface components {
         };
         /**
          * @description One entry of `POST /requirements/batch`'s `requirements` array
-         *     (`packages/api/src/requirements/routes.ts:172-182`).
+         *     (`legacy/api/src/requirements/routes.ts:172-182`).
          */
         BatchRequirementInput: {
             description?: string | null;
@@ -3778,7 +3778,7 @@ export interface components {
         /**
          * @description One element of `POST /requirements/batch`'s validation-failure `errors`
          *     array — matches Node's `{ index, step, error }`
-         *     (`packages/api/src/requirements/batch-service.ts:26-33`): `index` is
+         *     (`legacy/api/src/requirements/batch-service.ts:26-33`): `index` is
          *     which entry in the `requirements` array failed, `step`/`error` are
          *     `validator::StepError`'s own fields spread in alongside it.
          */
@@ -3958,7 +3958,7 @@ export interface components {
         };
         /**
          * @description `t.Union([t.Literal("approve"), t.Literal("reject")])`
-         *     (`packages/api/src/proposals/routes.ts:78`) — the one closed set in this
+         *     (`legacy/api/src/proposals/routes.ts:78`) — the one closed set in this
          *     domain's wire shapes, unlike `status` (see `ProposedChanges`'s doc
          *     comment on why that one stays a plain unvalidated-at-the-DTO-layer
          *     string). Lowercase to match the literal strings Node's schema accepts.
@@ -3966,7 +3966,7 @@ export interface components {
          */
         BulkAction: "approve" | "reject";
         /**
-         * @description Body of `PATCH /requirements/bulk` (`packages/api/src/requirements/
+         * @description Body of `PATCH /requirements/bulk` (`legacy/api/src/requirements/
          *     routes.ts:49-55`). `use_case_id` is tri-state
          *     (`t.Optional(t.Union([t.String(), t.Null()]))`) — only meaningful for
          *     `action: "set_use_case"`.
@@ -3979,7 +3979,7 @@ export interface components {
         };
         /**
          * @description One entry of `POST /proposals/bulk`'s `actions` array
-         *     (`packages/api/src/proposals/routes.ts:75-81`).
+         *     (`legacy/api/src/proposals/routes.ts:75-81`).
          */
         BulkActionItem: {
             action: components["schemas"]["BulkAction"];
@@ -4020,7 +4020,7 @@ export interface components {
         };
         /**
          * @description The six literals Elysia's `CategorySchema` accepts
-         *     (`packages/api/src/vocabulary/routes.ts:7-14`, a genuine `t.Union` of
+         *     (`legacy/api/src/vocabulary/routes.ts:7-14`, a genuine `t.Union` of
          *     literals — unlike `notification.type`/`connection.relation`, this *is*
          *     a real input constraint). Modelled as an enum only at this input-body
          *     layer, the same shape as `connections::dto::Origin`: the stored
@@ -4142,7 +4142,7 @@ export interface components {
         /**
          * @description Response body of `GET /api/chunks/{id}` — the *enriched* chunk detail,
          *     matching Node's `getChunkDetail` return
-         *     (`packages/api/src/chunks/service.ts:128-186`) key for key.
+         *     (`legacy/api/src/chunks/service.ts:128-186`) key for key.
          *
          *     Until this landed, Rust's `GET /api/chunks/{id}` returned the bare
          *     [`Chunk`] row, which is why the chunk detail page, the edit page and the
@@ -4381,7 +4381,7 @@ export interface components {
         };
         /**
          * @description A scored chunk plus the enrichment the formatter annotates with.
-         *     Ports `packages/api/src/context/formatter.ts:3-7`. Node's
+         *     Ports `legacy/api/src/context/formatter.ts:3-7`. Node's
          *     `ChunkWithMetadata extends ScoredChunk` — this port composes instead of
          *     flattening, so the wire shape is reproduced with `#[serde(flatten)]`
          *     rather than duplicating `ScoredChunk`'s fields here.
@@ -4508,7 +4508,7 @@ export interface components {
          *     so they stay `String` on the read path — the same call this port made for
          *     `vocabulary_entry.category`. They *are* constrained on the *input* side
          *     (Node declares real `t.Union` literals in
-         *     `packages/api/src/vocabularies/routes.ts:30-31`), which is modelled by
+         *     `legacy/api/src/vocabularies/routes.ts:30-31`), which is modelled by
          *     the enums in `fubbik_api::vocabularies::dto`, not here.
          */
         ConnectionRelation: {
@@ -4607,7 +4607,7 @@ export interface components {
          * @description `camelCase` on the wire, matching every other repo row type in this
          *     crate. `query`/`chunks` are stored and returned as opaque JSON blobs —
          *     `query` is a free-form subset of the create request
-         *     (`packages/api/src/context/snapshot-service.ts:46-52`'s
+         *     (`legacy/api/src/context/snapshot-service.ts:46-52`'s
          *     `Record<string, unknown>`), and `chunks` is the frozen
          *     `ChunkWithMetadata[]` the create call budgeted.
          */
@@ -4686,10 +4686,10 @@ export interface components {
          *
          *     **This one struct is two response shapes.** Node's route dispatches on
          *     `detail` to two different service functions
-         *     (`packages/api/src/coverage/routes.ts:14-17`): `getCoverage` returns
+         *     (`legacy/api/src/coverage/routes.ts:14-17`): `getCoverage` returns
          *     `{covered, uncovered, stats}`, and `getCoverageMatrix` returns that
          *     object spread with an extra `matrix` key
-         *     (`packages/api/src/coverage/service.ts:9-12`). So `matrix` is *absent*
+         *     (`legacy/api/src/coverage/service.ts:9-12`). So `matrix` is *absent*
          *     from the default response, not `null` and not `[]` — hence
          *     `skip_serializing_if`, which drops the key entirely when `None`.
          *
@@ -4706,7 +4706,7 @@ export interface components {
             uncovered: components["schemas"]["UncoveredChunk"][];
         };
         /**
-         * @description `packages/api/src/coverage/service.ts:43`. All four are plain numbers on
+         * @description `legacy/api/src/coverage/service.ts:43`. All four are plain numbers on
          *     the wire.
          *
          *     `percentage` is `Math.round((covered / total) * 100)` guarded by
@@ -4727,7 +4727,7 @@ export interface components {
         };
         /**
          * @description A chunk with at least one requirement pointing at it
-         *     (`packages/api/src/coverage/service.ts:23,29`). Carries the count;
+         *     (`legacy/api/src/coverage/service.ts:23,29`). Carries the count;
          *     `UncoveredChunk` deliberately does not, because Node's uncovered entries
          *     are `{id, title}` only — the count there is always `0` and Node omits it.
          */
@@ -4753,7 +4753,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/chunks`, matching Node's route schema
-         *     (`packages/api/src/chunks/routes.ts` — the 13-field `t.Object` on the
+         *     (`legacy/api/src/chunks/routes.ts` — the 13-field `t.Object` on the
          *     `/chunks` POST).
          *
          *     This used to carry four fields. Every other one the client sent was
@@ -4791,14 +4791,14 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/chunk-types`
-         *     (`packages/api/src/vocabularies/routes.ts:7-15,58-72`).
+         *     (`legacy/api/src/vocabularies/routes.ts:7-15,58-72`).
          *
          *     `id` is caller-supplied — it is the table's primary key and the slug
          *     `chunk.type` will hold. Unlike the Elysia `maxLength` caps elsewhere in
          *     this port (which are deliberately not enforced), `id`'s length *is*
          *     enforced, because Node validates it in the **service** layer with
          *     `SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,40}$/`
-         *     (`packages/api/src/vocabularies/service.ts:38,42-46`) — a real 400, not
+         *     (`legacy/api/src/vocabularies/service.ts:38,42-46`) — a real 400, not
          *     just an Elysia schema check. See `service::validate_slug`.
          *
          *     `description`/`icon` are `t.Optional(t.Union([t.String, t.Null()]))` in
@@ -4823,7 +4823,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/collections`
-         *     (`packages/api/src/collections/routes.ts:23-44`). `filter` is required
+         *     (`legacy/api/src/collections/routes.ts:23-44`). `filter` is required
          *     as a whole object but every one of its nine keys is itself optional —
          *     see `CollectionFilter`'s doc comment.
          */
@@ -4834,7 +4834,7 @@ export interface components {
             spaceId?: string | null;
         };
         /**
-         * @description Matches Node's body schema exactly (`packages/api/src/connections/routes.ts:22-27`):
+         * @description Matches Node's body schema exactly (`legacy/api/src/connections/routes.ts:22-27`):
          *     `sourceId`/`targetId`/`relation` required, `origin` optional and
          *     constrained to the two literals Node accepts (`t.Union([t.Literal("human"),
          *     t.Literal("ai")])`) — anything else fails validation before reaching the
@@ -4875,7 +4875,7 @@ export interface components {
             word: string;
         };
         /**
-         * @description Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):
+         * @description Body of `POST /api/favorites` (`legacy/api/src/favorites/routes.ts:12-14`):
          *     `chunkId` only, a plain `String` with no length cap. Node's schema
          *     declares `t.String({ maxLength: 100 })`, but this port does not enforce
          *     that bound — an accepted, deliberate divergence (a `chunkId` over 100
@@ -4886,7 +4886,7 @@ export interface components {
             chunkId: string;
         };
         /**
-         * @description Body of `POST /features` (`packages/api/src/features/routes.ts:44-50`).
+         * @description Body of `POST /features` (`legacy/api/src/features/routes.ts:44-50`).
          *
          *     Node declares `maxLength` on `name` (100), `description` (1000) and
          *     `color` (7); this port does not enforce those bounds — the same accepted
@@ -4911,7 +4911,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/plans/{id}/links`
-         *     (`packages/api/src/plans/routes.ts:208-214`): `system` defaults to
+         *     (`legacy/api/src/plans/routes.ts:208-214`): `system` defaults to
          *     `"url"`, `label` to `null` when omitted — applied in `service::add_link`,
          *     not here, since the defaulting happens after the field is already known
          *     to be absent (Elysia's `?? "url"` / `?? null`, not a serde default that
@@ -4935,7 +4935,7 @@ export interface components {
             name: string;
             spaceId?: string | null;
         };
-        /** @description Body of `POST /api/plans` (`packages/api/src/plans/routes.ts:62-77`). */
+        /** @description Body of `POST /api/plans` (`legacy/api/src/plans/routes.ts:62-77`). */
         CreatePlanBody: {
             description?: string | null;
             metadata?: unknown;
@@ -4946,12 +4946,12 @@ export interface components {
         };
         /**
          * @description Body of `POST /chunks/{id}/proposals`
-         *     (`packages/api/src/proposals/routes.ts:24-39`). `changes` is required as
+         *     (`legacy/api/src/proposals/routes.ts:24-39`). `changes` is required as
          *     an object but every one of its eight keys is itself optional — see
          *     `ProposedChanges`'s doc comment. The service rejects an all-omitted
          *     `changes` (`{}`) with 400, matching Node's
          *     `Object.keys(body.changes).length === 0` check
-         *     (`packages/api/src/proposals/service.ts:17-18`).
+         *     (`legacy/api/src/proposals/service.ts:17-18`).
          */
         CreateProposalBody: {
             changes: components["schemas"]["ProposedChanges"];
@@ -4964,7 +4964,7 @@ export interface components {
             title: string;
         };
         /**
-         * @description Body of `POST /requirements` (`packages/api/src/requirements/routes.ts:
+         * @description Body of `POST /requirements` (`legacy/api/src/requirements/routes.ts:
          *     131-139`).
          */
         CreateRequirementBody: {
@@ -4987,7 +4987,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/saved-graphs`
-         *     (`packages/api/src/saved-graphs/routes.ts:29-37`). `chunkIds` and
+         *     (`legacy/api/src/saved-graphs/routes.ts:29-37`). `chunkIds` and
          *     `positions` are structurally validated by Elysia's schema (`t.Array(t.String())`,
          *     `t.Record(t.String(), t.Object({ x: t.Number(), y: t.Number() }))`) —
          *     not opaque JSON the way `collection.filter` / `saved_query.query` are —
@@ -5012,7 +5012,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/search/saved`
-         *     (`packages/api/src/search/routes.ts:93-103`).
+         *     (`legacy/api/src/search/routes.ts:93-103`).
          */
         CreateSavedQueryBody: {
             name: string;
@@ -5031,7 +5031,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/context/snapshot`
-         *     (`packages/api/src/context/snapshot-routes.ts:27-34`). Resolver
+         *     (`legacy/api/src/context/snapshot-routes.ts:27-34`). Resolver
          *     selection order — `planId`, else non-empty `filePaths`, else `concept`
          *     — is decided in [`create_snapshot`], mirroring
          *     `snapshot-service.ts:32-38`'s `if`/`else if` chain exactly.
@@ -5089,7 +5089,7 @@ export interface components {
         };
         /**
          * @description Body of one entry in `POST /api/plans`'s optional `tasks` array
-         *     (`packages/api/src/plans/routes.ts:67-75`). `acceptanceCriteria` is the
+         *     (`legacy/api/src/plans/routes.ts:67-75`). `acceptanceCriteria` is the
          *     legacy `string[]` write shape — normalised to `{text,done}[]` before
          *     insert by `normalize_acceptance_criteria`, same as every other write
          *     path in this domain.
@@ -5100,7 +5100,7 @@ export interface components {
             title: string;
         };
         /**
-         * @description Body of `POST /api/templates` (`packages/api/src/templates/routes.ts:48-73`).
+         * @description Body of `POST /api/templates` (`legacy/api/src/templates/routes.ts:48-73`).
          *
          *     `description`/`matchRules`/`fieldMappings` are all `t.Optional(t.Union([
          *     Schema, t.Null()]))` in Node, but on *create* there's no existing value
@@ -5132,7 +5132,7 @@ export interface components {
             type: string;
         };
         /**
-         * @description Body of `POST /api/use-cases` (`packages/api/src/use-cases/routes.ts:26-33`).
+         * @description Body of `POST /api/use-cases` (`legacy/api/src/use-cases/routes.ts:26-33`).
          *     `order` is deliberately absent — Node's create body doesn't accept it,
          *     so a new use case always gets the DB's `order` default (`0`); it can
          *     only be set afterward via `PATCH`.
@@ -5144,7 +5144,7 @@ export interface components {
             spaceId?: string | null;
         };
         /**
-         * @description Body of `POST /api/workspaces` (`packages/api/src/workspaces/routes.ts:11-30`):
+         * @description Body of `POST /api/workspaces` (`legacy/api/src/workspaces/routes.ts:11-30`):
          *     `name` (required, trimmed and validated non-blank at the service layer —
          *     see `service::create`) and `description` (optional, passed through
          *     as-is).
@@ -5154,7 +5154,7 @@ export interface components {
             name: string;
         };
         /**
-         * @description Matches Node's `CrossRefWarning` (`packages/api/src/requirements/
+         * @description Matches Node's `CrossRefWarning` (`legacy/api/src/requirements/
          *     cross-ref.ts:5-9`). Node's `type` union also names `"chunk_not_found"`,
          *     but nothing in `crossReferenceSteps`'s body ever produces it (the only
          *     `warnings.push` call in the function hard-codes `"file_not_found"`) — an
@@ -5244,7 +5244,7 @@ export interface components {
         /**
          * @description Shape of `GET /requirements/{id}/dependencies/graph`: `{nodes, edges}`,
          *     matching Node's `getDependencyGraph` return object
-         *     (`packages/api/src/requirements/dependency-service.ts:61-67`).
+         *     (`legacy/api/src/requirements/dependency-service.ts:61-67`).
          */
         DependencyGraph: {
             edges: components["schemas"]["DependencyGraphEdge"][];
@@ -5256,7 +5256,7 @@ export interface components {
         };
         /**
          * @description One node of `GET /requirements/{id}/dependencies/graph`'s `nodes` array,
-         *     matching Node's inline shape (`packages/api/src/requirements/
+         *     matching Node's inline shape (`legacy/api/src/requirements/
          *     dependency-service.ts:52-56`).
          */
         DependencyGraphNode: {
@@ -5293,7 +5293,7 @@ export interface components {
          *     `GET /api/documents/{id}` flattens this shape together with `chunks`
          *     rather than nesting it (see `fubbik_api::documents::dto::DocumentDetail`,
          *     mirroring Node's `{ ...doc, chunks }` spread in `getDocument`,
-         *     `packages/api/src/documents/service.ts:293`).
+         *     `legacy/api/src/documents/service.ts:293`).
          */
         Document: {
             contentHash: string;
@@ -5313,7 +5313,7 @@ export interface components {
         /**
          * @description Shape of `GET /api/documents/{id}`, matching Node's `getDocument`
          *     return expression: `{ ...doc, chunks }`
-         *     (`packages/api/src/documents/service.ts:288-295`) — a genuine object
+         *     (`legacy/api/src/documents/service.ts:288-295`) — a genuine object
          *     spread, so the document's own fields sit at the *top level* alongside
          *     `chunks`, not nested under a `document` key. Modelled as an explicit
          *     flat struct (rather than `#[serde(flatten)]` on a nested `Document`)
@@ -5352,7 +5352,7 @@ export interface components {
         };
         /**
          * @description Shape of `GET /api/documents` (the route Node actually wires,
-         *     `packages/api/src/documents/routes.ts:8-21`) — [`DocumentListItem`] plus
+         *     `legacy/api/src/documents/routes.ts:8-21`) — [`DocumentListItem`] plus
          *     `type` (the first section's chunk type, `document_order = 0`, defaulting
          *     to `"document"` when absent) and `tags` (union of every chunk's tags in
          *     the document, deduped). Matches
@@ -5453,7 +5453,7 @@ export interface components {
         };
         /**
          * @description The six chunk fields a template's field mappings can populate — a real
-         *     `t.Union` of literals (`packages/api/src/templates/routes.ts:29-36`).
+         *     `t.Union` of literals (`legacy/api/src/templates/routes.ts:29-36`).
          * @enum {string}
          */
         ExtractionTarget: "rationale" | "alternatives" | "consequences" | "summary" | "scope" | "content";
@@ -5515,7 +5515,7 @@ export interface components {
          * @description Response of `GET /features/{id}` — Node's `getFeatureDetail` resolves an
          *     `Effect.all({ feature, spaces, deltas })`, so the three land as sibling
          *     keys rather than the feature being flattened
-         *     (`packages/api/src/features/service.ts:72-83`).
+         *     (`legacy/api/src/features/service.ts:72-83`).
          *     `GET /features/{id}/deltas` returns just the `deltas` member of this
          *     same value.
          */
@@ -5530,7 +5530,7 @@ export interface components {
          *     (`legacy/migration/fixtures/node-contract-2b/_questions.md` Q2). Every field
          *     independently defaults to `true` when its key is absent from
          *     `instance_settings`, matching Node's `(map.x as boolean) ?? true`
-         *     fallback (`packages/api/src/settings/service.ts:59-75`) for the
+         *     fallback (`legacy/api/src/settings/service.ts:59-75`) for the
          *     documented case — a key that is simply absent. Confirmed live against
          *     the empty-table fixture: `settings-features.json` returns all five
          *     `true` even though `instance_settings` has zero rows.
@@ -5591,7 +5591,7 @@ export interface components {
         };
         /**
          * @description The three statuses a client may PATCH onto a feature
-         *     (`packages/api/src/features/routes.ts:87`). This is one of the rare
+         *     (`legacy/api/src/features/routes.ts:87`). This is one of the rare
          *     cases where a status field really *is* constrained in Node — the route
          *     schema is `t.Union([t.Literal("active"), t.Literal("inactive"),
          *     t.Literal("archived")])`, so `"merged"` cannot be set through the API at
@@ -5653,7 +5653,7 @@ export interface components {
         /**
          * @description One entry of `PUT /api/chunks/{id}/file-refs`'s body — a bare array, for
          *     the same reason as [`AppliesToEntry`]
-         *     (`packages/api/src/file-refs/routes.ts:17-26`).
+         *     (`legacy/api/src/file-refs/routes.ts:17-26`).
          */
         FileRefEntry: {
             anchor?: string | null;
@@ -5720,7 +5720,7 @@ export interface components {
         Format: "gherkin" | "vitest" | "markdown";
         /**
          * @description `"exact" | "oneOf" | "exists"` — likewise a real `t.Union` of literals
-         *     (`packages/api/src/templates/routes.ts:18`).
+         *     (`legacy/api/src/templates/routes.ts:18`).
          * @enum {string}
          */
         FrontmatterMatchMode: "exact" | "oneOf" | "exists";
@@ -5747,7 +5747,7 @@ export interface components {
          * @description A behaviour-matrix rule linked to a file via `behavior_cell_code`,
          *     surfaced by `GET /api/context/for-file`'s "governing behaviours"
          *     section. Ports Node's `GoverningBehavior` interface
-         *     (`packages/api/src/context/formatter.ts:57-69`) field for field —
+         *     (`legacy/api/src/context/formatter.ts:57-69`) field for field —
          *     `code_ref` serialises as `ref`, matching Node's own field name, which
          *     this port cannot use directly since `ref` is a Rust keyword.
          */
@@ -5979,7 +5979,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/documents/import`
-         *     (`packages/api/src/documents/routes.ts:57-63`). `sourcePath`/`content`
+         *     (`legacy/api/src/documents/routes.ts:57-63`). `sourcePath`/`content`
          *     length caps (`maxLength: 500`/`200000`) are Elysia-only request
          *     validation Node never re-checks past the transport layer; matching
          *     this port's established precedent (see
@@ -5987,7 +5987,7 @@ export interface components {
          *     unenforced here — an over-long value is simply stored as-is.
          *
          *     Node's route never accepts or forwards a `templateId`
-         *     (`packages/api/src/documents/service.ts`'s `importDocument` takes one,
+         *     (`legacy/api/src/documents/service.ts`'s `importDocument` takes one,
          *     but no caller — HTTP or otherwise — ever supplies it), so this body has
          *     no such field either; see `service::import_document`'s doc comment.
          */
@@ -6002,7 +6002,7 @@ export interface components {
         };
         /**
          * @description One entry of `POST /api/documents/import-dir`'s `files` array
-         *     (`packages/api/src/documents/routes.ts:78-85`).
+         *     (`legacy/api/src/documents/routes.ts:78-85`).
          */
         ImportFileEntry: {
             content: string;
@@ -6021,7 +6021,7 @@ export interface components {
          * @description Shape of `POST /api/documents/import` and each element of
          *     `POST /api/documents/import-dir`'s response array, matching Node's
          *     `importDocument` return object exactly
-         *     (`packages/api/src/documents/service.ts:45-158`).
+         *     (`legacy/api/src/documents/service.ts:45-158`).
          */
         ImportResult: {
             /** Format: int32 */
@@ -6039,7 +6039,7 @@ export interface components {
         /**
          * @description `"unchanged" | "created" | "synced"` — the three literal values
          *     `importDocument`/`syncDocument` actually return
-         *     (`packages/api/src/documents/service.ts:53,59,114,157,168,237`). There
+         *     (`legacy/api/src/documents/service.ts:53,59,114,157,168,237`). There
          *     is no `"updated"` variant: a re-sync with content changes reports
          *     `status: "synced"` regardless of whether any section was individually
          *     created vs. updated (see `created`/`updated` counts for that detail).
@@ -6104,7 +6104,7 @@ export interface components {
         /**
          * @description Shape of `GET /requirements`: `{requirements, total}`, matching Node's
          *     `listRequirementsRepo` return expression returned bare by the route
-         *     (`packages/api/src/requirements/service.ts:75-87`, `routes.ts:95-103`)
+         *     (`legacy/api/src/requirements/service.ts:75-87`, `routes.ts:95-103`)
          *     — not wrapped further, and no `limit`/`offset` echoed back (unlike
          *     `chunks::dto::ListChunksResponse`).
          */
@@ -6115,7 +6115,7 @@ export interface components {
         };
         /**
          * @description `"exact" | "prefix" | "contains"` — a real Elysia `t.Union` of literals
-         *     in Node (`packages/api/src/templates/routes.ts:7`), not free text, so
+         *     in Node (`legacy/api/src/templates/routes.ts:7`), not free text, so
          *     modelling it as an enum here matches the contract rather than adding a
          *     constraint Node lacks.
          * @enum {string}
@@ -6240,7 +6240,7 @@ export interface components {
         /**
          * @description Matches Node's `t.Union([t.Literal("human"), t.Literal("ai")])`,
          *     constrained everywhere it appears: create/update bodies AND the list
-         *     query filter (`packages/api/src/requirements/routes.ts:111,138,215`).
+         *     query filter (`legacy/api/src/requirements/routes.ts:111,138,215`).
          * @enum {string}
          */
         Origin: "human" | "ai";
@@ -6289,7 +6289,7 @@ export interface components {
         };
         /**
          * @description Shape of `GET /proposals/count`
-         *     (`packages/api/src/proposals/routes.ts:57-64`): `{ pending: N }` — Node's
+         *     (`legacy/api/src/proposals/routes.ts:57-64`): `{ pending: N }` — Node's
          *     route does `Effect.map(pending => ({ pending }))` explicitly, not a bare
          *     number and not `{ count: N }` like the sibling `notifications` count
          *     endpoint. The web dashboard's `stats-bar.tsx` reads `.pending` off this
@@ -6572,7 +6572,7 @@ export interface components {
          *     discarded, because `ChunkPatch` (Phase 1) had no fields for them and
          *     `approve` had no path for the join table either — a real data-loss bug
          *     versus Node's `updateChunk`, which applies all eight
-         *     (`packages/api/src/chunks/chunk-mutations.ts:181-212` handles `tags` via
+         *     (`legacy/api/src/chunks/chunk-mutations.ts:181-212` handles `tags` via
          *     a separate `setChunkTags` tap; `scope`/`alternatives` pass straight
          *     through `UpdateChunkParams`). Closed in Phase 2e wave 1.
          */
@@ -6659,7 +6659,7 @@ export interface components {
         };
         /**
          * @description Shape of `GET /api/documents/{id}/render`, matching Node's
-         *     `renderDocument` return object (`packages/api/src/documents/service.ts:241-278`):
+         *     `renderDocument` return object (`legacy/api/src/documents/service.ts:241-278`):
          *     `{ document, markdown }`, nested — **not** flattened, unlike
          *     [`DocumentDetail`].
          */
@@ -6680,7 +6680,7 @@ export interface components {
         };
         /**
          * @description One entry of `PUT /api/favorites/reorder`'s bare-array body
-         *     (`packages/api/src/favorites/routes.ts:39-44`). The body is a plain
+         *     (`legacy/api/src/favorites/routes.ts:39-44`). The body is a plain
          *     `t.Array(...)`, not wrapped in an object — see `ReorderBody` below.
          */
         ReorderEntry: {
@@ -6689,7 +6689,7 @@ export interface components {
             order: number;
         };
         /**
-         * @description Body of `POST /features/{id}/reorder` (`packages/api/src/features/
+         * @description Body of `POST /features/{id}/reorder` (`legacy/api/src/features/
          *     routes.ts:118-120`). Named `ReorderFeatureBody` rather than
          *     `ReorderBody` because `requirements::dto::ReorderBody` already occupies
          *     that schema name in utoipa's single flat namespace.
@@ -6777,7 +6777,7 @@ export interface components {
         /**
          * @description Shape of `GET /requirements/{id}`, matching Node's `getRequirement`
          *     return expression: `{ ...req, chunks }`
-         *     (`packages/api/src/requirements/service.ts:89-97`) — a genuine object
+         *     (`legacy/api/src/requirements/service.ts:89-97`) — a genuine object
          *     spread, so the requirement's own fields sit at the *top level* alongside
          *     `chunks`. Modelled as an explicit flat struct, same convention
          *     `documents::dto::DocumentDetail` documents (no DTO in this crate uses
@@ -6841,7 +6841,7 @@ export interface components {
         /**
          * @description Shape of `POST /requirements` and `PATCH /requirements/{id}`, matching
          *     Node's `{ requirement, warnings, vocabularyWarnings }`
-         *     (`packages/api/src/requirements/service.ts:133,185`).
+         *     (`legacy/api/src/requirements/service.ts:133,185`).
          */
         RequirementWithWarnings: {
             requirement: components["schemas"]["Requirement"];
@@ -6864,14 +6864,14 @@ export interface components {
         };
         /**
          * @description Body of `POST /proposals/{id}/approve` and `POST /proposals/{id}/reject`
-         *     (`packages/api/src/proposals/routes.ts:126-129,142-144`) — identical
+         *     (`legacy/api/src/proposals/routes.ts:126-129,142-144`) — identical
          *     shape for both.
          */
         ReviewBody: {
             note?: string | null;
         };
         /**
-         * @description Matches Node's body schema exactly (`packages/api/src/tags/routes.ts:39`):
+         * @description Matches Node's body schema exactly (`legacy/api/src/tags/routes.ts:39`):
          *     `t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"),
          *     t.Literal("approved")]))`. Modelled the same way as
          *     `connections::dto::Origin` — a proper enum, not `Option<String>` — so an
@@ -6918,7 +6918,7 @@ export interface components {
         };
         /**
          * @description The `query` object nested in `POST /api/search/saved`'s body, matching
-         *     Node's schema exactly (`packages/api/src/search/routes.ts:93-101`):
+         *     Node's schema exactly (`legacy/api/src/search/routes.ts:93-101`):
          *     `clauses`, `join`, `sort`, `spaceId`, all validated at write time. Once
          *     stored, `saved_query.query` is opaque JSONB never re-validated on read
          *     (see `fubbik_db::repo::saved_query`'s module doc) — this type exists
@@ -6932,7 +6932,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/chunks/stale/scan-age`
-         *     (`packages/api/src/staleness/routes.ts:87-90`). Both fields optional:
+         *     (`legacy/api/src/staleness/routes.ts:87-90`). Both fields optional:
          *     an absent `thresholdDays` lets `detect_age_stale_chunks` fall back to
          *     its own default (90); `detect_uncovered_chunks`'s threshold (30) is
          *     never overridable from this body at all — see the doc comment on
@@ -6945,7 +6945,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/chunks/{id}/scan-impact`
-         *     (`packages/api/src/staleness/routes.ts:101-104`). `title` is optional —
+         *     (`legacy/api/src/staleness/routes.ts:101-104`). `title` is optional —
          *     an absent value falls back to `"Unknown"` in the detail message Node
          *     writes (`ctx.body.title ?? "Unknown"`, `routes.ts:98`), reproduced the
          *     same way at the service call site.
@@ -6960,7 +6960,7 @@ export interface components {
          *
          *     Also reused as `POST /api/chunks/{id}/scan-impact`'s response shape:
          *     Node's `flagImpactRipple` returns the same `{ flagged: n }` envelope
-         *     (`packages/api/src/staleness/detect-impact.ts:8,30`).
+         *     (`legacy/api/src/staleness/detect-impact.ts:8,30`).
          */
         ScanResult: {
             /** Format: int64 */
@@ -6985,7 +6985,7 @@ export interface components {
             message: string;
         };
         /**
-         * @description Mirrors `ScoredChunk` (`packages/api/src/context/utils.ts:8-15`) on the
+         * @description Mirrors `ScoredChunk` (`legacy/api/src/context/utils.ts:8-15`) on the
          *     wire — `chunk_type` serialises as `type`, matching Node's field name,
          *     since `/api/context/*` (Task 6) serialises this struct directly.
          */
@@ -7001,7 +7001,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/search/query`
-         *     (`packages/api/src/search/routes.ts:34-43`). `join` is accepted and
+         *     (`legacy/api/src/search/routes.ts:34-43`). `join` is accepted and
          *     **completely ignored** — see `search::service`'s module doc for why:
          *     Node's schema declares it (`t.Optional(t.Union([t.Literal("and"), t.Literal("or")]))`)
          *     but `service.ts`'s `executeSearch` never reads `searchQuery.join`
@@ -7021,7 +7021,7 @@ export interface components {
         };
         /**
          * @description `POST /api/search/query`'s response envelope, matching Node's
-         *     `SearchResult` (`packages/api/src/search/types.ts:48-59`).
+         *     `SearchResult` (`legacy/api/src/search/types.ts:48-59`).
          */
         SearchResult: {
             chunks: components["schemas"]["SearchResultChunk"][];
@@ -7058,7 +7058,7 @@ export interface components {
             type: string;
         };
         /**
-         * @description Body of `PUT /features/active` (`packages/api/src/features/routes.ts:
+         * @description Body of `PUT /features/active` (`legacy/api/src/features/routes.ts:
          *     66-68`).
          */
         SetActiveFeaturesBody: {
@@ -7069,7 +7069,7 @@ export interface components {
         };
         /**
          * @description Body of `PATCH /api/settings/codebase`
-         *     (`packages/api/src/settings/routes.ts:38-54`). `codebaseId` here is a
+         *     (`legacy/api/src/settings/routes.ts:38-54`). `codebaseId` here is a
          *     `spaceId` — the field name is a legacy holdover predating the
          *     codebase->space rename elsewhere in the codebase (see the top-level
          *     CLAUDE.md's "Spaces & Workspaces" section and `codebase_settings`'s
@@ -7082,7 +7082,7 @@ export interface components {
         };
         /**
          * @description Body of `PATCH /api/settings/user` and `PATCH /api/settings/instance`
-         *     (`packages/api/src/settings/routes.ts`): both share the identical
+         *     (`legacy/api/src/settings/routes.ts`): both share the identical
          *     `{ key, value }` shape. `value` is a bare `serde_json::Value`, not a
          *     typed union — Node's schema is `value: t.Unknown()`, i.e. **no
          *     validation at all** on the value's shape, despite the typed
@@ -7218,7 +7218,7 @@ export interface components {
          * @description Aggregate per-user counts backing `GET /api/stats`. Bare-object shape,
          *     not an array and not the `{chunks,total,limit,offset}` envelope the
          *     chunks *list* endpoint uses — matches Node's `getUserStats`
-         *     (`packages/api/src/stats/service.ts`) field-for-field. No fields beyond
+         *     (`legacy/api/src/stats/service.ts`) field-for-field. No fields beyond
          *     what Node returns: this is a parity port, not a place to add "useful"
          *     counts.
          */
@@ -7243,7 +7243,7 @@ export interface components {
          * @description One validation failure. `step` is the zero-based index into the input
          *     steps array, or `-1` for the two whole-sequence checks ("must contain a
          *     `when`"/"must contain a `then`") — matches Node's `StepError` exactly
-         *     (`packages/api/src/requirements/validator.ts:3-6`).
+         *     (`legacy/api/src/requirements/validator.ts:3-6`).
          */
         StepError: {
             error: string;
@@ -7255,7 +7255,7 @@ export interface components {
          *     schema constrains it too — `StepSchema.keyword` is
          *     `t.Union([t.Literal("given"), t.Literal("when"), t.Literal("then"),
          *     t.Literal("and"), t.Literal("but")])`
-         *     (`packages/api/src/requirements/routes.ts:10`), on every route that
+         *     (`legacy/api/src/requirements/routes.ts:10`), on every route that
          *     accepts steps (create, update, batch). Contrast `status`/`priority`,
          *     which are genuinely free `text` at the DB layer and only sometimes
          *     constrained at specific routes — see `Requirement::status`'s doc
@@ -7265,7 +7265,7 @@ export interface components {
         StepKeyword: "given" | "when" | "then" | "and" | "but";
         /**
          * @description `StepVocabularyWarning extends VocabularyWarning { step: number }`
-         *     (`packages/api/src/requirements/service.ts:28-30`) — a controlled-
+         *     (`legacy/api/src/requirements/service.ts:28-30`) — a controlled-
          *     vocabulary warning plus which step it came from. Fields duplicated
          *     (rather than `#[serde(flatten)]`ing `vocabulary::parser::VocabularyWarning`)
          *     for the same utoipa-schema-clarity reason as [`RequirementDetail`].
@@ -7331,7 +7331,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/chunks/suppress-duplicate`
-         *     (`packages/api/src/staleness/routes.ts:63-66`).
+         *     (`legacy/api/src/staleness/routes.ts:63-66`).
          */
         SuppressDuplicateBody: {
             chunkIdA: string;
@@ -7339,7 +7339,7 @@ export interface components {
         };
         /**
          * @description Body of `POST /api/documents/{id}/sync`
-         *     (`packages/api/src/documents/routes.ts:100-106`).
+         *     (`legacy/api/src/documents/routes.ts:100-106`).
          */
         SyncDocumentBody: {
             content: string;
@@ -7347,7 +7347,7 @@ export interface components {
         };
         /**
          * @description Shape of `POST /api/documents/{id}/sync`, matching Node's
-         *     `syncDocument` return object (`packages/api/src/documents/service.ts:161-239`).
+         *     `syncDocument` return object (`legacy/api/src/documents/service.ts:161-239`).
          *     **`document` is the pre-sync snapshot, not the freshly-updated row** —
          *     see `service::sync_document`'s doc comment; this is Node's actual
          *     return expression (`doc` is never reassigned after the `updateDocument`
@@ -7450,7 +7450,7 @@ export interface components {
          * @description A task in the `GET /api/plans/{id}` detail envelope: the raw
          *     `plan_task` row's fields, plus `acceptanceCriteria` normalised (not the
          *     raw stored JSON) and the task's linked chunks — matching Node's
-         *     `tasksWithChunks` (`packages/api/src/plans/service.ts:89-94`).
+         *     `tasksWithChunks` (`legacy/api/src/plans/service.ts:89-94`).
          */
         TaskDetail: {
             acceptanceCriteria: components["schemas"]["AcceptanceCriterion"][];
@@ -7479,7 +7479,7 @@ export interface components {
          *     isn't `NOT NULL`-without-default.
          *
          *     `type` is `text NOT NULL` with only a `maxLength: 20` Elysia check
-         *     (`packages/api/src/templates/routes.ts:65`), not an enum or CHECK
+         *     (`legacy/api/src/templates/routes.ts:65`), not an enum or CHECK
          *     constraint, despite the five chunk kinds (note/document/reference/
          *     schema/checklist) listed in CLAUDE.md — matching the established
          *     "constrained-looking free text" trap, this stays `String`.
@@ -7562,7 +7562,7 @@ export interface components {
         /**
          * @description One row of `GET /api/requirements/traceability`. The endpoint returns a
          *     **bare array** of these, not an envelope
-         *     (`packages/api/src/coverage/service.ts:16-18` returns the repository
+         *     (`legacy/api/src/coverage/service.ts:16-18` returns the repository
          *     result directly).
          *
          *     `planSteps` and `sessions` are **always empty**. Node hard-codes them:
@@ -7596,7 +7596,7 @@ export interface components {
         };
         /**
          * @description A chunk no requirement references
-         *     (`packages/api/src/coverage/service.ts:24,31`). Two fields, no
+         *     (`legacy/api/src/coverage/service.ts:24,31`). Two fields, no
          *     `requirementCount` — see `CoveredChunk`.
          */
         UncoveredChunk: {
@@ -7669,7 +7669,7 @@ export interface components {
         };
         /**
          * @description Body of `PATCH /api/collections/{id}`
-         *     (`packages/api/src/collections/routes.ts:45-60`). All three fields are
+         *     (`legacy/api/src/collections/routes.ts:45-60`). All three fields are
          *     plain two-state `Option<T>` (omitted = untouched, present = set) — this
          *     schema has no `t.Null()` variant on any field, unlike
          *     `workspaces::dto::UpdateWorkspaceBody::description`, so there is no way
@@ -7713,12 +7713,12 @@ export interface components {
             word?: string | null;
         };
         /**
-         * @description Body of `PATCH /features/{id}` (`packages/api/src/features/routes.ts:
+         * @description Body of `PATCH /features/{id}` (`legacy/api/src/features/routes.ts:
          *     83-90`). `description` and `color` are tri-state (`None` = untouched,
          *     `Some(None)` = clear, `Some(Some(v))` = set) because Node types both as
          *     `t.Optional(t.Union([t.String(), t.Null()]))`. `spaceIds` is stripped
          *     off before the row update and applied separately, matching
-         *     `packages/api/src/features/service.ts:112`.
+         *     `legacy/api/src/features/service.ts:112`.
          */
         UpdateFeatureBody: {
             color?: string | null;
@@ -7744,7 +7744,7 @@ export interface components {
             name?: string | null;
         };
         /**
-         * @description Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).
+         * @description Body of `PATCH /api/plans/{id}` (`legacy/api/src/plans/routes.ts:104-110`).
          *
          *     `description` and `space_id` are tri-state, matching Node's
          *     `t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted
@@ -7762,7 +7762,7 @@ export interface components {
             title?: string | null;
         };
         /**
-         * @description Body of `PATCH /requirements/{id}` (`packages/api/src/requirements/
+         * @description Body of `PATCH /requirements/{id}` (`legacy/api/src/requirements/
          *     routes.ts:208-217`). `description`/`priority`/`space_id`/`use_case_id`
          *     are tri-state (`None` = untouched, `Some(None)` = clear, `Some(Some(v))`
          *     = set), matching Node's `t.Optional(t.Union([T, t.Null()]))` for each.
@@ -7791,7 +7791,7 @@ export interface components {
         };
         /**
          * @description Body of `PATCH /api/saved-graphs/{id}`
-         *     (`packages/api/src/saved-graphs/routes.ts:53-59`). `description` is
+         *     (`legacy/api/src/saved-graphs/routes.ts:53-59`). `description` is
          *     tri-state, matching Node's `t.Optional(t.Union([t.String(), t.Null()]))`:
          *     omitted (`None`) leaves it untouched, explicit `null` (`Some(None)`)
          *     clears it, a string (`Some(Some(..))`) sets it — same `deserialize_some`
@@ -7911,7 +7911,7 @@ export interface components {
             title?: string | null;
         };
         /**
-         * @description Body of `PATCH /api/templates/{id}` (`packages/api/src/templates/routes.ts:74-94`).
+         * @description Body of `PATCH /api/templates/{id}` (`legacy/api/src/templates/routes.ts:74-94`).
          *
          *     `description`/`matchRules`/`fieldMappings` are tri-state: omitted
          *     (`None`) leaves the column untouched, explicit `null` (`Some(None)`)
@@ -7937,7 +7937,7 @@ export interface components {
             type?: string | null;
         };
         /**
-         * @description Body of `PATCH /api/use-cases/{id}` (`packages/api/src/use-cases/routes.ts:50-58`).
+         * @description Body of `PATCH /api/use-cases/{id}` (`legacy/api/src/use-cases/routes.ts:50-58`).
          *
          *     `description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),
          *     t.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`
@@ -7957,7 +7957,7 @@ export interface components {
             parentId?: string | null;
         };
         /**
-         * @description Body of `PATCH /api/workspaces/{id}` (`packages/api/src/workspaces/routes.ts:36-50`).
+         * @description Body of `PATCH /api/workspaces/{id}` (`legacy/api/src/workspaces/routes.ts:36-50`).
          *
          *     `description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),
          *     t.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`
@@ -7975,7 +7975,7 @@ export interface components {
         };
         /**
          * @description Body of `PUT /chunks/{id}/deltas/{featureId}`
-         *     (`packages/api/src/features/routes.ts:137-139`).
+         *     (`legacy/api/src/features/routes.ts:137-139`).
          *
          *     `delta` is `t.Record(t.String(), t.Unknown())` in Node — an *object*,
          *     with arbitrary values — so it is a `serde_json::Map` here rather than a
@@ -8131,7 +8131,7 @@ export interface components {
         };
         /**
          * @description Response shape of `GET /api/workspaces/{id}`, matching Node's spread
-         *     `{ ...found, spaces }` (`packages/api/src/workspaces/service.ts:19-28`)
+         *     `{ ...found, spaces }` (`legacy/api/src/workspaces/service.ts:19-28`)
          *     — the workspace row's own fields at the top level, plus a `spaces`
          *     array, NOT nested under a `workspace` key (contrast
          *     `fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).
@@ -8454,14 +8454,14 @@ export interface operations {
                 /**
                  * @description Comma-separated tag names, OR semantics — matches the `tags` key of
                  *     `CollectionFilterSchema` and Node's own `?tags=` query param
-                 *     (`packages/api/src/chunks/service.ts:61-65`). Parsed with
+                 *     (`legacy/api/src/chunks/service.ts:61-65`). Parsed with
                  *     [`parse_tags`].
                  */
                 tags?: string | null;
                 /**
                  * @description Days-ago offset (e.g. `?after=7` = "updated in the last 7 days"), not
                  *     a timestamp — matches Node's `new Date(Date.now() - Number(after) *
-                 *     86400000)` (`packages/api/src/chunks/service.ts:66`). Parsed with
+                 *     86400000)` (`legacy/api/src/chunks/service.ts:66`). Parsed with
                  *     [`parse_after`].
                  */
                 after?: string | null;
@@ -11001,7 +11001,7 @@ export interface operations {
             query?: {
                 /**
                  * @description `spaceId`, NOT `codebaseId`. Node still declares the pre-rename name
-                 *     (`packages/api/src/graph/routes.ts:18`) while the web sends `spaceId`,
+                 *     (`legacy/api/src/graph/routes.ts:18`) while the web sends `spaceId`,
                  *     so Elysia strips it and the filter silently does nothing. Task 8 fixes
                  *     Node to match this.
                  */

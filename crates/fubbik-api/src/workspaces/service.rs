@@ -22,7 +22,7 @@ pub async fn get_detail(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Wor
 }
 
 /// Mirrors Node's `createWorkspace`
-/// (`packages/api/src/workspaces/service.ts:31-51`): rejects a
+/// (`legacy/api/src/workspaces/service.ts:31-51`): rejects a
 /// whitespace-only name — which passes Elysia's `t.String` schema
 /// unchanged — with a 400, and trims the name before insert. Node has no
 /// application-level uniqueness check on `(userId, name)`; a duplicate
@@ -49,7 +49,7 @@ pub async fn create(
 }
 
 /// Mirrors Node's `updateWorkspace`
-/// (`packages/api/src/workspaces/service.ts:53-76`): 404 up front if the
+/// (`legacy/api/src/workspaces/service.ts:53-76`): 404 up front if the
 /// workspace isn't the caller's, then 400 if a *provided* `name` trims to
 /// empty — an omitted `name` never trips this check, only one that's
 /// present but blank does.
@@ -89,7 +89,7 @@ pub async fn update(
     .ok_or_else(|| AppError::NotFound("Workspace".into()))
 }
 
-/// `deleteWorkspace` (`packages/api/src/workspaces/service.ts:78-82`): 404
+/// `deleteWorkspace` (`legacy/api/src/workspaces/service.ts:78-82`): 404
 /// if not found/not owned. `workspace_space` rows cascade via the FK, not
 /// application code — see `workspace::delete`'s doc comment.
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
@@ -101,7 +101,7 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
 }
 
 /// Mirrors Node's `addSpaceToWorkspace`
-/// (`packages/api/src/workspaces/service.ts:84-94`): two independent
+/// (`legacy/api/src/workspaces/service.ts:84-94`): two independent
 /// 404s — `Workspace` then `Space` — checked in application code *before*
 /// the insert. This is required to reproduce Node's distinct error per
 /// missing resource: the repo's own SQL-level ownership guard
@@ -136,7 +136,7 @@ pub async fn add_space_to_workspace(
 }
 
 /// Mirrors Node's `removeSpaceFromWorkspace`
-/// (`packages/api/src/workspaces/service.ts:96-105`): 404 `Workspace` if
+/// (`legacy/api/src/workspaces/service.ts:96-105`): 404 `Workspace` if
 /// the workspace isn't the caller's, otherwise 404 `WorkspaceSpace` if the
 /// join row didn't exist (never linked, or already removed).
 pub async fn remove_space_from_workspace(

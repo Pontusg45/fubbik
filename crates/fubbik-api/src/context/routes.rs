@@ -1,6 +1,6 @@
 //! `GET /api/context/for-plan`, `/api/context/about`, `/api/context/for-files`.
 //!
-//! Ports `packages/api/src/context/routes.ts`. All three handlers share one
+//! Ports `legacy/api/src/context/routes.ts`. All three handlers share one
 //! shape — resolve candidate ids, enrich them into scored/health-annotated
 //! chunks, budget them into a token limit, then format the result —
 //! differing only in which resolver runs and which query parameters feed

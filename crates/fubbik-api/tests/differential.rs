@@ -58,7 +58,7 @@
 //! `/api/settings/features`, `/api/collections`,
 //! `/api/collections/{id}/chunks`, `/api/activity`. There is **no**
 //! `GET /api/collections/{id}` in either stack — only `PATCH`/`DELETE` take
-//! a bare `{id}`, confirmed against `packages/api/src/collections/routes.ts`
+//! a bare `{id}`, confirmed against `legacy/api/src/collections/routes.ts`
 //! — so it is not tested as a `GET`.
 //!
 //! `/api/settings/instance` and `/api/settings/features` are compared with
@@ -125,7 +125,7 @@
 //! Rust used to clamp `GET /api/chunks?limit=` to `.clamp(1, 500)`
 //! (`chunks::dto::ListChunksQuery::into_params`); Node clamps to 100
 //! (`Math.min(Number(query.limit ?? 50), 100)`,
-//! `packages/api/src/chunks/service.ts:50`). This survived three phases
+//! `legacy/api/src/chunks/service.ts:50`). This survived three phases
 //! unnoticed because the only limit case here, `?limit=5`, sits below BOTH
 //! caps and can never observe a difference between them. Rust now also
 //! clamps to 100, and `chunk_list_limit_is_clamped_identically_above_both_caps`

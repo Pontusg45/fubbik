@@ -1,6 +1,6 @@
 //! The Ollama HTTP client.
 //!
-//! Ports `packages/api/src/ollama/client.ts`. Two deliberate differences
+//! Ports `legacy/api/src/ollama/client.ts`. Two deliberate differences
 //! from that file:
 //!
 //! - The base URL is a field, not a module-level constant read from

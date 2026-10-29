@@ -1,7 +1,7 @@
-//! Request/response shapes for `packages/api/src/vocabulary/routes.ts`.
+//! Request/response shapes for `legacy/api/src/vocabulary/routes.ts`.
 
 /// The six literals Elysia's `CategorySchema` accepts
-/// (`packages/api/src/vocabulary/routes.ts:7-14`, a genuine `t.Union` of
+/// (`legacy/api/src/vocabulary/routes.ts:7-14`, a genuine `t.Union` of
 /// literals — unlike `notification.type`/`connection.relation`, this *is*
 /// a real input constraint). Modelled as an enum only at this input-body
 /// layer, the same shape as `connections::dto::Origin`: the stored
@@ -34,7 +34,7 @@ impl Category {
 }
 
 /// `GET /api/vocabulary` query params
-/// (`packages/api/src/vocabulary/routes.ts:35-37`). `spaceId` is genuinely
+/// (`legacy/api/src/vocabulary/routes.ts:35-37`). `spaceId` is genuinely
 /// optional here — unlike every other endpoint in this domain, which 404s
 /// on a missing/foreign space, the route returns `[]` outright when
 /// `spaceId` is absent (`ctx.query.spaceId` falsy check,

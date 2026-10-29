@@ -6,7 +6,7 @@
 //! `instance_settings` (global, no owner column at all — `key` is its
 //! primary key). All three store an arbitrary `jsonb` `value` under a
 //! `key`, faithfully reproducing Node's `t.Unknown()` body schema
-//! (`packages/api/src/settings/routes.ts`) — there is no shape validation
+//! (`legacy/api/src/settings/routes.ts`) — there is no shape validation
 //! on `value` anywhere in this module, matching Node exactly. A client can
 //! `PATCH` `theme` to `42` and this stores it as-is, just like Node does.
 //!

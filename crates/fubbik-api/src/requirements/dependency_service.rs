@@ -1,4 +1,4 @@
-//! Port of `packages/api/src/requirements/dependency-service.ts`.
+//! Port of `legacy/api/src/requirements/dependency-service.ts`.
 
 use fubbik_core::error::{AppError, AppResult};
 use fubbik_db::repo::{requirement, requirement_dependency};
@@ -6,7 +6,7 @@ use sqlx::PgPool;
 
 use super::dto::{DependencyGraph, DependencyGraphEdge, DependencyGraphNode, DependencySides};
 
-/// Mirrors Node's `addDependency` (`packages/api/src/requirements/
+/// Mirrors Node's `addDependency` (`legacy/api/src/requirements/
 /// dependency-service.ts:13-27`). Direct self-dependency
 /// (`requirement_id == depends_on_id`) is rejected by the database's own
 /// `no_self_dependency` CHECK constraint (surfaces as `AppError::Database`,
@@ -42,7 +42,7 @@ pub async fn add_dependency(
 }
 
 /// Mirrors Node's `removeDependency` — only `requirement_id`'s ownership is
-/// checked, not `depends_on_id`'s (`packages/api/src/requirements/
+/// checked, not `depends_on_id`'s (`legacy/api/src/requirements/
 /// dependency-service.ts:29-35`).
 pub async fn remove_dependency(
     pool: &PgPool,
@@ -78,7 +78,7 @@ pub async fn get_dependencies(
     })
 }
 
-/// Mirrors Node's `getDependencyGraph` (`packages/api/src/requirements/
+/// Mirrors Node's `getDependencyGraph` (`legacy/api/src/requirements/
 /// dependency-service.ts:45-68`), including its de-duplication quirk: if
 /// the same requirement id appears more than once across `[current,
 /// ...ancestors, ...descendants]` (only possible with pre-existing cyclic

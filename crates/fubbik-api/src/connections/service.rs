@@ -5,7 +5,7 @@ use sqlx::PgPool;
 
 use super::dto::CreateConnectionBody;
 
-/// Mirrors Node's `createConnection` (`packages/api/src/connections/service.ts:11-34`).
+/// Mirrors Node's `createConnection` (`legacy/api/src/connections/service.ts:11-34`).
 ///
 /// The happy path is a single round trip: `connection::create`'s `INSERT
 /// ... SELECT ... WHERE s.user_id = $5 AND t.user_id = $5` is the actual
@@ -81,7 +81,7 @@ pub async fn create(
     }
 }
 
-/// Mirrors Node's `deleteConnection` (`packages/api/src/connections/service.ts:36-51`):
+/// Mirrors Node's `deleteConnection` (`legacy/api/src/connections/service.ts:36-51`):
 /// 404 `{resource: "Connection"}` both when the id doesn't exist at all and
 /// when it exists but neither `source` nor `target` resolves for
 /// `user_id` — `connection::delete` folds both cases into a single guarded

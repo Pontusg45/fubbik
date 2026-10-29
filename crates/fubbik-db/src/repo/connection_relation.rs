@@ -13,7 +13,7 @@
 //! `migrations/0002_seed_reference_data.sql:40-73` with `built_in = true`
 //! and `user_id IS NULL`, and are rejected for edit/delete by the service
 //! layer exactly as Node does
-//! (`packages/api/src/vocabularies/service.ts:118-150`).
+//! (`legacy/api/src/vocabularies/service.ts:118-150`).
 
 use fubbik_core::error::AppResult;
 use sqlx::PgPool;
@@ -27,7 +27,7 @@ use crate::timestamp::UtcTimestamp;
 /// so they stay `String` on the read path — the same call this port made for
 /// `vocabulary_entry.category`. They *are* constrained on the *input* side
 /// (Node declares real `t.Union` literals in
-/// `packages/api/src/vocabularies/routes.ts:30-31`), which is modelled by
+/// `legacy/api/src/vocabularies/routes.ts:30-31`), which is modelled by
 /// the enums in `fubbik_api::vocabularies::dto`, not here.
 #[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -123,7 +123,7 @@ pub async fn find_by_id(pool: &PgPool, id: &str) -> AppResult<Option<ConnectionR
 /// (`migrations/0001_init.sql:361`).
 ///
 /// `space_id` is always `NULL` — Node's route body carries no `spaceId`
-/// field (`packages/api/src/vocabularies/routes.ts:26-35`).
+/// field (`legacy/api/src/vocabularies/routes.ts:26-35`).
 pub async fn create(
     pool: &PgPool,
     user_id: &str,

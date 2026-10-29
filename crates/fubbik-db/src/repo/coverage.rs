@@ -7,7 +7,7 @@
 //! **The space filter's parameter is called `codebase_id` all the way down**,
 //! not `space_id`. `codebase` is the deprecated name for `space` in this
 //! codebase, but the *wire* contract for these two endpoints still says
-//! `codebaseId` (`packages/api/src/coverage/routes.ts:22,35`, and both web
+//! `codebaseId` (`legacy/api/src/coverage/routes.ts:22,35`, and both web
 //! call sites — `apps/web/src/routes/coverage.tsx:102` and
 //! `apps/web/src/features/coverage/traceability-content.tsx:43`). The name is
 //! kept end-to-end so the Rust identifier and the query parameter it carries
@@ -35,7 +35,7 @@ use sqlx::PgPool;
 /// `requirement_count` is `count(...)`, i.e. `bigint`, so it is `i64` here.
 /// Node reads the same value as a string off the pg driver and coerces it
 /// with `Number(row.requirementCount)`
-/// (`packages/api/src/coverage/service.ts:27`).
+/// (`legacy/api/src/coverage/service.ts:27`).
 #[derive(Debug, Clone)]
 pub struct ChunkCoverageRow {
     pub id: String,

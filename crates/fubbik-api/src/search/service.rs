@@ -3,7 +3,7 @@
 //! - [`execute_search`] and [`autocomplete`]: read-only, **infallible**
 //!   functions (`-> SearchResult` / `-> Vec<String>`, not `AppResult<..>`)
 //!   — a direct port of Node's `Effect<T, never>` signatures
-//!   (`packages/api/src/search/service.ts:77`, `:257`). Every internal
+//!   (`legacy/api/src/search/service.ts:77`, `:257`). Every internal
 //!   step in Node is wrapped `.pipe(Effect.orElse(() => Effect.succeed(...)))`,
 //!   so even a database error degrades to an empty result rather than
 //!   propagating — reproduced here by catching each fallible call site and
@@ -15,7 +15,7 @@
 //!   wrappers over `fubbik_db::repo::saved_query`, the same shape as every
 //!   other CRUD domain in this crate (`favorites::service`, etc.) — these
 //!   *can* fail, and Node doesn't wrap them in `orElse` either
-//!   (`packages/api/src/search/routes.ts:67-112` lets them propagate).
+//!   (`legacy/api/src/search/routes.ts:67-112` lets them propagate).
 //!
 //! ## The four graph clauses (Task 9, `similar-to` completed Task 11)
 //!
@@ -737,7 +737,7 @@ pub async fn create_saved(
 /// comment for why this returns `AppResult<()>`, not a `bool`: the route
 /// (`routes.rs::delete_saved`) never surfaces a 404 either way, matching
 /// Node's `deleteSavedQuery` result being discarded at the route
-/// (`packages/api/src/search/routes.ts:105-112`).
+/// (`legacy/api/src/search/routes.ts:105-112`).
 pub async fn delete_saved(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
     saved_query::delete(pool, user_id, id).await
 }

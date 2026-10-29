@@ -8,7 +8,7 @@
 //! like a 404 from here). What THIS file proves that the repo tests
 //! can't: the service-layer `is_built_in` rejection Node's
 //! `updateTemplate`/`deleteTemplate` make
-//! (`packages/api/src/templates/service.ts:62-64,73-75`) surfaces as a 400
+//! (`legacy/api/src/templates/service.ts:62-64,73-75`) surfaces as a 400
 //! with the exact copied message, not a 404 or a 500.
 
 use axum::body::Body;
@@ -292,7 +292,7 @@ async fn update_null_description_clears_it_and_omitted_leaves_it_untouched(pool:
 }
 
 /// The named test proving Node's built-in-rejection check
-/// (`packages/api/src/templates/service.ts:62-64`) is replicated: PATCHing
+/// (`legacy/api/src/templates/service.ts:62-64`) is replicated: PATCHing
 /// a built-in template must 400 with the exact copied message, never 404
 /// or a successful mutation. Removing `templates::service::update`'s
 /// `is_built_in` check makes this test fail — the underlying row still
@@ -338,7 +338,7 @@ async fn update_rejects_built_in_template_with_400(pool: sqlx::PgPool) {
 
 /// Same shape as `update_rejects_built_in_template_with_400`, for delete.
 /// Named test proving Node's `deleteTemplate` built-in check
-/// (`packages/api/src/templates/service.ts:73-75`) is replicated.
+/// (`legacy/api/src/templates/service.ts:73-75`) is replicated.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn delete_rejects_built_in_template_with_400(pool: sqlx::PgPool) {
     // Given

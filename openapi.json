@@ -430,7 +430,7 @@
           {
             "name": "tags",
             "in": "query",
-            "description": "Comma-separated tag names, OR semantics — matches the `tags` key of\n`CollectionFilterSchema` and Node's own `?tags=` query param\n(`packages/api/src/chunks/service.ts:61-65`). Parsed with\n[`parse_tags`].",
+            "description": "Comma-separated tag names, OR semantics — matches the `tags` key of\n`CollectionFilterSchema` and Node's own `?tags=` query param\n(`legacy/api/src/chunks/service.ts:61-65`). Parsed with\n[`parse_tags`].",
             "required": false,
             "schema": {
               "type": [
@@ -442,7 +442,7 @@
           {
             "name": "after",
             "in": "query",
-            "description": "Days-ago offset (e.g. `?after=7` = \"updated in the last 7 days\"), not\na timestamp — matches Node's `new Date(Date.now() - Number(after) *\n86400000)` (`packages/api/src/chunks/service.ts:66`). Parsed with\n[`parse_after`].",
+            "description": "Days-ago offset (e.g. `?after=7` = \"updated in the last 7 days\"), not\na timestamp — matches Node's `new Date(Date.now() - Number(after) *\n86400000)` (`legacy/api/src/chunks/service.ts:66`). Parsed with\n[`parse_after`].",
             "required": false,
             "schema": {
               "type": [
@@ -529,7 +529,7 @@
         "tags": [
           "crate::chunks::routes"
         ],
-        "summary": "**201**, not 200 — Node sets `ctx.set.status = 201` in an `Effect.tap`\nafter `createChunk` (`packages/api/src/chunks/routes.ts`), and this port\nhad been answering 200. Aligned here rather than left as a quiet\ndivergence; `POST /api/features` and `POST /api/requirements` are\nalready 201 in this crate, so 200 was also inconsistent internally.",
+        "summary": "**201**, not 200 — Node sets `ctx.set.status = 201` in an `Effect.tap`\nafter `createChunk` (`legacy/api/src/chunks/routes.ts`), and this port\nhad been answering 200. Aligned here rather than left as a quiet\ndivergence; `POST /api/features` and `POST /api/requirements` are\nalready 201 in this crate, so 200 was also inconsistent internally.",
         "operationId": "create_chunk",
         "requestBody": {
           "content": {
@@ -1756,7 +1756,7 @@
         "tags": [
           "crate::chunks::routes"
         ],
-        "summary": "Returns the **enriched** detail shape ([`ChunkDetail`]), not the bare\n`chunk` row — matching Node. The active feature ids are loaded here\nrather than in a global middleware: Node resolves them for every request\n(`packages/api/src/index.ts:207-218`), but this is the only Rust route\nthat reads them implicitly, so a per-route load avoids paying for a\nquery on all ~200 other endpoints.",
+        "summary": "Returns the **enriched** detail shape ([`ChunkDetail`]), not the bare\n`chunk` row — matching Node. The active feature ids are loaded here\nrather than in a global middleware: Node resolves them for every request\n(`legacy/api/src/index.ts:207-218`), but this is the only Rust route\nthat reads them implicitly, so a per-route load avoids paying for a\nquery on all ~200 other endpoints.",
         "operationId": "get_chunk",
         "parameters": [
           {
@@ -2504,7 +2504,7 @@
         "tags": [
           "crate::staleness::routes"
         ],
-        "summary": "`title` falls back to `\"Unknown\"` when absent — matches Node's\n`ctx.body.title ?? \"Unknown\"` (`packages/api/src/staleness/routes.ts:98`).",
+        "summary": "`title` falls back to `\"Unknown\"` when absent — matches Node's\n`ctx.body.title ?? \"Unknown\"` (`legacy/api/src/staleness/routes.ts:98`).",
         "operationId": "scan_impact",
         "parameters": [
           {
@@ -2585,7 +2585,7 @@
           "crate::generate_instructions::routes"
         ],
         "summary": "Deprecated alias: `GET /api/codebases/{id}/generate-instructions`.",
-        "description": "**This is Node's *actual* (and only) registration.** Node's\n`generateInstructionsRoutes` (`packages/api/src/generate-instructions/\nroutes.ts:8`) registers exactly one path, `/codebases/:id/generate-\ninstructions` — it never registers `/spaces/:id/generate-instructions`\nat all, and `codebaseRoutes` (the `/api/codebases` -> `/api/spaces`\nforwarding layer used for every other space endpoint) does not cover\nthis route either, since it forwards the opposite direction and this\nhandler isn't one of the ones it re-exports.\n\nYet Node's own CLI (`apps/cli/src/commands/generate.ts:35,58,81`) calls\n`/api/spaces/${spaceId}/generate-instructions` at all three call sites\n— matching how every *other* CLI call in that codebase addresses spaces\n(`api/spaces`, never `api/codebases`). So in a live Node deployment,\n`fubbik generate claude.md`/`agents.md`/`.cursorrules` all 404 today.\nThis is fallout from the project's `codebases` -> `spaces` rename: the\nCLI's call sites and the rest of the API surface were renamed, but this\none route registration was missed.\n\nThis port serves **both** paths, pointed at the same handler\n([`generate_instructions_route`]), rather than picking one:\n`/api/spaces/{id}/generate-instructions` is primary — it matches the\nCLI and the project's own rename, and fixes the three broken commands.\nThis `/api/codebases/{id}/...` path is kept as a deprecated\ncompatibility alias matching the *real* shape of Node's API today, the\nsame pattern already used for `/api/codebases` elsewhere in this\ncodebase (see CLAUDE.md: \"`/api/codebases` is a deprecated alias kept\nfor backward compatibility with older VS Code extension builds and\nexternal consumers.\"). Serving only `/spaces` would silently drop a\npath that genuinely exists in Node today, breaking any external\nconsumer or older client still calling it at cutover.",
+        "description": "**This is Node's *actual* (and only) registration.** Node's\n`generateInstructionsRoutes` (`legacy/api/src/generate-instructions/\nroutes.ts:8`) registers exactly one path, `/codebases/:id/generate-\ninstructions` — it never registers `/spaces/:id/generate-instructions`\nat all, and `codebaseRoutes` (the `/api/codebases` -> `/api/spaces`\nforwarding layer used for every other space endpoint) does not cover\nthis route either, since it forwards the opposite direction and this\nhandler isn't one of the ones it re-exports.\n\nYet Node's own CLI (`apps/cli/src/commands/generate.ts:35,58,81`) calls\n`/api/spaces/${spaceId}/generate-instructions` at all three call sites\n— matching how every *other* CLI call in that codebase addresses spaces\n(`api/spaces`, never `api/codebases`). So in a live Node deployment,\n`fubbik generate claude.md`/`agents.md`/`.cursorrules` all 404 today.\nThis is fallout from the project's `codebases` -> `spaces` rename: the\nCLI's call sites and the rest of the API surface were renamed, but this\none route registration was missed.\n\nThis port serves **both** paths, pointed at the same handler\n([`generate_instructions_route`]), rather than picking one:\n`/api/spaces/{id}/generate-instructions` is primary — it matches the\nCLI and the project's own rename, and fixes the three broken commands.\nThis `/api/codebases/{id}/...` path is kept as a deprecated\ncompatibility alias matching the *real* shape of Node's API today, the\nsame pattern already used for `/api/codebases` elsewhere in this\ncodebase (see CLAUDE.md: \"`/api/codebases` is a deprecated alias kept\nfor backward compatibility with older VS Code extension builds and\nexternal consumers.\"). Serving only `/spaces` would silently drop a\npath that genuinely exists in Node today, breaking any external\nconsumer or older client still calling it at cutover.",
         "operationId": "generate_instructions_codebases_alias_route",
         "parameters": [
           {
@@ -3655,7 +3655,7 @@
         "tags": [
           "crate::documents::routes"
         ],
-        "summary": "`q` must be at least 2 characters, matching Node's `t.String({ minLength:\n2 })` (`packages/api/src/documents/routes.ts:32`) — enforced here rather\nthan left unchecked, unlike this port's usual \"Elysia-only length caps\ngo unenforced\" precedent (see `ImportDocumentBody`'s doc comment):\n`minLength` here shapes actual query behaviour (an unbounded `ILIKE\n'%_%'` scan for a 0-1 char query), not just a request-size guard.",
+        "summary": "`q` must be at least 2 characters, matching Node's `t.String({ minLength:\n2 })` (`legacy/api/src/documents/routes.ts:32`) — enforced here rather\nthan left unchecked, unlike this port's usual \"Elysia-only length caps\ngo unenforced\" precedent (see `ImportDocumentBody`'s doc comment):\n`minLength` here shapes actual query behaviour (an unbounded `ILIKE\n'%_%'` scan for a 0-1 char query), not just a request-size guard.",
         "operationId": "search_documents",
         "parameters": [
           {
@@ -3865,7 +3865,7 @@
         "tags": [
           "crate::favorites::routes"
         ],
-        "summary": "Status is set to 201 unconditionally, even when the chunk was already\nfavorited and the body is `null` — matching Node's `Effect.tap` block,\nwhich sets `ctx.set.status = 201` before ever inspecting the result\n(`packages/api/src/favorites/routes.ts:11-29`, `_mutating.md`). This is\na deliberately preserved quirk, not a bug: do not \"improve\" it to\n200/409/an idempotent echo of the existing row.",
+        "summary": "Status is set to 201 unconditionally, even when the chunk was already\nfavorited and the body is `null` — matching Node's `Effect.tap` block,\nwhich sets `ctx.set.status = 201` before ever inspecting the result\n(`legacy/api/src/favorites/routes.ts:11-29`, `_mutating.md`). This is\na deliberately preserved quirk, not a bug: do not \"improve\" it to\n200/409/an idempotent echo of the existing row.",
         "operationId": "add_favorite",
         "requestBody": {
           "content": {
@@ -4026,7 +4026,7 @@
         "tags": [
           "crate::features::routes"
         ],
-        "summary": "201, matching Node's explicit `ctx.set.status = 201`\n(`packages/api/src/features/routes.ts:36-40`) — the only endpoint in\nthis domain that is not 200.",
+        "summary": "201, matching Node's explicit `ctx.set.status = 201`\n(`legacy/api/src/features/routes.ts:36-40`) — the only endpoint in\nthis domain that is not 200.",
         "operationId": "create_feature",
         "requestBody": {
           "content": {
@@ -4057,7 +4057,7 @@
         "tags": [
           "crate::features::routes"
         ],
-        "summary": "A bare array of feature ids — not objects. Node maps\n`rows.map(r => r.featureId)` before responding\n(`packages/api/src/features/service.ts:145-147`).",
+        "summary": "A bare array of feature ids — not objects. Node maps\n`rows.map(r => r.featureId)` before responding\n(`legacy/api/src/features/service.ts:145-147`).",
         "operationId": "get_active_features",
         "responses": {
           "200": {
@@ -4409,7 +4409,7 @@
           {
             "name": "spaceId",
             "in": "query",
-            "description": "`spaceId`, NOT `codebaseId`. Node still declares the pre-rename name\n(`packages/api/src/graph/routes.ts:18`) while the web sends `spaceId`,\nso Elysia strips it and the filter silently does nothing. Task 8 fixes\nNode to match this.",
+            "description": "`spaceId`, NOT `codebaseId`. Node still declares the pre-rename name\n(`legacy/api/src/graph/routes.ts:18`) while the web sends `spaceId`,\nso Elysia strips it and the filter silently does nothing. Task 8 fixes\nNode to match this.",
             "required": false,
             "schema": {
               "type": [
@@ -8017,7 +8017,7 @@
         "tags": [
           "crate::coverage::routes"
         ],
-        "summary": "Both paths live under `/api/requirements/...` even though this is its own\ndomain module — that is Node's URL layout\n(`packages/api/src/coverage/routes.ts:9,28`), mounted from a separate\n`coverageRoutes` Elysia instance the same way. They are static segments,\nso axum's router prefers them over `requirements::routes`' `/{id}`\n(same arrangement `/api/requirements/stats` already relies on).",
+        "summary": "Both paths live under `/api/requirements/...` even though this is its own\ndomain module — that is Node's URL layout\n(`legacy/api/src/coverage/routes.ts:9,28`), mounted from a separate\n`coverageRoutes` Elysia instance the same way. They are static segments,\nso axum's router prefers them over `requirements::routes`' `/{id}`\n(same arrangement `/api/requirements/stats` already relies on).",
         "description": "**One handler, two response shapes.** `?detail=true` adds a `matrix`\nfield; anything else — including `?detail=1` — omits the key entirely.\nSee `dto::CoverageResponse` and `dto::CoverageQuery::detail`.",
         "operationId": "get_coverage",
         "parameters": [
@@ -9170,7 +9170,7 @@
         "tags": [
           "crate::settings::routes"
         ],
-        "summary": "Unauthenticated, matching Node exactly\n(`packages/api/src/settings/routes.ts:8` — `GET /settings/features` has\nno `requireSession`). See `get_instance_settings` for the full note on\nwhy this crate has two deliberately open `GET`s in this domain.",
+        "summary": "Unauthenticated, matching Node exactly\n(`legacy/api/src/settings/routes.ts:8` — `GET /settings/features` has\nno `requireSession`). See `get_instance_settings` for the full note on\nwhy this crate has two deliberately open `GET`s in this domain.",
         "operationId": "get_feature_flags",
         "responses": {
           "200": {
@@ -9191,7 +9191,7 @@
         "tags": [
           "crate::settings::routes"
         ],
-        "summary": "**Deliberately unauthenticated** — matches Node exactly\n(`packages/api/src/settings/routes.ts:55`: `GET /settings/instance` has\nno `requireSession`, and there is no global auth middleware in\n`packages/api/src/index.ts` to backstop it). This was escalated to and\ndecided by the human partner explicitly (captured, then corrected on\nreview, in `legacy/migration/fixtures/node-contract-2b/_questions.md` Q2): faithful\nport, `GET` open, `PATCH` session-gated (see `set_instance_setting`\nbelow), exactly as Node. `instance_settings` holds zero rows today, the\nserver binds `127.0.0.1` by default, and the web app may legitimately\nneed to read feature flags before login — do NOT add a session guard\nhere believing it an oversight; that would silently diverge from an\nalready-made decision and could break pre-login flag reads.",
+        "summary": "**Deliberately unauthenticated** — matches Node exactly\n(`legacy/api/src/settings/routes.ts:55`: `GET /settings/instance` has\nno `requireSession`, and there is no global auth middleware in\n`legacy/api/src/index.ts` to backstop it). This was escalated to and\ndecided by the human partner explicitly (captured, then corrected on\nreview, in `legacy/migration/fixtures/node-contract-2b/_questions.md` Q2): faithful\nport, `GET` open, `PATCH` session-gated (see `set_instance_setting`\nbelow), exactly as Node. `instance_settings` holds zero rows today, the\nserver binds `127.0.0.1` by default, and the web app may legitimately\nneed to read feature flags before login — do NOT add a session guard\nhere believing it an oversight; that would silently diverge from an\nalready-made decision and could break pre-login flag reads.",
         "description": "The real property this leaves: any caller reachable on localhost can\nread the raw instance-settings map with no session at all.",
         "operationId": "get_instance_settings",
         "responses": {
@@ -9209,7 +9209,7 @@
         "tags": [
           "crate::settings::routes"
         ],
-        "summary": "Session-gated (unlike its `GET` sibling above), but with **no\nrole/admin check** — any authenticated user can flip instance-wide\nflags like `aiEnabled`, matching Node's `requireSession`-only guard\n(`packages/api/src/settings/routes.ts:56-60`). This is also a faithful\nport, not an oversight.",
+        "summary": "Session-gated (unlike its `GET` sibling above), but with **no\nrole/admin check** — any authenticated user can flip instance-wide\nflags like `aiEnabled`, matching Node's `requireSession`-only guard\n(`legacy/api/src/settings/routes.ts:56-60`). This is also a faithful\nport, not an oversight.",
         "operationId": "set_instance_setting",
         "requestBody": {
           "content": {
@@ -9564,7 +9564,7 @@
         "tags": [
           "crate::stats::routes"
         ],
-        "summary": "`GET /api/stats` returns a **bare object** — not an array, and not the\n`{chunks,total,limit,offset}` envelope `GET /api/chunks` uses. Matches\nNode's `statsRoutes` (`packages/api/src/stats/routes.ts`), which returns\n`statsService.getUserStats(session.user.id)` directly as the response\nbody.",
+        "summary": "`GET /api/stats` returns a **bare object** — not an array, and not the\n`{chunks,total,limit,offset}` envelope `GET /api/chunks` uses. Matches\nNode's `statsRoutes` (`legacy/api/src/stats/routes.ts`), which returns\n`statsService.getUserStats(session.user.id)` directly as the response\nbody.",
         "operationId": "get_stats",
         "responses": {
           "200": {
@@ -10191,7 +10191,7 @@
         "tags": [
           "crate::use_cases::routes"
         ],
-        "summary": "Bare array, matching Node's `listUseCases` return\n(`packages/api/src/use-cases/routes.ts:9-16`) — not the `{chunks,...}`\nenvelope, same shape convention as `notifications`/`workspaces`.",
+        "summary": "Bare array, matching Node's `listUseCases` return\n(`legacy/api/src/use-cases/routes.ts:9-16`) — not the `{chunks,...}`\nenvelope, same shape convention as `notifications`/`workspaces`.",
         "operationId": "list_use_cases",
         "parameters": [
           {
@@ -10376,7 +10376,7 @@
         "tags": [
           "crate::vocabulary::routes"
         ],
-        "summary": "`spaceId` absent -> `[]` without ever reaching the service layer,\nmatching Node's `if (!ctx.query.spaceId) return [];`\n(`packages/api/src/vocabulary/routes.ts:30`) exactly — note this is\n*not* a 404 the way every other endpoint in this domain treats a\nmissing/foreign space.",
+        "summary": "`spaceId` absent -> `[]` without ever reaching the service layer,\nmatching Node's `if (!ctx.query.spaceId) return [];`\n(`legacy/api/src/vocabulary/routes.ts:30`) exactly — note this is\n*not* a 404 the way every other endpoint in this domain treats a\nmissing/foreign space.",
         "operationId": "list_vocabulary",
         "parameters": [
           {
@@ -10869,7 +10869,7 @@
     "schemas": {
       "AcceptanceCriterion": {
         "type": "object",
-        "description": "One normalised acceptance-criterion entry. `acceptanceCriteria` was\noriginally stored as `string[]`; both the legacy shape and the newer\n`{text,done}[]` shape are read and always normalised to this object\nshape on the way out — matching Node's `normaliseAcceptanceCriteria`\n(`packages/api/src/plans/service.ts:110-122`).",
+        "description": "One normalised acceptance-criterion entry. `acceptanceCriteria` was\noriginally stored as `string[]`; both the legacy shape and the newer\n`{text,done}[]` shape are read and always normalised to this object\nshape on the way out — matching Node's `normaliseAcceptanceCriteria`\n(`legacy/api/src/plans/service.ts:110-122`).",
         "required": [
           "text",
           "done"
@@ -10971,7 +10971,7 @@
       },
       "AddDependencyBody": {
         "type": "object",
-        "description": "Body of `POST /requirements/{id}/dependencies`\n(`packages/api/src/requirements/dependency-routes.ts:20-22`).",
+        "description": "Body of `POST /requirements/{id}/dependencies`\n(`legacy/api/src/requirements/dependency-routes.ts:20-22`).",
         "required": [
           "dependsOnId"
         ],
@@ -10995,7 +10995,7 @@
       },
       "AddSpaceBody": {
         "type": "object",
-        "description": "Body of `POST /api/workspaces/{id}/spaces` (`packages/api/src/workspaces/routes.ts:60-78`).",
+        "description": "Body of `POST /api/workspaces/{id}/spaces` (`legacy/api/src/workspaces/routes.ts:60-78`).",
         "required": [
           "spaceId"
         ],
@@ -11144,7 +11144,7 @@
       },
       "AnalyzeGrouped": {
         "type": "object",
-        "description": "The five fixed analyze-item buckets, always present even when empty —\nconfirmed against real bytes in `legacy/migration/fixtures/node-contract-2c/\nplans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],\nrisk:[],assumption:[],question:[]}`, never an omitted key. Matches\nNode's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which\ninitialises all five keys unconditionally before bucketing.",
+        "description": "The five fixed analyze-item buckets, always present even when empty —\nconfirmed against real bytes in `legacy/migration/fixtures/node-contract-2c/\nplans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],\nrisk:[],assumption:[],question:[]}`, never an omitted key. Matches\nNode's `groupByKind` (`legacy/api/src/plans/analyze.ts:14-28`), which\ninitialises all five keys unconditionally before bucketing.",
         "required": [
           "chunk",
           "file",
@@ -11213,7 +11213,7 @@
       },
       "AppliesToEntry": {
         "type": "object",
-        "description": "One entry of `PUT /api/chunks/{id}/applies-to`'s body.\n\nThe body is a **bare array** of these, not `{patterns: [...]}` — that is\nwhat Node's route schema declares\n(`packages/api/src/applies-to/routes.ts:19-27`) and what the web edit\npage has always sent. Rust previously published `{patterns: string[]}`,\nso every real request 400'd; the edit page swallowed it in a\n`catch { /* non-critical */ }` and silently never saved patterns at all.",
+        "description": "One entry of `PUT /api/chunks/{id}/applies-to`'s body.\n\nThe body is a **bare array** of these, not `{patterns: [...]}` — that is\nwhat Node's route schema declares\n(`legacy/api/src/applies-to/routes.ts:19-27`) and what the web edit\npage has always sent. Rust previously published `{patterns: string[]}`,\nso every real request 400'd; the edit page swallowed it in a\n`catch { /* non-critical */ }` and silently never saved patterns at all.",
         "required": [
           "pattern"
         ],
@@ -11232,7 +11232,7 @@
       },
       "ArrowStyle": {
         "type": "string",
-        "description": "`arrowStyle` on the connection-relation bodies — a genuine Elysia\n`t.Union` of literals (`packages/api/src/vocabularies/routes.ts:30,40`),\nso an enum here matches the contract rather than inventing a constraint.\n\nModelled *only* on the input side: the stored `arrow_style` column is\nplain `text` with no CHECK constraint, and\n`fubbik_db::repo::connection_relation::ConnectionRelation::arrow_style`\nstays a `String` on the read path — the same split\n`vocabulary::dto::Category` makes.",
+        "description": "`arrowStyle` on the connection-relation bodies — a genuine Elysia\n`t.Union` of literals (`legacy/api/src/vocabularies/routes.ts:30,40`),\nso an enum here matches the contract rather than inventing a constraint.\n\nModelled *only* on the input side: the stored `arrow_style` column is\nplain `text` with no CHECK constraint, and\n`fubbik_db::repo::connection_relation::ConnectionRelation::arrow_style`\nstays a `String` on the read path — the same split\n`vocabulary::dto::Category` makes.",
         "enum": [
           "solid",
           "dashed",
@@ -11261,7 +11261,7 @@
       },
       "BatchCreateResponse": {
         "type": "object",
-        "description": "Shape of `POST /requirements/batch`, matching Node's `batchCreateRequirements`\nreturn object (`packages/api/src/requirements/batch-service.ts:97-101`).",
+        "description": "Shape of `POST /requirements/batch`, matching Node's `batchCreateRequirements`\nreturn object (`legacy/api/src/requirements/batch-service.ts:97-101`).",
         "required": [
           "created",
           "requirements",
@@ -11309,7 +11309,7 @@
       },
       "BatchRequirementInput": {
         "type": "object",
-        "description": "One entry of `POST /requirements/batch`'s `requirements` array\n(`packages/api/src/requirements/routes.ts:172-182`).",
+        "description": "One entry of `POST /requirements/batch`'s `requirements` array\n(`legacy/api/src/requirements/routes.ts:172-182`).",
         "required": [
           "title",
           "steps"
@@ -11362,7 +11362,7 @@
       },
       "BatchStepError": {
         "type": "object",
-        "description": "One element of `POST /requirements/batch`'s validation-failure `errors`\narray — matches Node's `{ index, step, error }`\n(`packages/api/src/requirements/batch-service.ts:26-33`): `index` is\nwhich entry in the `requirements` array failed, `step`/`error` are\n`validator::StepError`'s own fields spread in alongside it.",
+        "description": "One element of `POST /requirements/batch`'s validation-failure `errors`\narray — matches Node's `{ index, step, error }`\n(`legacy/api/src/requirements/batch-service.ts:26-33`): `index` is\nwhich entry in the `requirements` array failed, `step`/`error` are\n`validator::StepError`'s own fields spread in alongside it.",
         "required": [
           "index",
           "step",
@@ -11929,7 +11929,7 @@
       },
       "BulkAction": {
         "type": "string",
-        "description": "`t.Union([t.Literal(\"approve\"), t.Literal(\"reject\")])`\n(`packages/api/src/proposals/routes.ts:78`) — the one closed set in this\ndomain's wire shapes, unlike `status` (see `ProposedChanges`'s doc\ncomment on why that one stays a plain unvalidated-at-the-DTO-layer\nstring). Lowercase to match the literal strings Node's schema accepts.",
+        "description": "`t.Union([t.Literal(\"approve\"), t.Literal(\"reject\")])`\n(`legacy/api/src/proposals/routes.ts:78`) — the one closed set in this\ndomain's wire shapes, unlike `status` (see `ProposedChanges`'s doc\ncomment on why that one stays a plain unvalidated-at-the-DTO-layer\nstring). Lowercase to match the literal strings Node's schema accepts.",
         "enum": [
           "approve",
           "reject"
@@ -11937,7 +11937,7 @@
       },
       "BulkActionBody": {
         "type": "object",
-        "description": "Body of `PATCH /requirements/bulk` (`packages/api/src/requirements/\nroutes.ts:49-55`). `use_case_id` is tri-state\n(`t.Optional(t.Union([t.String(), t.Null()]))`) — only meaningful for\n`action: \"set_use_case\"`.",
+        "description": "Body of `PATCH /requirements/bulk` (`legacy/api/src/requirements/\nroutes.ts:49-55`). `use_case_id` is tri-state\n(`t.Optional(t.Union([t.String(), t.Null()]))`) — only meaningful for\n`action: \"set_use_case\"`.",
         "required": [
           "ids",
           "action"
@@ -11972,7 +11972,7 @@
       },
       "BulkActionItem": {
         "type": "object",
-        "description": "One entry of `POST /proposals/bulk`'s `actions` array\n(`packages/api/src/proposals/routes.ts:75-81`).",
+        "description": "One entry of `POST /proposals/bulk`'s `actions` array\n(`legacy/api/src/proposals/routes.ts:75-81`).",
         "required": [
           "proposalId",
           "action"
@@ -12087,7 +12087,7 @@
       },
       "Category": {
         "type": "string",
-        "description": "The six literals Elysia's `CategorySchema` accepts\n(`packages/api/src/vocabulary/routes.ts:7-14`, a genuine `t.Union` of\nliterals — unlike `notification.type`/`connection.relation`, this *is*\na real input constraint). Modelled as an enum only at this input-body\nlayer, the same shape as `connections::dto::Origin`: the stored\n`vocabulary_entry.category` column and\n`fubbik_db::repo::vocabulary::VocabularyEntry::category` stay a plain\n`String` end to end, since the DB has no matching check constraint and\nNode's `SELECT *` never re-validates on read.",
+        "description": "The six literals Elysia's `CategorySchema` accepts\n(`legacy/api/src/vocabulary/routes.ts:7-14`, a genuine `t.Union` of\nliterals — unlike `notification.type`/`connection.relation`, this *is*\na real input constraint). Modelled as an enum only at this input-body\nlayer, the same shape as `connections::dto::Origin`: the stored\n`vocabulary_entry.category` column and\n`fubbik_db::repo::vocabulary::VocabularyEntry::category` stay a plain\n`String` end to end, since the DB has no matching check constraint and\nNode's `SELECT *` never re-validates on read.",
         "enum": [
           "actor",
           "action",
@@ -12410,7 +12410,7 @@
       },
       "ChunkDetail": {
         "type": "object",
-        "description": "Response body of `GET /api/chunks/{id}` — the *enriched* chunk detail,\nmatching Node's `getChunkDetail` return\n(`packages/api/src/chunks/service.ts:128-186`) key for key.\n\nUntil this landed, Rust's `GET /api/chunks/{id}` returned the bare\n[`Chunk`] row, which is why the chunk detail page, the edit page and the\ngraph side panel were all still pinned to `legacyApi`.\n\nTwo keys look redundant and are: `allDeltas` and `deltas` always hold\nthe same list. Node builds the response as `{ ...result, ..., deltas:\nresult.allDeltas }`, and `result` already carries `allDeltas`, so both\nkeys ship. Reproduced rather than trimmed — a client reading either one\nmust keep working.",
+        "description": "Response body of `GET /api/chunks/{id}` — the *enriched* chunk detail,\nmatching Node's `getChunkDetail` return\n(`legacy/api/src/chunks/service.ts:128-186`) key for key.\n\nUntil this landed, Rust's `GET /api/chunks/{id}` returned the bare\n[`Chunk`] row, which is why the chunk detail page, the edit page and the\ngraph side panel were all still pinned to `legacyApi`.\n\nTwo keys look redundant and are: `allDeltas` and `deltas` always hold\nthe same list. Node builds the response as `{ ...result, ..., deltas:\nresult.allDeltas }`, and `result` already carries `allDeltas`, so both\nkeys ship. Reproduced rather than trimmed — a client reading either one\nmust keep working.",
         "required": [
           "chunk",
           "connections",
@@ -12951,7 +12951,7 @@
             }
           }
         ],
-        "description": "A scored chunk plus the enrichment the formatter annotates with.\nPorts `packages/api/src/context/formatter.ts:3-7`. Node's\n`ChunkWithMetadata extends ScoredChunk` — this port composes instead of\nflattening, so the wire shape is reproduced with `#[serde(flatten)]`\nrather than duplicating `ScoredChunk`'s fields here."
+        "description": "A scored chunk plus the enrichment the formatter annotates with.\nPorts `legacy/api/src/context/formatter.ts:3-7`. Node's\n`ChunkWithMetadata extends ScoredChunk` — this port composes instead of\nflattening, so the wire shape is reproduced with `#[serde(flatten)]`\nrather than duplicating `ScoredChunk`'s fields here."
       },
       "ClaimAction": {
         "type": "string",
@@ -13292,7 +13292,7 @@
       },
       "ConnectionRelation": {
         "type": "object",
-        "description": "`camelCase` serialisation matches every other wire type in this crate.\n\n`arrow_style` and `direction` are stored as plain `text` with column\ndefaults and **no** CHECK constraint (`migrations/0001_init.sql:357-358`),\nso they stay `String` on the read path — the same call this port made for\n`vocabulary_entry.category`. They *are* constrained on the *input* side\n(Node declares real `t.Union` literals in\n`packages/api/src/vocabularies/routes.ts:30-31`), which is modelled by\nthe enums in `fubbik_api::vocabularies::dto`, not here.",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.\n\n`arrow_style` and `direction` are stored as plain `text` with column\ndefaults and **no** CHECK constraint (`migrations/0001_init.sql:357-358`),\nso they stay `String` on the read path — the same call this port made for\n`vocabulary_entry.category`. They *are* constrained on the *input* side\n(Node declares real `t.Union` literals in\n`legacy/api/src/vocabularies/routes.ts:30-31`), which is modelled by\nthe enums in `fubbik_api::vocabularies::dto`, not here.",
         "required": [
           "id",
           "label",
@@ -13561,7 +13561,7 @@
       },
       "ContextSnapshot": {
         "type": "object",
-        "description": "`camelCase` on the wire, matching every other repo row type in this\ncrate. `query`/`chunks` are stored and returned as opaque JSON blobs —\n`query` is a free-form subset of the create request\n(`packages/api/src/context/snapshot-service.ts:46-52`'s\n`Record<string, unknown>`), and `chunks` is the frozen\n`ChunkWithMetadata[]` the create call budgeted.",
+        "description": "`camelCase` on the wire, matching every other repo row type in this\ncrate. `query`/`chunks` are stored and returned as opaque JSON blobs —\n`query` is a free-form subset of the create request\n(`legacy/api/src/context/snapshot-service.ts:46-52`'s\n`Record<string, unknown>`), and `chunks` is the frozen\n`ChunkWithMetadata[]` the create call budgeted.",
         "required": [
           "id",
           "userId",
@@ -13761,7 +13761,7 @@
       },
       "CoverageResponse": {
         "type": "object",
-        "description": "Body of `GET /api/requirements/coverage`.\n\n**This one struct is two response shapes.** Node's route dispatches on\n`detail` to two different service functions\n(`packages/api/src/coverage/routes.ts:14-17`): `getCoverage` returns\n`{covered, uncovered, stats}`, and `getCoverageMatrix` returns that\nobject spread with an extra `matrix` key\n(`packages/api/src/coverage/service.ts:9-12`). So `matrix` is *absent*\nfrom the default response, not `null` and not `[]` — hence\n`skip_serializing_if`, which drops the key entirely when `None`.\n\nThe distinction is load-bearing rather than cosmetic: computing `matrix`\nis a second query over `requirement_chunk`, and the default path must not\nrun it. That is why this is an `Option` populated by one of two service\nfunctions instead of a field that is always filled in.",
+        "description": "Body of `GET /api/requirements/coverage`.\n\n**This one struct is two response shapes.** Node's route dispatches on\n`detail` to two different service functions\n(`legacy/api/src/coverage/routes.ts:14-17`): `getCoverage` returns\n`{covered, uncovered, stats}`, and `getCoverageMatrix` returns that\nobject spread with an extra `matrix` key\n(`legacy/api/src/coverage/service.ts:9-12`). So `matrix` is *absent*\nfrom the default response, not `null` and not `[]` — hence\n`skip_serializing_if`, which drops the key entirely when `None`.\n\nThe distinction is load-bearing rather than cosmetic: computing `matrix`\nis a second query over `requirement_chunk`, and the default path must not\nrun it. That is why this is an `Option` populated by one of two service\nfunctions instead of a field that is always filled in.",
         "required": [
           "covered",
           "uncovered",
@@ -13797,7 +13797,7 @@
       },
       "CoverageStats": {
         "type": "object",
-        "description": "`packages/api/src/coverage/service.ts:43`. All four are plain numbers on\nthe wire.\n\n`percentage` is `Math.round((covered / total) * 100)` guarded by\n`total > 0 ? ... : 0` — the guard matters because in JS `0 / 0` is `NaN`\nand `Math.round(NaN)` is `NaN`, which `JSON.stringify` emits as `null`.\nRust would produce `NaN` too and then fail to serialise it, so the same\nzero-total guard is reproduced in `service::get_coverage`.",
+        "description": "`legacy/api/src/coverage/service.ts:43`. All four are plain numbers on\nthe wire.\n\n`percentage` is `Math.round((covered / total) * 100)` guarded by\n`total > 0 ? ... : 0` — the guard matters because in JS `0 / 0` is `NaN`\nand `Math.round(NaN)` is `NaN`, which `JSON.stringify` emits as `null`.\nRust would produce `NaN` too and then fail to serialise it, so the same\nzero-total guard is reproduced in `service::get_coverage`.",
         "required": [
           "total",
           "covered",
@@ -13825,7 +13825,7 @@
       },
       "CoveredChunk": {
         "type": "object",
-        "description": "A chunk with at least one requirement pointing at it\n(`packages/api/src/coverage/service.ts:23,29`). Carries the count;\n`UncoveredChunk` deliberately does not, because Node's uncovered entries\nare `{id, title}` only — the count there is always `0` and Node omits it.",
+        "description": "A chunk with at least one requirement pointing at it\n(`legacy/api/src/coverage/service.ts:23,29`). Carries the count;\n`UncoveredChunk` deliberately does not, because Node's uncovered entries\nare `{id, title}` only — the count there is always `0` and Node omits it.",
         "required": [
           "id",
           "title",
@@ -13877,7 +13877,7 @@
       },
       "CreateChunkBody": {
         "type": "object",
-        "description": "Body of `POST /api/chunks`, matching Node's route schema\n(`packages/api/src/chunks/routes.ts` — the 13-field `t.Object` on the\n`/chunks` POST).\n\nThis used to carry four fields. Every other one the client sent was\n**silently discarded**: serde drops unknown fields rather than\nrejecting them, so a create with `tags`/`spaceIds`/`scope`/\n`alternatives` returned 200 and a chunk missing all of them. That is\nthe same failure mode that made `requirements/stats` ignore `spaceId`\nwhile looking healthy — it is the reason call sites must be migrated,\nnot just routes ported.",
+        "description": "Body of `POST /api/chunks`, matching Node's route schema\n(`legacy/api/src/chunks/routes.ts` — the 13-field `t.Object` on the\n`/chunks` POST).\n\nThis used to carry four fields. Every other one the client sent was\n**silently discarded**: serde drops unknown fields rather than\nrejecting them, so a create with `tags`/`spaceIds`/`scope`/\n`alternatives` returned 200 and a chunk missing all of them. That is\nthe same failure mode that made `requirements/stats` ignore `spaceId`\nwhile looking healthy — it is the reason call sites must be migrated,\nnot just routes ported.",
         "required": [
           "title"
         ],
@@ -13977,7 +13977,7 @@
       },
       "CreateChunkTypeBody": {
         "type": "object",
-        "description": "Body of `POST /api/chunk-types`\n(`packages/api/src/vocabularies/routes.ts:7-15,58-72`).\n\n`id` is caller-supplied — it is the table's primary key and the slug\n`chunk.type` will hold. Unlike the Elysia `maxLength` caps elsewhere in\nthis port (which are deliberately not enforced), `id`'s length *is*\nenforced, because Node validates it in the **service** layer with\n`SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,40}$/`\n(`packages/api/src/vocabularies/service.ts:38,42-46`) — a real 400, not\njust an Elysia schema check. See `service::validate_slug`.\n\n`description`/`icon` are `t.Optional(t.Union([t.String, t.Null()]))` in\nNode, but on *create* there is no prior value to distinguish \"omitted\"\nfrom \"explicitly null\" — Node's `createChunkType` collapses both to a\nstored `NULL` (`packages/db/src/repository/vocabulary-catalog.ts:63-64`)\n— so plain `Option<T>` is correct here, unlike the update body.\n\n`label`/`description`/`icon`/`color`/`examples` length and item caps are\nElysia-only request validation; matching this port's established\nprecedent (`templates::dto::CreateTemplateBody`), they are not enforced.",
+        "description": "Body of `POST /api/chunk-types`\n(`legacy/api/src/vocabularies/routes.ts:7-15,58-72`).\n\n`id` is caller-supplied — it is the table's primary key and the slug\n`chunk.type` will hold. Unlike the Elysia `maxLength` caps elsewhere in\nthis port (which are deliberately not enforced), `id`'s length *is*\nenforced, because Node validates it in the **service** layer with\n`SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,40}$/`\n(`legacy/api/src/vocabularies/service.ts:38,42-46`) — a real 400, not\njust an Elysia schema check. See `service::validate_slug`.\n\n`description`/`icon` are `t.Optional(t.Union([t.String, t.Null()]))` in\nNode, but on *create* there is no prior value to distinguish \"omitted\"\nfrom \"explicitly null\" — Node's `createChunkType` collapses both to a\nstored `NULL` (`packages/db/src/repository/vocabulary-catalog.ts:63-64`)\n— so plain `Option<T>` is correct here, unlike the update body.\n\n`label`/`description`/`icon`/`color`/`examples` length and item caps are\nElysia-only request validation; matching this port's established\nprecedent (`templates::dto::CreateTemplateBody`), they are not enforced.",
         "required": [
           "id",
           "label"
@@ -14027,7 +14027,7 @@
       },
       "CreateCollectionBody": {
         "type": "object",
-        "description": "Body of `POST /api/collections`\n(`packages/api/src/collections/routes.ts:23-44`). `filter` is required\nas a whole object but every one of its nine keys is itself optional —\nsee `CollectionFilter`'s doc comment.",
+        "description": "Body of `POST /api/collections`\n(`legacy/api/src/collections/routes.ts:23-44`). `filter` is required\nas a whole object but every one of its nine keys is itself optional —\nsee `CollectionFilter`'s doc comment.",
         "required": [
           "name",
           "filter"
@@ -14055,7 +14055,7 @@
       },
       "CreateConnectionBody": {
         "type": "object",
-        "description": "Matches Node's body schema exactly (`packages/api/src/connections/routes.ts:22-27`):\n`sourceId`/`targetId`/`relation` required, `origin` optional and\nconstrained to the two literals Node accepts (`t.Union([t.Literal(\"human\"),\nt.Literal(\"ai\")])`) — anything else fails validation before reaching the\nservice layer, matching Node's Elysia schema rejecting the request\noutright rather than letting an arbitrary `origin` string through.",
+        "description": "Matches Node's body schema exactly (`legacy/api/src/connections/routes.ts:22-27`):\n`sourceId`/`targetId`/`relation` required, `origin` optional and\nconstrained to the two literals Node accepts (`t.Union([t.Literal(\"human\"),\nt.Literal(\"ai\")])`) — anything else fails validation before reaching the\nservice layer, matching Node's Elysia schema rejecting the request\noutright rather than letting an arbitrary `origin` string through.",
         "required": [
           "sourceId",
           "targetId",
@@ -14175,7 +14175,7 @@
       },
       "CreateFavoriteBody": {
         "type": "object",
-        "description": "Body of `POST /api/favorites` (`packages/api/src/favorites/routes.ts:12-14`):\n`chunkId` only, a plain `String` with no length cap. Node's schema\ndeclares `t.String({ maxLength: 100 })`, but this port does not enforce\nthat bound — an accepted, deliberate divergence (a `chunkId` over 100\nchars simply fails the downstream chunk-ownership lookup instead of\nbeing rejected up front), not something silently missing.",
+        "description": "Body of `POST /api/favorites` (`legacy/api/src/favorites/routes.ts:12-14`):\n`chunkId` only, a plain `String` with no length cap. Node's schema\ndeclares `t.String({ maxLength: 100 })`, but this port does not enforce\nthat bound — an accepted, deliberate divergence (a `chunkId` over 100\nchars simply fails the downstream chunk-ownership lookup instead of\nbeing rejected up front), not something silently missing.",
         "required": [
           "chunkId"
         ],
@@ -14187,7 +14187,7 @@
       },
       "CreateFeatureBody": {
         "type": "object",
-        "description": "Body of `POST /features` (`packages/api/src/features/routes.ts:44-50`).\n\nNode declares `maxLength` on `name` (100), `description` (1000) and\n`color` (7); this port does not enforce those bounds — the same accepted\ndivergence as `favorites::dto::CreateFavoriteBody`. `color` has no\nformat validation in Node either (it is not checked to be a hex code).\n`priority` is `t.Number()` in Node, i.e. a JS float; it is `i32` here\nbecause the column is `integer` (a fractional priority is a 500 in Node,\na 400 here).",
+        "description": "Body of `POST /features` (`legacy/api/src/features/routes.ts:44-50`).\n\nNode declares `maxLength` on `name` (100), `description` (1000) and\n`color` (7); this port does not enforce those bounds — the same accepted\ndivergence as `favorites::dto::CreateFavoriteBody`. `color` has no\nformat validation in Node either (it is not checked to be a hex code).\n`priority` is `t.Number()` in Node, i.e. a JS float; it is `i32` here\nbecause the column is `integer` (a fractional priority is a 500 in Node,\na 400 here).",
         "required": [
           "name"
         ],
@@ -14251,7 +14251,7 @@
       },
       "CreateLinkBody": {
         "type": "object",
-        "description": "Body of `POST /api/plans/{id}/links`\n(`packages/api/src/plans/routes.ts:208-214`): `system` defaults to\n`\"url\"`, `label` to `null` when omitted — applied in `service::add_link`,\nnot here, since the defaulting happens after the field is already known\nto be absent (Elysia's `?? \"url\"` / `?? null`, not a serde default that\nwould collapse \"omitted\" and \"empty string\").",
+        "description": "Body of `POST /api/plans/{id}/links`\n(`legacy/api/src/plans/routes.ts:208-214`): `system` defaults to\n`\"url\"`, `label` to `null` when omitted — applied in `service::add_link`,\nnot here, since the defaulting happens after the field is already known\nto be absent (Elysia's `?? \"url\"` / `?? null`, not a serde default that\nwould collapse \"omitted\" and \"empty string\").",
         "required": [
           "url"
         ],
@@ -14303,7 +14303,7 @@
       },
       "CreatePlanBody": {
         "type": "object",
-        "description": "Body of `POST /api/plans` (`packages/api/src/plans/routes.ts:62-77`).",
+        "description": "Body of `POST /api/plans` (`legacy/api/src/plans/routes.ts:62-77`).",
         "required": [
           "title"
         ],
@@ -14346,7 +14346,7 @@
       },
       "CreateProposalBody": {
         "type": "object",
-        "description": "Body of `POST /chunks/{id}/proposals`\n(`packages/api/src/proposals/routes.ts:24-39`). `changes` is required as\nan object but every one of its eight keys is itself optional — see\n`ProposedChanges`'s doc comment. The service rejects an all-omitted\n`changes` (`{}`) with 400, matching Node's\n`Object.keys(body.changes).length === 0` check\n(`packages/api/src/proposals/service.ts:17-18`).",
+        "description": "Body of `POST /chunks/{id}/proposals`\n(`legacy/api/src/proposals/routes.ts:24-39`). `changes` is required as\nan object but every one of its eight keys is itself optional — see\n`ProposedChanges`'s doc comment. The service rejects an all-omitted\n`changes` (`{}`) with 400, matching Node's\n`Object.keys(body.changes).length === 0` check\n(`legacy/api/src/proposals/service.ts:17-18`).",
         "required": [
           "changes"
         ],
@@ -14393,7 +14393,7 @@
       },
       "CreateRequirementBody": {
         "type": "object",
-        "description": "Body of `POST /requirements` (`packages/api/src/requirements/routes.ts:\n131-139`).",
+        "description": "Body of `POST /requirements` (`legacy/api/src/requirements/routes.ts:\n131-139`).",
         "required": [
           "title",
           "steps"
@@ -14497,7 +14497,7 @@
       },
       "CreateSavedGraphBody": {
         "type": "object",
-        "description": "Body of `POST /api/saved-graphs`\n(`packages/api/src/saved-graphs/routes.ts:29-37`). `chunkIds` and\n`positions` are structurally validated by Elysia's schema (`t.Array(t.String())`,\n`t.Record(t.String(), t.Object({ x: t.Number(), y: t.Number() }))`) —\nnot opaque JSON the way `collection.filter` / `saved_query.query` are —\nso this keeps the same concrete Rust types end to end rather than\nfalling back to `serde_json::Value`. `spaceId` accepts both omission and\nexplicit `null` (`t.Optional(t.Union([t.String(), t.Null()]))`); both\nproduce the same `NULL` insert in Node's `.values(params)` (an\n`undefined` key and an explicit `null` value behave identically for a\nnullable Drizzle column), so a plain `Option<String>` — not the\n`deserialize_some` tri-state — is correct here, unlike `description` on\nthe PATCH body below.",
+        "description": "Body of `POST /api/saved-graphs`\n(`legacy/api/src/saved-graphs/routes.ts:29-37`). `chunkIds` and\n`positions` are structurally validated by Elysia's schema (`t.Array(t.String())`,\n`t.Record(t.String(), t.Object({ x: t.Number(), y: t.Number() }))`) —\nnot opaque JSON the way `collection.filter` / `saved_query.query` are —\nso this keeps the same concrete Rust types end to end rather than\nfalling back to `serde_json::Value`. `spaceId` accepts both omission and\nexplicit `null` (`t.Optional(t.Union([t.String(), t.Null()]))`); both\nproduce the same `NULL` insert in Node's `.values(params)` (an\n`undefined` key and an explicit `null` value behave identically for a\nnullable Drizzle column), so a plain `Option<String>` — not the\n`deserialize_some` tri-state — is correct here, unlike `description` on\nthe PATCH body below.",
         "required": [
           "name",
           "chunkIds",
@@ -14544,7 +14544,7 @@
       },
       "CreateSavedQueryBody": {
         "type": "object",
-        "description": "Body of `POST /api/search/saved`\n(`packages/api/src/search/routes.ts:93-103`).",
+        "description": "Body of `POST /api/search/saved`\n(`legacy/api/src/search/routes.ts:93-103`).",
         "required": [
           "name",
           "query"
@@ -14600,7 +14600,7 @@
       },
       "CreateSnapshotBody": {
         "type": "object",
-        "description": "Body of `POST /api/context/snapshot`\n(`packages/api/src/context/snapshot-routes.ts:27-34`). Resolver\nselection order — `planId`, else non-empty `filePaths`, else `concept`\n— is decided in [`create_snapshot`], mirroring\n`snapshot-service.ts:32-38`'s `if`/`else if` chain exactly.",
+        "description": "Body of `POST /api/context/snapshot`\n(`legacy/api/src/context/snapshot-routes.ts:27-34`). Resolver\nselection order — `planId`, else non-empty `filePaths`, else `concept`\n— is decided in [`create_snapshot`], mirroring\n`snapshot-service.ts:32-38`'s `if`/`else if` chain exactly.",
         "properties": {
           "concept": {
             "type": [
@@ -14797,7 +14797,7 @@
       },
       "CreateTaskInput": {
         "type": "object",
-        "description": "Body of one entry in `POST /api/plans`'s optional `tasks` array\n(`packages/api/src/plans/routes.ts:67-75`). `acceptanceCriteria` is the\nlegacy `string[]` write shape — normalised to `{text,done}[]` before\ninsert by `normalize_acceptance_criteria`, same as every other write\npath in this domain.",
+        "description": "Body of one entry in `POST /api/plans`'s optional `tasks` array\n(`legacy/api/src/plans/routes.ts:67-75`). `acceptanceCriteria` is the\nlegacy `string[]` write shape — normalised to `{text,done}[]` before\ninsert by `normalize_acceptance_criteria`, same as every other write\npath in this domain.",
         "required": [
           "title"
         ],
@@ -14824,7 +14824,7 @@
       },
       "CreateTemplateBody": {
         "type": "object",
-        "description": "Body of `POST /api/templates` (`packages/api/src/templates/routes.ts:48-73`).\n\n`description`/`matchRules`/`fieldMappings` are all `t.Optional(t.Union([\nSchema, t.Null()]))` in Node, but on *create* there's no existing value\nto distinguish \"leave untouched\" from — Node's `createTemplateRepo`\ncollapses omitted and explicit `null` to the same stored `NULL`\n(`packages/db/src/repository/template.ts:42,46-47`) — so plain\n`Option<T>` (not the tri-state `Option<Option<T>>` `UpdateTemplateBody`\nneeds) is correct here.\n\n`name`/`description`/`type`/`content`/tag length caps (`maxLength: 100/\n500/20/50000/50`, `tags` `maxItems: 20`) are Elysia-only request\nvalidation in Node; matching `favorites::dto::CreateFavoriteBody`'s\nprecedent, this port does not enforce them — an over-long value simply\ngets stored as-is instead of being rejected up front.\n\n`type` is free text with only a length cap in Node (no enum, no CHECK\nconstraint) despite looking like it should be one of the five chunk\nkinds — see `fubbik_db::repo::template::Template`'s doc comment.",
+        "description": "Body of `POST /api/templates` (`legacy/api/src/templates/routes.ts:48-73`).\n\n`description`/`matchRules`/`fieldMappings` are all `t.Optional(t.Union([\nSchema, t.Null()]))` in Node, but on *create* there's no existing value\nto distinguish \"leave untouched\" from — Node's `createTemplateRepo`\ncollapses omitted and explicit `null` to the same stored `NULL`\n(`packages/db/src/repository/template.ts:42,46-47`) — so plain\n`Option<T>` (not the tri-state `Option<Option<T>>` `UpdateTemplateBody`\nneeds) is correct here.\n\n`name`/`description`/`type`/`content`/tag length caps (`maxLength: 100/\n500/20/50000/50`, `tags` `maxItems: 20`) are Elysia-only request\nvalidation in Node; matching `favorites::dto::CreateFavoriteBody`'s\nprecedent, this port does not enforce them — an over-long value simply\ngets stored as-is instead of being rejected up front.\n\n`type` is free text with only a length cap in Node (no enum, no CHECK\nconstraint) despite looking like it should be one of the five chunk\nkinds — see `fubbik_db::repo::template::Template`'s doc comment.",
         "required": [
           "name",
           "type",
@@ -14885,7 +14885,7 @@
       },
       "CreateUseCaseBody": {
         "type": "object",
-        "description": "Body of `POST /api/use-cases` (`packages/api/src/use-cases/routes.ts:26-33`).\n`order` is deliberately absent — Node's create body doesn't accept it,\nso a new use case always gets the DB's `order` default (`0`); it can\nonly be set afterward via `PATCH`.",
+        "description": "Body of `POST /api/use-cases` (`legacy/api/src/use-cases/routes.ts:26-33`).\n`order` is deliberately absent — Node's create body doesn't accept it,\nso a new use case always gets the DB's `order` default (`0`); it can\nonly be set afterward via `PATCH`.",
         "required": [
           "name"
         ],
@@ -14915,7 +14915,7 @@
       },
       "CreateWorkspaceBody": {
         "type": "object",
-        "description": "Body of `POST /api/workspaces` (`packages/api/src/workspaces/routes.ts:11-30`):\n`name` (required, trimmed and validated non-blank at the service layer —\nsee `service::create`) and `description` (optional, passed through\nas-is).",
+        "description": "Body of `POST /api/workspaces` (`legacy/api/src/workspaces/routes.ts:11-30`):\n`name` (required, trimmed and validated non-blank at the service layer —\nsee `service::create`) and `description` (optional, passed through\nas-is).",
         "required": [
           "name"
         ],
@@ -14933,7 +14933,7 @@
       },
       "CrossRefWarning": {
         "type": "object",
-        "description": "Matches Node's `CrossRefWarning` (`packages/api/src/requirements/\ncross-ref.ts:5-9`). Node's `type` union also names `\"chunk_not_found\"`,\nbut nothing in `crossReferenceSteps`'s body ever produces it (the only\n`warnings.push` call in the function hard-codes `\"file_not_found\"`) — an\nunreachable variant kept here only because it is part of the type Node\ndeclares, matching this port's usual \"reproduce the declared shape,\neven the unreachable branch\" convention for tagged unions.",
+        "description": "Matches Node's `CrossRefWarning` (`legacy/api/src/requirements/\ncross-ref.ts:5-9`). Node's `type` union also names `\"chunk_not_found\"`,\nbut nothing in `crossReferenceSteps`'s body ever produces it (the only\n`warnings.push` call in the function hard-codes `\"file_not_found\"`) — an\nunreachable variant kept here only because it is part of the type Node\ndeclares, matching this port's usual \"reproduce the declared shape,\neven the unreachable branch\" convention for tagged unions.",
         "required": [
           "step",
           "type",
@@ -15146,7 +15146,7 @@
       },
       "DependencyGraph": {
         "type": "object",
-        "description": "Shape of `GET /requirements/{id}/dependencies/graph`: `{nodes, edges}`,\nmatching Node's `getDependencyGraph` return object\n(`packages/api/src/requirements/dependency-service.ts:61-67`).",
+        "description": "Shape of `GET /requirements/{id}/dependencies/graph`: `{nodes, edges}`,\nmatching Node's `getDependencyGraph` return object\n(`legacy/api/src/requirements/dependency-service.ts:61-67`).",
         "required": [
           "nodes",
           "edges"
@@ -15183,7 +15183,7 @@
       },
       "DependencyGraphNode": {
         "type": "object",
-        "description": "One node of `GET /requirements/{id}/dependencies/graph`'s `nodes` array,\nmatching Node's inline shape (`packages/api/src/requirements/\ndependency-service.ts:52-56`).",
+        "description": "One node of `GET /requirements/{id}/dependencies/graph`'s `nodes` array,\nmatching Node's inline shape (`legacy/api/src/requirements/\ndependency-service.ts:52-56`).",
         "required": [
           "id",
           "title",
@@ -15272,7 +15272,7 @@
       },
       "Document": {
         "type": "object",
-        "description": "`camelCase` serialisation matches every other wire type in this crate.\nThis is the bare `document` row — what create/update/the `document` half\nof `render` return. List endpoints use the wider [`DocumentListItem`]/\n[`DocumentWithTagsItem`] shapes instead (aggregated chunk stats), and\n`GET /api/documents/{id}` flattens this shape together with `chunks`\nrather than nesting it (see `fubbik_api::documents::dto::DocumentDetail`,\nmirroring Node's `{ ...doc, chunks }` spread in `getDocument`,\n`packages/api/src/documents/service.ts:293`).",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.\nThis is the bare `document` row — what create/update/the `document` half\nof `render` return. List endpoints use the wider [`DocumentListItem`]/\n[`DocumentWithTagsItem`] shapes instead (aggregated chunk stats), and\n`GET /api/documents/{id}` flattens this shape together with `chunks`\nrather than nesting it (see `fubbik_api::documents::dto::DocumentDetail`,\nmirroring Node's `{ ...doc, chunks }` spread in `getDocument`,\n`legacy/api/src/documents/service.ts:293`).",
         "required": [
           "id",
           "title",
@@ -15329,7 +15329,7 @@
       },
       "DocumentDetail": {
         "type": "object",
-        "description": "Shape of `GET /api/documents/{id}`, matching Node's `getDocument`\nreturn expression: `{ ...doc, chunks }`\n(`packages/api/src/documents/service.ts:288-295`) — a genuine object\nspread, so the document's own fields sit at the *top level* alongside\n`chunks`, not nested under a `document` key. Modelled as an explicit\nflat struct (rather than `#[serde(flatten)]` on a nested `Document`)\nsince no other DTO in this crate uses `flatten` and this keeps the\nutoipa-generated schema unambiguous.",
+        "description": "Shape of `GET /api/documents/{id}`, matching Node's `getDocument`\nreturn expression: `{ ...doc, chunks }`\n(`legacy/api/src/documents/service.ts:288-295`) — a genuine object\nspread, so the document's own fields sit at the *top level* alongside\n`chunks`, not nested under a `document` key. Modelled as an explicit\nflat struct (rather than `#[serde(flatten)]` on a nested `Document`)\nsince no other DTO in this crate uses `flatten` and this keeps the\nutoipa-generated schema unambiguous.",
         "required": [
           "id",
           "title",
@@ -15432,7 +15432,7 @@
       },
       "DocumentWithTagsItem": {
         "type": "object",
-        "description": "Shape of `GET /api/documents` (the route Node actually wires,\n`packages/api/src/documents/routes.ts:8-21`) — [`DocumentListItem`] plus\n`type` (the first section's chunk type, `document_order = 0`, defaulting\nto `\"document\"` when absent) and `tags` (union of every chunk's tags in\nthe document, deduped). Matches\n`packages/db/src/repository/document.ts:76-112`.",
+        "description": "Shape of `GET /api/documents` (the route Node actually wires,\n`legacy/api/src/documents/routes.ts:8-21`) — [`DocumentListItem`] plus\n`type` (the first section's chunk type, `document_order = 0`, defaulting\nto `\"document\"` when absent) and `tags` (union of every chunk's tags in\nthe document, deduped). Matches\n`packages/db/src/repository/document.ts:76-112`.",
         "required": [
           "id",
           "title",
@@ -15694,7 +15694,7 @@
       },
       "ExtractionTarget": {
         "type": "string",
-        "description": "The six chunk fields a template's field mappings can populate — a real\n`t.Union` of literals (`packages/api/src/templates/routes.ts:29-36`).",
+        "description": "The six chunk fields a template's field mappings can populate — a real\n`t.Union` of literals (`legacy/api/src/templates/routes.ts:29-36`).",
         "enum": [
           "rationale",
           "alternatives",
@@ -15789,7 +15789,7 @@
       },
       "FeatureDetail": {
         "type": "object",
-        "description": "Response of `GET /features/{id}` — Node's `getFeatureDetail` resolves an\n`Effect.all({ feature, spaces, deltas })`, so the three land as sibling\nkeys rather than the feature being flattened\n(`packages/api/src/features/service.ts:72-83`).\n`GET /features/{id}/deltas` returns just the `deltas` member of this\nsame value.",
+        "description": "Response of `GET /features/{id}` — Node's `getFeatureDetail` resolves an\n`Effect.all({ feature, spaces, deltas })`, so the three land as sibling\nkeys rather than the feature being flattened\n(`legacy/api/src/features/service.ts:72-83`).\n`GET /features/{id}/deltas` returns just the `deltas` member of this\nsame value.",
         "required": [
           "feature",
           "spaces",
@@ -15815,7 +15815,7 @@
       },
       "FeatureFlags": {
         "type": "object",
-        "description": "`GET /api/settings/features` — a **computed 5-key projection** over\n`instance_settings`, not a stored table\n(`legacy/migration/fixtures/node-contract-2b/_questions.md` Q2). Every field\nindependently defaults to `true` when its key is absent from\n`instance_settings`, matching Node's `(map.x as boolean) ?? true`\nfallback (`packages/api/src/settings/service.ts:59-75`) for the\ndocumented case — a key that is simply absent. Confirmed live against\nthe empty-table fixture: `settings-features.json` returns all five\n`true` even though `instance_settings` has zero rows.\n\nNode's `?? true` only falls back on `null`/`undefined`, and its `as\nboolean` cast is a compile-time-only no-op — so a value present but not\nactually boolean (e.g. a stored string) would pass through unchanged at\nruntime, breaking `InstanceSettingsMap`'s own typing. Rust's `bool`\nfields can't reproduce that untyped leak; `service::get_feature_flags`\ntreats \"present but not a JSON boolean\" the same as \"absent\" (defaults\n`true`), which is a consequence of Rust's stricter typing, not an\nuntested behavioural choice — the only case the fixtures actually\nexercise is \"absent\", and that path matches Node exactly.",
+        "description": "`GET /api/settings/features` — a **computed 5-key projection** over\n`instance_settings`, not a stored table\n(`legacy/migration/fixtures/node-contract-2b/_questions.md` Q2). Every field\nindependently defaults to `true` when its key is absent from\n`instance_settings`, matching Node's `(map.x as boolean) ?? true`\nfallback (`legacy/api/src/settings/service.ts:59-75`) for the\ndocumented case — a key that is simply absent. Confirmed live against\nthe empty-table fixture: `settings-features.json` returns all five\n`true` even though `instance_settings` has zero rows.\n\nNode's `?? true` only falls back on `null`/`undefined`, and its `as\nboolean` cast is a compile-time-only no-op — so a value present but not\nactually boolean (e.g. a stored string) would pass through unchanged at\nruntime, breaking `InstanceSettingsMap`'s own typing. Rust's `bool`\nfields can't reproduce that untyped leak; `service::get_feature_flags`\ntreats \"present but not a JSON boolean\" the same as \"absent\" (defaults\n`true`), which is a consequence of Rust's stricter typing, not an\nuntested behavioural choice — the only case the fixtures actually\nexercise is \"absent\", and that path matches Node exactly.",
         "required": [
           "aiEnabled",
           "enrichmentEnabled",
@@ -15912,7 +15912,7 @@
       },
       "FeatureStatus": {
         "type": "string",
-        "description": "The three statuses a client may PATCH onto a feature\n(`packages/api/src/features/routes.ts:87`). This is one of the rare\ncases where a status field really *is* constrained in Node — the route\nschema is `t.Union([t.Literal(\"active\"), t.Literal(\"inactive\"),\nt.Literal(\"archived\")])`, so `\"merged\"` cannot be set through the API at\nall; only `POST /features/{id}/merge` writes it. The database column\nitself is unconstrained `text`, which is why\n`fubbik_db::repo::feature::Feature::status` stays a `String` on the way\nout — the *input* is narrower than the *output*, deliberately.",
+        "description": "The three statuses a client may PATCH onto a feature\n(`legacy/api/src/features/routes.ts:87`). This is one of the rare\ncases where a status field really *is* constrained in Node — the route\nschema is `t.Union([t.Literal(\"active\"), t.Literal(\"inactive\"),\nt.Literal(\"archived\")])`, so `\"merged\"` cannot be set through the API at\nall; only `POST /features/{id}/merge` writes it. The database column\nitself is unconstrained `text`, which is why\n`fubbik_db::repo::feature::Feature::status` stays a `String` on the way\nout — the *input* is narrower than the *output*, deliberately.",
         "enum": [
           "active",
           "inactive",
@@ -16052,7 +16052,7 @@
       },
       "FileRefEntry": {
         "type": "object",
-        "description": "One entry of `PUT /api/chunks/{id}/file-refs`'s body — a bare array, for\nthe same reason as [`AppliesToEntry`]\n(`packages/api/src/file-refs/routes.ts:17-26`).",
+        "description": "One entry of `PUT /api/chunks/{id}/file-refs`'s body — a bare array, for\nthe same reason as [`AppliesToEntry`]\n(`legacy/api/src/file-refs/routes.ts:17-26`).",
         "required": [
           "path",
           "relation"
@@ -16202,7 +16202,7 @@
       },
       "FrontmatterMatchMode": {
         "type": "string",
-        "description": "`\"exact\" | \"oneOf\" | \"exists\"` — likewise a real `t.Union` of literals\n(`packages/api/src/templates/routes.ts:18`).",
+        "description": "`\"exact\" | \"oneOf\" | \"exists\"` — likewise a real `t.Union` of literals\n(`legacy/api/src/templates/routes.ts:18`).",
         "enum": [
           "exact",
           "oneOf",
@@ -16293,7 +16293,7 @@
       },
       "GoverningBehavior": {
         "type": "object",
-        "description": "A behaviour-matrix rule linked to a file via `behavior_cell_code`,\nsurfaced by `GET /api/context/for-file`'s \"governing behaviours\"\nsection. Ports Node's `GoverningBehavior` interface\n(`packages/api/src/context/formatter.ts:57-69`) field for field —\n`code_ref` serialises as `ref`, matching Node's own field name, which\nthis port cannot use directly since `ref` is a Rust keyword.",
+        "description": "A behaviour-matrix rule linked to a file via `behavior_cell_code`,\nsurfaced by `GET /api/context/for-file`'s \"governing behaviours\"\nsection. Ports Node's `GoverningBehavior` interface\n(`legacy/api/src/context/formatter.ts:57-69`) field for field —\n`code_ref` serialises as `ref`, matching Node's own field name, which\nthis port cannot use directly since `ref` is a Rust keyword.",
         "required": [
           "ruleId",
           "ruleTitle",
@@ -17039,7 +17039,7 @@
       },
       "ImportDocumentBody": {
         "type": "object",
-        "description": "Body of `POST /api/documents/import`\n(`packages/api/src/documents/routes.ts:57-63`). `sourcePath`/`content`\nlength caps (`maxLength: 500`/`200000`) are Elysia-only request\nvalidation Node never re-checks past the transport layer; matching\nthis port's established precedent (see\n`crate::templates::dto::CreateTemplateBody`'s doc comment), they go\nunenforced here — an over-long value is simply stored as-is.\n\nNode's route never accepts or forwards a `templateId`\n(`packages/api/src/documents/service.ts`'s `importDocument` takes one,\nbut no caller — HTTP or otherwise — ever supplies it), so this body has\nno such field either; see `service::import_document`'s doc comment.",
+        "description": "Body of `POST /api/documents/import`\n(`legacy/api/src/documents/routes.ts:57-63`). `sourcePath`/`content`\nlength caps (`maxLength: 500`/`200000`) are Elysia-only request\nvalidation Node never re-checks past the transport layer; matching\nthis port's established precedent (see\n`crate::templates::dto::CreateTemplateBody`'s doc comment), they go\nunenforced here — an over-long value is simply stored as-is.\n\nNode's route never accepts or forwards a `templateId`\n(`legacy/api/src/documents/service.ts`'s `importDocument` takes one,\nbut no caller — HTTP or otherwise — ever supplies it), so this body has\nno such field either; see `service::import_document`'s doc comment.",
         "required": [
           "sourcePath",
           "content"
@@ -17076,7 +17076,7 @@
       },
       "ImportFileEntry": {
         "type": "object",
-        "description": "One entry of `POST /api/documents/import-dir`'s `files` array\n(`packages/api/src/documents/routes.ts:78-85`).",
+        "description": "One entry of `POST /api/documents/import-dir`'s `files` array\n(`legacy/api/src/documents/routes.ts:78-85`).",
         "required": [
           "sourcePath",
           "content"
@@ -17137,7 +17137,7 @@
       },
       "ImportResult": {
         "type": "object",
-        "description": "Shape of `POST /api/documents/import` and each element of\n`POST /api/documents/import-dir`'s response array, matching Node's\n`importDocument` return object exactly\n(`packages/api/src/documents/service.ts:45-158`).",
+        "description": "Shape of `POST /api/documents/import` and each element of\n`POST /api/documents/import-dir`'s response array, matching Node's\n`importDocument` return object exactly\n(`legacy/api/src/documents/service.ts:45-158`).",
         "required": [
           "document",
           "created",
@@ -17185,7 +17185,7 @@
       },
       "ImportStatus": {
         "type": "string",
-        "description": "`\"unchanged\" | \"created\" | \"synced\"` — the three literal values\n`importDocument`/`syncDocument` actually return\n(`packages/api/src/documents/service.ts:53,59,114,157,168,237`). There\nis no `\"updated\"` variant: a re-sync with content changes reports\n`status: \"synced\"` regardless of whether any section was individually\ncreated vs. updated (see `created`/`updated` counts for that detail).",
+        "description": "`\"unchanged\" | \"created\" | \"synced\"` — the three literal values\n`importDocument`/`syncDocument` actually return\n(`legacy/api/src/documents/service.ts:53,59,114,157,168,237`). There\nis no `\"updated\"` variant: a re-sync with content changes reports\n`status: \"synced\"` regardless of whether any section was individually\ncreated vs. updated (see `created`/`updated` counts for that detail).",
         "enum": [
           "unchanged",
           "created",
@@ -17342,7 +17342,7 @@
       },
       "ListRequirementsResponse": {
         "type": "object",
-        "description": "Shape of `GET /requirements`: `{requirements, total}`, matching Node's\n`listRequirementsRepo` return expression returned bare by the route\n(`packages/api/src/requirements/service.ts:75-87`, `routes.ts:95-103`)\n— not wrapped further, and no `limit`/`offset` echoed back (unlike\n`chunks::dto::ListChunksResponse`).",
+        "description": "Shape of `GET /requirements`: `{requirements, total}`, matching Node's\n`listRequirementsRepo` return expression returned bare by the route\n(`legacy/api/src/requirements/service.ts:75-87`, `routes.ts:95-103`)\n— not wrapped further, and no `limit`/`offset` echoed back (unlike\n`chunks::dto::ListChunksResponse`).",
         "required": [
           "requirements",
           "total"
@@ -17362,7 +17362,7 @@
       },
       "MatchMode": {
         "type": "string",
-        "description": "`\"exact\" | \"prefix\" | \"contains\"` — a real Elysia `t.Union` of literals\nin Node (`packages/api/src/templates/routes.ts:7`), not free text, so\nmodelling it as an enum here matches the contract rather than adding a\nconstraint Node lacks.",
+        "description": "`\"exact\" | \"prefix\" | \"contains\"` — a real Elysia `t.Union` of literals\nin Node (`legacy/api/src/templates/routes.ts:7`), not free text, so\nmodelling it as an enum here matches the contract rather than adding a\nconstraint Node lacks.",
         "enum": [
           "exact",
           "prefix",
@@ -17650,7 +17650,7 @@
       },
       "Origin": {
         "type": "string",
-        "description": "Matches Node's `t.Union([t.Literal(\"human\"), t.Literal(\"ai\")])`,\nconstrained everywhere it appears: create/update bodies AND the list\nquery filter (`packages/api/src/requirements/routes.ts:111,138,215`).",
+        "description": "Matches Node's `t.Union([t.Literal(\"human\"), t.Literal(\"ai\")])`,\nconstrained everywhere it appears: create/update bodies AND the list\nquery filter (`legacy/api/src/requirements/routes.ts:111,138,215`).",
         "enum": [
           "human",
           "ai"
@@ -17800,7 +17800,7 @@
       },
       "PendingCountResponse": {
         "type": "object",
-        "description": "Shape of `GET /proposals/count`\n(`packages/api/src/proposals/routes.ts:57-64`): `{ pending: N }` — Node's\nroute does `Effect.map(pending => ({ pending }))` explicitly, not a bare\nnumber and not `{ count: N }` like the sibling `notifications` count\nendpoint. The web dashboard's `stats-bar.tsx` reads `.pending` off this\nresponse — the whole reason this domain is on the phase-2e critical\npath, see this crate's proposals module doc comment.",
+        "description": "Shape of `GET /proposals/count`\n(`legacy/api/src/proposals/routes.ts:57-64`): `{ pending: N }` — Node's\nroute does `Effect.map(pending => ({ pending }))` explicitly, not a bare\nnumber and not `{ count: N }` like the sibling `notifications` count\nendpoint. The web dashboard's `stats-bar.tsx` reads `.pending` off this\nresponse — the whole reason this domain is on the phase-2e critical\npath, see this crate's proposals module doc comment.",
         "required": [
           "pending"
         ],
@@ -18467,7 +18467,7 @@
       },
       "ProposedChanges": {
         "type": "object",
-        "description": "The eight fields Node's `ProposedChanges` interface accepts\n(`packages/db/src/schema/chunk-proposal.ts:40-49`), stored and echoed\nback verbatim as one JSON blob — `chunk_proposal.changes` has no\nper-field columns. `#[serde(skip_serializing_if = \"Option::is_none\")]`\non every field keeps a proposal that only touched one or two fields from\ngrowing the rest back in as explicit `null`s on the way out, matching\nNode's plain object (`Object.keys` only sees the keys actually present).\n\n**All eight fields are now applied to the chunk on approve** —\n`title`/`content`/`type`/`rationale`/`consequences`/`alternatives`/`scope`\nvia [`approve`]'s chunk `UPDATE`, and `tags` via the same `UPDATE`'s\nfind-or-create-then-replace pass over `chunk_tag`. Previously only the\nfirst five were applied and `tags`/`alternatives`/`scope` were silently\ndiscarded, because `ChunkPatch` (Phase 1) had no fields for them and\n`approve` had no path for the join table either — a real data-loss bug\nversus Node's `updateChunk`, which applies all eight\n(`packages/api/src/chunks/chunk-mutations.ts:181-212` handles `tags` via\na separate `setChunkTags` tap; `scope`/`alternatives` pass straight\nthrough `UpdateChunkParams`). Closed in Phase 2e wave 1.",
+        "description": "The eight fields Node's `ProposedChanges` interface accepts\n(`packages/db/src/schema/chunk-proposal.ts:40-49`), stored and echoed\nback verbatim as one JSON blob — `chunk_proposal.changes` has no\nper-field columns. `#[serde(skip_serializing_if = \"Option::is_none\")]`\non every field keeps a proposal that only touched one or two fields from\ngrowing the rest back in as explicit `null`s on the way out, matching\nNode's plain object (`Object.keys` only sees the keys actually present).\n\n**All eight fields are now applied to the chunk on approve** —\n`title`/`content`/`type`/`rationale`/`consequences`/`alternatives`/`scope`\nvia [`approve`]'s chunk `UPDATE`, and `tags` via the same `UPDATE`'s\nfind-or-create-then-replace pass over `chunk_tag`. Previously only the\nfirst five were applied and `tags`/`alternatives`/`scope` were silently\ndiscarded, because `ChunkPatch` (Phase 1) had no fields for them and\n`approve` had no path for the join table either — a real data-loss bug\nversus Node's `updateChunk`, which applies all eight\n(`legacy/api/src/chunks/chunk-mutations.ts:181-212` handles `tags` via\na separate `setChunkTags` tap; `scope`/`alternatives` pass straight\nthrough `UpdateChunkParams`). Closed in Phase 2e wave 1.",
         "properties": {
           "alternatives": {
             "type": [
@@ -18643,7 +18643,7 @@
       },
       "RenderResult": {
         "type": "object",
-        "description": "Shape of `GET /api/documents/{id}/render`, matching Node's\n`renderDocument` return object (`packages/api/src/documents/service.ts:241-278`):\n`{ document, markdown }`, nested — **not** flattened, unlike\n[`DocumentDetail`].",
+        "description": "Shape of `GET /api/documents/{id}/render`, matching Node's\n`renderDocument` return object (`legacy/api/src/documents/service.ts:241-278`):\n`{ document, markdown }`, nested — **not** flattened, unlike\n[`DocumentDetail`].",
         "required": [
           "document",
           "markdown"
@@ -18706,7 +18706,7 @@
       },
       "ReorderEntry": {
         "type": "object",
-        "description": "One entry of `PUT /api/favorites/reorder`'s bare-array body\n(`packages/api/src/favorites/routes.ts:39-44`). The body is a plain\n`t.Array(...)`, not wrapped in an object — see `ReorderBody` below.",
+        "description": "One entry of `PUT /api/favorites/reorder`'s bare-array body\n(`legacy/api/src/favorites/routes.ts:39-44`). The body is a plain\n`t.Array(...)`, not wrapped in an object — see `ReorderBody` below.",
         "required": [
           "chunkId",
           "order"
@@ -18723,7 +18723,7 @@
       },
       "ReorderFeatureBody": {
         "type": "object",
-        "description": "Body of `POST /features/{id}/reorder` (`packages/api/src/features/\nroutes.ts:118-120`). Named `ReorderFeatureBody` rather than\n`ReorderBody` because `requirements::dto::ReorderBody` already occupies\nthat schema name in utoipa's single flat namespace.",
+        "description": "Body of `POST /features/{id}/reorder` (`legacy/api/src/features/\nroutes.ts:118-120`). Named `ReorderFeatureBody` rather than\n`ReorderBody` because `requirements::dto::ReorderBody` already occupies\nthat schema name in utoipa's single flat namespace.",
         "required": [
           "priority"
         ],
@@ -18923,7 +18923,7 @@
       },
       "RequirementDetail": {
         "type": "object",
-        "description": "Shape of `GET /requirements/{id}`, matching Node's `getRequirement`\nreturn expression: `{ ...req, chunks }`\n(`packages/api/src/requirements/service.ts:89-97`) — a genuine object\nspread, so the requirement's own fields sit at the *top level* alongside\n`chunks`. Modelled as an explicit flat struct, same convention\n`documents::dto::DocumentDetail` documents (no DTO in this crate uses\n`#[serde(flatten)]`, to keep the utoipa-generated schema unambiguous).",
+        "description": "Shape of `GET /requirements/{id}`, matching Node's `getRequirement`\nreturn expression: `{ ...req, chunks }`\n(`legacy/api/src/requirements/service.ts:89-97`) — a genuine object\nspread, so the requirement's own fields sit at the *top level* alongside\n`chunks`. Modelled as an explicit flat struct, same convention\n`documents::dto::DocumentDetail` documents (no DTO in this crate uses\n`#[serde(flatten)]`, to keep the utoipa-generated schema unambiguous).",
         "required": [
           "id",
           "title",
@@ -19077,7 +19077,7 @@
       },
       "RequirementWithWarnings": {
         "type": "object",
-        "description": "Shape of `POST /requirements` and `PATCH /requirements/{id}`, matching\nNode's `{ requirement, warnings, vocabularyWarnings }`\n(`packages/api/src/requirements/service.ts:133,185`).",
+        "description": "Shape of `POST /requirements` and `PATCH /requirements/{id}`, matching\nNode's `{ requirement, warnings, vocabularyWarnings }`\n(`legacy/api/src/requirements/service.ts:133,185`).",
         "required": [
           "requirement",
           "warnings",
@@ -19131,7 +19131,7 @@
       },
       "ReviewBody": {
         "type": "object",
-        "description": "Body of `POST /proposals/{id}/approve` and `POST /proposals/{id}/reject`\n(`packages/api/src/proposals/routes.ts:126-129,142-144`) — identical\nshape for both.",
+        "description": "Body of `POST /proposals/{id}/approve` and `POST /proposals/{id}/reject`\n(`legacy/api/src/proposals/routes.ts:126-129,142-144`) — identical\nshape for both.",
         "properties": {
           "note": {
             "type": [
@@ -19143,7 +19143,7 @@
       },
       "ReviewStatus": {
         "type": "string",
-        "description": "Matches Node's body schema exactly (`packages/api/src/tags/routes.ts:39`):\n`t.Optional(t.Union([t.Literal(\"draft\"), t.Literal(\"reviewed\"),\nt.Literal(\"approved\")]))`. Modelled the same way as\n`connections::dto::Origin` — a proper enum, not `Option<String>` — so an\ninvalid value (e.g. `\"totally-bogus\"`) is rejected by serde at\ndeserialisation, before it ever reaches the service or database layer.\nThere is no database check constraint backstopping this column\n(`review_status text NOT NULL DEFAULT 'approved'`), so this enum is the\nonly thing standing between an arbitrary client string and storage.",
+        "description": "Matches Node's body schema exactly (`legacy/api/src/tags/routes.ts:39`):\n`t.Optional(t.Union([t.Literal(\"draft\"), t.Literal(\"reviewed\"),\nt.Literal(\"approved\")]))`. Modelled the same way as\n`connections::dto::Origin` — a proper enum, not `Option<String>` — so an\ninvalid value (e.g. `\"totally-bogus\"`) is rejected by serde at\ndeserialisation, before it ever reaches the service or database layer.\nThere is no database check constraint backstopping this column\n(`review_status text NOT NULL DEFAULT 'approved'`), so this enum is the\nonly thing standing between an arbitrary client string and storage.",
         "enum": [
           "draft",
           "reviewed",
@@ -19248,7 +19248,7 @@
       },
       "SavedQueryPayload": {
         "type": "object",
-        "description": "The `query` object nested in `POST /api/search/saved`'s body, matching\nNode's schema exactly (`packages/api/src/search/routes.ts:93-101`):\n`clauses`, `join`, `sort`, `spaceId`, all validated at write time. Once\nstored, `saved_query.query` is opaque JSONB never re-validated on read\n(see `fubbik_db::repo::saved_query`'s module doc) — this type exists\nonly to validate the shape going *in*.",
+        "description": "The `query` object nested in `POST /api/search/saved`'s body, matching\nNode's schema exactly (`legacy/api/src/search/routes.ts:93-101`):\n`clauses`, `join`, `sort`, `spaceId`, all validated at write time. Once\nstored, `saved_query.query` is opaque JSONB never re-validated on read\n(see `fubbik_db::repo::saved_query`'s module doc) — this type exists\nonly to validate the shape going *in*.",
         "required": [
           "clauses"
         ],
@@ -19281,7 +19281,7 @@
       },
       "ScanAgeBody": {
         "type": "object",
-        "description": "Body of `POST /api/chunks/stale/scan-age`\n(`packages/api/src/staleness/routes.ts:87-90`). Both fields optional:\nan absent `thresholdDays` lets `detect_age_stale_chunks` fall back to\nits own default (90); `detect_uncovered_chunks`'s threshold (30) is\nnever overridable from this body at all — see the doc comment on\n`service::scan_age`.",
+        "description": "Body of `POST /api/chunks/stale/scan-age`\n(`legacy/api/src/staleness/routes.ts:87-90`). Both fields optional:\nan absent `thresholdDays` lets `detect_age_stale_chunks` fall back to\nits own default (90); `detect_uncovered_chunks`'s threshold (30) is\nnever overridable from this body at all — see the doc comment on\n`service::scan_age`.",
         "properties": {
           "spaceId": {
             "type": [
@@ -19300,7 +19300,7 @@
       },
       "ScanImpactBody": {
         "type": "object",
-        "description": "Body of `POST /api/chunks/{id}/scan-impact`\n(`packages/api/src/staleness/routes.ts:101-104`). `title` is optional —\nan absent value falls back to `\"Unknown\"` in the detail message Node\nwrites (`ctx.body.title ?? \"Unknown\"`, `routes.ts:98`), reproduced the\nsame way at the service call site.",
+        "description": "Body of `POST /api/chunks/{id}/scan-impact`\n(`legacy/api/src/staleness/routes.ts:101-104`). `title` is optional —\nan absent value falls back to `\"Unknown\"` in the detail message Node\nwrites (`ctx.body.title ?? \"Unknown\"`, `routes.ts:98`), reproduced the\nsame way at the service call site.",
         "properties": {
           "title": {
             "type": [
@@ -19312,7 +19312,7 @@
       },
       "ScanResult": {
         "type": "object",
-        "description": "Shape of `POST /api/chunks/stale/scan-age`'s response: the *sum* of\nboth detectors' newly-flagged counts, matching Node's\n`{ flagged: ageResult.flagged + uncoveredResult.flagged }`.\n\nAlso reused as `POST /api/chunks/{id}/scan-impact`'s response shape:\nNode's `flagImpactRipple` returns the same `{ flagged: n }` envelope\n(`packages/api/src/staleness/detect-impact.ts:8,30`).",
+        "description": "Shape of `POST /api/chunks/stale/scan-age`'s response: the *sum* of\nboth detectors' newly-flagged counts, matching Node's\n`{ flagged: ageResult.flagged + uncoveredResult.flagged }`.\n\nAlso reused as `POST /api/chunks/{id}/scan-impact`'s response shape:\nNode's `flagImpactRipple` returns the same `{ flagged: n }` envelope\n(`legacy/api/src/staleness/detect-impact.ts:8,30`).",
         "required": [
           "flagged"
         ],
@@ -19381,7 +19381,7 @@
       },
       "ScoredChunk": {
         "type": "object",
-        "description": "Mirrors `ScoredChunk` (`packages/api/src/context/utils.ts:8-15`) on the\nwire — `chunk_type` serialises as `type`, matching Node's field name,\nsince `/api/context/*` (Task 6) serialises this struct directly.",
+        "description": "Mirrors `ScoredChunk` (`legacy/api/src/context/utils.ts:8-15`) on the\nwire — `chunk_type` serialises as `type`, matching Node's field name,\nsince `/api/context/*` (Task 6) serialises this struct directly.",
         "required": [
           "id",
           "title",
@@ -19423,7 +19423,7 @@
       },
       "SearchQueryBody": {
         "type": "object",
-        "description": "Body of `POST /api/search/query`\n(`packages/api/src/search/routes.ts:34-43`). `join` is accepted and\n**completely ignored** — see `search::service`'s module doc for why:\nNode's schema declares it (`t.Optional(t.Union([t.Literal(\"and\"), t.Literal(\"or\")]))`)\nbut `service.ts`'s `executeSearch` never reads `searchQuery.join`\nanywhere; every clause is AND-combined by `listChunks`'s SQL\nregardless. Kept as a loose `Option<String>` rather than a `Literal`\nenum precisely because nothing ever inspects its value.",
+        "description": "Body of `POST /api/search/query`\n(`legacy/api/src/search/routes.ts:34-43`). `join` is accepted and\n**completely ignored** — see `search::service`'s module doc for why:\nNode's schema declares it (`t.Optional(t.Union([t.Literal(\"and\"), t.Literal(\"or\")]))`)\nbut `service.ts`'s `executeSearch` never reads `searchQuery.join`\nanywhere; every clause is AND-combined by `listChunks`'s SQL\nregardless. Kept as a loose `Option<String>` rather than a `Literal`\nenum precisely because nothing ever inspects its value.",
         "required": [
           "clauses"
         ],
@@ -19470,7 +19470,7 @@
       },
       "SearchResult": {
         "type": "object",
-        "description": "`POST /api/search/query`'s response envelope, matching Node's\n`SearchResult` (`packages/api/src/search/types.ts:48-59`).",
+        "description": "`POST /api/search/query`'s response envelope, matching Node's\n`SearchResult` (`legacy/api/src/search/types.ts:48-59`).",
         "required": [
           "chunks",
           "total"
@@ -19617,7 +19617,7 @@
       },
       "SetActiveFeaturesBody": {
         "type": "object",
-        "description": "Body of `PUT /features/active` (`packages/api/src/features/routes.ts:\n66-68`).",
+        "description": "Body of `PUT /features/active` (`legacy/api/src/features/routes.ts:\n66-68`).",
         "required": [
           "featureIds"
         ],
@@ -19646,7 +19646,7 @@
       },
       "SetCodebaseSettingBody": {
         "type": "object",
-        "description": "Body of `PATCH /api/settings/codebase`\n(`packages/api/src/settings/routes.ts:38-54`). `codebaseId` here is a\n`spaceId` — the field name is a legacy holdover predating the\ncodebase->space rename elsewhere in the codebase (see the top-level\nCLAUDE.md's \"Spaces & Workspaces\" section and `codebase_settings`'s\nown doc comment in `fubbik_db::repo::settings`).",
+        "description": "Body of `PATCH /api/settings/codebase`\n(`legacy/api/src/settings/routes.ts:38-54`). `codebaseId` here is a\n`spaceId` — the field name is a legacy holdover predating the\ncodebase->space rename elsewhere in the codebase (see the top-level\nCLAUDE.md's \"Spaces & Workspaces\" section and `codebase_settings`'s\nown doc comment in `fubbik_db::repo::settings`).",
         "required": [
           "codebaseId",
           "key",
@@ -19664,7 +19664,7 @@
       },
       "SetSettingBody": {
         "type": "object",
-        "description": "Body of `PATCH /api/settings/user` and `PATCH /api/settings/instance`\n(`packages/api/src/settings/routes.ts`): both share the identical\n`{ key, value }` shape. `value` is a bare `serde_json::Value`, not a\ntyped union — Node's schema is `value: t.Unknown()`, i.e. **no\nvalidation at all** on the value's shape, despite the typed\n`UserSettingsMap` / `InstanceSettingsMap` interfaces in\n`packages/db/src/schema/settings.ts:54-80` existing purely as TS-side\ndocumentation, never enforced at the API boundary. A client can PATCH\n`theme` to `42` and this stores it as-is, matching Node exactly.",
+        "description": "Body of `PATCH /api/settings/user` and `PATCH /api/settings/instance`\n(`legacy/api/src/settings/routes.ts`): both share the identical\n`{ key, value }` shape. `value` is a bare `serde_json::Value`, not a\ntyped union — Node's schema is `value: t.Unknown()`, i.e. **no\nvalidation at all** on the value's shape, despite the typed\n`UserSettingsMap` / `InstanceSettingsMap` interfaces in\n`packages/db/src/schema/settings.ts:54-80` existing purely as TS-side\ndocumentation, never enforced at the API boundary. A client can PATCH\n`theme` to `42` and this stores it as-is, matching Node exactly.",
         "required": [
           "key",
           "value"
@@ -20006,7 +20006,7 @@
       },
       "Stats": {
         "type": "object",
-        "description": "Aggregate per-user counts backing `GET /api/stats`. Bare-object shape,\nnot an array and not the `{chunks,total,limit,offset}` envelope the\nchunks *list* endpoint uses — matches Node's `getUserStats`\n(`packages/api/src/stats/service.ts`) field-for-field. No fields beyond\nwhat Node returns: this is a parity port, not a place to add \"useful\"\ncounts.",
+        "description": "Aggregate per-user counts backing `GET /api/stats`. Bare-object shape,\nnot an array and not the `{chunks,total,limit,offset}` envelope the\nchunks *list* endpoint uses — matches Node's `getUserStats`\n(`legacy/api/src/stats/service.ts`) field-for-field. No fields beyond\nwhat Node returns: this is a parity port, not a place to add \"useful\"\ncounts.",
         "required": [
           "chunks",
           "connections",
@@ -20038,7 +20038,7 @@
       },
       "StepError": {
         "type": "object",
-        "description": "One validation failure. `step` is the zero-based index into the input\nsteps array, or `-1` for the two whole-sequence checks (\"must contain a\n`when`\"/\"must contain a `then`\") — matches Node's `StepError` exactly\n(`packages/api/src/requirements/validator.ts:3-6`).",
+        "description": "One validation failure. `step` is the zero-based index into the input\nsteps array, or `-1` for the two whole-sequence checks (\"must contain a\n`when`\"/\"must contain a `then`\") — matches Node's `StepError` exactly\n(`legacy/api/src/requirements/validator.ts:3-6`).",
         "required": [
           "step",
           "error"
@@ -20055,7 +20055,7 @@
       },
       "StepKeyword": {
         "type": "string",
-        "description": "The five BDD step keywords. Constrained to an enum because Node's route\nschema constrains it too — `StepSchema.keyword` is\n`t.Union([t.Literal(\"given\"), t.Literal(\"when\"), t.Literal(\"then\"),\nt.Literal(\"and\"), t.Literal(\"but\")])`\n(`packages/api/src/requirements/routes.ts:10`), on every route that\naccepts steps (create, update, batch). Contrast `status`/`priority`,\nwhich are genuinely free `text` at the DB layer and only sometimes\nconstrained at specific routes — see `Requirement::status`'s doc\ncomment.",
+        "description": "The five BDD step keywords. Constrained to an enum because Node's route\nschema constrains it too — `StepSchema.keyword` is\n`t.Union([t.Literal(\"given\"), t.Literal(\"when\"), t.Literal(\"then\"),\nt.Literal(\"and\"), t.Literal(\"but\")])`\n(`legacy/api/src/requirements/routes.ts:10`), on every route that\naccepts steps (create, update, batch). Contrast `status`/`priority`,\nwhich are genuinely free `text` at the DB layer and only sometimes\nconstrained at specific routes — see `Requirement::status`'s doc\ncomment.",
         "enum": [
           "given",
           "when",
@@ -20066,7 +20066,7 @@
       },
       "StepVocabularyWarning": {
         "type": "object",
-        "description": "`StepVocabularyWarning extends VocabularyWarning { step: number }`\n(`packages/api/src/requirements/service.ts:28-30`) — a controlled-\nvocabulary warning plus which step it came from. Fields duplicated\n(rather than `#[serde(flatten)]`ing `vocabulary::parser::VocabularyWarning`)\nfor the same utoipa-schema-clarity reason as [`RequirementDetail`].",
+        "description": "`StepVocabularyWarning extends VocabularyWarning { step: number }`\n(`legacy/api/src/requirements/service.ts:28-30`) — a controlled-\nvocabulary warning plus which step it came from. Fields duplicated\n(rather than `#[serde(flatten)]`ing `vocabulary::parser::VocabularyWarning`)\nfor the same utoipa-schema-clarity reason as [`RequirementDetail`].",
         "required": [
           "position",
           "type",
@@ -20301,7 +20301,7 @@
       },
       "SuppressDuplicateBody": {
         "type": "object",
-        "description": "Body of `POST /api/chunks/suppress-duplicate`\n(`packages/api/src/staleness/routes.ts:63-66`).",
+        "description": "Body of `POST /api/chunks/suppress-duplicate`\n(`legacy/api/src/staleness/routes.ts:63-66`).",
         "required": [
           "chunkIdA",
           "chunkIdB"
@@ -20317,7 +20317,7 @@
       },
       "SyncDocumentBody": {
         "type": "object",
-        "description": "Body of `POST /api/documents/{id}/sync`\n(`packages/api/src/documents/routes.ts:100-106`).",
+        "description": "Body of `POST /api/documents/{id}/sync`\n(`legacy/api/src/documents/routes.ts:100-106`).",
         "required": [
           "content"
         ],
@@ -20335,7 +20335,7 @@
       },
       "SyncResult": {
         "type": "object",
-        "description": "Shape of `POST /api/documents/{id}/sync`, matching Node's\n`syncDocument` return object (`packages/api/src/documents/service.ts:161-239`).\n**`document` is the pre-sync snapshot, not the freshly-updated row** —\nsee `service::sync_document`'s doc comment; this is Node's actual\nreturn expression (`doc` is never reassigned after the `updateDocument`\ncall), reproduced deliberately rather than \"fixed\".",
+        "description": "Shape of `POST /api/documents/{id}/sync`, matching Node's\n`syncDocument` return object (`legacy/api/src/documents/service.ts:161-239`).\n**`document` is the pre-sync snapshot, not the freshly-updated row** —\nsee `service::sync_document`'s doc comment; this is Node's actual\nreturn expression (`doc` is never reassigned after the `updateDocument`\ncall), reproduced deliberately rather than \"fixed\".",
         "required": [
           "document",
           "created",
@@ -20597,7 +20597,7 @@
       },
       "TaskDetail": {
         "type": "object",
-        "description": "A task in the `GET /api/plans/{id}` detail envelope: the raw\n`plan_task` row's fields, plus `acceptanceCriteria` normalised (not the\nraw stored JSON) and the task's linked chunks — matching Node's\n`tasksWithChunks` (`packages/api/src/plans/service.ts:89-94`).",
+        "description": "A task in the `GET /api/plans/{id}` detail envelope: the raw\n`plan_task` row's fields, plus `acceptanceCriteria` normalised (not the\nraw stored JSON) and the task's linked chunks — matching Node's\n`tasksWithChunks` (`legacy/api/src/plans/service.ts:89-94`).",
         "required": [
           "id",
           "planId",
@@ -20664,7 +20664,7 @@
       },
       "Template": {
         "type": "object",
-        "description": "`camelCase` serialisation matches every other wire type in this crate.\n`type`/`content` default to `\"note\"`/`\"\"` at the column level\n(`packages/db/src/schema/template.ts:34-35`) but Node's `createTemplate`\nalways supplies both explicitly, so those defaults are never actually\nobserved through the API — kept here only because the column itself\nisn't `NOT NULL`-without-default.\n\n`type` is `text NOT NULL` with only a `maxLength: 20` Elysia check\n(`packages/api/src/templates/routes.ts:65`), not an enum or CHECK\nconstraint, despite the five chunk kinds (note/document/reference/\nschema/checklist) listed in CLAUDE.md — matching the established\n\"constrained-looking free text\" trap, this stays `String`.",
+        "description": "`camelCase` serialisation matches every other wire type in this crate.\n`type`/`content` default to `\"note\"`/`\"\"` at the column level\n(`packages/db/src/schema/template.ts:34-35`) but Node's `createTemplate`\nalways supplies both explicitly, so those defaults are never actually\nobserved through the API — kept here only because the column itself\nisn't `NOT NULL`-without-default.\n\n`type` is `text NOT NULL` with only a `maxLength: 20` Elysia check\n(`legacy/api/src/templates/routes.ts:65`), not an enum or CHECK\nconstraint, despite the five chunk kinds (note/document/reference/\nschema/checklist) listed in CLAUDE.md — matching the established\n\"constrained-looking free text\" trap, this stays `String`.",
         "required": [
           "id",
           "name",
@@ -20933,7 +20933,7 @@
       },
       "TraceabilityRow": {
         "type": "object",
-        "description": "One row of `GET /api/requirements/traceability`. The endpoint returns a\n**bare array** of these, not an envelope\n(`packages/api/src/coverage/service.ts:16-18` returns the repository\nresult directly).\n\n`planSteps` and `sessions` are **always empty**. Node hard-codes them:\n`requirements.map(req => ({...req, planSteps: [] as unknown[], sessions:\n[] as unknown[]}))` (`packages/db/src/repository/coverage.ts:93-97`),\nunder a `TODO` saying traceability needs reworking now that the plans\nrewrite deleted `implementationSession`, `sessionRequirementRef` and\n`planStep`. The fields are kept, still empty, because\n`apps/web/src/features/coverage/traceability-content.tsx:52-54` reads\n`.length` on both and would crash on `undefined`. `serde_json::Value`\nelement type mirrors Node's `unknown[]`: nothing populates them, so\nthere is no element shape to name.",
+        "description": "One row of `GET /api/requirements/traceability`. The endpoint returns a\n**bare array** of these, not an envelope\n(`legacy/api/src/coverage/service.ts:16-18` returns the repository\nresult directly).\n\n`planSteps` and `sessions` are **always empty**. Node hard-codes them:\n`requirements.map(req => ({...req, planSteps: [] as unknown[], sessions:\n[] as unknown[]}))` (`packages/db/src/repository/coverage.ts:93-97`),\nunder a `TODO` saying traceability needs reworking now that the plans\nrewrite deleted `implementationSession`, `sessionRequirementRef` and\n`planStep`. The fields are kept, still empty, because\n`apps/web/src/features/coverage/traceability-content.tsx:52-54` reads\n`.length` on both and would crash on `undefined`. `serde_json::Value`\nelement type mirrors Node's `unknown[]`: nothing populates them, so\nthere is no element shape to name.",
         "required": [
           "id",
           "title",
@@ -21009,7 +21009,7 @@
       },
       "UncoveredChunk": {
         "type": "object",
-        "description": "A chunk no requirement references\n(`packages/api/src/coverage/service.ts:24,31`). Two fields, no\n`requirementCount` — see `CoveredChunk`.",
+        "description": "A chunk no requirement references\n(`legacy/api/src/coverage/service.ts:24,31`). Two fields, no\n`requirementCount` — see `CoveredChunk`.",
         "required": [
           "id",
           "title"
@@ -21219,7 +21219,7 @@
       },
       "UpdateCollectionBody": {
         "type": "object",
-        "description": "Body of `PATCH /api/collections/{id}`\n(`packages/api/src/collections/routes.ts:45-60`). All three fields are\nplain two-state `Option<T>` (omitted = untouched, present = set) — this\nschema has no `t.Null()` variant on any field, unlike\n`workspaces::dto::UpdateWorkspaceBody::description`, so there is no way\nto explicitly clear `description` through this endpoint. `filter`, when\nprovided, **replaces** the stored filter wholesale rather than merging\nit — see `fubbik_db::repo::collection::CollectionPatch`'s doc comment.\n`spaceId` is deliberately absent from this body: Node's schema doesn't\ndeclare it either, so a collection's space is immutable after creation.",
+        "description": "Body of `PATCH /api/collections/{id}`\n(`legacy/api/src/collections/routes.ts:45-60`). All three fields are\nplain two-state `Option<T>` (omitted = untouched, present = set) — this\nschema has no `t.Null()` variant on any field, unlike\n`workspaces::dto::UpdateWorkspaceBody::description`, so there is no way\nto explicitly clear `description` through this endpoint. `filter`, when\nprovided, **replaces** the stored filter wholesale rather than merging\nit — see `fubbik_db::repo::collection::CollectionPatch`'s doc comment.\n`spaceId` is deliberately absent from this body: Node's schema doesn't\ndeclare it either, so a collection's space is immutable after creation.",
         "properties": {
           "description": {
             "type": [
@@ -21335,7 +21335,7 @@
       },
       "UpdateFeatureBody": {
         "type": "object",
-        "description": "Body of `PATCH /features/{id}` (`packages/api/src/features/routes.ts:\n83-90`). `description` and `color` are tri-state (`None` = untouched,\n`Some(None)` = clear, `Some(Some(v))` = set) because Node types both as\n`t.Optional(t.Union([t.String(), t.Null()]))`. `spaceIds` is stripped\noff before the row update and applied separately, matching\n`packages/api/src/features/service.ts:112`.",
+        "description": "Body of `PATCH /features/{id}` (`legacy/api/src/features/routes.ts:\n83-90`). `description` and `color` are tri-state (`None` = untouched,\n`Some(None)` = clear, `Some(Some(v))` = set) because Node types both as\n`t.Optional(t.Union([t.String(), t.Null()]))`. `spaceIds` is stripped\noff before the row update and applied separately, matching\n`legacy/api/src/features/service.ts:112`.",
         "properties": {
           "color": {
             "type": [
@@ -21430,7 +21430,7 @@
       },
       "UpdatePlanBody": {
         "type": "object",
-        "description": "Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).\n\n`description` and `space_id` are tri-state, matching Node's\n`t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted\n(`None`) leaves the field untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same\n`deserialize_some` trick as `workspaces::dto::UpdateWorkspaceBody::description`.\n`status` and `metadata` are plain two-state (Node declares neither with\na `t.Null()` union).",
+        "description": "Body of `PATCH /api/plans/{id}` (`legacy/api/src/plans/routes.ts:104-110`).\n\n`description` and `space_id` are tri-state, matching Node's\n`t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted\n(`None`) leaves the field untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same\n`deserialize_some` trick as `workspaces::dto::UpdateWorkspaceBody::description`.\n`status` and `metadata` are plain two-state (Node declares neither with\na `t.Null()` union).",
         "properties": {
           "description": {
             "type": [
@@ -21461,7 +21461,7 @@
       },
       "UpdateRequirementBody": {
         "type": "object",
-        "description": "Body of `PATCH /requirements/{id}` (`packages/api/src/requirements/\nroutes.ts:208-217`). `description`/`priority`/`space_id`/`use_case_id`\nare tri-state (`None` = untouched, `Some(None)` = clear, `Some(Some(v))`\n= set), matching Node's `t.Optional(t.Union([T, t.Null()]))` for each.\n`title`/`steps`/`origin`/`review_status` have no null variant in Node's\nschema, so plain `Option<T>`.",
+        "description": "Body of `PATCH /requirements/{id}` (`legacy/api/src/requirements/\nroutes.ts:208-217`). `description`/`priority`/`space_id`/`use_case_id`\nare tri-state (`None` = untouched, `Some(None)` = clear, `Some(Some(v))`\n= set), matching Node's `t.Optional(t.Union([T, t.Null()]))` for each.\n`title`/`steps`/`origin`/`review_status` have no null variant in Node's\nschema, so plain `Option<T>`.",
         "properties": {
           "description": {
             "type": [
@@ -21578,7 +21578,7 @@
       },
       "UpdateSavedGraphBody": {
         "type": "object",
-        "description": "Body of `PATCH /api/saved-graphs/{id}`\n(`packages/api/src/saved-graphs/routes.ts:53-59`). `description` is\ntri-state, matching Node's `t.Optional(t.Union([t.String(), t.Null()]))`:\nomitted (`None`) leaves it untouched, explicit `null` (`Some(None)`)\nclears it, a string (`Some(Some(..))`) sets it — same `deserialize_some`\ntrick as `workspaces::dto::UpdateWorkspaceBody::description`. Every\nother field here is plain two-state (`t.Optional(...)` with no\n`t.Null()` variant) — `spaceId` is deliberately absent, matching Node:\nthere is no way to change a saved graph's space through this endpoint.",
+        "description": "Body of `PATCH /api/saved-graphs/{id}`\n(`legacy/api/src/saved-graphs/routes.ts:53-59`). `description` is\ntri-state, matching Node's `t.Optional(t.Union([t.String(), t.Null()]))`:\nomitted (`None`) leaves it untouched, explicit `null` (`Some(None)`)\nclears it, a string (`Some(Some(..))`) sets it — same `deserialize_some`\ntrick as `workspaces::dto::UpdateWorkspaceBody::description`. Every\nother field here is plain two-state (`t.Optional(...)` with no\n`t.Null()` variant) — `spaceId` is deliberately absent, matching Node:\nthere is no way to change a saved graph's space through this endpoint.",
         "properties": {
           "chunkIds": {
             "type": [
@@ -21828,7 +21828,7 @@
       },
       "UpdateTemplateBody": {
         "type": "object",
-        "description": "Body of `PATCH /api/templates/{id}` (`packages/api/src/templates/routes.ts:74-94`).\n\n`description`/`matchRules`/`fieldMappings` are tri-state: omitted\n(`None`) leaves the column untouched, explicit `null` (`Some(None)`)\nclears it, a value (`Some(Some(..))`) sets it — matching Node's\n`params.field !== undefined` conditional spread\n(`packages/db/src/repository/template.ts:74-83`), which forwards an\nexplicit `null` through as a real update. Same `deserialize_some` trick\nas `workspaces::dto::UpdateWorkspaceBody::description`.\n\n`priority`/`tags` have no `t.Null()` variant in Node's schema, so they\nstay plain `Option<T>` — omitted leaves them untouched, there is no way\nto explicitly clear either through this endpoint.",
+        "description": "Body of `PATCH /api/templates/{id}` (`legacy/api/src/templates/routes.ts:74-94`).\n\n`description`/`matchRules`/`fieldMappings` are tri-state: omitted\n(`None`) leaves the column untouched, explicit `null` (`Some(None)`)\nclears it, a value (`Some(Some(..))`) sets it — matching Node's\n`params.field !== undefined` conditional spread\n(`packages/db/src/repository/template.ts:74-83`), which forwards an\nexplicit `null` through as a real update. Same `deserialize_some` trick\nas `workspaces::dto::UpdateWorkspaceBody::description`.\n\n`priority`/`tags` have no `t.Null()` variant in Node's schema, so they\nstay plain `Option<T>` — omitted leaves them untouched, there is no way\nto explicitly clear either through this endpoint.",
         "properties": {
           "content": {
             "type": [
@@ -21893,7 +21893,7 @@
       },
       "UpdateUseCaseBody": {
         "type": "object",
-        "description": "Body of `PATCH /api/use-cases/{id}` (`packages/api/src/use-cases/routes.ts:50-58`).\n\n`description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),\nt.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it. `parentId`\nis tri-state the same way, matching `t.Optional(t.Union([t.String(),\nt.Null()]))` — explicit `null` detaches this use case from its parent\nwith no re-nesting validation (see `service::update`'s doc comment for\nexactly which branch of Node's validation that skips). `order` is plain\ntwo-state — the DB column is `NOT NULL DEFAULT 0`, so there is no way to\nclear it, only set or leave it.",
+        "description": "Body of `PATCH /api/use-cases/{id}` (`legacy/api/src/use-cases/routes.ts:50-58`).\n\n`description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),\nt.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it. `parentId`\nis tri-state the same way, matching `t.Optional(t.Union([t.String(),\nt.Null()]))` — explicit `null` detaches this use case from its parent\nwith no re-nesting validation (see `service::update`'s doc comment for\nexactly which branch of Node's validation that skips). `order` is plain\ntwo-state — the DB column is `NOT NULL DEFAULT 0`, so there is no way to\nclear it, only set or leave it.",
         "properties": {
           "description": {
             "type": [
@@ -21924,7 +21924,7 @@
       },
       "UpdateWorkspaceBody": {
         "type": "object",
-        "description": "Body of `PATCH /api/workspaces/{id}` (`packages/api/src/workspaces/routes.ts:36-50`).\n\n`description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),\nt.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same\n`deserialize_some` trick as `spaces::dto::UpdateSpaceBody::description`,\nneeded because a plain `Option<Option<T>>` collapses \"omitted\" and\n\"explicit null\" to the same `None` without it.",
+        "description": "Body of `PATCH /api/workspaces/{id}` (`legacy/api/src/workspaces/routes.ts:36-50`).\n\n`description` is tri-state, matching Node's `t.Optional(t.Union([t.String(),\nt.Null()]))`: omitted (`None`) leaves it untouched, explicit `null`\n(`Some(None)`) clears it, a string (`Some(Some(..))`) sets it — same\n`deserialize_some` trick as `spaces::dto::UpdateSpaceBody::description`,\nneeded because a plain `Option<Option<T>>` collapses \"omitted\" and\n\"explicit null\" to the same `None` without it.",
         "properties": {
           "description": {
             "type": [
@@ -21956,7 +21956,7 @@
       },
       "UpsertDeltaBody": {
         "type": "object",
-        "description": "Body of `PUT /chunks/{id}/deltas/{featureId}`\n(`packages/api/src/features/routes.ts:137-139`).\n\n`delta` is `t.Record(t.String(), t.Unknown())` in Node — an *object*,\nwith arbitrary values — so it is a `serde_json::Map` here rather than a\nbare `Value`: a JSON array or string for `delta` is rejected, matching\nNode. Which keys are permitted is checked in the service, not here, so\nthe rejection message can name the offending fields the way Node's\n`validateDelta` does.",
+        "description": "Body of `PUT /chunks/{id}/deltas/{featureId}`\n(`legacy/api/src/features/routes.ts:137-139`).\n\n`delta` is `t.Record(t.String(), t.Unknown())` in Node — an *object*,\nwith arbitrary values — so it is a `serde_json::Map` here rather than a\nbare `Value`: a JSON array or string for `delta` is rejected, matching\nNode. Which keys are permitted is checked in the service, not here, so\nthe rejection message can name the offending fields the way Node's\n`validateDelta` does.",
         "required": [
           "delta"
         ],
@@ -22360,7 +22360,7 @@
       },
       "WorkspaceDetail": {
         "type": "object",
-        "description": "Response shape of `GET /api/workspaces/{id}`, matching Node's spread\n`{ ...found, spaces }` (`packages/api/src/workspaces/service.ts:19-28`)\n— the workspace row's own fields at the top level, plus a `spaces`\narray, NOT nested under a `workspace` key (contrast\n`fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).\nSee `legacy/migration/fixtures/node-contract-2b/workspaces-detail.json`.",
+        "description": "Response shape of `GET /api/workspaces/{id}`, matching Node's spread\n`{ ...found, spaces }` (`legacy/api/src/workspaces/service.ts:19-28`)\n— the workspace row's own fields at the top level, plus a `spaces`\narray, NOT nested under a `workspace` key (contrast\n`fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).\nSee `legacy/migration/fixtures/node-contract-2b/workspaces-detail.json`.",
         "required": [
           "id",
           "name",

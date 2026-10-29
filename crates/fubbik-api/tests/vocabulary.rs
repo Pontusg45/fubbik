@@ -1,5 +1,5 @@
 //! HTTP-level tests for the `vocabulary` domain
-//! (`packages/api/src/vocabulary/routes.ts`). Repo-level CRUD and the
+//! (`legacy/api/src/vocabulary/routes.ts`). Repo-level CRUD and the
 //! `EXISTS`-guard proofs live in `fubbik-db/tests/vocabulary.rs`; this file
 //! covers the seven routes: status codes, response shapes, the
 //! `spaceId`-absent-returns-`[]` quirk, the auto-seed-on-first-entry

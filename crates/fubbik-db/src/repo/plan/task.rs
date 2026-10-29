@@ -6,7 +6,7 @@
 //!
 //! **Divergence #12 — the port's first `sqlx::Transaction`.** Node issues
 //! `updateTask` and `unblockDependentsOf` as two independent effects
-//! (`packages/api/src/plans/tasks.ts:113-122`), and `unblockDependentsOf`
+//! (`legacy/api/src/plans/tasks.ts:113-122`), and `unblockDependentsOf`
 //! itself is an unwrapped `SELECT` then `UPDATE`
 //! (`packages/db/src/repository/plan.ts:536-551`). A crash between them
 //! leaves a task `done` with its dependents still `blocked` forever — no

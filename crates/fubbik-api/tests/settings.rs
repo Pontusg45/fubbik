@@ -363,7 +363,7 @@ async fn codebase_settings_for_nonexistent_space_is_404(pool: sqlx::PgPool) {
 /// The core divergence-from-the-rest-of-the-domain behaviour: `GET
 /// /settings/instance` needs no session, but `PATCH` does. This is a
 /// faithful port of Node's own asymmetric guarding
-/// (`packages/api/src/settings/routes.ts:55-71`), not a bug.
+/// (`legacy/api/src/settings/routes.ts:55-71`), not a bug.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn instance_get_is_open_but_patch_requires_a_session(pool: sqlx::PgPool) {
     // Given

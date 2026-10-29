@@ -15,14 +15,14 @@ fn blank_to_none(value: Option<&str>) -> Option<&str> {
     value.filter(|v| !v.is_empty())
 }
 
-/// `ctx.query.detail === "true"` (`packages/api/src/coverage/routes.ts:14`)
+/// `ctx.query.detail === "true"` (`legacy/api/src/coverage/routes.ts:14`)
 /// — a literal string comparison, deliberately not a boolean parse. See
 /// `dto::CoverageQuery::detail`.
 pub fn wants_detail(detail: Option<&str>) -> bool {
     detail == Some("true")
 }
 
-/// Port of Node's `getCoverage` (`packages/api/src/coverage/service.ts:20-47`):
+/// Port of Node's `getCoverage` (`legacy/api/src/coverage/service.ts:20-47`):
 /// fetch every chunk with its requirement count, then partition on
 /// `count > 0`.
 ///
@@ -93,7 +93,7 @@ pub async fn get_coverage(
     })
 }
 
-/// Port of Node's `getCoverageMatrix` (`packages/api/src/coverage/service.ts:4-14`):
+/// Port of Node's `getCoverageMatrix` (`legacy/api/src/coverage/service.ts:4-14`):
 /// the plain coverage object plus a `matrix` field. Reached only when
 /// `?detail=true`, so the extra `requirement_chunk` query never runs on the
 /// default path.
@@ -108,7 +108,7 @@ pub async fn get_coverage_matrix(
     Ok(response)
 }
 
-/// Port of Node's `getTraceability` (`packages/api/src/coverage/service.ts:16-18`),
+/// Port of Node's `getTraceability` (`legacy/api/src/coverage/service.ts:16-18`),
 /// which is a bare pass-through to the repository. The always-empty
 /// `planSteps`/`sessions` arrays are attached here rather than in the SQL
 /// layer — see `dto::TraceabilityRow` for why they still exist at all.

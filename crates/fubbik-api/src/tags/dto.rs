@@ -28,7 +28,7 @@ pub struct UpdateTagBody {
     pub review_status: Option<ReviewStatus>,
 }
 
-/// Matches Node's body schema exactly (`packages/api/src/tags/routes.ts:39`):
+/// Matches Node's body schema exactly (`legacy/api/src/tags/routes.ts:39`):
 /// `t.Optional(t.Union([t.Literal("draft"), t.Literal("reviewed"),
 /// t.Literal("approved")]))`. Modelled the same way as
 /// `connections::dto::Origin` — a proper enum, not `Option<String>` — so an

@@ -1,6 +1,6 @@
 //! Chunk-to-markdown formatting.
 //!
-//! Ports `packages/api/src/context/utils.ts:108-126` (`formatChunkText`).
+//! Ports `legacy/api/src/context/utils.ts:108-126` (`formatChunkText`).
 use crate::score::ScoredChunk;
 
 fn title_case(s: &str) -> String {
@@ -37,7 +37,7 @@ pub fn format_chunk_text(chunk: &ScoredChunk) -> String {
 }
 
 /// A scored chunk plus the enrichment the formatter annotates with.
-/// Ports `packages/api/src/context/formatter.ts:3-7`. Node's
+/// Ports `legacy/api/src/context/formatter.ts:3-7`. Node's
 /// `ChunkWithMetadata extends ScoredChunk` — this port composes instead of
 /// flattening, so the wire shape is reproduced with `#[serde(flatten)]`
 /// rather than duplicating `ScoredChunk`'s fields here.
@@ -158,7 +158,7 @@ pub fn format_structured_markdown(ctx: &StructuredContext) -> String {
 /// A behaviour-matrix rule linked to a file via `behavior_cell_code`,
 /// surfaced by `GET /api/context/for-file`'s "governing behaviours"
 /// section. Ports Node's `GoverningBehavior` interface
-/// (`packages/api/src/context/formatter.ts:57-69`) field for field —
+/// (`legacy/api/src/context/formatter.ts:57-69`) field for field —
 /// `code_ref` serialises as `ref`, matching Node's own field name, which
 /// this port cannot use directly since `ref` is a Rust keyword.
 #[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]

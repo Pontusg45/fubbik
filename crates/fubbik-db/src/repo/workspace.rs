@@ -203,7 +203,7 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<bool> {
 /// disambiguates by checking workspace/space ownership itself *before*
 /// calling this, matching Node's service layer, which does the same
 /// `getWorkspaceById`/`getSpaceById` checks ahead of the insert
-/// (`packages/api/src/workspaces/service.ts:84-94`) — so by the time this
+/// (`legacy/api/src/workspaces/service.ts:84-94`) — so by the time this
 /// function is reached through the API, `None` can only mean "already
 /// linked", and the service falls back to the same
 /// `{ workspaceId, spaceId }` literal Node does.
@@ -236,7 +236,7 @@ pub async fn add_space(
 /// check (`EXISTS (SELECT 1 FROM workspace w WHERE w.id = $2 AND w.user_id
 /// = $1)`) as defense-in-depth *in addition to* the service layer's own
 /// `workspace::find_by_id` pre-check
-/// (`packages/api/src/workspaces/service.ts:96-105`'s `getWorkspaceById`
+/// (`legacy/api/src/workspaces/service.ts:96-105`'s `getWorkspaceById`
 /// call, mirrored in `workspaces::service::remove_space_from_workspace`).
 /// Without this guard, a caller that reaches this function without going
 /// through that pre-check (a future refactor, a direct repo call) would

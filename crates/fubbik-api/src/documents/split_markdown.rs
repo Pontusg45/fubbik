@@ -1,4 +1,4 @@
-//! Port of `packages/api/src/documents/split-markdown.ts`. No `regex`
+//! Port of `legacy/api/src/documents/split-markdown.ts`. No `regex`
 //! dependency — see `frontmatter.rs`'s module doc comment for why; every
 //! pattern below is hand-matched with plain string/byte operations,
 //! chosen to reproduce each regex's exact matching semantics (documented
@@ -254,7 +254,7 @@ struct DecisionContext {
 }
 
 /// Port of `extractDecisionContext`
-/// (`packages/api/src/documents/split-markdown.ts:32-77`): scans
+/// (`legacy/api/src/documents/split-markdown.ts:32-77`): scans
 /// backwards from the end of `content` for a trailing run of blank/`>`-
 /// prefixed lines; if that trailing block contains any of the three
 /// `> **X:**` markers, pulls rationale/alternatives/consequences out of it

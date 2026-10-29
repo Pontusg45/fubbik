@@ -16,7 +16,7 @@ use super::dto::{
     normalize_acceptance_criteria, normalize_criteria_for_write,
 };
 
-/// Node's `VALID_ANALYZE_KINDS` (`packages/api/src/plans/service.ts:8`).
+/// Node's `VALID_ANALYZE_KINDS` (`legacy/api/src/plans/service.ts:8`).
 /// `plan_analyze_item.kind` is unconstrained free text at the DB and schema
 /// level — see `fubbik_db::repo::plan::analyze`'s module doc — so this is
 /// the *only* place a `kind` value is ever rejected. Deliberately not a
@@ -35,7 +35,7 @@ fn validate_analyze_kind(kind: &str) -> AppResult<()> {
     }
 }
 
-/// Node's `VALID_STATUSES` (`packages/api/src/plans/service.ts:7`).
+/// Node's `VALID_STATUSES` (`legacy/api/src/plans/service.ts:7`).
 /// `plan.status` is unconstrained free text at the DB and schema level — see
 /// `fubbik_db::repo::plan`'s module doc comment — so this is the *only*
 /// place a `status` value is ever rejected. Deliberately not a Rust enum on
@@ -58,7 +58,7 @@ fn validate_status(status: &str) -> AppResult<()> {
     }
 }
 
-/// Mirrors Node's `listPlans` (`packages/api/src/plans/service.ts:36-49`):
+/// Mirrors Node's `listPlans` (`legacy/api/src/plans/service.ts:36-49`):
 /// validates an explicit `status` filter the same way `update` validates a
 /// written one, then delegates to the rollup-carrying list query.
 pub async fn list(pool: &PgPool, user_id: &str, filter: ListFilter) -> AppResult<Vec<PlanListRow>> {
@@ -68,7 +68,7 @@ pub async fn list(pool: &PgPool, user_id: &str, filter: ListFilter) -> AppResult
     plan::list_with_rollups(pool, user_id, filter).await
 }
 
-/// Mirrors Node's `getPlan` (`packages/api/src/plans/service.ts:58-62`):
+/// Mirrors Node's `getPlan` (`legacy/api/src/plans/service.ts:58-62`):
 /// 404 if the plan doesn't exist or isn't the caller's (divergence #13 —
 /// Node's own `getPlan` has no ownership check; `plan::find_by_id` adds
 /// one in SQL).
@@ -78,7 +78,7 @@ pub async fn get_plan(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Plan>
         .ok_or_else(|| AppError::NotFound("Plan".into()))
 }
 
-/// Mirrors Node's `getPlanDetail` (`packages/api/src/plans/service.ts:68-98`):
+/// Mirrors Node's `getPlanDetail` (`legacy/api/src/plans/service.ts:68-98`):
 /// the plan itself, its linked requirements, analyze items grouped into the
 /// five fixed kinds, tasks (acceptance criteria normalised, chunks
 /// attached), and task dependencies.
@@ -116,7 +116,7 @@ pub async fn get_detail(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Pla
     })
 }
 
-/// Mirrors Node's `createPlan` (`packages/api/src/plans/service.ts:124-157`):
+/// Mirrors Node's `createPlan` (`legacy/api/src/plans/service.ts:124-157`):
 /// rejects a whitespace-only title (trimmed before both the check and the
 /// insert, same as `workspaces::service::create`), then optionally links
 /// requirements and creates initial tasks. `metadata`, `requirementIds`,
@@ -194,7 +194,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreatePlanBody) -> AppRe
     Ok(created)
 }
 
-/// Mirrors Node's `updatePlan` (`packages/api/src/plans/service.ts:167-188`):
+/// Mirrors Node's `updatePlan` (`legacy/api/src/plans/service.ts:167-188`):
 /// validates a provided `status`, 404s up front if the plan isn't the
 /// caller's, computes the `completed_at` side effect from the *existing*
 /// row's status vs. the incoming one, and delegates the actual write to
@@ -258,7 +258,7 @@ pub async fn update(
     Ok(updated)
 }
 
-/// Mirrors Node's `deletePlan` (`packages/api/src/plans/service.ts:190-195`)
+/// Mirrors Node's `deletePlan` (`legacy/api/src/plans/service.ts:190-195`)
 /// plus the activity write at its call site (`routes.ts:120-133`): the
 /// `existing` row is fetched *before* the delete specifically so the
 /// activity event can still carry its `id`/`title`/`spaceId` after the row
@@ -284,7 +284,7 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
     }
 }
 
-/// Mirrors Node's `duplicatePlan` (`packages/api/src/plans/service.ts:51-56`)
+/// Mirrors Node's `duplicatePlan` (`legacy/api/src/plans/service.ts:51-56`)
 /// plus the activity write at its call site (`routes.ts:135-152`): the
 /// event describes the newly-created *duplicate*, not the source plan.
 /// 404 if the source plan doesn't exist / isn't the caller's before
@@ -312,7 +312,7 @@ pub async fn duplicate(pool: &PgPool, user_id: &str, source_id: &str) -> AppResu
 }
 
 /// Mirrors Node's `GET /plans/:id/activity` handler
-/// (`packages/api/src/plans/routes.ts:154-182`): 404-checks the plan, then
+/// (`legacy/api/src/plans/routes.ts:154-182`): 404-checks the plan, then
 /// merges plan-level activity events (`entityType: "plan", entityId:
 /// planId`, limit 100) with task-level events (`entityType: "plan_task"`,
 /// limit 200, filtered down to this plan's own task ids), sorts the union
@@ -349,7 +349,7 @@ pub async fn get_activity(pool: &PgPool, user_id: &str, id: &str) -> AppResult<V
     Ok(merged)
 }
 
-/// Mirrors Node's `GET /plans/:id/links` (`packages/api/src/plans/routes.ts:184-191`).
+/// Mirrors Node's `GET /plans/:id/links` (`legacy/api/src/plans/routes.ts:184-191`).
 pub async fn list_links(
     pool: &PgPool,
     user_id: &str,
@@ -359,7 +359,7 @@ pub async fn list_links(
     plan::list_links(pool, user_id, id).await
 }
 
-/// Mirrors Node's `POST /plans/:id/links` (`packages/api/src/plans/routes.ts:192-215`):
+/// Mirrors Node's `POST /plans/:id/links` (`legacy/api/src/plans/routes.ts:192-215`):
 /// `system` defaults to `"url"`, `label` to `null`, applied here (after the
 /// field is known absent) rather than via a serde default, matching
 /// Elysia's `?? "url"` / `?? null`.
@@ -376,7 +376,7 @@ pub async fn add_link(
         .ok_or_else(|| AppError::NotFound("Plan".into()))
 }
 
-/// Mirrors Node's `DELETE /plans/:id/links/:linkId` (`packages/api/src/plans/routes.ts:216-224`).
+/// Mirrors Node's `DELETE /plans/:id/links/:linkId` (`legacy/api/src/plans/routes.ts:216-224`).
 pub async fn remove_link(pool: &PgPool, user_id: &str, id: &str, link_id: &str) -> AppResult<()> {
     get_plan(pool, user_id, id).await?;
     if plan::remove_link(pool, user_id, id, link_id).await? {
@@ -522,13 +522,13 @@ pub async fn reorder_analyze_items(
 
 // ── Tasks ────────────────────────────────────────────────────────────
 
-/// Node's `VALID_TASK_STATUSES` (`packages/api/src/plans/tasks.ts:22`).
+/// Node's `VALID_TASK_STATUSES` (`legacy/api/src/plans/tasks.ts:22`).
 /// `plan_task.status` is unconstrained free text at the DB and schema
 /// level, validated only here — never a Rust enum, same rule as every
 /// other status-shaped column in this domain.
 const VALID_TASK_STATUSES: [&str; 5] = ["pending", "in_progress", "done", "skipped", "blocked"];
 
-/// Node's `VALID_TASK_RELATIONS` (`packages/api/src/plans/service.ts:9`).
+/// Node's `VALID_TASK_RELATIONS` (`legacy/api/src/plans/service.ts:9`).
 /// `plan_task_chunk.relation` is unconstrained free text at the DB and
 /// schema level, validated only here.
 const VALID_TASK_RELATIONS: [&str; 3] = ["context", "created", "modified"];

@@ -1,5 +1,5 @@
 //! HTTP-level tests for the `features` domain — the 13 endpoints of
-//! `packages/api/src/features/routes.ts`.
+//! `legacy/api/src/features/routes.ts`.
 //!
 //! Response-shape notes worth having in one place, all taken from Node:
 //!

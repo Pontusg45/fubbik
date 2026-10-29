@@ -1,7 +1,7 @@
 //! Wire DTOs for the `/api/context/*` routes.
 //!
 //! Ports the three query shapes and shared response envelope from
-//! `packages/api/src/context/routes.ts`. `maxTokens` arrives as a string on
+//! `legacy/api/src/context/routes.ts`. `maxTokens` arrives as a string on
 //! the wire (Node's `t.Optional(t.String())`), same reasoning as
 //! `chunks::dto::SemanticSearchQuery`'s `limit` — parsed rather than typed,
 //! to keep the wire contract identical.

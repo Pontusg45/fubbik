@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use fubbik_db::repo::saved_graph::Position;
 
 /// Query params of `GET /api/saved-graphs`
-/// (`packages/api/src/saved-graphs/routes.ts:8-14`): `ctx.query` is cast to
+/// (`legacy/api/src/saved-graphs/routes.ts:8-14`): `ctx.query` is cast to
 /// `{ spaceId?: string }` with no schema validation, so this stays a plain
 /// optional string, not a `t.Optional(t.String())`-derived numeric/bool
 /// coercion the way other query params in this crate have.
@@ -14,7 +14,7 @@ pub struct ListSavedGraphsQuery {
 }
 
 /// Body of `POST /api/saved-graphs`
-/// (`packages/api/src/saved-graphs/routes.ts:29-37`). `chunkIds` and
+/// (`legacy/api/src/saved-graphs/routes.ts:29-37`). `chunkIds` and
 /// `positions` are structurally validated by Elysia's schema (`t.Array(t.String())`,
 /// `t.Record(t.String(), t.Object({ x: t.Number(), y: t.Number() }))`) —
 /// not opaque JSON the way `collection.filter` / `saved_query.query` are —
@@ -38,7 +38,7 @@ pub struct CreateSavedGraphBody {
 }
 
 /// Body of `PATCH /api/saved-graphs/{id}`
-/// (`packages/api/src/saved-graphs/routes.ts:53-59`). `description` is
+/// (`legacy/api/src/saved-graphs/routes.ts:53-59`). `description` is
 /// tri-state, matching Node's `t.Optional(t.Union([t.String(), t.Null()]))`:
 /// omitted (`None`) leaves it untouched, explicit `null` (`Some(None)`)
 /// clears it, a string (`Some(Some(..))`) sets it — same `deserialize_some`

@@ -1,5 +1,5 @@
 //! `GET /api/context/for-file`. Ports
-//! `packages/api/src/context-for-file/routes.ts`.
+//! `legacy/api/src/context-for-file/routes.ts`.
 //!
 //! Three `format` values, two different pipelines:
 //!

@@ -1,4 +1,4 @@
-//! Request/response shapes for `packages/api/src/vocabularies/routes.ts`.
+//! Request/response shapes for `legacy/api/src/vocabularies/routes.ts`.
 //!
 //! Every type here carries a domain-specific name (`...ChunkType...` /
 //! `...ConnectionRelation...`) rather than a bare `CreateBody`/`Query`,
@@ -7,7 +7,7 @@
 //! would collide silently. See `tests/schema_names.rs`.
 
 /// `arrowStyle` on the connection-relation bodies — a genuine Elysia
-/// `t.Union` of literals (`packages/api/src/vocabularies/routes.ts:30,40`),
+/// `t.Union` of literals (`legacy/api/src/vocabularies/routes.ts:30,40`),
 /// so an enum here matches the contract rather than inventing a constraint.
 ///
 /// Modelled *only* on the input side: the stored `arrow_style` column is
@@ -55,7 +55,7 @@ impl RelationDirection {
 }
 
 /// `GET /api/chunk-types` query params
-/// (`packages/api/src/vocabularies/routes.ts:56`).
+/// (`legacy/api/src/vocabularies/routes.ts:56`).
 ///
 /// `rename_all = "camelCase"` is mandatory, not cosmetic: the wire name is
 /// `spaceId`, and serde would silently *ignore* a `spaceId` key on a struct
@@ -77,14 +77,14 @@ pub struct ConnectionRelationsQuery {
 }
 
 /// Body of `POST /api/chunk-types`
-/// (`packages/api/src/vocabularies/routes.ts:7-15,58-72`).
+/// (`legacy/api/src/vocabularies/routes.ts:7-15,58-72`).
 ///
 /// `id` is caller-supplied — it is the table's primary key and the slug
 /// `chunk.type` will hold. Unlike the Elysia `maxLength` caps elsewhere in
 /// this port (which are deliberately not enforced), `id`'s length *is*
 /// enforced, because Node validates it in the **service** layer with
 /// `SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,40}$/`
-/// (`packages/api/src/vocabularies/service.ts:38,42-46`) — a real 400, not
+/// (`legacy/api/src/vocabularies/service.ts:38,42-46`) — a real 400, not
 /// just an Elysia schema check. See `service::validate_slug`.
 ///
 /// `description`/`icon` are `t.Optional(t.Union([t.String, t.Null()]))` in

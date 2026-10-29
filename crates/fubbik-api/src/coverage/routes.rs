@@ -11,7 +11,7 @@ use crate::extract::Query;
 
 /// Both paths live under `/api/requirements/...` even though this is its own
 /// domain module — that is Node's URL layout
-/// (`packages/api/src/coverage/routes.ts:9,28`), mounted from a separate
+/// (`legacy/api/src/coverage/routes.ts:9,28`), mounted from a separate
 /// `coverageRoutes` Elysia instance the same way. They are static segments,
 /// so axum's router prefers them over `requirements::routes`' `/{id}`
 /// (same arrangement `/api/requirements/stats` already relies on).

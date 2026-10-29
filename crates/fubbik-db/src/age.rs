@@ -65,7 +65,7 @@ pub async fn cypher(pool: &PgPool, query: &str) -> Result<Vec<serde_json::Value>
 /// Prefer this over hand-parsing a single `v` column when a query `RETURN`s
 /// several values: it inherits [`parse_agtype`], so quoted characters inside
 /// property values survive. The TypeScript original stripped them with a raw
-/// `String(v).replace(/"/g, "")` (`packages/api/src/graph/service.ts:86-127`),
+/// `String(v).replace(/"/g, "")` (`legacy/api/src/graph/service.ts:86-127`),
 /// silently corrupting any title containing a double quote.
 pub async fn cypher_columns(
     pool: &PgPool,
@@ -427,7 +427,7 @@ fn as_string(v: Option<&serde_json::Value>) -> Option<String> {
 /// nonexistent chunk vertex, AGE extension missing, etc.), never
 /// propagating an error — Node wraps every graph clause in
 /// `Effect.orElse(() => Effect.succeed([]))`
-/// (`packages/api/src/search/service.ts:92`), and an unavailable graph must
+/// (`legacy/api/src/search/service.ts:92`), and an unavailable graph must
 /// degrade the same way here.
 pub async fn get_neighborhood_in_graph(
     pool: &PgPool,
@@ -883,7 +883,7 @@ pub async fn compute_impact_ripple_in_graph(
 // Behavior rules
 // ---------------------------------------------------------------------------
 //
-// Ports `packages/api/src/matrices/graph-sync.ts`. Kept here rather than in
+// Ports `legacy/api/src/matrices/graph-sync.ts`. Kept here rather than in
 // `fubbik-api` for the same reason `get_chunks_affected_by_requirement` is
 // here: hand-written Cypher belongs to the AGE layer, and the service above
 // should not be assembling query strings.

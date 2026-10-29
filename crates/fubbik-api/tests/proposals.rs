@@ -1,5 +1,5 @@
 //! HTTP-level tests for the `proposals` domain
-//! (`packages/api/src/proposals/`).
+//! (`legacy/api/src/proposals/`).
 //!
 //! **The mandatory guard-removal proofs (Phase 2e wave 1: `list`/`get`
 //! scoping and `reject`'s ownership check) live in

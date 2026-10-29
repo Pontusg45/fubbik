@@ -1,6 +1,6 @@
 //! HTTP-level tests for `GET /api/chunks/search/semantic`
-//! (`packages/api/src/chunks/chunk-search.ts:59-73` +
-//! `packages/api/src/chunks/routes.ts:192-206`).
+//! (`legacy/api/src/chunks/chunk-search.ts:59-73` +
+//! `legacy/api/src/chunks/routes.ts:192-206`).
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};

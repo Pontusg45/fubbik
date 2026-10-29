@@ -1,6 +1,6 @@
 //! `GET /api/spaces/{id}/generate-instructions`.
 //!
-//! Ports `packages/api/src/generate-instructions/{routes,service}.ts`: lists
+//! Ports `legacy/api/src/generate-instructions/{routes,service}.ts`: lists
 //! every non-archived chunk visible to the caller in the given space,
 //! categorizes them by tag/type/content heuristics, and renders one of
 //! three plain-text documents (`claude` → CLAUDE.md, `agents` → AGENTS.md,
@@ -8,7 +8,7 @@
 //!
 //! **Both route paths are served, deliberately.** Node only ever
 //! registers this handler at `/api/codebases/:id/generate-instructions`
-//! (`packages/api/src/generate-instructions/routes.ts:8`) — there is no
+//! (`legacy/api/src/generate-instructions/routes.ts:8`) — there is no
 //! `/api/spaces/:id/generate-instructions` route in Node at all, even
 //! though `apps/cli/src/commands/generate.ts:35,58,81` calls exactly that
 //! `/api/spaces/...` URL for all three formats. Confirmed as a live bug in

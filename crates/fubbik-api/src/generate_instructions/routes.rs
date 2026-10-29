@@ -42,7 +42,7 @@ pub async fn generate_instructions_route(
 /// Deprecated alias: `GET /api/codebases/{id}/generate-instructions`.
 ///
 /// **This is Node's *actual* (and only) registration.** Node's
-/// `generateInstructionsRoutes` (`packages/api/src/generate-instructions/
+/// `generateInstructionsRoutes` (`legacy/api/src/generate-instructions/
 /// routes.ts:8`) registers exactly one path, `/codebases/:id/generate-
 /// instructions` — it never registers `/spaces/:id/generate-instructions`
 /// at all, and `codebaseRoutes` (the `/api/codebases` -> `/api/spaces`

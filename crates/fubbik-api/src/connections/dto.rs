@@ -1,4 +1,4 @@
-/// Matches Node's body schema exactly (`packages/api/src/connections/routes.ts:22-27`):
+/// Matches Node's body schema exactly (`legacy/api/src/connections/routes.ts:22-27`):
 /// `sourceId`/`targetId`/`relation` required, `origin` optional and
 /// constrained to the two literals Node accepts (`t.Union([t.Literal("human"),
 /// t.Literal("ai")])`) — anything else fails validation before reaching the

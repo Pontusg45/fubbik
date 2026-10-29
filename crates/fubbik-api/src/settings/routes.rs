@@ -14,7 +14,7 @@ use crate::extract::Json as ReqJson;
 use crate::extract::Query;
 
 /// Unauthenticated, matching Node exactly
-/// (`packages/api/src/settings/routes.ts:8` — `GET /settings/features` has
+/// (`legacy/api/src/settings/routes.ts:8` — `GET /settings/features` has
 /// no `requireSession`). See `get_instance_settings` for the full note on
 /// why this crate has two deliberately open `GET`s in this domain.
 #[utoipa::path(get, path = "/api/settings/features",
@@ -80,9 +80,9 @@ pub async fn set_codebase_setting(
 }
 
 /// **Deliberately unauthenticated** — matches Node exactly
-/// (`packages/api/src/settings/routes.ts:55`: `GET /settings/instance` has
+/// (`legacy/api/src/settings/routes.ts:55`: `GET /settings/instance` has
 /// no `requireSession`, and there is no global auth middleware in
-/// `packages/api/src/index.ts` to backstop it). This was escalated to and
+/// `legacy/api/src/index.ts` to backstop it). This was escalated to and
 /// decided by the human partner explicitly (captured, then corrected on
 /// review, in `legacy/migration/fixtures/node-contract-2b/_questions.md` Q2): faithful
 /// port, `GET` open, `PATCH` session-gated (see `set_instance_setting`
@@ -103,7 +103,7 @@ pub async fn get_instance_settings(State(state): State<AppState>) -> ApiResult<J
 /// Session-gated (unlike its `GET` sibling above), but with **no
 /// role/admin check** — any authenticated user can flip instance-wide
 /// flags like `aiEnabled`, matching Node's `requireSession`-only guard
-/// (`packages/api/src/settings/routes.ts:56-60`). This is also a faithful
+/// (`legacy/api/src/settings/routes.ts:56-60`). This is also a faithful
 /// port, not an oversight.
 #[utoipa::path(patch, path = "/api/settings/instance", request_body = SetSettingBody,
     responses((status = 200, body = MessageResponse)))]

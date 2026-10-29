@@ -18,7 +18,7 @@
 //! `getDeltasForFeature`, `upsertDelta`, `deleteDelta` — takes a bare id
 //! and relies entirely on the *service* layer having checked ownership
 //! first. `GET /chunks/{id}/deltas` is the case where that reliance
-//! actually fails: `packages/api/src/features/routes.ts:123-125` calls
+//! actually fails: `legacy/api/src/features/routes.ts:123-125` calls
 //! `featureService.getDeltasForChunk(ctx.params.id)` with the session
 //! **discarded**, so any authenticated user can read the overlay content of
 //! any chunk by id.
@@ -303,7 +303,7 @@ pub async fn list(
 /// `description` and `color` are tri-state (`None` = untouched,
 /// `Some(None)` = clear, `Some(Some(v))` = set), matching Node's route
 /// schema, which types both as `t.Optional(t.Union([t.String(), t.Null()]))`
-/// (`packages/api/src/features/routes.ts:85,88`). `name`, `priority` and
+/// (`legacy/api/src/features/routes.ts:85,88`). `name`, `priority` and
 /// `status` have no null variant there, so plain `Option<T>` (COALESCE) is
 /// enough.
 #[derive(Default)]
@@ -322,7 +322,7 @@ pub struct FeaturePatch {
 /// `No values to set` before any SQL is issued, so a `PATCH` whose only key
 /// is `spaceIds` — a perfectly ordinary request, since `spaceIds` is
 /// stripped off before the repo call
-/// (`packages/api/src/features/service.ts:112`) — becomes a **500** in Node.
+/// (`legacy/api/src/features/service.ts:112`) — becomes a **500** in Node.
 /// This port short-circuits to a plain re-select instead, the same way
 /// `requirement::update` and `use_case::update` do, so an all-omitted patch
 /// is a 200 no-op and `updated_at` stays untouched.
@@ -562,7 +562,7 @@ pub async fn active_feature_ids(pool: &PgPool, user_id: &str) -> AppResult<Vec<S
 /// linked. Node's `setActiveFeatures` inserts whatever ids it is handed —
 /// only the *service* rejects foreign ids, with a `ValidationError`. That
 /// service check is kept (it is what produces the 400 Node's own route test
-/// asserts, `packages/api/src/features/routes.test.ts:136-141`), so this
+/// asserts, `legacy/api/src/features/routes.test.ts:136-141`), so this
 /// guard is defence in depth, not the primary path.
 pub async fn set_active_features(
     pool: &PgPool,
@@ -648,7 +648,7 @@ pub async fn upsert_delta(
 ///
 /// **This is the query Node leaves completely unscoped** — `GET
 /// /chunks/{id}/deltas` discards the session
-/// (`packages/api/src/features/routes.ts:123-125`), so in Node any signed-in
+/// (`legacy/api/src/features/routes.ts:123-125`), so in Node any signed-in
 /// user can read any chunk's overlay text by guessing an id. The
 /// `EXISTS (... chunk c WHERE c.id = $1 AND c.user_id = $2)` clause below
 /// closes that: a foreign chunk yields an empty list, never its rows. This
@@ -661,7 +661,7 @@ pub async fn upsert_delta(
 /// than decorative; see
 /// `tests/feature.rs::deltas_for_chunk_breaks_priority_ties_by_id`.
 /// Ascending priority is what makes the result directly foldable in
-/// resolution order — see `resolve` in `packages/api/src/features/resolve.ts`,
+/// resolution order — see `resolve` in `legacy/api/src/features/resolve.ts`,
 /// which sorts ascending and `Object.assign`s in sequence, so the **highest**
 /// priority is applied last and wins a same-field conflict.
 pub async fn deltas_for_chunk(
@@ -776,7 +776,7 @@ pub async fn delete_delta(
 /// the `UPDATE` in [`merge_feature_deltas`] that has to name every one of
 /// them, so the two can never drift; the service re-exports it for
 /// validation. Mirrors `DELTA_ALLOWED_FIELDS` in
-/// `packages/api/src/features/service.ts:31`.
+/// `legacy/api/src/features/service.ts:31`.
 pub const DELTA_ALLOWED_FIELDS: [&str; 7] = [
     "title",
     "content",

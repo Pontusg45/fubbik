@@ -3,7 +3,7 @@
 //! request URL. None of that reaches the client: `From<AiError> for
 //! AppError` below logs the full error and maps it onto a fixed
 //! `"AI service error"` message, mirroring Node's `Effect.catchAll` at
-//! `packages/api/src/index.ts:193-196`.
+//! `legacy/api/src/index.ts:193-196`.
 use fubbik_core::error::AppError;
 
 #[derive(Debug, thiserror::Error)]
@@ -24,7 +24,7 @@ pub enum AiError {
 impl From<AiError> for AppError {
     fn from(err: AiError) -> Self {
         // Node logs the cause and returns a fixed string
-        // (`packages/api/src/index.ts:193-196`). Prompts, model output and
+        // (`legacy/api/src/index.ts:193-196`). Prompts, model output and
         // the Ollama URL can all reach `err`, so nothing derived from it
         // goes to the client.
         tracing::warn!("ai service error: {err}");

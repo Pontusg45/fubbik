@@ -7,7 +7,7 @@
 //! comment).
 //!
 //! **Creation stays deliberately global, faithfully porting Node.** Node's
-//! `createProposal` (`packages/api/src/proposals/service.ts:15-29`) never
+//! `createProposal` (`legacy/api/src/proposals/service.ts:15-29`) never
 //! checks that the caller owns (or that anyone owns) `chunkId` before
 //! inserting — any authenticated user can propose changes to any chunk, and
 //! an unknown `chunkId` fails only via the `chunk_proposal_chunk_id_chunk_id_fk`
@@ -19,7 +19,7 @@
 //! lookup backing `GET /proposals/{id}` are now scoped to the caller —
 //! a deliberate Phase 2e wave-1 divergence from Node, the same shape as
 //! accepted divergences #4/#9/#10/#13/#14/#15/#17/#19.** Node's
-//! `getProposal`/`listProposals` (`packages/api/src/proposals/service.ts:31-50`)
+//! `getProposal`/`listProposals` (`legacy/api/src/proposals/service.ts:31-50`)
 //! carry no `user_id` filter at all, so any authenticated user could
 //! previously read every other user's proposal queue. `list` now joins
 //! `chunk` on `c.user_id = $user_id`; the id lookup for `GET /proposals/{id}`
@@ -31,7 +31,7 @@
 //! **`reject` is now scoped through the parent chunk, closing the asymmetry
 //! with `approve` — also a deliberate divergence from Node, same shape as
 //! the list above.** Node's `rejectProposal`
-//! (`packages/api/src/proposals/service.ts:80-90`) never calls `updateChunk`
+//! (`legacy/api/src/proposals/service.ts:80-90`) never calls `updateChunk`
 //! or checks chunk ownership at all; this port's [`reject`] now carries its
 //! own `EXISTS`-through-`chunk` guard on the `UPDATE`, independent of
 //! `approve`'s guard (which lives on the chunk `UPDATE` inside [`approve`]).
@@ -69,7 +69,7 @@ use crate::timestamp::UtcTimestamp;
 /// discarded, because `ChunkPatch` (Phase 1) had no fields for them and
 /// `approve` had no path for the join table either — a real data-loss bug
 /// versus Node's `updateChunk`, which applies all eight
-/// (`packages/api/src/chunks/chunk-mutations.ts:181-212` handles `tags` via
+/// (`legacy/api/src/chunks/chunk-mutations.ts:181-212` handles `tags` via
 /// a separate `setChunkTags` tap; `scope`/`alternatives` pass straight
 /// through `UpdateChunkParams`). Closed in Phase 2e wave 1.
 #[derive(
@@ -97,7 +97,7 @@ pub struct ProposedChanges {
 
 impl ProposedChanges {
     /// Mirrors Node's `Object.keys(body.changes).length === 0` guard
-    /// (`packages/api/src/proposals/service.ts:17-18`): true only when every
+    /// (`legacy/api/src/proposals/service.ts:17-18`): true only when every
     /// field is absent, exactly the same condition an empty `{}` JSON body
     /// produces.
     pub fn is_empty(&self) -> bool {
@@ -242,7 +242,7 @@ pub struct ListProposalsFilter<'a> {
     /// Always `Some` by the time this reaches the repo — the service layer
     /// defaults an absent query-string `status` to `"pending"`, matching
     /// Node's `filter.status ?? "pending"`
-    /// (`packages/api/src/proposals/service.ts:45`). Unlike
+    /// (`legacy/api/src/proposals/service.ts:45`). Unlike
     /// `list_for_chunk`'s `status`, this one has already been validated
     /// against `["pending", "approved", "rejected"]` by the caller.
     pub status: &'a str,
@@ -294,7 +294,7 @@ pub async fn list(
 
 /// Backs `GET /chunks/{id}/proposals`. `status` is passed straight through
 /// with **no validation** — unlike `list`'s global queue, Node's
-/// `listProposalsForChunk` (`packages/api/src/proposals/service.ts:52-54`)
+/// `listProposalsForChunk` (`legacy/api/src/proposals/service.ts:52-54`)
 /// forwards `status` to the repository unchecked, so `?status=bogus` here
 /// silently returns zero rows rather than a 400. Not "fixed" — see this
 /// module's doc comment on preserving Node's actual, sometimes-inconsistent
@@ -379,7 +379,7 @@ pub async fn update_status(
 /// Rejects a pending proposal, scoped through its parent chunk — the SQL
 /// counterpart to [`approve`]'s chunk-owned `UPDATE`, closing the asymmetry
 /// this module's doc comment used to flag: Node's `rejectProposal`
-/// (`packages/api/src/proposals/service.ts:80-90`) has no ownership check of
+/// (`legacy/api/src/proposals/service.ts:80-90`) has no ownership check of
 /// any kind. This port now diverges deliberately (same shape as accepted
 /// divergences #4/#9/#10/#13/#14/#15/#17/#19): `EXISTS (... c.user_id = $2)`
 /// is bound against `chunk_proposal.chunk_id`, the same "guard through the

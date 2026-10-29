@@ -1,7 +1,7 @@
 //! Wire DTOs for `GET /api/context/for-file`.
 //!
 //! Ports the query shape and both response shapes from
-//! `packages/api/src/context-for-file/routes.ts`. Node supports three
+//! `legacy/api/src/context-for-file/routes.ts`. Node supports three
 //! `format` values here, one more than the other three `/api/context/*`
 //! routes (`context::dto::ContextFormat`): `json-legacy`, kept "for
 //! backwards compatibility" per its own comment

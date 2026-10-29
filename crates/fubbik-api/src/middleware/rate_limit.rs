@@ -1,4 +1,4 @@
-//! Ports `packages/api/src/middleware/rate-limit.ts`.
+//! Ports `legacy/api/src/middleware/rate-limit.ts`.
 //!
 //! Deliberately not an axum layer. Node applies this at two call sites —
 //! enrich and semantic search — and nothing else asks for it; a tower layer

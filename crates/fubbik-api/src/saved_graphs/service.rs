@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use super::dto::{CreateSavedGraphBody, UpdateSavedGraphBody};
 
 /// Mirrors Node's `listSavedGraphs`
-/// (`packages/api/src/saved-graphs/service.ts:12-14`): a thin pass-through,
+/// (`legacy/api/src/saved-graphs/service.ts:12-14`): a thin pass-through,
 /// no ownership pre-check beyond what the repository's `WHERE user_id = $1`
 /// already does.
 pub async fn list(
@@ -17,7 +17,7 @@ pub async fn list(
 }
 
 /// Mirrors Node's `getSavedGraphDetail`
-/// (`packages/api/src/saved-graphs/service.ts:16-22`).
+/// (`legacy/api/src/saved-graphs/service.ts:16-22`).
 pub async fn get_detail(pool: &PgPool, user_id: &str, id: &str) -> AppResult<SavedGraph> {
     saved_graph::find_by_id(pool, user_id, id)
         .await?
@@ -25,7 +25,7 @@ pub async fn get_detail(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Sav
 }
 
 /// Mirrors Node's `createSavedGraph`
-/// (`packages/api/src/saved-graphs/service.ts:24-52`): rejects a
+/// (`legacy/api/src/saved-graphs/service.ts:24-52`): rejects a
 /// whitespace-only name with the exact message `"Saved graph name is
 /// required"`, trims the stored name, defaults `layoutAlgorithm` to
 /// `"force"` when omitted, and otherwise passes every field through
@@ -58,7 +58,7 @@ pub async fn create(
 }
 
 /// Mirrors Node's `updateSavedGraph`
-/// (`packages/api/src/saved-graphs/service.ts:54-83`): 404s if the caller
+/// (`legacy/api/src/saved-graphs/service.ts:54-83`): 404s if the caller
 /// doesn't own the row, then rejects an explicitly-provided but
 /// whitespace-only `name` with `"Saved graph name cannot be empty"` — a
 /// distinct message from `create`'s. Node re-checks the `UPDATE`'s own
@@ -100,7 +100,7 @@ pub async fn update(
 }
 
 /// Mirrors Node's `deleteSavedGraph`
-/// (`packages/api/src/saved-graphs/service.ts:85-89`).
+/// (`legacy/api/src/saved-graphs/service.ts:85-89`).
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
     if saved_graph::delete(pool, user_id, id).await? {
         Ok(())

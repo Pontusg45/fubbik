@@ -40,7 +40,7 @@ pub struct FileRef {
 
 /// One entry of `PUT /api/chunks/{id}/applies-to`'s request body, matching
 /// Node's `t.Object({ pattern, note })` element type
-/// (`packages/api/src/applies-to/routes.ts:20-25`).
+/// (`legacy/api/src/applies-to/routes.ts:20-25`).
 #[derive(Debug, Clone)]
 pub struct AppliesToInput {
     pub pattern: String,
@@ -49,7 +49,7 @@ pub struct AppliesToInput {
 
 /// One entry of `PUT /api/chunks/{id}/file-refs`'s request body, matching
 /// Node's `t.Object({ path, anchor, relation })` element type
-/// (`packages/api/src/file-refs/routes.ts:18-24`).
+/// (`legacy/api/src/file-refs/routes.ts:18-24`).
 #[derive(Debug, Clone)]
 pub struct FileRefInput {
     pub path: String,
@@ -221,7 +221,7 @@ pub async fn replace_file_refs(
 /// Reports whether any of `user_id`'s chunks carries a `chunk_file_ref`
 /// with exactly this `path`. Backs
 /// `fubbik_api::requirements::cross_ref`'s file-reference warnings (Node's
-/// `crossReferenceSteps`, `packages/api/src/requirements/cross-ref.ts:
+/// `crossReferenceSteps`, `legacy/api/src/requirements/cross-ref.ts:
 /// 27-52`, calls the full `lookupChunksByFilePath(path, userId)` —
 /// `packages/db/src/repository/file-ref.ts:45-69` — and only ever checks
 /// `results.length === 0`, so a plain existence check reproduces the
@@ -229,7 +229,7 @@ pub async fn replace_file_refs(
 /// `lookupChunksByFilePath`'s optional `spaceId` narrowing is not
 /// reproduced here: no caller in this port's `requirements` domain ever
 /// passes one (`crossReferenceSteps(body.steps, userId)` — no `spaceId`
-/// argument, `packages/api/src/requirements/service.ts:131`).
+/// argument, `legacy/api/src/requirements/service.ts:131`).
 pub async fn file_ref_path_exists(pool: &PgPool, user_id: &str, path: &str) -> AppResult<bool> {
     let hit = sqlx::query_scalar!(
         r#"SELECT 1 AS "exists!" FROM chunk_file_ref cfr
@@ -251,7 +251,7 @@ pub async fn file_ref_path_exists(pool: &PgPool, user_id: &str, path: &str) -> A
 /// (`packages/db/src/repository/file-ref.ts:45-69`), which additionally
 /// projects title/type/ref columns nothing in `resolveForFiles` reads (it
 /// only ever does `results.set(match.chunkId, ...)` after a *separate*
-/// `getChunkById` refetch — `packages/api/src/context-for-file/service.ts:
+/// `getChunkById` refetch — `legacy/api/src/context-for-file/service.ts:
 /// 82-92` — so the extra columns Node selects here are never the ones that
 /// reach the caller).
 ///

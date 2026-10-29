@@ -17,7 +17,7 @@
 //! sections has a live bug this port intentionally reproduces**: when a
 //! section's heading disappears from a re-imported file, Node calls
 //! `updateChunkRepo(existing.id, { documentOrder: undefined })`
-//! (`packages/api/src/documents/service.ts:220`) intending to clear the
+//! (`legacy/api/src/documents/service.ts:220`) intending to clear the
 //! chunk's `document_order`. But `updateChunk`'s repo implementation only
 //! assigns a field when `params.x !== undefined`
 //! (`packages/db/src/repository/chunk.ts:349`), and an object literal key
@@ -47,7 +47,7 @@ use crate::timestamp::UtcTimestamp;
 /// `GET /api/documents/{id}` flattens this shape together with `chunks`
 /// rather than nesting it (see `fubbik_api::documents::dto::DocumentDetail`,
 /// mirroring Node's `{ ...doc, chunks }` spread in `getDocument`,
-/// `packages/api/src/documents/service.ts:293`).
+/// `legacy/api/src/documents/service.ts:293`).
 #[derive(Debug, Clone, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Document {
@@ -94,7 +94,7 @@ pub struct DocumentListItem {
 }
 
 /// Shape of `GET /api/documents` (the route Node actually wires,
-/// `packages/api/src/documents/routes.ts:8-21`) — [`DocumentListItem`] plus
+/// `legacy/api/src/documents/routes.ts:8-21`) — [`DocumentListItem`] plus
 /// `type` (the first section's chunk type, `document_order = 0`, defaulting
 /// to `"document"` when absent) and `tags` (union of every chunk's tags in
 /// the document, deduped). Matches
@@ -202,7 +202,7 @@ pub async fn create_in(
 /// `getDocumentById`, which is unscoped SQL
 /// (`packages/db/src/repository/document.ts:26-31`) and relies entirely on
 /// a service-layer `doc.userId !== userId` check for cross-user 404s
-/// (`packages/api/src/documents/service.ts:164,244,291,304`). Every one of
+/// (`legacy/api/src/documents/service.ts:164,244,291,304`). Every one of
 /// this port's callers scopes in SQL instead, per this slice's guidance —
 /// see `tests/document.rs` for the cross-user 404 proof, and note removing
 /// this `AND user_id = $2` is what should make that specific test fail
@@ -431,7 +431,7 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Option<
 /// `document.title, chunk.documentOrder`
 /// (`packages/db/src/repository/document.ts:155`), not a total order; the
 /// `chunk.id` tiebreaker is this port's addition. `limit` is always called
-/// with `20` by the service layer (`packages/api/src/documents/service.ts:298`;
+/// with `20` by the service layer (`legacy/api/src/documents/service.ts:298`;
 /// there is no route-level override), reproduced as a plain parameter here
 /// rather than a hardcoded literal so the one real call site stays explicit
 /// about it.
@@ -511,7 +511,7 @@ pub async fn document_chunks(
 /// Creates a section chunk for a document import/sync, always `type =
 /// 'document'` — matching the default (non-template) import path's
 /// `createChunkRepo({..., type: "document", documentId, documentOrder})`
-/// (`packages/api/src/documents/service.ts:139-147,197-205`). Written as its
+/// (`legacy/api/src/documents/service.ts:139-147,197-205`). Written as its
 /// own `INSERT` (not via `chunk::create`) because it needs `document_id`/
 /// `document_order`, which `chunk::create`'s `NewChunk` does not carry —
 /// see this module's top doc comment.
@@ -541,7 +541,7 @@ pub async fn insert_section_chunk(
 
 /// Updates an existing section chunk's content/order on re-sync, matching
 /// `updateChunkRepo(match.id, { content: section.content, documentOrder:
-/// section.order })` (`packages/api/src/documents/service.ts:189-192`) —
+/// section.order })` (`legacy/api/src/documents/service.ts:189-192`) —
 /// both fields are always supplied together here, so a plain `UPDATE`
 /// (not `COALESCE`) is correct.
 pub async fn update_section_chunk(

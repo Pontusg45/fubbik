@@ -1,4 +1,4 @@
-//! Port of `packages/api/src/vocabularies/service.ts`.
+//! Port of `legacy/api/src/vocabularies/service.ts`.
 //!
 //! ## Two flagged Node behaviours, reproduced rather than fixed
 //!
@@ -37,7 +37,7 @@ use super::dto::{
 };
 
 /// Node's `SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,40}$/`
-/// (`packages/api/src/vocabularies/service.ts:38`), hand-rolled because
+/// (`legacy/api/src/vocabularies/service.ts:38`), hand-rolled because
 /// this workspace carries no regex dependency.
 ///
 /// Read carefully: the first character must be `[a-z0-9]`, and the
@@ -61,7 +61,7 @@ fn is_valid_slug(id: &str) -> bool {
 }
 
 /// The message is copied verbatim from Node
-/// (`packages/api/src/vocabularies/service.ts:44`) and is shared by both
+/// (`legacy/api/src/vocabularies/service.ts:44`) and is shared by both
 /// catalogs, which use the identical `ValidationError` text.
 fn validate_slug(id: &str) -> AppResult<()> {
     if is_valid_slug(id) {
@@ -91,7 +91,7 @@ pub async fn list_chunk_types(
 }
 
 /// Mirrors Node's `createChunkType`
-/// (`packages/api/src/vocabularies/service.ts:40-53`): slug check, then an
+/// (`legacy/api/src/vocabularies/service.ts:40-53`): slug check, then an
 /// *unscoped* duplicate-id check (the slug is the table's primary key, so
 /// it is global — another user's custom type with the same slug blocks
 /// yours), then the insert.
@@ -126,7 +126,7 @@ pub async fn create_chunk_type(
 }
 
 /// Mirrors Node's `updateChunkType`
-/// (`packages/api/src/vocabularies/service.ts:55-70`) exactly: unscoped
+/// (`legacy/api/src/vocabularies/service.ts:55-70`) exactly: unscoped
 /// existence lookup (404), built-in rejection (400, message copied
 /// verbatim), then the user-scoped `UPDATE` whose `None` result — the id
 /// exists but is not the caller's — also maps to 404.
@@ -170,7 +170,7 @@ pub async fn update_chunk_type(
 }
 
 /// Mirrors Node's `deleteChunkType`
-/// (`packages/api/src/vocabularies/service.ts:72-87`) — same shape as
+/// (`legacy/api/src/vocabularies/service.ts:72-87`) — same shape as
 /// `update_chunk_type`, different message.
 pub async fn delete_chunk_type(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
     let found = chunk_type::find_by_id(pool, id)
@@ -201,7 +201,7 @@ pub async fn list_connection_relations(
 }
 
 /// Mirrors Node's `createConnectionRelation`
-/// (`packages/api/src/vocabularies/service.ts:103-116`). Note the duplicate
+/// (`legacy/api/src/vocabularies/service.ts:103-116`). Note the duplicate
 /// message says `relation "..."`, not `chunk type "..."` — the two
 /// catalogs' messages differ and are copied separately.
 pub async fn create_connection_relation(
@@ -239,7 +239,7 @@ pub async fn create_connection_relation(
 }
 
 /// Mirrors Node's `updateConnectionRelation`
-/// (`packages/api/src/vocabularies/service.ts:118-133`).
+/// (`legacy/api/src/vocabularies/service.ts:118-133`).
 pub async fn update_connection_relation(
     pool: &PgPool,
     user_id: &str,
@@ -275,7 +275,7 @@ pub async fn update_connection_relation(
 }
 
 /// Mirrors Node's `deleteConnectionRelation`
-/// (`packages/api/src/vocabularies/service.ts:135-150`).
+/// (`legacy/api/src/vocabularies/service.ts:135-150`).
 pub async fn delete_connection_relation(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
     let found = connection_relation::find_by_id(pool, id)
         .await?

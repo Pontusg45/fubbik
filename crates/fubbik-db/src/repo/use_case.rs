@@ -1,7 +1,7 @@
 //! `use_case` groups related requirements one level deep — a use case can
 //! have child use cases (`parent_id`), but Node's service layer enforces
 //! "one level of nesting only" as an application rule, not a DB constraint
-//! (`packages/api/src/use-cases/service.ts:29-42`): a use case whose own
+//! (`legacy/api/src/use-cases/service.ts:29-42`): a use case whose own
 //! `parentId` is already set cannot itself be used as someone else's
 //! parent. See `crate::repo::use_case`'s callers in
 //! `fubbik_api::use_cases::service` for where that rule is reproduced.

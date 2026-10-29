@@ -1,6 +1,6 @@
 //! Tests for `GET /api/chunks/export/context` and
 //! `GET /api/chunks/export/claude-md` — the port of
-//! `packages/api/src/context-export/{service,claude-md}.ts` (Task 9).
+//! `legacy/api/src/context-export/{service,claude-md}.ts` (Task 9).
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};

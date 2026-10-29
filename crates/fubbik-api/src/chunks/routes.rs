@@ -40,7 +40,7 @@ pub async fn list_chunks(
 }
 
 /// **201**, not 200 — Node sets `ctx.set.status = 201` in an `Effect.tap`
-/// after `createChunk` (`packages/api/src/chunks/routes.ts`), and this port
+/// after `createChunk` (`legacy/api/src/chunks/routes.ts`), and this port
 /// had been answering 200. Aligned here rather than left as a quiet
 /// divergence; `POST /api/features` and `POST /api/requirements` are
 /// already 201 in this crate, so 200 was also inconsistent internally.
@@ -60,7 +60,7 @@ pub async fn create_chunk(
 /// Returns the **enriched** detail shape ([`ChunkDetail`]), not the bare
 /// `chunk` row — matching Node. The active feature ids are loaded here
 /// rather than in a global middleware: Node resolves them for every request
-/// (`packages/api/src/index.ts:207-218`), but this is the only Rust route
+/// (`legacy/api/src/index.ts:207-218`), but this is the only Rust route
 /// that reads them implicitly, so a per-route load avoids paying for a
 /// query on all ~200 other endpoints.
 #[utoipa::path(get, path = "/api/chunks/{id}", params(("id" = String, Path,)),
@@ -344,7 +344,7 @@ pub async fn list_update_tags(
 ///
 /// The body is a **bare array** of these, not `{patterns: [...]}` — that is
 /// what Node's route schema declares
-/// (`packages/api/src/applies-to/routes.ts:19-27`) and what the web edit
+/// (`legacy/api/src/applies-to/routes.ts:19-27`) and what the web edit
 /// page has always sent. Rust previously published `{patterns: string[]}`,
 /// so every real request 400'd; the edit page swallowed it in a
 /// `catch { /* non-critical */ }` and silently never saved patterns at all.
@@ -359,7 +359,7 @@ pub struct AppliesToEntry {
 
 /// One entry of `PUT /api/chunks/{id}/file-refs`'s body — a bare array, for
 /// the same reason as [`AppliesToEntry`]
-/// (`packages/api/src/file-refs/routes.ts:17-26`).
+/// (`legacy/api/src/file-refs/routes.ts:17-26`).
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 pub struct FileRefEntry {
     pub path: String,

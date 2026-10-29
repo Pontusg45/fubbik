@@ -6,13 +6,13 @@ use super::dto::{CreateTemplateBody, UpdateTemplateBody};
 
 /// Built-in templates plus the caller's own — see `template::list`'s doc
 /// comment for the `ORDER BY` this port adds that Node's `listTemplates`
-/// (`packages/api/src/templates/service.ts:14-16`) doesn't have.
+/// (`legacy/api/src/templates/service.ts:14-16`) doesn't have.
 pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<Template>> {
     template::list(pool, user_id).await
 }
 
 /// Mirrors Node's `createTemplate`
-/// (`packages/api/src/templates/service.ts:18-44`): a thin pass-through
+/// (`legacy/api/src/templates/service.ts:18-44`): a thin pass-through
 /// insert, always non-built-in and owned by the caller. There is no path
 /// through this API that creates a built-in template.
 pub async fn create(pool: &PgPool, user_id: &str, body: CreateTemplateBody) -> AppResult<Template> {
@@ -34,7 +34,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateTemplateBody) -> A
 }
 
 /// Mirrors Node's `updateTemplate`
-/// (`packages/api/src/templates/service.ts:46-68`) exactly: an unscoped
+/// (`legacy/api/src/templates/service.ts:46-68`) exactly: an unscoped
 /// existence lookup, a built-in rejection (`ValidationError` — 400, the
 /// message copied verbatim), then a user-scoped `UPDATE` whose `None`
 /// result (id doesn't exist, or exists but isn't the caller's) also maps to
@@ -81,7 +81,7 @@ pub async fn update(
 }
 
 /// Mirrors Node's `deleteTemplate`
-/// (`packages/api/src/templates/service.ts:70-79`) exactly: same shape as
+/// (`legacy/api/src/templates/service.ts:70-79`) exactly: same shape as
 /// `update` above, but the scoped `DELETE` also carries an explicit
 /// `is_built_in = false` in SQL — see `template::delete`'s doc comment for
 /// why that's independently load-bearing beyond the `user_id` scoping.

@@ -1,4 +1,4 @@
-//! Direct port of `packages/api/src/vocabulary/suggest.ts`'s
+//! Direct port of `legacy/api/src/vocabulary/suggest.ts`'s
 //! `suggestVocabulary` — asks a local Ollama `llama3.2` model to extract
 //! vocabulary entries from a space's chunks.
 //!

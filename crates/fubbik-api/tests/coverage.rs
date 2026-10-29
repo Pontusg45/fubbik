@@ -9,7 +9,7 @@
 //!    adds a `matrix` key; every other value of `detail` — including
 //!    `?detail=1`, which reads like a boolean and is not one — omits the key
 //!    entirely. Node dispatches on `ctx.query.detail === "true"`
-//!    (`packages/api/src/coverage/routes.ts:14`), a literal string compare.
+//!    (`legacy/api/src/coverage/routes.ts:14`), a literal string compare.
 //!    A test asserting only "matrix is empty on the default path" would pass
 //!    against an implementation that always computed and returned it, which
 //!    would silently double the query count of the common request.
@@ -200,7 +200,7 @@ fn sorted_titles(value: &serde_json::Value) -> Vec<String> {
 
 /// Without `detail`, the `matrix` key must be **absent**, not `null` and not
 /// `[]`. Node builds the default response from `getCoverage`, which never
-/// mentions `matrix` (`packages/api/src/coverage/service.ts:40-44`).
+/// mentions `matrix` (`legacy/api/src/coverage/service.ts:40-44`).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn default_response_omits_the_matrix_key_entirely(pool: sqlx::PgPool) {
     // Given
@@ -349,7 +349,7 @@ async fn stats_partition_and_percentage(pool: sqlx::PgPool) {
 
 /// The zero-total case. In JS `0 / 0` is `NaN` and `JSON.stringify(NaN)` is
 /// `null`, which is why Node writes `total > 0 ? ... : 0`
-/// (`packages/api/src/coverage/service.ts:38`) — without that guard the
+/// (`legacy/api/src/coverage/service.ts:38`) — without that guard the
 /// field would come back `null` and the web client's percentage bar would
 /// render `NaN%`.
 ///

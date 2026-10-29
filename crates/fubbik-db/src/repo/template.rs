@@ -5,7 +5,7 @@
 //!
 //! **Built-in templates are seeded by migration and read-only.** Node's
 //! `updateTemplate`/`deleteTemplate` services
-//! (`packages/api/src/templates/service.ts:46-79`) both load the row
+//! (`legacy/api/src/templates/service.ts:46-79`) both load the row
 //! unscoped via `getTemplateById`, reject with `ValidationError` when
 //! `isBuiltIn` is true, and only then call the scoped repo mutation. That
 //! service-layer check is replicated verbatim in
@@ -32,7 +32,7 @@ use sqlx::types::Json;
 use crate::timestamp::UtcTimestamp;
 
 /// `"exact" | "prefix" | "contains"` — a real Elysia `t.Union` of literals
-/// in Node (`packages/api/src/templates/routes.ts:7`), not free text, so
+/// in Node (`legacy/api/src/templates/routes.ts:7`), not free text, so
 /// modelling it as an enum here matches the contract rather than adding a
 /// constraint Node lacks.
 #[derive(
@@ -46,7 +46,7 @@ pub enum MatchMode {
 }
 
 /// `"exact" | "oneOf" | "exists"` — likewise a real `t.Union` of literals
-/// (`packages/api/src/templates/routes.ts:18`).
+/// (`legacy/api/src/templates/routes.ts:18`).
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
 )]
@@ -58,7 +58,7 @@ pub enum FrontmatterMatchMode {
 }
 
 /// The six chunk fields a template's field mappings can populate — a real
-/// `t.Union` of literals (`packages/api/src/templates/routes.ts:29-36`).
+/// `t.Union` of literals (`legacy/api/src/templates/routes.ts:29-36`).
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
 )]
@@ -120,7 +120,7 @@ pub struct FieldMapping {
 /// isn't `NOT NULL`-without-default.
 ///
 /// `type` is `text NOT NULL` with only a `maxLength: 20` Elysia check
-/// (`packages/api/src/templates/routes.ts:65`), not an enum or CHECK
+/// (`legacy/api/src/templates/routes.ts:65`), not an enum or CHECK
 /// constraint, despite the five chunk kinds (note/document/reference/
 /// schema/checklist) listed in CLAUDE.md — matching the established
 /// "constrained-looking free text" trap, this stays `String`.

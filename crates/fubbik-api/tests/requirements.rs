@@ -416,7 +416,7 @@ async fn stats_reports_totals(pool: sqlx::PgPool) {
 async fn stats_filters_by_space_using_the_camel_case_param(pool: sqlx::PgPool) {
     // Given
     // `StatsQuery` deserializes `space_id`, but Node's route takes `spaceId`
-    // (`packages/api/src/requirements/routes.ts:34`) and so does every other
+    // (`legacy/api/src/requirements/routes.ts:34`) and so does every other
     // query in this domain. Without `rename_all = "camelCase"` the param is
     // silently IGNORED rather than rejected — stats come back unscoped, which
     // looks like a working endpoint returning wrong numbers. Serde ignores

@@ -30,7 +30,7 @@ use crate::timestamp::UtcTimestamp;
 /// `camelCase` on the wire, matching every other repo row type in this
 /// crate. `query`/`chunks` are stored and returned as opaque JSON blobs —
 /// `query` is a free-form subset of the create request
-/// (`packages/api/src/context/snapshot-service.ts:46-52`'s
+/// (`legacy/api/src/context/snapshot-service.ts:46-52`'s
 /// `Record<string, unknown>`), and `chunks` is the frozen
 /// `ChunkWithMetadata[]` the create call budgeted.
 #[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]

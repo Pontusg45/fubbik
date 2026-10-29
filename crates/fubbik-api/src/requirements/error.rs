@@ -1,7 +1,7 @@
 //! `StepValidationError`'s HTTP shape doesn't fit the generic `ApiError`
 //! (`crate::error::ApiError`), which only ever emits `{"message": ...}` —
 //! Node's step-validation failure is `{"message": "Invalid steps",
-//! "errors": [...]}` (`packages/api/src/index.ts:197-199`). No other
+//! "errors": [...]}` (`legacy/api/src/index.ts:197-199`). No other
 //! domain in this port has needed a structured (non-message-only) error
 //! body, so rather than growing `fubbik_core::error::AppError` with a
 //! variant only this domain uses, this module carries a small local

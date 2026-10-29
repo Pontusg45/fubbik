@@ -26,7 +26,7 @@ pub async fn list_documents(
 }
 
 /// `q` must be at least 2 characters, matching Node's `t.String({ minLength:
-/// 2 })` (`packages/api/src/documents/routes.ts:32`) — enforced here rather
+/// 2 })` (`legacy/api/src/documents/routes.ts:32`) — enforced here rather
 /// than left unchecked, unlike this port's usual "Elysia-only length caps
 /// go unenforced" precedent (see `ImportDocumentBody`'s doc comment):
 /// `minLength` here shapes actual query behaviour (an unbounded `ILIKE

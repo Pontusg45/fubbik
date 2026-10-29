@@ -77,7 +77,7 @@ const VALID_NODE_ENVS: [&str; 3] = ["development", "production", "test"];
 /// request — including one with a garbage or missing session cookie — is
 /// served as the dev user rather than rejected with 401.
 ///
-/// Mirrors the TS server's rule verbatim (`packages/auth/src/index.ts`):
+/// Mirrors the TS server's rule verbatim (`legacy/auth/src/index.ts`):
 /// `NODE_ENV !== "production" || FUBBIK_IMPLICIT_DEV_SESSION === "true"`.
 /// The explicit flag always wins, even under `NODE_ENV=production`.
 ///
@@ -117,7 +117,7 @@ fn resolve_implicit_dev_session(
 
 /// Splits `CORS_ORIGIN` on `,` and trims each entry, mirroring Node's
 /// `env.CORS_ORIGIN.includes(",") ? env.CORS_ORIGIN.split(",").map(s =>
-/// s.trim()) : env.CORS_ORIGIN` (`apps/server/src/index.ts:36`), which
+/// s.trim()) : env.CORS_ORIGIN` (`legacy/server/src/index.ts:36`), which
 /// `CLAUDE.md` documents as supported. Deliberately does **not** strip
 /// trailing slashes from any entry — Node doesn't either, and matching its
 /// normalisation exactly matters more than "improving" on it, since a

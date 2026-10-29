@@ -9,7 +9,7 @@ pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<Favorite>> {
     favorite::list(pool, user_id).await
 }
 
-/// Mirrors Node's `addFavorite` (`packages/api/src/favorites/service.ts:17-31`)
+/// Mirrors Node's `addFavorite` (`legacy/api/src/favorites/service.ts:17-31`)
 /// exactly, including its two quirks:
 ///
 /// - **404 before insert.** Node checks `getChunkById(chunkId, userId)`

@@ -5,13 +5,13 @@
 //! of its own: it loads this row and calls the exact same `chunk::list` /
 //! `chunk::count` that back `GET /api/chunks`, mapping the nine
 //! `CollectionFilter` keys onto `chunk::ListParams`
-//! (`packages/api/src/collections/service.ts:59-78`). See
+//! (`legacy/api/src/collections/service.ts:59-78`). See
 //! `fubbik_api::collections::service` for that mapping.
 //!
 //! `collection.filter` is stored **verbatim** — every one of its nine keys
 //! is `Option<String>` with no shape or value validation beyond "is a
 //! string", matching `CollectionFilterSchema`
-//! (`packages/api/src/collections/routes.ts:7-17`). A client can (and
+//! (`legacy/api/src/collections/routes.ts:7-17`). A client can (and
 //! seed data does) store `{"sort": "bogus-value"}`; it round-trips
 //! unchanged on every read and is only *interpreted* — leniently, silently
 //! ignoring anything it doesn't recognise — at the moment
@@ -189,7 +189,7 @@ pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<Collection>> {
 /// All three fields are plain two-state (`None` = leave untouched, `Some` =
 /// set) — unlike `workspace::WorkspacePatch::description`, Node's PATCH body
 /// here (`t.Optional(t.String())` / `t.Optional(CollectionFilterSchema)`,
-/// `packages/api/src/collections/routes.ts:54-58`) has no `t.Null()`
+/// `legacy/api/src/collections/routes.ts:54-58`) has no `t.Null()`
 /// variant on any field, so there is no way to explicitly clear
 /// `description` through this endpoint at all. `filter`, when provided,
 /// **replaces the stored object wholesale** — `COALESCE($5, filter)` with a

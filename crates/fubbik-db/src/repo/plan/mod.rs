@@ -642,7 +642,7 @@ pub async fn list_with_rollups(
 
 /// How a `PATCH` should treat `completed_at`, computed by the service layer
 /// from the existing row's status vs. the incoming one — mirrors Node's
-/// `updatePlan` (`packages/api/src/plans/service.ts:178-184`): entering
+/// `updatePlan` (`legacy/api/src/plans/service.ts:178-184`): entering
 /// `"completed"` sets `completed_at = now()`, leaving it sets it back to
 /// `NULL`, anything else leaves the column untouched.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -757,7 +757,7 @@ pub async fn apply_patch<'e, E: sqlx::PgExecutor<'e>>(
 /// Used internally by the plans domain to build the merged plan+task
 /// activity feed (`GET /api/plans/{id}/activity`). Matches Node's internal
 /// `listActivity(userId, {entityType, entityId, limit})` call shape at
-/// `packages/api/src/plans/routes.ts:165-173`: a plan-level call passes
+/// `legacy/api/src/plans/routes.ts:165-173`: a plan-level call passes
 /// `entity_id = Some(planId)`, a task-level call passes `entity_id = None`
 /// (fetches every `plan_task` event for the user, filtered down to this
 /// plan's task ids by the caller).

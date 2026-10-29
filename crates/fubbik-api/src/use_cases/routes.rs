@@ -16,7 +16,7 @@ use crate::extract::Json as ReqJson;
 use crate::extract::Query;
 
 /// Bare array, matching Node's `listUseCases` return
-/// (`packages/api/src/use-cases/routes.ts:9-16`) — not the `{chunks,...}`
+/// (`legacy/api/src/use-cases/routes.ts:9-16`) — not the `{chunks,...}`
 /// envelope, same shape convention as `notifications`/`workspaces`.
 #[utoipa::path(get, path = "/api/use-cases", params(ListUseCasesQuery),
     responses((status = 200, body = Vec<UseCaseListItem>)))]

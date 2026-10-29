@@ -1,5 +1,5 @@
 /// Query params for `GET /api/activity`, matching Node's Elysia schema
-/// (`packages/api/src/activity/routes.ts:23-28`): all four fields are
+/// (`legacy/api/src/activity/routes.ts:23-28`): all four fields are
 /// optional, `limit`/`offset` arrive as strings (`t.Numeric()` from the web
 /// client, parsed here the same way `chunks::dto::ListChunksQuery` does).
 /// `entityId` is deliberately absent — the service/repo layers both accept

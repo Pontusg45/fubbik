@@ -9,7 +9,7 @@
 
 use fubbik_db::repo::feature::{DeltaWithChunk, Feature, FeatureSpace};
 
-/// Query of `GET /features` (`packages/api/src/features/routes.ts:23-27`).
+/// Query of `GET /features` (`legacy/api/src/features/routes.ts:23-27`).
 /// All three are `t.Optional(t.String())` — `status` is **free text**, not
 /// an enum, and is compared with a plain `=`; `search` is a raw
 /// `ILIKE '%…%'`. Each is truthy-checked in Node, so an empty string means
@@ -22,7 +22,7 @@ pub struct ListFeaturesQuery {
     pub search: Option<String>,
 }
 
-/// Body of `POST /features` (`packages/api/src/features/routes.ts:44-50`).
+/// Body of `POST /features` (`legacy/api/src/features/routes.ts:44-50`).
 ///
 /// Node declares `maxLength` on `name` (100), `description` (1000) and
 /// `color` (7); this port does not enforce those bounds — the same accepted
@@ -42,7 +42,7 @@ pub struct CreateFeatureBody {
 }
 
 /// The three statuses a client may PATCH onto a feature
-/// (`packages/api/src/features/routes.ts:87`). This is one of the rare
+/// (`legacy/api/src/features/routes.ts:87`). This is one of the rare
 /// cases where a status field really *is* constrained in Node — the route
 /// schema is `t.Union([t.Literal("active"), t.Literal("inactive"),
 /// t.Literal("archived")])`, so `"merged"` cannot be set through the API at
@@ -68,12 +68,12 @@ impl FeatureStatus {
     }
 }
 
-/// Body of `PATCH /features/{id}` (`packages/api/src/features/routes.ts:
+/// Body of `PATCH /features/{id}` (`legacy/api/src/features/routes.ts:
 /// 83-90`). `description` and `color` are tri-state (`None` = untouched,
 /// `Some(None)` = clear, `Some(Some(v))` = set) because Node types both as
 /// `t.Optional(t.Union([t.String(), t.Null()]))`. `spaceIds` is stripped
 /// off before the row update and applied separately, matching
-/// `packages/api/src/features/service.ts:112`.
+/// `legacy/api/src/features/service.ts:112`.
 #[derive(Default, serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateFeatureBody {
@@ -95,7 +95,7 @@ where
     T::deserialize(deserializer).map(Some)
 }
 
-/// Body of `PUT /features/active` (`packages/api/src/features/routes.ts:
+/// Body of `PUT /features/active` (`legacy/api/src/features/routes.ts:
 /// 66-68`).
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -103,7 +103,7 @@ pub struct SetActiveFeaturesBody {
     pub feature_ids: Vec<String>,
 }
 
-/// Body of `POST /features/{id}/reorder` (`packages/api/src/features/
+/// Body of `POST /features/{id}/reorder` (`legacy/api/src/features/
 /// routes.ts:118-120`). Named `ReorderFeatureBody` rather than
 /// `ReorderBody` because `requirements::dto::ReorderBody` already occupies
 /// that schema name in utoipa's single flat namespace.
@@ -113,7 +113,7 @@ pub struct ReorderFeatureBody {
 }
 
 /// Body of `PUT /chunks/{id}/deltas/{featureId}`
-/// (`packages/api/src/features/routes.ts:137-139`).
+/// (`legacy/api/src/features/routes.ts:137-139`).
 ///
 /// `delta` is `t.Record(t.String(), t.Unknown())` in Node — an *object*,
 /// with arbitrary values — so it is a `serde_json::Map` here rather than a
@@ -130,7 +130,7 @@ pub struct UpsertDeltaBody {
 /// Response of `GET /features/{id}` — Node's `getFeatureDetail` resolves an
 /// `Effect.all({ feature, spaces, deltas })`, so the three land as sibling
 /// keys rather than the feature being flattened
-/// (`packages/api/src/features/service.ts:72-83`).
+/// (`legacy/api/src/features/service.ts:72-83`).
 /// `GET /features/{id}/deltas` returns just the `deltas` member of this
 /// same value.
 #[derive(serde::Serialize, utoipa::ToSchema)]

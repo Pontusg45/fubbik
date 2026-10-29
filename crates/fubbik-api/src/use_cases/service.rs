@@ -16,7 +16,7 @@ pub async fn list(
 }
 
 /// Mirrors Node's `createUseCase`
-/// (`packages/api/src/use-cases/service.ts:24-45`): when `parentId` is
+/// (`legacy/api/src/use-cases/service.ts:24-45`): when `parentId` is
 /// given, the parent must exist (scoped to the caller — `getUseCaseById`
 /// always receives `userId`) and must not itself already have a parent
 /// (Node enforces exactly one level of nesting).
@@ -62,7 +62,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateUseCaseBody) -> Ap
 }
 
 /// Mirrors Node's `updateUseCase`
-/// (`packages/api/src/use-cases/service.ts:47-77`): 404 up front if the use
+/// (`legacy/api/src/use-cases/service.ts:47-77`): 404 up front if the use
 /// case isn't the caller's. The re-parenting checks only run when `parentId`
 /// is present *and* non-null (Node: `body.parentId !== undefined &&
 /// body.parentId !== null`) — an omitted `parentId` skips them entirely,
@@ -117,7 +117,7 @@ pub async fn update(
     .ok_or_else(|| AppError::NotFound("UseCase".into()))
 }
 
-/// `deleteUseCase` (`packages/api/src/use-cases/service.ts:79-82`): 404 if
+/// `deleteUseCase` (`legacy/api/src/use-cases/service.ts:79-82`): 404 if
 /// not found/not owned. Dependent `requirement.use_case_id` rows are nulled
 /// by the database's own `ON DELETE SET NULL`, not application code — see
 /// `fubbik_db::repo::use_case`'s module doc comment for the full writeup,
@@ -133,7 +133,7 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
 }
 
 /// Mirrors Node's `getUseCaseRequirements`
-/// (`packages/api/src/use-cases/service.ts:84-87`): 404 if the use case
+/// (`legacy/api/src/use-cases/service.ts:84-87`): 404 if the use case
 /// isn't the caller's, otherwise every `requirement` row pointing at it
 /// (also scoped to the caller — see `use_case::list_requirements`'s doc
 /// comment).

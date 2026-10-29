@@ -1,6 +1,6 @@
 //! `GET /api/chunks/export/context` and `GET /api/chunks/export/claude-md`.
 //!
-//! Ports `packages/api/src/context-export/routes.ts`. Both handlers parse
+//! Ports `legacy/api/src/context-export/routes.ts`. Both handlers parse
 //! `maxTokens` the same lenient way `context::dto::parse_max_tokens` does
 //! for the other `/api/context/*` routes (an absent or unparsable value
 //! falls back to the endpoint's own default rather than erroring) — but

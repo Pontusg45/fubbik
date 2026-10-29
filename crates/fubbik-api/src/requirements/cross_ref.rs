@@ -1,4 +1,4 @@
-//! Direct port of `packages/api/src/requirements/cross-ref.ts` —
+//! Direct port of `legacy/api/src/requirements/cross-ref.ts` —
 //! best-effort scan of a requirement's step text for file-path-shaped
 //! tokens, flagging ones that don't match any of the caller's chunk file
 //! references. Always degrades to an empty warning list on any failure
@@ -14,7 +14,7 @@ pub enum CrossRefWarningType {
     ChunkNotFound,
 }
 
-/// Matches Node's `CrossRefWarning` (`packages/api/src/requirements/
+/// Matches Node's `CrossRefWarning` (`legacy/api/src/requirements/
 /// cross-ref.ts:5-9`). Node's `type` union also names `"chunk_not_found"`,
 /// but nothing in `crossReferenceSteps`'s body ever produces it (the only
 /// `warnings.push` call in the function hard-codes `"file_not_found"`) — an
@@ -81,7 +81,7 @@ fn extract_file_paths(text: &str) -> Vec<String> {
 }
 
 /// Matches Node's `crossReferenceSteps`
-/// (`packages/api/src/requirements/cross-ref.ts:27-52`): for every
+/// (`legacy/api/src/requirements/cross-ref.ts:27-52`): for every
 /// file-path-shaped token in every step's text, flag it if no chunk owned
 /// by `user_id` references that exact path. Any DB error degrades to an
 /// empty warning list, same as Node's `catchAll(() => Effect.succeed([]))`.

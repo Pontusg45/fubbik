@@ -3,7 +3,7 @@ use fubbik_db::repo::plan::{
 };
 
 /// Query params for `GET /api/plans`
-/// (`packages/api/src/plans/routes.ts:27-34`): all four optional,
+/// (`legacy/api/src/plans/routes.ts:27-34`): all four optional,
 /// `includeArchived` arrives as a string compared `=== "true"` — same
 /// not-a-real-boolean quirk as `notifications::dto::ListNotificationsQuery`.
 #[derive(serde::Deserialize, utoipa::IntoParams)]
@@ -27,7 +27,7 @@ impl ListPlansQuery {
 }
 
 /// Body of one entry in `POST /api/plans`'s optional `tasks` array
-/// (`packages/api/src/plans/routes.ts:67-75`). `acceptanceCriteria` is the
+/// (`legacy/api/src/plans/routes.ts:67-75`). `acceptanceCriteria` is the
 /// legacy `string[]` write shape — normalised to `{text,done}[]` before
 /// insert by `normalize_acceptance_criteria`, same as every other write
 /// path in this domain.
@@ -39,7 +39,7 @@ pub struct CreateTaskInput {
     pub acceptance_criteria: Option<Vec<String>>,
 }
 
-/// Body of `POST /api/plans` (`packages/api/src/plans/routes.ts:62-77`).
+/// Body of `POST /api/plans` (`legacy/api/src/plans/routes.ts:62-77`).
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePlanBody {
@@ -51,7 +51,7 @@ pub struct CreatePlanBody {
     pub metadata: Option<serde_json::Value>,
 }
 
-/// Body of `PATCH /api/plans/{id}` (`packages/api/src/plans/routes.ts:104-110`).
+/// Body of `PATCH /api/plans/{id}` (`legacy/api/src/plans/routes.ts:104-110`).
 ///
 /// `description` and `space_id` are tri-state, matching Node's
 /// `t.Optional(t.Union([t.String(), t.Null()]))` for both: omitted
@@ -81,7 +81,7 @@ where
 }
 
 /// Body of `POST /api/plans/{id}/links`
-/// (`packages/api/src/plans/routes.ts:208-214`): `system` defaults to
+/// (`legacy/api/src/plans/routes.ts:208-214`): `system` defaults to
 /// `"url"`, `label` to `null` when omitted — applied in `service::add_link`,
 /// not here, since the defaulting happens after the field is already known
 /// to be absent (Elysia's `?? "url"` / `?? null`, not a serde default that
@@ -269,7 +269,7 @@ impl Default for OkResponse {
 /// originally stored as `string[]`; both the legacy shape and the newer
 /// `{text,done}[]` shape are read and always normalised to this object
 /// shape on the way out — matching Node's `normaliseAcceptanceCriteria`
-/// (`packages/api/src/plans/service.ts:110-122`).
+/// (`legacy/api/src/plans/service.ts:110-122`).
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct AcceptanceCriterion {
     pub text: String,
@@ -311,7 +311,7 @@ pub fn normalize_acceptance_criteria(raw: &serde_json::Value) -> Vec<AcceptanceC
 /// Normalises a write-side `Vec<String>` (the legacy shape Node's create
 /// body still accepts) into the stored `{text,done}[]` JSON, matching
 /// `normaliseAcceptanceCriteria(t.acceptanceCriteria ?? [])` at plan-create
-/// time (`packages/api/src/plans/service.ts:150`).
+/// time (`legacy/api/src/plans/service.ts:150`).
 pub fn acceptance_criteria_for_write(items: &[String]) -> serde_json::Value {
     serde_json::Value::Array(
         items
@@ -324,7 +324,7 @@ pub fn acceptance_criteria_for_write(items: &[String]) -> serde_json::Value {
 /// A task in the `GET /api/plans/{id}` detail envelope: the raw
 /// `plan_task` row's fields, plus `acceptanceCriteria` normalised (not the
 /// raw stored JSON) and the task's linked chunks — matching Node's
-/// `tasksWithChunks` (`packages/api/src/plans/service.ts:89-94`).
+/// `tasksWithChunks` (`legacy/api/src/plans/service.ts:89-94`).
 #[derive(serde::Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskDetail {
@@ -348,7 +348,7 @@ pub struct TaskDetail {
 /// confirmed against real bytes in `legacy/migration/fixtures/node-contract-2c/
 /// plans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],
 /// risk:[],assumption:[],question:[]}`, never an omitted key. Matches
-/// Node's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which
+/// Node's `groupByKind` (`legacy/api/src/plans/analyze.ts:14-28`), which
 /// initialises all five keys unconditionally before bucketing.
 #[derive(serde::Serialize, utoipa::ToSchema, Default)]
 pub struct AnalyzeGrouped {

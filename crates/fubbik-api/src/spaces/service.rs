@@ -62,7 +62,7 @@ pub async fn create(pool: &PgPool, user_id: &str, body: CreateSpaceBody) -> AppR
 }
 
 /// **DELIBERATE DIVERGENCE FROM NODE (#3 in this slice).** Node's `code`
-/// param (`packages/api/src/spaces/service.ts:76`) is `{ remoteUrl:
+/// param (`legacy/api/src/spaces/service.ts:76`) is `{ remoteUrl:
 /// remoteUrl ?? null, localPaths: body.localPaths ?? [] }`, constructed and
 /// applied *unconditionally* whenever the existing space is `kind ==
 /// "code"` — `packages/db/src/repository/space.ts:123`'s `if (params.code)`
@@ -121,7 +121,7 @@ pub async fn update(
     .ok_or_else(|| AppError::NotFound("Space".into()))
 }
 
-/// `resetSpace` (`packages/api/src/spaces/service.ts:82-87`): 404 if not
+/// `resetSpace` (`legacy/api/src/spaces/service.ts:82-87`): 404 if not
 /// found/not owned, otherwise wipe the space's content. See
 /// `fubbik_db::repo::space::reset` for exactly what "content" means.
 pub async fn reset(pool: &PgPool, user_id: &str, id: &str) -> AppResult<ResetResult> {
@@ -131,7 +131,7 @@ pub async fn reset(pool: &PgPool, user_id: &str, id: &str) -> AppResult<ResetRes
     space::reset(pool, user_id, id).await
 }
 
-/// `deleteSpace` (`packages/api/src/spaces/service.ts:89-95`): 404 if not
+/// `deleteSpace` (`legacy/api/src/spaces/service.ts:89-95`): 404 if not
 /// found/not owned, otherwise wipe the content (same as `reset`) and then
 /// delete the `space` row itself.
 pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
@@ -146,7 +146,7 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
     }
 }
 
-/// `detectSpace` (`packages/api/src/spaces/service.ts:97-102`): `remoteUrl`
+/// `detectSpace` (`legacy/api/src/spaces/service.ts:97-102`): `remoteUrl`
 /// takes priority over `localPath` when both are given; a truthy
 /// `remoteUrl` that normalizes to an empty string falls through to
 /// `localPath` (JS-truthiness edge case, replicated via the `filter`

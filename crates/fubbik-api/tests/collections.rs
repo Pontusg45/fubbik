@@ -610,7 +610,7 @@ async fn get_chunks_filters_by_stored_type(pool: sqlx::PgPool) {
 }
 
 /// The bug this test exists to catch: Node's `getCollectionChunks` threads
-/// `col.spaceId` into `listChunks` (`packages/api/src/collections/
+/// `col.spaceId` into `listChunks` (`legacy/api/src/collections/
 /// service.ts:74`) — a collection pinned to a space must only surface that
 /// space's chunks (plus global chunks with no space at all), never a
 /// same-user chunk sitting in a *different* space. `total` must reflect the

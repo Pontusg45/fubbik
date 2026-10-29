@@ -15,7 +15,7 @@ pub async fn list(pool: &PgPool, user_id: &str) -> AppResult<Vec<Collection>> {
 }
 
 /// Mirrors Node's `createCollection`
-/// (`packages/api/src/collections/service.ts:18-35`): a thin pass-through
+/// (`legacy/api/src/collections/service.ts:18-35`): a thin pass-through
 /// insert — `name`/`filter` are stored exactly as given, with no trim or
 /// blank-name check (unlike `workspaces::service::create`, which does trim
 /// and reject a blank name; collections has no such check in Node, and this
@@ -50,7 +50,7 @@ pub async fn create(
 }
 
 /// Mirrors Node's `updateCollection`
-/// (`packages/api/src/collections/service.ts:37-51`): Node checks ownership
+/// (`legacy/api/src/collections/service.ts:37-51`): Node checks ownership
 /// twice — once before the `UPDATE`, once again on its result — a
 /// belt-and-suspenders pair that can't actually observe different outcomes
 /// (nothing can change ownership of the row between the two calls within
@@ -119,18 +119,18 @@ fn filter_to_list_params(filter: &CollectionFilter) -> ListParams {
         space_id: None,
         ids: None,
         // `GET /collections/{id}/chunks` takes no query params of its own in
-        // Node (`packages/api/src/collections/routes.ts:69-73` reads only
+        // Node (`legacy/api/src/collections/routes.ts:69-73` reads only
         // `ctx.params.id`) — the inline `listChunks(...)` call omits
         // `limit`/`offset` entirely, so they fall back to
         // `chunks::service::list`'s own defaults
-        // (`packages/api/src/chunks/service.ts:50-51`: 50 / 0).
+        // (`legacy/api/src/chunks/service.ts:50-51`: 50 / 0).
         limit: 50,
         offset: 0,
     }
 }
 
 /// Mirrors Node's `getCollectionChunks`
-/// (`packages/api/src/collections/service.ts:59-78`): loads the collection
+/// (`legacy/api/src/collections/service.ts:59-78`): loads the collection
 /// (404 if not the caller's), maps its filter onto `ListParams`, and
 /// delegates to the exact same `chunks::service::list` that backs `GET
 /// /api/chunks` — so the response is the `{chunks, total, limit, offset}`
@@ -141,7 +141,7 @@ fn filter_to_list_params(filter: &CollectionFilter) -> ListParams {
 /// `col.spaceId` (a separate column, not one of `CollectionFilter`'s nine
 /// keys) is threaded through as `ListParams::space_id` here, matching
 /// Node's `spaceId: col.spaceId ?? undefined`
-/// (`packages/api/src/collections/service.ts:74`) exactly — including its
+/// (`legacy/api/src/collections/service.ts:74`) exactly — including its
 /// "chunk in that space OR chunk in no space at all" semantics, see
 /// `chunk::ListParams::space_id`'s doc comment. A collection with no
 /// `spaceId` set applies no space filter, same as Node.

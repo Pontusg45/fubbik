@@ -1,5 +1,5 @@
 //! Tests for `fubbik_api::context::{resolvers, service}` — the port of
-//! `packages/api/src/context/resolvers.ts`.
+//! `legacy/api/src/context/resolvers.ts`.
 //!
 //! There is no HTTP surface for `/api/context/*` in this port yet (Task 5
 //! only adds the resolver/enrichment layer; routes are a later task), so

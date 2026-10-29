@@ -1,4 +1,4 @@
-//! Ports `getContextForFile` (`packages/api/src/context-for-file/
+//! Ports `getContextForFile` (`legacy/api/src/context-for-file/
 //! service.ts:72-332`) — five ranking strategies over a single file path.
 //! **First-strategy-wins, not additive**: a chunk found by more than one
 //! strategy is scored and labelled by whichever strategy finds it first

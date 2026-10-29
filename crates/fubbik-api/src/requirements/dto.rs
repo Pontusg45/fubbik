@@ -5,7 +5,7 @@ use crate::vocabulary::parser::{Position, WarningType};
 
 /// Matches Node's `t.Union([t.Literal("human"), t.Literal("ai")])`,
 /// constrained everywhere it appears: create/update bodies AND the list
-/// query filter (`packages/api/src/requirements/routes.ts:111,138,215`).
+/// query filter (`legacy/api/src/requirements/routes.ts:111,138,215`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Origin {
@@ -24,11 +24,11 @@ impl Origin {
 
 /// Matches Node's `t.Union([t.Literal("draft"), t.Literal("reviewed"),
 /// t.Literal("approved")])`, constrained on the update body and the list
-/// query filter (`packages/api/src/requirements/routes.ts:112,216`). Never
+/// query filter (`legacy/api/src/requirements/routes.ts:112,216`). Never
 /// accepted on create — a new requirement's `review_status` is always
 /// computed by the service from `origin` (`"draft"` for `ai`, `"approved"`
 /// otherwise), matching Node's `createRequirement`
-/// (`packages/api/src/requirements/service.ts:117,129`).
+/// (`legacy/api/src/requirements/service.ts:117,129`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ReviewStatus {
@@ -124,7 +124,7 @@ where
 }
 
 /// Query params of `GET /requirements`
-/// (`packages/api/src/requirements/routes.ts:105-116`). `status`/`priority`
+/// (`legacy/api/src/requirements/routes.ts:105-116`). `status`/`priority`
 /// are unconstrained free text (unlike the same-named fields on
 /// create/update bodies) — see `fubbik_db::repo::requirement::Requirement`'s
 /// doc comment for why. `limit`/`offset` arrive as strings, matching
@@ -163,7 +163,7 @@ pub struct ExportOneQuery {
     pub format: Format,
 }
 
-/// Body of `POST /requirements` (`packages/api/src/requirements/routes.ts:
+/// Body of `POST /requirements` (`legacy/api/src/requirements/routes.ts:
 /// 131-139`).
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -177,7 +177,7 @@ pub struct CreateRequirementBody {
     pub origin: Option<Origin>,
 }
 
-/// Body of `PATCH /requirements/{id}` (`packages/api/src/requirements/
+/// Body of `PATCH /requirements/{id}` (`legacy/api/src/requirements/
 /// routes.ts:208-217`). `description`/`priority`/`space_id`/`use_case_id`
 /// are tri-state (`None` = untouched, `Some(None)` = clear, `Some(Some(v))`
 /// = set), matching Node's `t.Optional(t.Union([T, t.Null()]))` for each.
@@ -211,7 +211,7 @@ pub struct SetChunksBody {
     pub chunk_ids: Vec<String>,
 }
 
-/// Body of `PATCH /requirements/bulk` (`packages/api/src/requirements/
+/// Body of `PATCH /requirements/bulk` (`legacy/api/src/requirements/
 /// routes.ts:49-55`). `use_case_id` is tri-state
 /// (`t.Optional(t.Union([t.String(), t.Null()]))`) — only meaningful for
 /// `action: "set_use_case"`.
@@ -240,7 +240,7 @@ pub struct ReorderBody {
 }
 
 /// One entry of `POST /requirements/batch`'s `requirements` array
-/// (`packages/api/src/requirements/routes.ts:172-182`).
+/// (`legacy/api/src/requirements/routes.ts:172-182`).
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchRequirementInput {
@@ -262,7 +262,7 @@ pub struct BatchCreateBody {
 
 /// Shape of `GET /requirements`: `{requirements, total}`, matching Node's
 /// `listRequirementsRepo` return expression returned bare by the route
-/// (`packages/api/src/requirements/service.ts:75-87`, `routes.ts:95-103`)
+/// (`legacy/api/src/requirements/service.ts:75-87`, `routes.ts:95-103`)
 /// — not wrapped further, and no `limit`/`offset` echoed back (unlike
 /// `chunks::dto::ListChunksResponse`).
 #[derive(serde::Serialize, utoipa::ToSchema)]
@@ -274,7 +274,7 @@ pub struct ListRequirementsResponse {
 
 /// Shape of `GET /requirements/{id}`, matching Node's `getRequirement`
 /// return expression: `{ ...req, chunks }`
-/// (`packages/api/src/requirements/service.ts:89-97`) — a genuine object
+/// (`legacy/api/src/requirements/service.ts:89-97`) — a genuine object
 /// spread, so the requirement's own fields sit at the *top level* alongside
 /// `chunks`. Modelled as an explicit flat struct, same convention
 /// `documents::dto::DocumentDetail` documents (no DTO in this crate uses
@@ -329,7 +329,7 @@ impl RequirementDetail {
 }
 
 /// `StepVocabularyWarning extends VocabularyWarning { step: number }`
-/// (`packages/api/src/requirements/service.ts:28-30`) — a controlled-
+/// (`legacy/api/src/requirements/service.ts:28-30`) — a controlled-
 /// vocabulary warning plus which step it came from. Fields duplicated
 /// (rather than `#[serde(flatten)]`ing `vocabulary::parser::VocabularyWarning`)
 /// for the same utoipa-schema-clarity reason as [`RequirementDetail`].
@@ -346,7 +346,7 @@ pub struct StepVocabularyWarning {
 
 /// Shape of `POST /requirements` and `PATCH /requirements/{id}`, matching
 /// Node's `{ requirement, warnings, vocabularyWarnings }`
-/// (`packages/api/src/requirements/service.ts:133,185`).
+/// (`legacy/api/src/requirements/service.ts:133,185`).
 #[derive(serde::Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RequirementWithWarnings {
@@ -366,7 +366,7 @@ pub struct MessageResponse {
 }
 
 /// Shape of `POST /requirements/batch`, matching Node's `batchCreateRequirements`
-/// return object (`packages/api/src/requirements/batch-service.ts:97-101`).
+/// return object (`legacy/api/src/requirements/batch-service.ts:97-101`).
 #[derive(serde::Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchCreateResponse {
@@ -392,7 +392,7 @@ pub struct BatchUseCaseCreated {
 }
 
 /// Body of `POST /requirements/{id}/dependencies`
-/// (`packages/api/src/requirements/dependency-routes.ts:20-22`).
+/// (`legacy/api/src/requirements/dependency-routes.ts:20-22`).
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AddDependencyBody {
@@ -410,7 +410,7 @@ pub struct DependencySides {
 }
 
 /// One node of `GET /requirements/{id}/dependencies/graph`'s `nodes` array,
-/// matching Node's inline shape (`packages/api/src/requirements/
+/// matching Node's inline shape (`legacy/api/src/requirements/
 /// dependency-service.ts:52-56`).
 #[derive(serde::Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -430,7 +430,7 @@ pub struct DependencyGraphEdge {
 
 /// Shape of `GET /requirements/{id}/dependencies/graph`: `{nodes, edges}`,
 /// matching Node's `getDependencyGraph` return object
-/// (`packages/api/src/requirements/dependency-service.ts:61-67`).
+/// (`legacy/api/src/requirements/dependency-service.ts:61-67`).
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct DependencyGraph {
     pub nodes: Vec<DependencyGraphNode>,
@@ -439,7 +439,7 @@ pub struct DependencyGraph {
 
 /// One element of `POST /requirements/batch`'s validation-failure `errors`
 /// array — matches Node's `{ index, step, error }`
-/// (`packages/api/src/requirements/batch-service.ts:26-33`): `index` is
+/// (`legacy/api/src/requirements/batch-service.ts:26-33`): `index` is
 /// which entry in the `requirements` array failed, `step`/`error` are
 /// `validator::StepError`'s own fields spread in alongside it.
 #[derive(serde::Serialize, utoipa::ToSchema)]

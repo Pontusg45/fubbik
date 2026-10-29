@@ -35,7 +35,7 @@ pub async fn suppress_duplicate(
 
 /// Runs **both** detectors and sums their newly-flagged counts, matching
 /// Node's `Effect.all([detectAgeStaleChunks(...), detectUncoveredChunks(...)])`
-/// (`packages/api/src/staleness/routes.ts:69-92`).
+/// (`legacy/api/src/staleness/routes.ts:69-92`).
 ///
 /// `threshold_days` only overrides the age detector — Node's route passes
 /// `ctx.body.thresholdDays` to `detectAgeStaleChunks` alone and calls
@@ -75,7 +75,7 @@ pub async fn scan_impact(
 /// when scanning should be disabled.
 ///
 /// Node: `Number(env.STALENESS_SCAN_INTERVAL_HOURS ?? "24")`, disabled when
-/// `intervalHours <= 0` (`packages/api/src/startup.ts:60-64`). This port
+/// `intervalHours <= 0` (`legacy/api/src/startup.ts:60-64`). This port
 /// diverges on exactly one edge case: an unparseable non-empty value (e.g.
 /// `"garbage"`) falls back to the 24h default here, whereas Node's
 /// `Number("garbage")` is `NaN`, `NaN <= 0` is `false` (never disables),
@@ -93,7 +93,7 @@ pub fn resolve_scan_interval(hours: Option<&str>) -> Option<std::time::Duration>
 /// Runs `detect_age_stale_chunks` once for the implicit dev user, logging
 /// the result. Never `detect_uncovered_chunks` — that detector only runs
 /// via the explicit `POST /api/chunks/stale/scan-age` route
-/// (`packages/api/src/startup.ts:25-37`'s `runStaleScan` calls
+/// (`legacy/api/src/startup.ts:25-37`'s `runStaleScan` calls
 /// `detectAgeStaleChunks` alone).
 ///
 /// Looks the dev user up by email at call time rather than relying on a
@@ -122,7 +122,7 @@ async fn run_scan_once(pool: &PgPool) {
 }
 
 /// Wires the background age-staleness scan beside the rest of this
-/// process's startup, mirroring `packages/api/src/startup.ts::initStartupTasks`:
+/// process's startup, mirroring `legacy/api/src/startup.ts::initStartupTasks`:
 /// an initial run 30 seconds after boot (giving migrations time to
 /// complete), then on `STALENESS_SCAN_INTERVAL_HOURS` (default 24), unless
 /// that resolves to "disabled" per [`resolve_scan_interval`] — in which
@@ -134,7 +134,7 @@ async fn run_scan_once(pool: &PgPool) {
 /// be pure overhead against throwaway per-test databases. The caller
 /// (`crates/fubbik/src/main.rs`'s `Commands::Serve` arm) invokes this once,
 /// explicitly, the same place Node's `initStartupTasks()` is invoked from
-/// `apps/server`'s boot path.
+/// `legacy/server`'s boot path.
 pub fn spawn_background_scan(pool: PgPool, background: crate::background::BackgroundRuntime) {
     let Some(interval) = resolve_scan_interval(
         std::env::var("STALENESS_SCAN_INTERVAL_HOURS")

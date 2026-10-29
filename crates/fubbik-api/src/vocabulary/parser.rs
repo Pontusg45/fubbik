@@ -1,4 +1,4 @@
-//! Direct port of `packages/api/src/vocabulary/parser.ts`'s `parseStepText`
+//! Direct port of `legacy/api/src/vocabulary/parser.ts`'s `parseStepText`
 //! — matches a BDD step's free text against a space's controlled
 //! vocabulary and flags warnings.
 //!
@@ -17,7 +17,7 @@
 //! (English vocabulary words) exact and never panics on the rare case.
 //!
 //! Ported test cases live in `parser.test.ts`
-//! (`packages/api/src/vocabulary/parser.test.ts`) and are reproduced
+//! (`legacy/api/src/vocabulary/parser.test.ts`) and are reproduced
 //! verbatim in this crate's `tests/vocabulary_parser.rs`.
 
 #[derive(Debug, Clone)]

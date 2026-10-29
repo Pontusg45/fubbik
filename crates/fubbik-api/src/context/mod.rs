@@ -1,6 +1,6 @@
 //! Context resolution: turns an input (a plan, a concept, a set of file
 //! paths) into candidate chunk ids, then enriches those ids into fully
-//! scored, health-annotated chunks. Ports `packages/api/src/context/
+//! scored, health-annotated chunks. Ports `legacy/api/src/context/
 //! resolvers.ts`.
 //!
 //! [`resolvers`] produces **candidate ids only**; [`service::enrich_chunks`]

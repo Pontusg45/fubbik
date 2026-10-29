@@ -107,7 +107,7 @@ pub async fn list(pool: &PgPool, user_id: &str, params: ListParams) -> AppResult
 /// flag — Node's `enrichChunks` fetches the full row set via
 /// `getStaleFlagsForChunk(id)` (`packages/db/src/repository/staleness.ts:
 /// 61-74`) and only ever reads `staleFlags.length > 0`
-/// (`packages/api/src/context/resolvers.ts:64`), so an existence check
+/// (`legacy/api/src/context/resolvers.ts:64`), so an existence check
 /// reproduces the observable behaviour without materialising rows nothing
 /// downstream reads — the same "just the boolean" shape
 /// `chunk_meta::file_ref_path_exists` uses for an analogous Node call site.
@@ -155,7 +155,7 @@ pub async fn stale_chunk_ids(
 
 /// Counts a user's undismissed, unsuppressed staleness flags. Same filters
 /// as [`list`] minus `reason`/`limit` — Node's `getStaleCount` only takes
-/// `spaceId` (`packages/api/src/staleness/routes.ts`'s `/chunks/stale/count`
+/// `spaceId` (`legacy/api/src/staleness/routes.ts`'s `/chunks/stale/count`
 /// query schema has no `reason` key).
 pub async fn count(pool: &PgPool, user_id: &str, space_id: Option<&str>) -> AppResult<i64> {
     let mut qb = sqlx::QueryBuilder::new(
@@ -416,12 +416,12 @@ pub async fn detect_uncovered_chunks(
 /// Flags every chunk `age::compute_impact_ripple(chunk_id)` finds
 /// downstream of `chunk_id` with reason `"upstream_impact"`, backing `POST
 /// /api/chunks/{id}/scan-impact`. Port of Node's `flagImpactRipple`
-/// (`packages/api/src/staleness/detect-impact.ts:5-32`).
+/// (`legacy/api/src/staleness/detect-impact.ts:5-32`).
 ///
 /// Returns `Ok(None)` when `chunk_id` isn't owned by `user_id` — this
 /// port's own guard, the same "ownership check this route lacks in Node"
 /// pattern as divergence #14 (`dismiss`) and #15 (`suppress_duplicate`)
-/// above: Node's route (`packages/api/src/staleness/routes.ts:93-105`)
+/// above: Node's route (`legacy/api/src/staleness/routes.ts:93-105`)
 /// calls `flagImpactRipple(ctx.params.id, ...)` with **no ownership check
 /// at all** on the chunk id — any authenticated caller can trigger a scan
 /// (and write flags) against any chunk. The service layer maps `None` to
@@ -430,7 +430,7 @@ pub async fn detect_uncovered_chunks(
 /// **Divergence #19: ripple targets are scoped to the caller.** Graph edges
 /// cross ownership — `age::compute_impact_ripple` walks `:connects` edges
 /// regardless of who owns each endpoint, and Node's `flagImpactRipple`
-/// (`packages/api/src/staleness/detect-impact.ts:5-32`) writes a flag onto
+/// (`legacy/api/src/staleness/detect-impact.ts:5-32`) writes a flag onto
 /// **every** chunk it reaches this way, including chunks owned by other
 /// users. Node's own idempotency pre-filter then makes this worse: its
 /// `alreadyFlagged` check goes through `getStaleFlags(userId, {reason:

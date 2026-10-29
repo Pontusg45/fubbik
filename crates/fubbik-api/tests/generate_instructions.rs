@@ -1,5 +1,5 @@
 //! Tests for `GET /api/spaces/{id}/generate-instructions` — the port of
-//! `packages/api/src/generate-instructions/{routes,service}.ts` (Task 10).
+//! `legacy/api/src/generate-instructions/{routes,service}.ts` (Task 10).
 //!
 //! Two deliberate divergences from Node this file's tests pin, both
 //! explained in `crates/fubbik-api/src/generate_instructions/mod.rs`'s
@@ -263,7 +263,7 @@ async fn each_format_produces_a_distinct_document(pool: sqlx::PgPool) {
 
 /// Node's query schema is `t.Union([t.Literal("claude"),
 /// t.Literal("agents"), t.Literal("cursor")])`
-/// (`packages/api/src/generate-instructions/routes.ts:21`), which Elysia
+/// (`legacy/api/src/generate-instructions/routes.ts:21`), which Elysia
 /// rejects a request against *before* the handler body ever runs for any
 /// value outside those three literals — Node does not fall back to a
 /// default for a bad `format`, it rejects. This port matches "reject": an
@@ -323,7 +323,7 @@ async fn missing_format_defaults_to_claude(pool: sqlx::PgPool) {
 // ---------------------------------------------------------------------------
 
 /// Node's only real registration is `/api/codebases/:id/generate-
-/// instructions` (`packages/api/src/generate-instructions/routes.ts:8`);
+/// instructions` (`legacy/api/src/generate-instructions/routes.ts:8`);
 /// this port keeps that path alive as a deprecated alias pointed at the
 /// same handler as the primary `/api/spaces/...` route (see
 /// `generate_instructions_codebases_alias_route`'s doc comment in

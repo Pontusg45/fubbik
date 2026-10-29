@@ -1,4 +1,4 @@
-//! Port of `packages/api/src/documents/render-markdown.ts`.
+//! Port of `legacy/api/src/documents/render-markdown.ts`.
 
 use super::frontmatter::tags_from_path;
 use super::split_markdown::MarkdownSection;
@@ -21,7 +21,7 @@ pub struct RenderOptions<'a> {
 }
 
 /// Renders a document back to markdown, matching `renderMarkdown`
-/// (`packages/api/src/documents/render-markdown.ts:14-79`) line for line.
+/// (`legacy/api/src/documents/render-markdown.ts:14-79`) line for line.
 pub fn render_markdown(opts: RenderOptions) -> String {
     let mut lines: Vec<String> = Vec::new();
     let mut fm_lines: Vec<String> = Vec::new();

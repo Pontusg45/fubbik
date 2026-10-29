@@ -9,7 +9,7 @@
 //! `positions` are **structurally typed** end to end: Node's Elysia route
 //! schema requires `chunkIds: t.Array(t.String())` and
 //! `positions: t.Record(t.String(), t.Object({ x: t.Number(), y: t.Number() }))`
-//! (`packages/api/src/saved-graphs/routes.ts:29-37`), so a client cannot
+//! (`legacy/api/src/saved-graphs/routes.ts:29-37`), so a client cannot
 //! store an arbitrary shape there the way it can with a collection's filter
 //! or a saved query. This port keeps that same structure — `Vec<String>`
 //! and `HashMap<String, Position>` — rather than degrading to

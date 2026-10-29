@@ -1,10 +1,10 @@
 //! Chunk scoring and token budgeting.
 //!
-//! Ports `packages/api/src/context/utils.ts:39-76`.
+//! Ports `legacy/api/src/context/utils.ts:39-76`.
 //!
 //! `budgetChunksWithCoverage` (`utils.ts:81`) is deliberately NOT ported:
 //! it has zero callers, and its only source of `communityId` is
-//! `packages/api/src/graph/community-analysis.ts`, which Phase 4a
+//! `legacy/api/src/graph/community-analysis.ts`, which Phase 4a
 //! established has no clients either. Porting it would mean writing
 //! untestable code for a path that cannot execute.
 use crate::format::format_chunk_text;
@@ -15,7 +15,7 @@ use crate::tokens::estimate_tokens;
 /// (`utils.ts:66`).
 const HEADER_SEED: &str = "# Project Context\n\n";
 
-/// Mirrors `ScoredChunk` (`packages/api/src/context/utils.ts:8-15`) on the
+/// Mirrors `ScoredChunk` (`legacy/api/src/context/utils.ts:8-15`) on the
 /// wire — `chunk_type` serialises as `type`, matching Node's field name,
 /// since `/api/context/*` (Task 6) serialises this struct directly.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]

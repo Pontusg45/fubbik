@@ -1,5 +1,5 @@
 //! Route wiring for the proposals domain
-//! (`packages/api/src/proposals/routes.ts`). Every handler here returns the
+//! (`legacy/api/src/proposals/routes.ts`). Every handler here returns the
 //! default 200 — Node's `proposalRoutes` never calls `ctx.set.status`
 //! anywhere in this file (unlike, say, `collections`/`tags`/`workspaces`'
 //! create routes, which explicitly set 201), so none of these — including
@@ -11,7 +11,7 @@
 //! of registration order), but `/api/proposals/count` and
 //! `/api/proposals/bulk` are still registered as their own literal routes
 //! ahead of `/api/proposals/{proposalId}` here, mirroring Node's explicit
-//! "MUST be before" comments (`packages/api/src/proposals/routes.ts:56,65`)
+//! "MUST be before" comments (`legacy/api/src/proposals/routes.ts:56,65`)
 //! for readability.
 
 use axum::extract::{Path, State};

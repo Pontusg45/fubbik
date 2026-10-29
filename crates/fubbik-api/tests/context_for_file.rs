@@ -1,5 +1,5 @@
 //! Tests for `fubbik_api::context_for_file` — the port of
-//! `packages/api/src/context-for-file/service.ts`'s five-strategy chunk
+//! `legacy/api/src/context-for-file/service.ts`'s five-strategy chunk
 //! matcher, plus the `context::resolvers::resolve_for_files` rewire that
 //! now delegates to it.
 

@@ -1,4 +1,4 @@
-//! Ports `packages/api/src/context/resolvers.ts`'s three input resolvers
+//! Ports `legacy/api/src/context/resolvers.ts`'s three input resolvers
 //! (`resolveForPlan`, `resolveForConcept`, `resolveForFiles`). Each
 //! produces **candidate chunk ids only** — enrichment
 //! (`super::service::enrich_chunks`) is a separate step, which is what

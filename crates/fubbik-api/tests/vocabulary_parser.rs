@@ -1,4 +1,4 @@
-//! Direct port of `packages/api/src/vocabulary/parser.test.ts`'s test
+//! Direct port of `legacy/api/src/vocabulary/parser.test.ts`'s test
 //! cases onto `fubbik_api::vocabulary::parser::parse_step_text`, proving
 //! parity with Node's algorithm.
 

@@ -1,5 +1,5 @@
 //! Business logic for the `features` domain, porting
-//! `packages/api/src/features/service.ts`.
+//! `legacy/api/src/features/service.ts`.
 //!
 //! Ownership is enforced twice on purpose. Every repository query in
 //! `fubbik_db::repo::feature` filters on `user_id` in the SQL itself, and
@@ -20,7 +20,7 @@ use sqlx::PgPool;
 
 use super::dto::{CreateFeatureBody, FeatureDetail, ListFeaturesQuery, UpdateFeatureBody};
 
-/// Ports `validateDelta` (`packages/api/src/features/service.ts:33-46`)
+/// Ports `validateDelta` (`legacy/api/src/features/service.ts:33-46`)
 /// exactly, including the order of its two checks: unknown fields are
 /// reported *before* emptiness, so `{}` and `{bogus: 1}` produce different
 /// messages. Both are `ValidationError` → 400.
@@ -122,7 +122,7 @@ pub async fn get_feature_detail(
 }
 
 /// `GET /features/{id}/deltas` is Node's `getFeatureDetail(...).deltas`
-/// (`packages/api/src/features/routes.ts:150-158`) — it therefore 404s on
+/// (`legacy/api/src/features/routes.ts:150-158`) — it therefore 404s on
 /// an unowned feature and, incidentally, still pays for the `spaces` query
 /// it throws away. Reproduced by going through the same call.
 pub async fn feature_deltas(
@@ -181,7 +181,7 @@ pub async fn delete_feature(pool: &PgPool, feature_id: &str, user_id: &str) -> A
     Ok(())
 }
 
-/// Ports `reorderFeature` (`packages/api/src/features/service.ts:132-143`).
+/// Ports `reorderFeature` (`legacy/api/src/features/service.ts:132-143`).
 ///
 /// The renumbering is exactly Node's, and it is worth being precise about
 /// what it does: it shifts **every** feature of the user at or above
@@ -234,7 +234,7 @@ pub async fn get_active_features(pool: &PgPool, user_id: &str) -> AppResult<Vec<
 
 /// An empty list clears the active set with **no validation at all** —
 /// Node short-circuits before ever listing the user's features
-/// (`packages/api/src/features/service.ts:150-152`), which its own unit
+/// (`legacy/api/src/features/service.ts:150-152`), which its own unit
 /// test pins (`service.test.ts:164-171`).
 ///
 /// A non-empty list is checked against the caller's own features and any
@@ -265,7 +265,7 @@ pub async fn set_active_features(
     feature::set_active_features(pool, user_id, &feature_ids).await
 }
 
-/// Ports `mergeFeature` (`packages/api/src/features/service.ts:192-229`).
+/// Ports `mergeFeature` (`legacy/api/src/features/service.ts:192-229`).
 ///
 /// Re-merging is rejected with a 400 (`Feature is already merged`) rather
 /// than being idempotent. A feature with no deltas takes the cheap path —

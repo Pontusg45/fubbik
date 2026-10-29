@@ -1,7 +1,7 @@
 use fubbik_db::repo::coverage::CoverageMatrixRow;
 
 /// Query params of `GET /requirements/coverage`
-/// (`packages/api/src/coverage/routes.ts:20-25`).
+/// (`legacy/api/src/coverage/routes.ts:20-25`).
 ///
 /// **`codebaseId`, not `spaceId`.** `codebase` is the deprecated name for
 /// `space` everywhere else in this codebase, but this endpoint's wire
@@ -11,7 +11,7 @@ use fubbik_db::repo::coverage::CoverageMatrixRow;
 ///
 /// `detail` is `t.Optional(t.String())` — a **string**, not a boolean, and
 /// the route compares it with `ctx.query.detail === "true"`
-/// (`packages/api/src/coverage/routes.ts:14`). `?detail=1`, `?detail=TRUE`
+/// (`legacy/api/src/coverage/routes.ts:14`). `?detail=1`, `?detail=TRUE`
 /// and `?detail=yes` therefore all take the *default* branch in Node.
 /// Modelling it as `Option<bool>` would accept `?detail=1` and change
 /// behaviour, so it stays a `String` compared literally — see
@@ -24,7 +24,7 @@ pub struct CoverageQuery {
 }
 
 /// Query params of `GET /requirements/traceability`
-/// (`packages/api/src/coverage/routes.ts:33-37`). Same `codebaseId`
+/// (`legacy/api/src/coverage/routes.ts:33-37`). Same `codebaseId`
 /// spelling as `CoverageQuery`, and no `detail` — traceability has only one
 /// shape.
 #[derive(serde::Deserialize, utoipa::IntoParams)]
@@ -34,7 +34,7 @@ pub struct TraceabilityQuery {
 }
 
 /// A chunk with at least one requirement pointing at it
-/// (`packages/api/src/coverage/service.ts:23,29`). Carries the count;
+/// (`legacy/api/src/coverage/service.ts:23,29`). Carries the count;
 /// `UncoveredChunk` deliberately does not, because Node's uncovered entries
 /// are `{id, title}` only — the count there is always `0` and Node omits it.
 #[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
@@ -46,7 +46,7 @@ pub struct CoveredChunk {
 }
 
 /// A chunk no requirement references
-/// (`packages/api/src/coverage/service.ts:24,31`). Two fields, no
+/// (`legacy/api/src/coverage/service.ts:24,31`). Two fields, no
 /// `requirementCount` — see `CoveredChunk`.
 #[derive(Debug, Clone, serde::Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -55,7 +55,7 @@ pub struct UncoveredChunk {
     pub title: String,
 }
 
-/// `packages/api/src/coverage/service.ts:43`. All four are plain numbers on
+/// `legacy/api/src/coverage/service.ts:43`. All four are plain numbers on
 /// the wire.
 ///
 /// `percentage` is `Math.round((covered / total) * 100)` guarded by
@@ -76,10 +76,10 @@ pub struct CoverageStats {
 ///
 /// **This one struct is two response shapes.** Node's route dispatches on
 /// `detail` to two different service functions
-/// (`packages/api/src/coverage/routes.ts:14-17`): `getCoverage` returns
+/// (`legacy/api/src/coverage/routes.ts:14-17`): `getCoverage` returns
 /// `{covered, uncovered, stats}`, and `getCoverageMatrix` returns that
 /// object spread with an extra `matrix` key
-/// (`packages/api/src/coverage/service.ts:9-12`). So `matrix` is *absent*
+/// (`legacy/api/src/coverage/service.ts:9-12`). So `matrix` is *absent*
 /// from the default response, not `null` and not `[]` — hence
 /// `skip_serializing_if`, which drops the key entirely when `None`.
 ///
@@ -100,7 +100,7 @@ pub struct CoverageResponse {
 
 /// One row of `GET /api/requirements/traceability`. The endpoint returns a
 /// **bare array** of these, not an envelope
-/// (`packages/api/src/coverage/service.ts:16-18` returns the repository
+/// (`legacy/api/src/coverage/service.ts:16-18` returns the repository
 /// result directly).
 ///
 /// `planSteps` and `sessions` are **always empty**. Node hard-codes them:

@@ -84,7 +84,7 @@ pub async fn scan_age(
 }
 
 /// `title` falls back to `"Unknown"` when absent — matches Node's
-/// `ctx.body.title ?? "Unknown"` (`packages/api/src/staleness/routes.ts:98`).
+/// `ctx.body.title ?? "Unknown"` (`legacy/api/src/staleness/routes.ts:98`).
 #[utoipa::path(post, path = "/api/chunks/{id}/scan-impact",
     params(("id" = String, Path,)), request_body = ScanImpactBody,
     responses((status = 200, body = ScanResult), (status = 404)))]

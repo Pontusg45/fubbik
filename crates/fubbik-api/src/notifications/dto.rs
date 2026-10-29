@@ -1,5 +1,5 @@
 /// Query params arrive as strings from the web client, matching the
-/// Elysia route's shape (`packages/api/src/notifications/routes.ts`):
+/// Elysia route's shape (`legacy/api/src/notifications/routes.ts`):
 /// `limit: t.Optional(t.Numeric())`, `unreadOnly: t.Optional(t.String())`
 /// compared with `ctx.query.unreadOnly === "true"` at the route, not
 /// coerced to a real boolean by the schema. `into_params`-style helpers

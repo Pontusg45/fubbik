@@ -22,7 +22,7 @@
 //!
 //! **Cycles beyond direct self-reference ARE guarded at the application
 //! level**, matching Node: `addDependency`
-//! (`packages/api/src/requirements/dependency-service.ts:13-27`) calls
+//! (`legacy/api/src/requirements/dependency-service.ts:13-27`) calls
 //! `checkCircularDependency` before inserting and rejects with a
 //! `ValidationError` if the new edge would close a cycle. Ported as
 //! [`check_circular`], called from

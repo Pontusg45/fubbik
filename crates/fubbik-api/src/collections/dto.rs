@@ -1,7 +1,7 @@
 use fubbik_db::repo::collection::CollectionFilter;
 
 /// Body of `POST /api/collections`
-/// (`packages/api/src/collections/routes.ts:23-44`). `filter` is required
+/// (`legacy/api/src/collections/routes.ts:23-44`). `filter` is required
 /// as a whole object but every one of its nine keys is itself optional —
 /// see `CollectionFilter`'s doc comment.
 #[derive(serde::Deserialize, utoipa::ToSchema)]
@@ -14,7 +14,7 @@ pub struct CreateCollectionBody {
 }
 
 /// Body of `PATCH /api/collections/{id}`
-/// (`packages/api/src/collections/routes.ts:45-60`). All three fields are
+/// (`legacy/api/src/collections/routes.ts:45-60`). All three fields are
 /// plain two-state `Option<T>` (omitted = untouched, present = set) — this
 /// schema has no `t.Null()` variant on any field, unlike
 /// `workspaces::dto::UpdateWorkspaceBody::description`, so there is no way

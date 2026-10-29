@@ -9,7 +9,7 @@
 //! strings.
 //!
 //! There is no `POST /api/notifications` create route in Node
-//! (`packages/api/src/notifications/routes.ts` only wires the five routes
+//! (`legacy/api/src/notifications/routes.ts` only wires the five routes
 //! mirrored here), so every test seeds rows with a raw `INSERT` directly,
 //! the same approach `tag_types.rs`'s FK test uses for the `tag` table.
 
@@ -318,7 +318,7 @@ async fn cross_user_mark_read_is_404_and_leaves_victim_unread(pool: sqlx::PgPool
 
 /// Pins the exact wire message of a 404 in this domain to TitleCase,
 /// matching Node's `"Notification not found"`
-/// (`packages/api/src/notifications/service.ts:23,40`) and the house style
+/// (`legacy/api/src/notifications/service.ts:23,40`) and the house style
 /// every other sibling domain in this slice uses. Covers both the
 /// `mark_read` and `delete` 404 paths so a regression on either one goes
 /// red, not just a status-code check.

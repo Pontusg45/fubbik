@@ -1,5 +1,5 @@
 //! Glob matching for `applies_to` patterns. Ports
-//! `packages/api/src/context-for-file/glob-match.ts` (`normalizePath`,
+//! `legacy/api/src/context-for-file/glob-match.ts` (`normalizePath`,
 //! `globMatch`) verbatim.
 //!
 //! Moved here from `fubbik-api::context::resolvers` (Task 5) ahead of
@@ -255,7 +255,7 @@ mod tests {
 
     /// The surrounding literal `/`s in `src/**/*.rs` are NOT consumed by
     /// `**` itself — Node's regex is `src/.*\/[^/]*\.rs` (verified against
-    /// the live `packages/api/src/context-for-file/glob-match.ts` logic),
+    /// the live `legacy/api/src/context-for-file/glob-match.ts` logic),
     /// which needs a second, separate `/` somewhere after the globstar. A
     /// zero-depth path with no intermediate directory has nowhere for that
     /// second `/` to come from, so it does NOT match — caught here after an

@@ -1,7 +1,7 @@
 //! Assembles the graph payload.
 //!
 //! The AGE half degrades to empty on any failure, matching Node's
-//! `Effect.catchAll` (`packages/api/src/graph/service.ts:38`): a database
+//! `Effect.catchAll` (`legacy/api/src/graph/service.ts:38`): a database
 //! without the extension still serves a working graph rather than a 500.
 
 use fubbik_core::error::AppResult;

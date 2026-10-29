@@ -172,7 +172,7 @@ pub async fn find_by_id(pool: &PgPool, id: &str) -> AppResult<Option<Connection>
 /// its two endpoints belongs to `user_id` — an `OR`, not an `AND`, which is
 /// the one place this domain's ownership rule differs from every other
 /// guard in this slice. This matches Node's `deleteConnection`
-/// (`packages/api/src/connections/service.ts:36-51`) exactly: it re-fetches
+/// (`legacy/api/src/connections/service.ts:36-51`) exactly: it re-fetches
 /// both `source` and `target` scoped to `userId` and requires `source ||
 /// target` to resolve — "a connection between two chunks neither owned by
 /// the caller is invisible/undeletable, but only one end needs to belong

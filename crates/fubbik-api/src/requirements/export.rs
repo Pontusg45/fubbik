@@ -1,4 +1,4 @@
-//! Direct port of `packages/api/src/requirements/export.ts` — pure string
+//! Direct port of `legacy/api/src/requirements/export.ts` — pure string
 //! formatting, no SQL, no I/O. Backs `GET /requirements/{id}/export` and
 //! `GET /requirements/export`.
 
@@ -6,7 +6,7 @@ use fubbik_db::repo::requirement::RequirementStep;
 
 /// Replaces `{key}` placeholders in `text` with `params[key]`, leaving an
 /// unmatched placeholder untouched (`{key}` stays literal text) — matches
-/// Node's `interpolate` exactly (`packages/api/src/requirements/export.ts:
+/// Node's `interpolate` exactly (`legacy/api/src/requirements/export.ts:
 /// 3-6`): `text.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? `{${key}}`)`.
 /// `\w` in JS is `[A-Za-z0-9_]`; reproduced here with `is_word_char` rather
 /// than pulling in a `regex` dependency this crate otherwise avoids (see
@@ -56,7 +56,7 @@ fn capitalize(keyword: &str) -> String {
     }
 }
 
-/// Matches Node's `toGherkin` (`packages/api/src/requirements/export.ts:12-20`).
+/// Matches Node's `toGherkin` (`legacy/api/src/requirements/export.ts:12-20`).
 pub fn to_gherkin(title: &str, steps: &[RequirementStep]) -> String {
     let mut lines = vec![
         format!("Feature: {title}"),
@@ -71,7 +71,7 @@ pub fn to_gherkin(title: &str, steps: &[RequirementStep]) -> String {
     lines.join("\n")
 }
 
-/// Matches Node's `toVitest` (`packages/api/src/requirements/export.ts:22-39`).
+/// Matches Node's `toVitest` (`legacy/api/src/requirements/export.ts:22-39`).
 pub fn to_vitest(title: &str, steps: &[RequirementStep]) -> String {
     let step_comments = steps
         .iter()
@@ -94,7 +94,7 @@ pub fn to_vitest(title: &str, steps: &[RequirementStep]) -> String {
     .join("\n")
 }
 
-/// Matches Node's `toMarkdown` (`packages/api/src/requirements/export.ts:41-49`).
+/// Matches Node's `toMarkdown` (`legacy/api/src/requirements/export.ts:41-49`).
 pub fn to_markdown(title: &str, steps: &[RequirementStep]) -> String {
     let mut lines = vec![format!("# {title}"), String::new()];
     for step in steps {
@@ -105,7 +105,7 @@ pub fn to_markdown(title: &str, steps: &[RequirementStep]) -> String {
     lines.join("\n")
 }
 
-/// Matches Node's `exportOne` switch (`packages/api/src/requirements/
+/// Matches Node's `exportOne` switch (`legacy/api/src/requirements/
 /// service.ts:280-295`): an unrecognised `format` falls back to markdown,
 /// same as Node's `default` branch.
 pub fn export_one(title: &str, steps: &[RequirementStep], format: &str) -> String {

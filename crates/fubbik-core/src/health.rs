@@ -1,4 +1,4 @@
-//! Direct port of `packages/api/src/chunks/health-score.ts`'s
+//! Direct port of `legacy/api/src/chunks/health-score.ts`'s
 //! `computeHealthScore`. A pure function — no I/O, no `AppResult` — so
 //! every call site (currently just `search::service`) is free to call it
 //! synchronously.
@@ -48,7 +48,7 @@ pub struct HealthScore {
     pub issues: Vec<String>,
 }
 
-/// Port of `computeHealthScore` (`packages/api/src/chunks/health-score.ts:28-103`).
+/// Port of `computeHealthScore` (`legacy/api/src/chunks/health-score.ts:28-103`).
 /// Every branch below is a direct translation — see that file for the
 /// category-by-category rationale (freshness's age-penalty removal,
 /// richness's content-length tiers, connectivity's centrality bonus,

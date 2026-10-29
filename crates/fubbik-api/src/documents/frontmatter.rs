@@ -1,5 +1,5 @@
 //! Hand-rolled port of the pieces of Node's `extractFrontmatter`/
-//! `tagsFromPath` (`packages/api/src/chunks/parse-docs.ts:60-116`) that
+//! `tagsFromPath` (`legacy/api/src/chunks/parse-docs.ts:60-116`) that
 //! `split_markdown`/`render_markdown` actually consume.
 //!
 //! The wider template-aware parser now lives in
@@ -33,7 +33,7 @@ enum FmValue {
 /// `extractFrontmatter` exactly, including the asymmetry in how `body` is
 /// produced: **trimmed** when a frontmatter block was found, but the
 /// **untouched original `raw`** when none was found
-/// (`packages/api/src/chunks/parse-docs.ts:61-64` vs. `:86` — Node returns
+/// (`legacy/api/src/chunks/parse-docs.ts:61-64` vs. `:86` — Node returns
 /// `{ frontmatter: {}, body: raw }` on a regex miss, never trimming `raw`).
 pub fn extract_frontmatter(raw: &str) -> (Frontmatter, String) {
     match split_frontmatter_block(raw) {
@@ -73,7 +73,7 @@ fn split_frontmatter_block(raw: &str) -> Option<(&str, &str)> {
 }
 
 /// Line-by-line state machine mirroring Node's `extractFrontmatter` loop
-/// exactly (`packages/api/src/chunks/parse-docs.ts:75-108`): a `key:`
+/// exactly (`legacy/api/src/chunks/parse-docs.ts:75-108`): a `key:`
 /// line with no value starts an array accumulation; subsequent `  - item`
 /// lines feed it; any other line flushes the pending array under the
 /// last-seen key. Last write wins if a key appears twice (matches plain
@@ -157,7 +157,7 @@ fn kv_match(line: &str) -> Option<(String, &str)> {
     Some((line[..end].to_string(), rest))
 }
 
-/// Port of `tagsFromPath` (`packages/api/src/chunks/parse-docs.ts:52-61`):
+/// Port of `tagsFromPath` (`legacy/api/src/chunks/parse-docs.ts:52-61`):
 /// every non-empty path segment except the filename, plus the filename's
 /// own stem (`.md` stripped, `-`/`_` -> space) unless that stem is empty,
 /// `"index"`, or `"readme"` (case-insensitively).

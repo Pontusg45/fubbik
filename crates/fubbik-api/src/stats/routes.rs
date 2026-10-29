@@ -10,7 +10,7 @@ use crate::error::ApiResult;
 
 /// `GET /api/stats` returns a **bare object** — not an array, and not the
 /// `{chunks,total,limit,offset}` envelope `GET /api/chunks` uses. Matches
-/// Node's `statsRoutes` (`packages/api/src/stats/routes.ts`), which returns
+/// Node's `statsRoutes` (`legacy/api/src/stats/routes.ts`), which returns
 /// `statsService.getUserStats(session.user.id)` directly as the response
 /// body.
 #[utoipa::path(get, path = "/api/stats", responses((status = 200, body = Stats)))]

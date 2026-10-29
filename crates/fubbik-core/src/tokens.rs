@@ -1,6 +1,6 @@
 //! Token counting for context budgeting.
 //!
-//! Ports `packages/api/src/context/utils.ts:19-37`, which calls
+//! Ports `legacy/api/src/context/utils.ts:19-37`, which calls
 //! `encodingForModel("gpt-4o")` from `js-tiktoken`. `gpt-4o` maps to the
 //! `o200k_base` encoding.
 //!

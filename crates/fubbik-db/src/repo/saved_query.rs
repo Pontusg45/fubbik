@@ -88,7 +88,7 @@ pub async fn create(
 /// top of this (`DELETE /api/search/saved/{id}`) ignores whether a row was
 /// actually removed and always answers `{"message":"Deleted"}` — matching
 /// Node's `deleteSavedQuery`, whose result is likewise discarded by
-/// `packages/api/src/search/routes.ts:105-112` — so this returns `()`, not
+/// `legacy/api/src/search/routes.ts:105-112` — so this returns `()`, not
 /// a `bool`: there is nothing the caller does differently either way. The
 /// `user_id = $2` predicate is still load-bearing even though the response
 /// can't reveal it: it's the only thing standing between this and deleting

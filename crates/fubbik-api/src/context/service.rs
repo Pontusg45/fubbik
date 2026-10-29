@@ -1,5 +1,5 @@
 //! Ports `enrichChunks` and `resolveFeatureOverlays`
-//! (`packages/api/src/context/resolvers.ts:29-133`): fetches full chunk
+//! (`legacy/api/src/context/resolvers.ts:29-133`): fetches full chunk
 //! rows for a set of candidate ids, computes health and score, flags
 //! staleness/pending-proposal state, and applies active-feature overlays.
 //!

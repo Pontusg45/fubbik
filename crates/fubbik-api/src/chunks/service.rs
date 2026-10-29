@@ -570,7 +570,7 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
 const MAX_SUB_RESOURCE_ENTRIES: usize = 50;
 
 /// The four values Node's `PUT /chunks/:id/file-refs` route schema accepts
-/// for `relation` (`packages/api/src/file-refs/routes.ts:23`). Enforced
+/// for `relation` (`legacy/api/src/file-refs/routes.ts:23`). Enforced
 /// here rather than as a serde enum or a DB CHECK — the column is free
 /// `text` and Node's *read* paths never constrain it, so an older row
 /// carrying something else must still be readable.
@@ -661,7 +661,7 @@ pub fn validate_file_refs(
 // chunk detail
 // ---------------------------------------------------------------------------
 
-/// Port of Node's `getChunkDetail` (`packages/api/src/chunks/service.ts:
+/// Port of Node's `getChunkDetail` (`legacy/api/src/chunks/service.ts:
 /// 128-186`): the chunk plus its connections, spaces, applies-to patterns,
 /// file references, tags, linked requirements and feature deltas, with a
 /// health score computed over the lot and active feature overlays applied.
@@ -674,7 +674,7 @@ pub fn validate_file_refs(
 ///
 /// **Divergence, deliberate:** Node loads active feature ids in a global
 /// `.resolve()` wrapped in `try/catch` that swallows failures and proceeds
-/// with `activeFeatureIds = []` (`packages/api/src/index.ts:207-218`), so a
+/// with `activeFeatureIds = []` (`legacy/api/src/index.ts:207-218`), so a
 /// database hiccup there silently serves the *unoverlaid* chunk — the user
 /// sees different content with no indication anything went wrong. Here the
 /// caller passes the ids in and any failure loading them propagates as a
@@ -744,7 +744,7 @@ pub async fn get_detail(
         // - b.featurePriority)` produces (JS sort is stable, so ties keep
         // the repository's order). Highest priority is applied last and
         // therefore wins a same-field conflict — see `resolve` in
-        // `packages/api/src/features/resolve.ts`.
+        // `legacy/api/src/features/resolve.ts`.
         for delta in all_deltas
             .iter()
             .filter(|d| active_feature_ids.contains(&d.feature_id))

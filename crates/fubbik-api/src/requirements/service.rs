@@ -1,5 +1,5 @@
-//! Port of `packages/api/src/requirements/service.ts` and
-//! `packages/api/src/requirements/batch-service.ts`.
+//! Port of `legacy/api/src/requirements/service.ts` and
+//! `legacy/api/src/requirements/batch-service.ts`.
 
 use fubbik_core::error::{AppError, AppResult};
 use fubbik_db::repo::requirement::{
@@ -113,7 +113,7 @@ pub async fn get_requirement(
     Ok(RequirementDetail::new(req, chunks))
 }
 
-/// Mirrors Node's `createRequirement` (`packages/api/src/requirements/
+/// Mirrors Node's `createRequirement` (`legacy/api/src/requirements/
 /// service.ts:99-135`). Unlike Node — whose repo-level `createRequirement`
 /// is a bare insert with no ownership check on `spaceId`/`useCaseId` at
 /// all — this pre-checks both here, the same "check through the parent
@@ -174,7 +174,7 @@ pub async fn create_requirement(
     })
 }
 
-/// Mirrors Node's `updateRequirement` (`packages/api/src/requirements/
+/// Mirrors Node's `updateRequirement` (`legacy/api/src/requirements/
 /// service.ts:137-187`). Node's body has no `status` field at all (see
 /// `RequirementPatch`'s doc comment) — the "flag failing chunks on status
 /// change" branch that exists in Node's repo-layer function signature is
@@ -249,7 +249,7 @@ pub async fn delete_requirement(pool: &PgPool, user_id: &str, id: &str) -> AppRe
     Ok(())
 }
 
-/// Mirrors Node's `updateStatus` (`packages/api/src/requirements/
+/// Mirrors Node's `updateStatus` (`legacy/api/src/requirements/
 /// service.ts:199-217`): setting status to `"failing"` flags every linked
 /// chunk via `staleness::flag_requirement_failing`, fire-and-forget (its
 /// return value is discarded, same as Node discards `flagRequirementFailing`'s).
@@ -279,7 +279,7 @@ pub async fn update_status(
     Ok(updated)
 }
 
-/// Mirrors Node's `setChunks` (`packages/api/src/requirements/service.ts:
+/// Mirrors Node's `setChunks` (`legacy/api/src/requirements/service.ts:
 /// 219-238`): every `chunk_id` is verified to exist and belong to `user_id`
 /// *before* the join is replaced — a single missing/foreign chunk id fails
 /// the whole call with a 404 naming it, matching Node's `Effect.all`
@@ -313,7 +313,7 @@ pub async fn get_stats(
     requirement::stats(pool, user_id, space_id).await
 }
 
-/// Mirrors Node's `bulkAction` (`packages/api/src/requirements/service.ts:
+/// Mirrors Node's `bulkAction` (`legacy/api/src/requirements/service.ts:
 /// 244-261`): returns the bare row count `bulkUpdateRequirements`/
 /// `bulkDeleteRequirements` return — **not** wrapped in an object — same
 /// as Node's route, which resolves the handler to that raw number and lets
@@ -349,7 +349,7 @@ pub async fn bulk_action(pool: &PgPool, user_id: &str, body: BulkActionBody) -> 
     Ok(count as i64)
 }
 
-/// Mirrors Node's `reorderRequirements` (`packages/api/src/requirements/
+/// Mirrors Node's `reorderRequirements` (`legacy/api/src/requirements/
 /// service.ts:263-278`). Returns `requirement_ids.len()` unconditionally,
 /// matching Node's `setRequirementOrder`, which returns
 /// `requirementIds.length` regardless of how many rows the loop's
@@ -424,7 +424,7 @@ pub async fn export_all(
 }
 
 /// Mirrors Node's `batchCreateRequirements`
-/// (`packages/api/src/requirements/batch-service.ts:23-102`): validates
+/// (`legacy/api/src/requirements/batch-service.ts:23-102`): validates
 /// every requirement's steps upfront (a single validation failure on any
 /// entry rejects the whole batch with no partial writes), then resolves
 /// `useCaseName`/`parentUseCaseName` to ids — creating new use cases as

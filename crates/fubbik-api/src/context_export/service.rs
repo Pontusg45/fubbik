@@ -1,6 +1,6 @@
 //! `GET /api/chunks/export/context`.
 //!
-//! Ports `packages/api/src/context-export/service.ts:15-87`: fetches every
+//! Ports `legacy/api/src/context-export/service.ts:15-87`: fetches every
 //! non-archived chunk in scope (approved chunks first, then everything
 //! else, deduplicated), enriches and scores them through the shared
 //! `context::service::enrich_chunks` pipeline, optionally boosts chunks

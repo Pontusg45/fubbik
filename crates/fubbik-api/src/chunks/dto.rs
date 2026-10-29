@@ -135,7 +135,7 @@ pub struct ChunkCluster {
 }
 
 /// Body of `POST /api/chunks`, matching Node's route schema
-/// (`packages/api/src/chunks/routes.ts` — the 13-field `t.Object` on the
+/// (`legacy/api/src/chunks/routes.ts` — the 13-field `t.Object` on the
 /// `/chunks` POST).
 ///
 /// This used to carry four fields. Every other one the client sent was
@@ -219,7 +219,7 @@ where
 }
 
 /// Query for `GET /api/chunks/search/semantic`
-/// (`packages/api/src/chunks/routes.ts:192-206`). All values arrive as
+/// (`legacy/api/src/chunks/routes.ts:192-206`). All values arrive as
 /// strings from Node's `t.Object` schema, so `limit` is parsed rather than
 /// typed — keeping the wire contract identical.
 #[derive(Debug, serde::Deserialize, utoipa::IntoParams)]
@@ -268,12 +268,12 @@ pub struct ListChunksQuery {
     pub sort: Option<Sort>,
     /// Comma-separated tag names, OR semantics — matches the `tags` key of
     /// `CollectionFilterSchema` and Node's own `?tags=` query param
-    /// (`packages/api/src/chunks/service.ts:61-65`). Parsed with
+    /// (`legacy/api/src/chunks/service.ts:61-65`). Parsed with
     /// [`parse_tags`].
     pub tags: Option<String>,
     /// Days-ago offset (e.g. `?after=7` = "updated in the last 7 days"), not
     /// a timestamp — matches Node's `new Date(Date.now() - Number(after) *
-    /// 86400000)` (`packages/api/src/chunks/service.ts:66`). Parsed with
+    /// 86400000)` (`legacy/api/src/chunks/service.ts:66`). Parsed with
     /// [`parse_after`].
     pub after: Option<String>,
     pub enrichment: Option<Enrichment>,
@@ -292,7 +292,7 @@ pub struct ListChunksQuery {
 
 /// Splits a comma-separated tag list, trims each entry, and drops blanks —
 /// matching Node's `query.tags?.split(",").map(s => s.trim()).filter(Boolean)`
-/// (`packages/api/src/chunks/service.ts:61-64`). An input that is present
+/// (`legacy/api/src/chunks/service.ts:61-64`). An input that is present
 /// but reduces to zero non-blank entries (e.g. `""` or `","`) is treated
 /// exactly like an absent `tags` param: `None`, not `Some(vec![])` — a
 /// `tags = Some(vec![])` would (via `chunk::ListParams`) build an `id IN
@@ -309,7 +309,7 @@ pub fn parse_tags(raw: &str) -> Option<Vec<String>> {
 
 /// Converts a "days ago" string into a UTC cutoff instant — matching Node's
 /// `new Date(Date.now() - Number(query.after) * 86400000)`
-/// (`packages/api/src/chunks/service.ts:66`). An unparsable value is
+/// (`legacy/api/src/chunks/service.ts:66`). An unparsable value is
 /// treated as "no filter" (`None`) rather than reproducing JS's `Invalid
 /// Date` (which Drizzle would hand to Postgres as a malformed timestamp,
 /// not as "no filter") — this port has no test exercising that edge, and
@@ -344,7 +344,7 @@ impl ListChunksQuery {
             space_id: self.space_id,
             ids: None,
             // Capped at 100, matching Node's `Math.min(Number(query.limit ?? 50), 100)`
-            // (`packages/api/src/chunks/service.ts:50`) — this used to clamp to 500,
+            // (`legacy/api/src/chunks/service.ts:50`) — this used to clamp to 500,
             // which was invisible to the differential harness because its only limit
             // case (`?limit=5`) sits below both caps. See
             // `chunk_list_limit_is_clamped_identically_above_both_caps` in
@@ -377,7 +377,7 @@ pub struct ChunkListResponse {
 
 /// Response body of `GET /api/chunks/{id}` — the *enriched* chunk detail,
 /// matching Node's `getChunkDetail` return
-/// (`packages/api/src/chunks/service.ts:128-186`) key for key.
+/// (`legacy/api/src/chunks/service.ts:128-186`) key for key.
 ///
 /// Until this landed, Rust's `GET /api/chunks/{id}` returned the bare
 /// [`Chunk`] row, which is why the chunk detail page, the edit page and the

@@ -1,7 +1,7 @@
 //! `POST /api/context/snapshot`, `GET /api/context/snapshot/{id}`,
 //! `GET /api/context/snapshots`, `DELETE /api/context/snapshot/{id}`.
 //!
-//! Ports `packages/api/src/context/snapshot-service.ts` and
+//! Ports `legacy/api/src/context/snapshot-service.ts` and
 //! `snapshot-routes.ts`: a snapshot freezes the resolve->enrich->budget
 //! pipeline's output — the same one `context::routes`' three GET endpoints
 //! run live — as a JSONB blob, so an AI agent can retrieve *exactly* the
@@ -54,7 +54,7 @@ use fubbik_db::timestamp::UtcTimestamp;
 const DEFAULT_MAX_TOKENS: usize = 8000;
 
 /// Body of `POST /api/context/snapshot`
-/// (`packages/api/src/context/snapshot-routes.ts:27-34`). Resolver
+/// (`legacy/api/src/context/snapshot-routes.ts:27-34`). Resolver
 /// selection order — `planId`, else non-empty `filePaths`, else `concept`
 /// — is decided in [`create_snapshot`], mirroring
 /// `snapshot-service.ts:32-38`'s `if`/`else if` chain exactly.

@@ -193,7 +193,7 @@ async fn graph_space_scoping_actually_filters(pool: sqlx::PgPool) {
         .collect();
 
     // This is the bug being fixed. On Node the param is named `codebaseId`
-    // (packages/api/src/graph/routes.ts:18), Elysia strips the unknown
+    // (legacy/api/src/graph/routes.ts:18), Elysia strips the unknown
     // `spaceId`, and BOTH titles come back.
     assert!(titles.contains(&"In target"));
     assert!(
@@ -225,7 +225,7 @@ async fn behavior_sync_projects_rules_for_every_user_and_is_idempotent(pool: sql
     let mut first_user_code_id = String::new();
 
     // Two DIFFERENT users, each with a matrix. Node syncs only the implicit
-    // dev user (packages/api/src/startup.ts:52); this port syncs both, and
+    // dev user (legacy/api/src/startup.ts:52); this port syncs both, and
     // that divergence is the point of this assertion.
     for (i, (email, name, title)) in [
         ("a@b.test", "A", "Sessions expire"),
@@ -478,7 +478,7 @@ async fn behavior_sync_accepts_titles_containing_the_old_dollar_quote_delimiter(
 /// `graph::sync::sync_once` deliberately sweeps every user's matrices into
 /// the AGE graph — the correct behaviour, and a real divergence from Node,
 /// which only ever wrote the implicit dev user's rules
-/// (`packages/api/src/startup.ts:52`) and so never faced this seam. But
+/// (`legacy/api/src/startup.ts:52`) and so never faced this seam. But
 /// `age::list_behavior_rule_vertices` / `age::list_governs_edges` have no
 /// user id to filter on: AGE vertices don't carry one. Without a filter at
 /// the service layer, user A's `GET /api/graph` would return user B's

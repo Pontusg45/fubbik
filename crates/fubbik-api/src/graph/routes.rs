@@ -15,7 +15,7 @@ use crate::extract::Query;
 #[serde(rename_all = "camelCase")]
 pub struct GraphQuery {
     /// `spaceId`, NOT `codebaseId`. Node still declares the pre-rename name
-    /// (`packages/api/src/graph/routes.ts:18`) while the web sends `spaceId`,
+    /// (`legacy/api/src/graph/routes.ts:18`) while the web sends `spaceId`,
     /// so Elysia strips it and the filter silently does nothing. Task 8 fixes
     /// Node to match this.
     pub space_id: Option<String>,

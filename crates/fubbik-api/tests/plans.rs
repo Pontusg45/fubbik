@@ -719,7 +719,7 @@ async fn activity_on_another_users_plan_is_404(pool: sqlx::PgPool) {
 }
 
 /// Final review Fix 4: Node writes `activity_log` rows for plan create,
-/// update, delete, and duplicate (`packages/api/src/plans/routes.ts:47,
+/// update, delete, and duplicate (`legacy/api/src/plans/routes.ts:47,
 /// 89, 120, 140`) — this proves all four are ported, matching Node's
 /// `action`/`entityType`/`entityTitle` values exactly.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]

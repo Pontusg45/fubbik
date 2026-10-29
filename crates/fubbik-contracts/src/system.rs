@@ -13,7 +13,7 @@ pub struct HealthResponse {
 /// Aggregate per-user counts backing `GET /api/stats`. Bare-object shape,
 /// not an array and not the `{chunks,total,limit,offset}` envelope the
 /// chunks *list* endpoint uses — matches Node's `getUserStats`
-/// (`packages/api/src/stats/service.ts`) field-for-field. No fields beyond
+/// (`legacy/api/src/stats/service.ts`) field-for-field. No fields beyond
 /// what Node returns: this is a parity port, not a place to add "useful"
 /// counts.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]

@@ -1,5 +1,5 @@
 //! HTTP-level tests for the `saved-graphs` domain
-//! (`packages/api/src/saved-graphs/`). Repo-level guards (`user_id`
+//! (`legacy/api/src/saved-graphs/`). Repo-level guards (`user_id`
 //! scoping, list ordering, tri-state `description`, no-op-doesn't-bump
 //! semantics) are proven directly against SQL in
 //! `fubbik-db/tests/saved_graph.rs` — this file covers the five HTTP

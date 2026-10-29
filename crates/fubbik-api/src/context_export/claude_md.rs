@@ -1,6 +1,6 @@
 //! `GET /api/chunks/export/claude-md`.
 //!
-//! Ports `packages/api/src/context-export/claude-md.ts` (190 LOC):
+//! Ports `legacy/api/src/context-export/claude-md.ts` (190 LOC):
 //! tag-based export of chunks (grouped into four fixed sections by type),
 //! followed by a Requirements section and an Active Plans section, joined
 //! with blank lines and truncated to a token budget that defaults to

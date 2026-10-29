@@ -14,7 +14,7 @@
 //! `checklist`, `convention`) land via `migrations/0002_seed_reference_data.sql:15-38`
 //! with `built_in = true` and `user_id IS NULL`. Node's
 //! `updateChunkType`/`deleteChunkType`
-//! (`packages/api/src/vocabularies/service.ts:55-87`) load the row
+//! (`legacy/api/src/vocabularies/service.ts:55-87`) load the row
 //! *unscoped*, reject `builtIn` rows with a `ValidationError` (400), and
 //! only then run the scoped mutation. That service-layer check is
 //! replicated in `fubbik_api::vocabularies::service`.
@@ -151,7 +151,7 @@ pub async fn find_by_id(pool: &PgPool, id: &str) -> AppResult<Option<ChunkType>>
 /// match their column defaults, but are applied the same way for symmetry.
 ///
 /// `space_id` is always `NULL`: Node's route body schema
-/// (`packages/api/src/vocabularies/routes.ts:7-15`) has no `spaceId` or
+/// (`legacy/api/src/vocabularies/routes.ts:7-15`) has no `spaceId` or
 /// `codebaseId` field at all, so `createChunkType`'s `codebaseId` service
 /// parameter is unreachable — and even if set, the repo reads `row.spaceId`,
 /// not `row.codebaseId`. See the note in

@@ -1,5 +1,5 @@
 //! Business logic for the `vocabulary` domain
-//! (`packages/api/src/vocabulary/service.ts`). Every operation authorizes
+//! (`legacy/api/src/vocabulary/service.ts`). Every operation authorizes
 //! via `verify_space_ownership` — the space the entry lives in (or will
 //! live in) must belong to the caller — never via `vocabulary_entry.user_id`
 //! directly; see `fubbik_db::repo::vocabulary`'s module doc for why.

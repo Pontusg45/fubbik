@@ -15,7 +15,7 @@ use sqlx::PgPool;
 use super::dto::{BulkAction, BulkActionBody};
 
 /// Mirrors Node's `createProposal`
-/// (`packages/api/src/proposals/service.ts:15-29`): the only validation is
+/// (`legacy/api/src/proposals/service.ts:15-29`): the only validation is
 /// "changes is not empty"; there is deliberately no check that `chunk_id`
 /// exists or belongs to `proposed_by` — see
 /// `fubbik_db::repo::proposal::create`'s doc comment for what happens to an
@@ -59,7 +59,7 @@ pub async fn get_proposal(pool: &PgPool, user_id: &str, id: &str) -> AppResult<C
 const VALID_STATUSES: [&str; 3] = ["pending", "approved", "rejected"];
 
 /// Mirrors Node's `listProposals`
-/// (`packages/api/src/proposals/service.ts:37-50`): an absent `status`
+/// (`legacy/api/src/proposals/service.ts:37-50`): an absent `status`
 /// defaults to `"pending"` — this is the global queue, and Node deliberately
 /// does not expose "every status" as the default — while a present-but-
 /// invalid `status` is a 400, matching Node's explicit
@@ -97,7 +97,7 @@ pub async fn list_proposals(
 }
 
 /// Mirrors Node's `listProposalsForChunk`
-/// (`packages/api/src/proposals/service.ts:52-54`): a thin pass-through,
+/// (`legacy/api/src/proposals/service.ts:52-54`): a thin pass-through,
 /// `status` unvalidated and, when absent, meaning "every status" — not
 /// defaulted to `"pending"` the way the global queue's `list` is.
 pub async fn list_proposals_for_chunk(
@@ -112,7 +112,7 @@ pub async fn list_proposals_for_chunk(
 /// half of both `approve_proposal` and `reject_proposal`, matching the
 /// identical `getProposalById(...).flatMap(status check)` prefix Node
 /// repeats in both `approveProposal` and `rejectProposal`
-/// (`packages/api/src/proposals/service.ts:57-63,81-87`).
+/// (`legacy/api/src/proposals/service.ts:57-63,81-87`).
 ///
 /// Deliberately uses the **unscoped** `proposal::find_by_id`, not
 /// `get_proposal`/`find_by_id_for_owner` above — ownership for both
@@ -134,7 +134,7 @@ async fn pending_proposal_or_error(pool: &PgPool, proposal_id: &str) -> AppResul
 }
 
 /// Mirrors Node's `approveProposal`
-/// (`packages/api/src/proposals/service.ts:56-78`) in intent, but no longer
+/// (`legacy/api/src/proposals/service.ts:56-78`) in intent, but no longer
 /// in its non-atomic *shape*: this now delegates to `proposal::approve`,
 /// which applies the proposal's changes to the chunk and flips the proposal
 /// to `approved` inside **one transaction** (Phase 2e wave 1 — see
@@ -179,7 +179,7 @@ pub async fn approve_proposal(
 }
 
 /// Mirrors Node's `rejectProposal`
-/// (`packages/api/src/proposals/service.ts:80-90`) in intent, but no longer
+/// (`legacy/api/src/proposals/service.ts:80-90`) in intent, but no longer
 /// in its unscoped *shape*: Node has **no chunk ownership check of any
 /// kind** on reject, so any authenticated user can reject any pending
 /// proposal regardless of who owns the underlying chunk. Phase 2e wave 1

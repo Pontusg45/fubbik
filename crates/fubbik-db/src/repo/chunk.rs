@@ -418,7 +418,7 @@ pub struct EnrichmentPatch {
 /// from Node's `EnrichChunkParams.summary`, which is typed `string | null`
 /// and can blank a summary via an explicit `null` (its conditional spread
 /// keys off `!== undefined`, not truthiness). No current caller needs to
-/// clear a column through this function — `packages/api/src/enrich/service.ts`
+/// clear a column through this function — `legacy/api/src/enrich/service.ts`
 /// only ever writes non-null values — so the gap is intentional, not an
 /// oversight, but it means this function cannot express what Node's type
 /// allows.
@@ -426,7 +426,7 @@ pub struct EnrichmentPatch {
 /// `scope` is deliberately not part of `EnrichmentPatch`, even though
 /// Node's `EnrichChunkParams` (`chunk.ts:365-372`) has an optional `scope`
 /// spread the same way as the other fields. The only real caller
-/// (`packages/api/src/enrich/service.ts:39`) never populates it, so adding
+/// (`legacy/api/src/enrich/service.ts:39`) never populates it, so adding
 /// a fifth COALESCE branch (and the test to pin it) here would cover a
 /// capability nothing exercises.
 ///
@@ -576,7 +576,7 @@ pub struct ListParams {
     pub tags: Option<Vec<String>>,
     /// Chunks whose `updated_at` is on or after this instant. Callers
     /// compute this from a "days ago" offset the same way Node's
-    /// `listChunks` service does (`packages/api/src/chunks/service.ts:66`)
+    /// `listChunks` service does (`legacy/api/src/chunks/service.ts:66`)
     /// — see `ListChunksQuery::into_params` and
     /// `collections::service::filter_to_list_params`.
     pub after: Option<chrono::NaiveDateTime>,

@@ -7,7 +7,7 @@
 //! nullable with `ON DELETE SET NULL` — the same shape the Phase 2e brief
 //! flags for `tag_type`: a user-created row whose owner column can go
 //! `NULL` out from under it, so `user_id` cannot be the authorization
-//! boundary. Node's own service (`packages/api/src/vocabulary/service.ts`)
+//! boundary. Node's own service (`legacy/api/src/vocabulary/service.ts`)
 //! never checks `entry.userId` either — every operation authorizes via
 //! `verifySpaceOwnership(spaceId, userId)`, i.e. "does the *space* this
 //! entry lives in belong to the caller". This module reproduces that same
@@ -23,7 +23,7 @@
 //! `category` is `text NOT NULL` with **no** Postgres check constraint or
 //! enum type (`packages/db/src/migrations/0000_baseline.sql:356`) — the
 //! only constraint on it is Elysia's `t.Union` of six literals in the
-//! route schema (`packages/api/src/vocabulary/routes.ts:7-14`). That *is*
+//! route schema (`legacy/api/src/vocabulary/routes.ts:7-14`). That *is*
 //! a genuine input constraint (unlike, say, `notification.type`, which has
 //! no constraint anywhere), so the API layer models it as an enum
 //! (`fubbik_api::vocabulary::dto::Category`) — but this repo module keeps
@@ -103,7 +103,7 @@ pub async fn list(pool: &PgPool, user_id: &str, space_id: &str) -> AppResult<Vec
 }
 
 /// Backs `createEntry`'s auto-seed check
-/// (`packages/api/src/vocabulary/service.ts:40-43`): `count === 0` decides
+/// (`legacy/api/src/vocabulary/service.ts:40-43`): `count === 0` decides
 /// whether to seed the standard modifiers first. Same `EXISTS` guard shape
 /// as `list`.
 pub async fn count(pool: &PgPool, user_id: &str, space_id: &str) -> AppResult<i64> {
@@ -316,7 +316,7 @@ pub async fn get_by_id(pool: &PgPool, id: &str) -> AppResult<Option<VocabularyEn
 
 /// Two-state (`None` = leave untouched, `Some` = set) on all three fields —
 /// Node's PATCH body (`t.Optional(t.String())` / `t.Optional(CategorySchema)`
-/// / `t.Optional(t.Array(t.String()))`, `packages/api/src/vocabulary/routes.ts:124-128`)
+/// / `t.Optional(t.Array(t.String()))`, `legacy/api/src/vocabulary/routes.ts:124-128`)
 /// has no `t.Null()` variant anywhere, so there is no way for a client to
 /// explicitly clear any of these fields through this endpoint.
 #[derive(Default)]

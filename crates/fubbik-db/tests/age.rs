@@ -223,7 +223,7 @@ async fn cypher_columns_returns_named_columns(pool: sqlx::PgPool) {
     assert_eq!(rows[0]["id"], "r1");
     assert_eq!(rows[0]["layer"], "invariant");
     // The whole point of parse_agtype over Node's `.replace(/"/g, "")`
-    // (packages/api/src/graph/service.ts:86-127): an embedded double quote
+    // (legacy/api/src/graph/service.ts:86-127): an embedded double quote
     // survives instead of being stripped out of the middle of the value.
     assert_eq!(rows[0]["title"], r#"He said "hi""#);
 }

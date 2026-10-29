@@ -1,6 +1,6 @@
 //! Search query DSL parser.
 //!
-//! Direct port of `packages/api/src/search/parser.ts`. This parser never
+//! Direct port of `legacy/api/src/search/parser.ts`. This parser never
 //! fails: unknown fields become `{field, operator: "is", value}` and are
 //! silently ignored downstream (by the service layer, not here). There is
 //! deliberately no error type — `parse_query_string` always returns a

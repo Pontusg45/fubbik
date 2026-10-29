@@ -22,7 +22,7 @@ use crate::extract::Query;
 
 /// `spaceId` absent -> `[]` without ever reaching the service layer,
 /// matching Node's `if (!ctx.query.spaceId) return [];`
-/// (`packages/api/src/vocabulary/routes.ts:30`) exactly — note this is
+/// (`legacy/api/src/vocabulary/routes.ts:30`) exactly — note this is
 /// *not* a 404 the way every other endpoint in this domain treats a
 /// missing/foreign space.
 #[utoipa::path(get, path = "/api/vocabulary", params(ListVocabularyQuery),

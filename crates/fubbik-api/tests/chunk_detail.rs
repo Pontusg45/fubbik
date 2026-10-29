@@ -1,6 +1,6 @@
 //! HTTP-level tests for `GET /api/chunks/{id}` — the **enriched** detail
 //! shape, a port of Node's `getChunkDetail`
-//! (`packages/api/src/chunks/service.ts:128-186`).
+//! (`legacy/api/src/chunks/service.ts:128-186`).
 //!
 //! Until this landed, the route returned the bare `chunk` row, and that one
 //! shape gap is what pinned the chunk detail page, the chunk edit page and

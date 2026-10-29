@@ -18,7 +18,7 @@ use crate::timestamp::UtcTimestamp;
 /// schema constrains it too — `StepSchema.keyword` is
 /// `t.Union([t.Literal("given"), t.Literal("when"), t.Literal("then"),
 /// t.Literal("and"), t.Literal("but")])`
-/// (`packages/api/src/requirements/routes.ts:10`), on every route that
+/// (`legacy/api/src/requirements/routes.ts:10`), on every route that
 /// accepts steps (create, update, batch). Contrast `status`/`priority`,
 /// which are genuinely free `text` at the DB layer and only sometimes
 /// constrained at specific routes — see `Requirement::status`'s doc
@@ -313,7 +313,7 @@ fn push_filters(
 /// rationale as `chunk::list`.
 ///
 /// Limit clamped to `[1, 100]` — same floor-of-1 divergence `chunk::list`
-/// documents. Node's own clamp (`packages/api/src/requirements/service.ts:72`)
+/// documents. Node's own clamp (`legacy/api/src/requirements/service.ts:72`)
 /// is `Math.min(Number(query.limit ?? 50), 100)`, which has no floor at all.
 pub async fn list(
     pool: &PgPool,
@@ -537,7 +537,7 @@ pub struct RequirementChunkLink {
 /// verifies every `chunk_id` exists and belongs to `user_id` *before*
 /// calling this at all (matching Node's `setChunks` service, which fails
 /// the whole call with a 404 naming the missing chunk rather than silently
-/// dropping it — `packages/api/src/requirements/service.ts:219-238`), so
+/// dropping it — `legacy/api/src/requirements/service.ts:219-238`), so
 /// this function's own guard should never actually reject anything through
 /// that call site in practice.
 pub async fn set_chunks(
@@ -701,7 +701,7 @@ pub async fn find_by_ids(
 /// `UPDATE` by `user_id` in SQL — Node's own `setRequirementOrder` has no
 /// `user_id` filter at all and relies entirely on the service layer's
 /// `getRequirementsByIds` ownership check running first
-/// (`packages/api/src/requirements/service.ts:263-277`). This port adds
+/// (`legacy/api/src/requirements/service.ts:263-277`). This port adds
 /// the guard anyway, matching this codebase's "scope by `user_id` in SQL,
 /// never in the caller" convention — a defensive belt-and-suspenders
 /// addition, not a required-for-parity divergence, since the service layer

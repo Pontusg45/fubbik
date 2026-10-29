@@ -65,7 +65,7 @@ pub struct ResetResult {
 /// Input for [`create`]'s `space_code_metadata` side-table insert. `Some`
 /// is passed whenever `kind == "code"`, mirroring Node's
 /// `code: kind === "code" ? { remoteUrl, localPaths: body.localPaths } :
-/// undefined` (`packages/api/src/spaces/service.ts:55`) — note this means a
+/// undefined` (`legacy/api/src/spaces/service.ts:55`) — note this means a
 /// `code`-kind space *always* gets a side-table row, even if the caller gave
 /// neither `remoteUrl` nor `localPaths`, because the ternary keys off `kind`
 /// alone, not off whether the object's fields are populated.

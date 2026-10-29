@@ -14,7 +14,7 @@
 //!
 //! What THIS file proves that the repo tests cannot:
 //!   * the service-layer `builtIn` rejections
-//!     (`packages/api/src/vocabularies/service.ts:61-63,78-80,124-126,141-143`)
+//!     (`legacy/api/src/vocabularies/service.ts:61-63,78-80,124-126,141-143`)
 //!     surface as **400** with the exact copied message, not 404 or 500;
 //!   * the slug and duplicate-id validations are 400s;
 //!   * `spaceId` is read off the wire under its camelCase name (a missing
@@ -308,7 +308,7 @@ async fn create_chunk_type_round_trips_every_optional_field(pool: sqlx::PgPool) 
 }
 
 /// Node's `SLUG_RE` check is a **service**-layer `ValidationError` (400),
-/// not just an Elysia schema cap (`packages/api/src/vocabularies/service.ts:42-46`).
+/// not just an Elysia schema cap (`legacy/api/src/vocabularies/service.ts:42-46`).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn create_chunk_type_rejects_a_non_slug_id_with_400(pool: sqlx::PgPool) {
     // Given
@@ -938,7 +938,7 @@ async fn delete_connection_relation_returns_message_deleted_and_removes_row(pool
 // --- auth -------------------------------------------------------------------
 
 /// All eight endpoints sit behind `requireSession` in Node
-/// (`packages/api/src/vocabularies/routes.ts`), so none of them may serve
+/// (`legacy/api/src/vocabularies/routes.ts`), so none of them may serve
 /// an anonymous caller.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn every_endpoint_requires_a_session(pool: sqlx::PgPool) {
