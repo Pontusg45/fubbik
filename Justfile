@@ -2,7 +2,7 @@ set shell := ["zsh", "-cu"]
 
 # Share one cargo target dir across every worktree: the main checkout's target/.
 # `--git-common-dir` is <main>/.git from the main checkout and from any worktree.
-export CARGO_TARGET_DIR := env("CARGO_TARGET_DIR", parent_directory(shell("git rev-parse --path-format=absolute --git-common-dir")) / "target")
+export CARGO_TARGET_DIR := env("CARGO_TARGET_DIR", parent_directory(shell('git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || echo "$1"', justfile_directory() / ".git")) / "target")
 
 # List available recipes.
 default:
