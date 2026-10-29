@@ -13,8 +13,8 @@ export function shouldBlockRoute(pathname: string, enabled: Set<string> | null):
 export function FeatureRouteGuard({ children }: { children: ReactNode }) {
     const pathname = useRouterState({ select: s => s.location.pathname });
     const capabilities = useCapabilities();
-    if (!shouldBlockRoute(pathname, capabilities)) return <>{children}</>;
-    const feature = featureForPath(pathname)!;
+    const feature = featureForPath(pathname);
+    if (feature === undefined || !shouldBlockRoute(pathname, capabilities)) return <>{children}</>;
     return (
         <div className="flex min-h-svh flex-col items-center justify-center gap-3 p-6 text-center">
             <h1 className="text-xl font-semibold">This feature is turned off</h1>

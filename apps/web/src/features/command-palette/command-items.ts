@@ -159,8 +159,15 @@ export function buildTagItems(
     }));
 }
 
-export function buildRecentPageItems(recentPages: RecentPage[], onSelect: (path: string) => void): CommandItem[] {
-    return recentPages.map(page => ({
+export function buildRecentPageItems(
+    recentPages: RecentPage[],
+    onSelect: (path: string) => void,
+    enabled: Set<string> | null = null
+): CommandItem[] {
+    return filterNavItems(
+        recentPages.map(p => ({ ...p, to: p.path })),
+        enabled
+    ).map(page => ({
         id: `recent-page-${page.path}`,
         title: page.title,
         group: "Recent",

@@ -312,7 +312,7 @@ export function useCommandSearch({
                 ...buildRecentPageItems(recentPages, path => {
                     navigate({ to: path });
                     close();
-                })
+                }, capabilities)
             );
             result.push(...buildRecentChunkItems(recentChunksQuery.data ?? [], handleChunkNavigate));
         }
