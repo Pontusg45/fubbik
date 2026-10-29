@@ -461,12 +461,18 @@ pub enum DocsCommand {
     /// Show a document and its chunks
     Show { id: String },
     /// Import one Markdown file, or every Markdown file under a directory
+    ///
+    /// Directories named node_modules, target, .git, dist and legacy are skipped
+    /// (and listed on stderr). Exits non-zero if any file fails to import.
     Import {
         path: PathBuf,
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
     },
     /// Recursively import Markdown files from a directory
+    ///
+    /// Directories named node_modules, target, .git, dist and legacy are skipped
+    /// (and listed on stderr).
     ImportDir {
         dir: PathBuf,
         #[arg(short, long, visible_alias = "codebase")]

@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
@@ -70,7 +71,8 @@ pub async fn run(client: &Client, command: DocsCommand, mode: OutputMode) -> Res
         }
         DocsCommand::ImportDir { dir, space } => {
             let space = client.resolve_space(space.as_deref()).await?;
-            let files = collect_markdown_files(&dir)?;
+            let (files, skipped) = collect_markdown_files(&dir)?;
+            report_skipped(&skipped);
             if files.is_empty() {
                 bail!("no .md files found in directory");
             }
@@ -142,6 +144,15 @@ const SKIP_DIRECTORIES: &[&str] = &["node_modules", "target", ".git", "dist", "l
 struct DirectoryImport {
     imported: Vec<serde_json::Value>,
     failed: Vec<(std::path::PathBuf, String)>,
+    skipped: BTreeSet<String>,
+}
+
+/// Names one stderr line per run (never stdout, so `--json` stays clean).
+fn report_skipped(skipped: &BTreeSet<String>) {
+    if !skipped.is_empty() {
+        let names = skipped.iter().cloned().collect::<Vec<_>>().join(", ");
+        eprintln!("skipped directories: {names} (see --help)");
+    }
 }
 
 /// Imports each Markdown file one at a time, so a single bad file is
@@ -151,11 +162,15 @@ async fn import_directory(
     dir: &Path,
     space: Option<&str>,
 ) -> Result<DirectoryImport> {
-    let files = collect_markdown_files(dir)?;
+    let (files, skipped) = collect_markdown_files(dir)?;
     if files.is_empty() {
+        report_skipped(&skipped);
         bail!("no .md files found in directory");
     }
-    let mut summary = DirectoryImport::default();
+    let mut summary = DirectoryImport {
+        skipped,
+        ..Default::default()
+    };
     for path in files {
         let outcome = async {
             let content = std::fs::read_to_string(&path)
@@ -180,6 +195,7 @@ async fn import_directory_command(
     mode: OutputMode,
 ) -> Result<()> {
     let summary = import_directory(client, dir, space).await?;
+    report_skipped(&summary.skipped);
     match mode {
         OutputMode::Json => output::json(&serde_json::json!({
             "imported": summary.imported,
@@ -220,7 +236,7 @@ fn absolute(path: &Path) -> Result<std::path::PathBuf> {
     })
 }
 
-fn collect_markdown_files(dir: &Path) -> Result<Vec<std::path::PathBuf>> {
+fn collect_markdown_files(dir: &Path) -> Result<(Vec<std::path::PathBuf>, BTreeSet<String>)> {
     let dir = if dir.is_absolute() {
         dir.to_owned()
     } else {
@@ -230,26 +246,32 @@ fn collect_markdown_files(dir: &Path) -> Result<Vec<std::path::PathBuf>> {
         bail!("not a directory: {}", dir.display());
     }
     let mut files = Vec::new();
-    collect_markdown_files_into(&dir, &mut files)?;
+    let mut skipped = BTreeSet::new();
+    collect_markdown_files_into(&dir, &mut files, &mut skipped)?;
     files.sort();
-    Ok(files)
+    Ok((files, skipped))
 }
 
-fn collect_markdown_files_into(dir: &Path, files: &mut Vec<std::path::PathBuf>) -> Result<()> {
+fn collect_markdown_files_into(
+    dir: &Path,
+    files: &mut Vec<std::path::PathBuf>,
+    skipped: &mut BTreeSet<String>,
+) -> Result<()> {
     for entry in std::fs::read_dir(dir)
         .with_context(|| format!("could not read directory {}", dir.display()))?
     {
         let entry = entry?;
         let file_type = entry.file_type()?;
         if file_type.is_dir() {
-            if entry
+            if let Some(name) = entry
                 .file_name()
                 .to_str()
-                .is_some_and(|name| SKIP_DIRECTORIES.contains(&name))
+                .filter(|name| SKIP_DIRECTORIES.contains(name))
             {
+                skipped.insert(name.to_owned());
                 continue;
             }
-            collect_markdown_files_into(&entry.path(), files)?;
+            collect_markdown_files_into(&entry.path(), files, skipped)?;
         } else if file_type.is_file()
             && entry.path().extension().and_then(|value| value.to_str()) == Some("md")
         {
@@ -385,11 +407,54 @@ mod tests {
         std::fs::write(root.path().join("ignored.txt"), "ignored").unwrap();
 
         // When Markdown files are collected recursively
-        let files = collect_markdown_files(root.path()).unwrap();
+        let (files, _) = collect_markdown_files(root.path()).unwrap();
 
         // Then only the Markdown files are returned in stable path order
         assert_eq!(files.len(), 2);
         assert!(files[0].ends_with("nested/child.md"));
         assert!(files[1].ends_with("root.md"));
+    }
+
+    #[test]
+    fn import_dir_skips_ignored_directories() {
+        // Given a tree with docs/a.md and dist/b.md
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join("docs")).unwrap();
+        std::fs::create_dir(root.path().join("dist")).unwrap();
+        std::fs::write(root.path().join("docs/a.md"), "a").unwrap();
+        std::fs::write(root.path().join("dist/b.md"), "b").unwrap();
+
+        // When Markdown files are collected
+        let (files, skipped) = collect_markdown_files(root.path()).unwrap();
+
+        // Then only a.md is collected and dist is reported as skipped
+        assert_eq!(files.len(), 1);
+        assert!(files[0].ends_with("docs/a.md"));
+        assert_eq!(skipped.into_iter().collect::<Vec<_>>(), vec!["dist"]);
+    }
+
+    #[tokio::test]
+    async fn directory_import_fails_when_any_file_fails() {
+        // Given a directory whose only file the API rejects with a 500
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("a.md"), "# a").unwrap();
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/api/documents/import"))
+            .respond_with(wiremock::ResponseTemplate::new(500).set_body_string("boom"))
+            .mount(&server)
+            .await;
+
+        // When the directory import command runs
+        let result = super::import_directory_command(
+            &Client::new(server.uri()),
+            root.path(),
+            None,
+            crate::output::OutputMode::Quiet,
+        )
+        .await;
+
+        // Then it returns an error
+        assert!(result.is_err());
     }
 }

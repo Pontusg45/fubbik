@@ -555,7 +555,8 @@ Knowledge base:
 - `fubbik space add/list/remove/current` — space management (`codebase` is an alias)
 - `fubbik export [--format json|md]` / `fubbik import <path>` — bulk operations (import reads JSON or Markdown files or directories);
   `fubbik bulk-add` imports JSONL; `fubbik export-site` generates a static HTML site
-- `fubbik docs extract/list/show/import/import-dir/sync/render` — imported Markdown documents (`docs import` takes a file or a directory; a directory is walked recursively, skipping `node_modules`, `target`, `.git`, `dist` and `legacy`, and exits non-zero if any file failed)
+- `fubbik docs extract/list/show/import/import-dir/sync/render` — imported Markdown documents (`docs import` takes a file or a directory; a directory is walked recursively, and `import-dir` shares the walk. Both skip
+  `node_modules`, `target`, `.git`, `dist` and `legacy`, name the skipped directories on stderr, and exit non-zero if any file failed)
 - `fubbik enrich [<id>] [--all]` — AI enrichment
 - `fubbik health/stats/status` — system info
 - `fubbik stale list/dismiss`, `fubbik lint`, `fubbik cleanup`, `fubbik gaps`, `fubbik recap`, `fubbik kb-diff`, `fubbik updates` —
