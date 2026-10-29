@@ -560,18 +560,13 @@ Required for chunk enrichment (summary, aliases, not_about generation), semantic
 
 ## Local Development with Caddy
 
-Optional HTTPS setup via Caddy reverse proxy:
-
-- `app.fubbik.test:8443` → `localhost:3001` (web)
-- `api.fubbik.test:8443` → `localhost:3000` (API)
-- Configured in `~/.config/caddy/Caddyfile`
-- Domains in `/etc/hosts`
+Optional HTTPS via a Caddy reverse proxy: see [docs/guide/operations/local-https.md](docs/guide/operations/local-https.md).
 
 ## VS Code Extension
 
 Located at `apps/vscode/`. Build with `cd apps/vscode && node esbuild.mjs`.
 
-Test with: `code --extensionDevelopmentPath=/Users/pontus/projects/fubbik/apps/vscode /Users/pontus/projects/fubbik`
+Test with: `code --extensionDevelopmentPath="$PWD/apps/vscode" "$PWD"`
 
 Configure `fubbik.serverUrl` (default: `http://localhost:3000`) and `fubbik.webAppUrl` (default: `http://localhost:3001`) in VS Code
 settings.

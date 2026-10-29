@@ -23,9 +23,4 @@ description: Required and optional environment variables
 
 ## Local Development with Caddy
 
-For HTTPS in local development, configure Caddy as a reverse proxy:
-
-- `app.fubbik.test:8443` → `localhost:3001` (web)
-- `api.fubbik.test:8443` → `localhost:3000` (API)
-
-Configure in `~/.config/caddy/Caddyfile` and add domains to `/etc/hosts`.
+Optional HTTPS via a Caddy reverse proxy: see [Local HTTPS](../../operations/local-https.md).

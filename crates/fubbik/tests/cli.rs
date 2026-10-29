@@ -313,7 +313,7 @@ fn open_json_reports_the_target_without_launching_a_browser() {
     // When a named web page is opened
     let out = Command::new(env!("CARGO_BIN_EXE_fubbik"))
         .args(["--json", "open", "graph"])
-        .env("FUBBIK_WEB_URL", "https://fubbik.test/")
+        .env("FUBBIK_WEB_URL", "https://example.test/")
         .output()
         .expect("binary runs");
 
@@ -324,7 +324,7 @@ fn open_json_reports_the_target_without_launching_a_browser() {
         String::from_utf8_lossy(&out.stderr)
     );
     let value: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(value["url"], "https://fubbik.test/graph");
+    assert_eq!(value["url"], "https://example.test/graph");
 }
 
 #[test]

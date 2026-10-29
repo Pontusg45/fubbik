@@ -65,9 +65,9 @@ mod tests {
     fn known_targets_map_to_web_routes() {
         // Given a configured web application URL
         // When a named page is selected
-        let url = url_for_target("https://fubbik.test/", Some("health"));
+        let url = url_for_target("https://example.test/", Some("health"));
         // Then the corresponding application route is used
-        assert_eq!(url, "https://fubbik.test/knowledge-health");
+        assert_eq!(url, "https://example.test/knowledge-health");
     }
 
     #[test]

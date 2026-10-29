@@ -431,7 +431,7 @@ mod tests {
     fn cors_accepts_a_comma_separated_origin_list() {
         // Given the inline inputs and test fixtures.
         // When
-        let origins = parse_cors_origins("http://localhost:3001, https://app.fubbik.test:8443");
+        let origins = parse_cors_origins("http://localhost:3001, https://app.example.test:8443");
         // Then
         assert_eq!(
             origins.len(),
