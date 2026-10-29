@@ -1,0 +1,24 @@
+# Review rules for `review-harness` (run: `cargo run -q -p review-harness -- run`).
+# Each [[rule]] flags every line matching `pattern`; `allow` is a list of repo-relative path prefixes.
+
+[[rule]]
+name = "no-as-child"
+description = "base-ui components take the render prop, not Radix asChild"
+pattern = '\basChild\b'
+roots = ["apps/web/src"]
+extensions = [".tsx"]
+message = "use the base-ui `render` prop, not Radix `asChild`"
+
+[[rule]]
+name = "no-arktype"
+description = "Validation uses Elysia `t`; arktype survives only in web auth forms and env validation"
+pattern = '''from ["']arktype["']'''
+roots = ["apps", "packages"]
+extensions = [".ts", ".tsx"]
+message = "use Elysia `t`; arktype was removed"
+# Live uses found by `git grep`: the two sign-in/sign-up forms and env validation.
+allow = ["apps/web/src/features/auth/", "packages/env/"]
+
+# Planned, not expressible here: `given-when-then`. It requires every test body to carry
+# // Given, // When and // Then comments, which is multi-line structure a per-line pattern
+# rule cannot check. It will be a compiled check in `crates/review-harness/src/checks/`.

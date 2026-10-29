@@ -8,7 +8,7 @@ use crate::{Check, Violation, source};
 /// One check's outcome.
 #[derive(Debug)]
 pub struct CheckResult {
-    pub name: &'static str,
+    pub name: String,
     pub files_checked: usize,
     pub violations: Vec<Violation>,
 }
@@ -33,10 +33,10 @@ impl Report {
 pub fn run(repo_root: &Path, checks: &[Box<dyn Check>]) -> io::Result<Report> {
     let mut report = Report::default();
     for check in checks {
-        let files = source::collect(repo_root, check.roots(), check.extensions())?;
+        let files = source::collect(repo_root, &check.roots(), &check.extensions())?;
         let violations = files.iter().flat_map(|f| check.check(f)).collect();
         report.results.push(CheckResult {
-            name: check.name(),
+            name: check.name().to_string(),
             files_checked: files.len(),
             violations,
         });
@@ -54,17 +54,17 @@ mod tests {
     struct NoTodo;
 
     impl Check for NoTodo {
-        fn name(&self) -> &'static str {
+        fn name(&self) -> &str {
             "no-todo"
         }
-        fn description(&self) -> &'static str {
+        fn description(&self) -> &str {
             "test check"
         }
-        fn roots(&self) -> &'static [&'static str] {
-            &["src"]
+        fn roots(&self) -> Vec<&str> {
+            vec!["src"]
         }
-        fn extensions(&self) -> &'static [&'static str] {
-            &[".ts"]
+        fn extensions(&self) -> Vec<&str> {
+            vec![".ts"]
         }
         fn check(&self, file: &TextFile) -> Vec<Violation> {
             file.text

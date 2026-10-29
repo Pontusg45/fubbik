@@ -4,6 +4,7 @@
 //! The [`runner`] walks the tree once per check, applies the shared ignore list, and collects a [`Report`].
 
 pub mod checks;
+pub mod rules;
 pub mod runner;
 pub mod source;
 
@@ -23,12 +24,12 @@ pub struct Violation {
 /// A convention check over raw file contents.
 pub trait Check: Send + Sync {
     /// kebab-case and unique; used by `--only` and in report output.
-    fn name(&self) -> &'static str;
-    fn description(&self) -> &'static str;
+    fn name(&self) -> &str;
+    fn description(&self) -> &str;
     /// Repo-relative directories to walk, e.g. `["apps/web/src"]`.
-    fn roots(&self) -> &'static [&'static str];
+    fn roots(&self) -> Vec<&str>;
     /// File extensions to include, with the dot: `[".ts", ".tsx"]`.
-    fn extensions(&self) -> &'static [&'static str];
+    fn extensions(&self) -> Vec<&str>;
     /// Report every violation in one file.
     fn check(&self, file: &TextFile) -> Vec<Violation>;
 }

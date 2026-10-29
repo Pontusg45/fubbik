@@ -1,0 +1,18 @@
+# Review rules for `review-harness`. Each [[rule]] flags every line matching `pattern`.
+#
+# name        kebab-case, unique; used by `--only` and in report output
+# description shown by `review-harness list`
+# pattern     a regex, matched line by line
+# roots       repo-relative directories to walk
+# extensions  file extensions to include, with the dot
+# message     what to tell the author
+# allow       optional repo-relative path prefixes (no globs) exempt from the rule
+
+[[rule]]
+name = "no-todo-comments"
+description = "Unfinished work must be tracked, not left as TODO comments"
+pattern = '\bTODO\b'
+roots = ["src"]
+extensions = [".ts", ".tsx"]
+message = "resolve this TODO or move it to the issue tracker"
+allow = []

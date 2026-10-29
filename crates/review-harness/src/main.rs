@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use review_harness::{checks, run};
+use review_harness::{Check, checks, rules, run};
 
 #[derive(Parser)]
 #[command(
@@ -17,7 +17,20 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     /// List registered checks.
-    List,
+    List {
+        /// Repository root holding review-rules.toml.
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
+        /// Rule file (default: <root>/review-rules.toml).
+        #[arg(long)]
+        rules: Option<PathBuf>,
+    },
+    /// Write a starter review-rules.toml.
+    Init {
+        /// Directory to write into.
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
+    },
     /// Run checks and exit non-zero on any violation.
     Run {
         /// Repository root to check.
@@ -26,23 +39,47 @@ enum Command {
         /// Run only the named checks.
         #[arg(long, value_delimiter = ',')]
         only: Vec<String>,
+        /// Rule file (default: <root>/review-rules.toml).
+        #[arg(long)]
+        rules: Option<PathBuf>,
     },
+}
+
+/// Compiled checks plus any rules from the rule file (an explicit path must exist).
+fn registry(root: &Path, rules_path: Option<PathBuf>) -> anyhow::Result<Vec<Box<dyn Check>>> {
+    let mut registered = checks::all();
+    let explicit = rules_path.is_some();
+    let path = rules_path.unwrap_or_else(|| root.join("review-rules.toml"));
+    if explicit || path.is_file() {
+        for rule in rules::load_rules(&path)? {
+            registered.push(Box::new(rule));
+        }
+    }
+    Ok(registered)
 }
 
 fn main() -> anyhow::Result<ExitCode> {
     let cli = Cli::parse();
-    let mut registered = checks::all();
     match cli.command {
-        Command::List => {
-            if registered.is_empty() {
-                println!("No checks registered yet.");
-            }
-            for check in &registered {
-                println!("  {:<32} {}", check.name(), check.description());
+        Command::Init { root } => {
+            rules::init(&root)?;
+            println!("wrote {}", root.join("review-rules.toml").display());
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::List { root, rules } => {
+            let registered = registry(&root, rules)?;
+            {
+                if registered.is_empty() {
+                    println!("No checks registered yet.");
+                }
+                for check in &registered {
+                    println!("  {:<32} {}", check.name(), check.description());
+                }
             }
             Ok(ExitCode::SUCCESS)
         }
-        Command::Run { root, only } => {
+        Command::Run { root, only, rules } => {
+            let mut registered = registry(&root, rules)?;
             if let Some(unknown) = only
                 .iter()
                 .find(|n| !registered.iter().any(|c| c.name() == n.as_str()))
