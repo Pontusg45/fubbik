@@ -26,6 +26,29 @@ impl ApiClient {
         decode(response, path).await
     }
 
+    /// Enabled feature keys from `GET /api/capabilities`, or `None` when the
+    /// server is unreachable, slow, or too old to have the endpoint.
+    pub(crate) async fn capabilities(&self) -> Option<Vec<String>> {
+        let response = self
+            .http
+            .get(format!("{}/api/capabilities", self.base))
+            .timeout(std::time::Duration::from_secs(2))
+            .send()
+            .await
+            .ok()?;
+        if !response.status().is_success() {
+            return None;
+        }
+        let body: Value = response.json().await.ok()?;
+        let features = body.get("features")?.as_array()?;
+        Some(
+            features
+                .iter()
+                .filter_map(|feature| feature.as_str().map(str::to_string))
+                .collect(),
+        )
+    }
+
     pub(crate) async fn send(&self, method: Method, path: &str, body: Value) -> Result<Value> {
         let response = self
             .http

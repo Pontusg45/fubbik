@@ -3,6 +3,7 @@ use reqwest::Method;
 use serde_json::{Value, json};
 
 mod api;
+mod features;
 mod protocol;
 #[path = "tools/mod.rs"]
 mod tool_groups;
@@ -14,13 +15,23 @@ const PROTOCOL_VERSION: &str = "2025-06-18";
 
 pub struct Server {
     api: ApiClient,
+    /// Enabled feature keys, fetched once on first use. `None` = unknown.
+    capabilities: tokio::sync::OnceCell<Option<Vec<String>>>,
 }
 
 impl Server {
     pub fn new(base_url: impl Into<String>) -> Self {
         Self {
             api: ApiClient::new(base_url),
+            capabilities: tokio::sync::OnceCell::new(),
         }
+    }
+
+    async fn enabled_features(&self) -> Option<&[String]> {
+        self.capabilities
+            .get_or_init(|| self.api.capabilities())
+            .await
+            .as_deref()
     }
 
     pub async fn handle(&self, request: Value) -> Option<Value> {
@@ -37,7 +48,17 @@ impl Server {
                 "serverInfo": { "name": "fubbik", "version": env!("CARGO_PKG_VERSION") }
             })),
             "ping" => Ok(json!({})),
-            "tools/list" => Ok(json!({ "tools": tools() })),
+            "tools/list" => {
+                let enabled = self.enabled_features().await;
+                let visible: Vec<Value> = tools()
+                    .into_iter()
+                    .filter(|tool| {
+                        let name = tool["name"].as_str().unwrap_or("");
+                        features::is_enabled(name, enabled)
+                    })
+                    .collect();
+                Ok(json!({ "tools": visible }))
+            }
             "tools/call" => self.call_tool(&params).await,
             _ => {
                 return Some(error_response(
@@ -62,6 +83,17 @@ impl Server {
             .unwrap_or_else(|| json!({}));
         if !arguments.is_object() {
             bail!("arguments must be an object");
+        }
+        if !features::is_enabled(name, self.enabled_features().await)
+            && let Some(key) = features::feature_for_tool(name)
+        {
+            return Ok(json!({
+                "content": [{
+                    "type": "text",
+                    "text": format!("feature \"{key}\" is disabled on this server")
+                }],
+                "isError": true
+            }));
         }
         if matches!(
             name,
@@ -1483,5 +1515,107 @@ mod tests {
             "1 open task(s):\n- [in_progress] Review migration (task-1)"
         );
         assert_eq!(completed["result"]["content"][0]["text"], "Task completed");
+    }
+
+    async fn server_with_features(
+        features: Option<serde_json::Value>,
+    ) -> (Server, wiremock::MockServer) {
+        let mock = wiremock::MockServer::start().await;
+        let template = match features {
+            Some(features) => {
+                wiremock::ResponseTemplate::new(200).set_body_json(json!({ "features": features }))
+            }
+            None => wiremock::ResponseTemplate::new(404),
+        };
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/api/capabilities"))
+            .respond_with(template)
+            .mount(&mock)
+            .await;
+        (Server::new(mock.uri()), mock)
+    }
+
+    async fn listed_names(server: &Server) -> BTreeSet<String> {
+        let response = server
+            .handle(json!({"jsonrpc":"2.0","id":1,"method":"tools/list"}))
+            .await
+            .unwrap();
+        response["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tool| tool["name"].as_str().unwrap().to_string())
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn disabled_group_tools_are_hidden() {
+        // Given a server with plans and matrices switched off
+        let (server, _mock) =
+            server_with_features(Some(json!(["requirements", "coordination"]))).await;
+        // When the client lists tools
+        let names = listed_names(&server).await;
+        // Then plan, task and matrix tools are gone but core and enabled tools remain
+        for hidden in [
+            "create_plan",
+            "add_task",
+            "get_context_for_task",
+            "list_matrices",
+        ] {
+            assert!(!names.contains(hidden), "{hidden} should be hidden");
+        }
+        for shown in [
+            "search_chunks",
+            "get_context",
+            "list_requirements",
+            "join_board",
+        ] {
+            assert!(names.contains(shown), "{shown} should be listed");
+        }
+    }
+
+    #[tokio::test]
+    async fn calling_disabled_tool_names_the_feature() {
+        // Given a server with matrices switched off
+        let (server, _mock) = server_with_features(Some(json!(["plans"]))).await;
+        // When a matrix tool is called
+        let response = server
+            .handle(json!({
+                "jsonrpc":"2.0","id":2,"method":"tools/call",
+                "params":{"name":"list_matrices","arguments":{}}
+            }))
+            .await
+            .unwrap();
+        // Then it is a tool error naming the feature
+        assert_eq!(response["result"]["isError"], true);
+        assert_eq!(
+            response["result"]["content"][0]["text"],
+            "feature \"matrices\" is disabled on this server"
+        );
+    }
+
+    #[tokio::test]
+    async fn capabilities_unreachable_keeps_all_tools() {
+        // Given an old server without /api/capabilities
+        let (server, _mock) = server_with_features(None).await;
+        // When the client lists tools
+        let names = listed_names(&server).await;
+        // Then every tool is listed
+        assert_eq!(names.len(), tools().len());
+        // And an unreachable server behaves the same
+        let down = Server::new("http://127.0.0.1:1");
+        assert_eq!(listed_names(&down).await.len(), tools().len());
+    }
+
+    #[tokio::test]
+    async fn capabilities_are_fetched_once() {
+        // Given a server that reports its features
+        let (server, mock) = server_with_features(Some(json!(["plans"]))).await;
+        // When tools are listed twice
+        listed_names(&server).await;
+        listed_names(&server).await;
+        // Then capabilities were requested a single time
+        let requests = mock.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 1);
     }
 }

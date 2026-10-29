@@ -32,8 +32,12 @@ Feature switches are stable. To add a switchable group:
 4. Add the key to `Feature` and to `FEATURE_BY_ROUTE` in `apps/web/src/features/nav/use-capabilities.ts` so the nav hides it. Gate any
    query a core page makes to the group with `useFeatureEnabled` from the same file, skipping only when it returns `false`.
 
-The MCP tools in `crates/fubbik-mcp` and the `fubbik plan …` / `fubbik matrix …` CLI commands do not consult the switches: when a group is
-off they still call the API and get a 404.
+5. Map the group's MCP tools to the key in `feature_for_tool` in `crates/fubbik-mcp/src/features.rs` (by the endpoint each tool calls; unmapped
+   tools are core and never hidden). The MCP server fetches `/api/capabilities` once, hides disabled tools from `tools/list`, and answers a
+   call to one with `feature "<key>" is disabled on this server`. If the capabilities are unknown (old or unreachable server) everything is
+   shown.
+6. For a CLI command group, wrap its `run` like `commands/plan.rs` does: on a 404, `capabilities::explain_not_found(client.base_url(), "<key>", error)`
+   prints `error: feature "<key>" is disabled on this server` and exits 1 when the group is off, and returns the original error otherwise.
 
 The database schema stays complete whatever the switches say; do not make migrations conditional.
 

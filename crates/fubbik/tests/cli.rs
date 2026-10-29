@@ -436,3 +436,70 @@ fn unknown_subcommand_dispatches_to_a_fubbik_plugin() {
     std::fs::remove_file(plugin).ok();
     std::fs::remove_dir(dir).ok();
 }
+
+/// Serves canned `(path-prefix, status, body)` responses on a loopback port.
+fn fake_api(routes: Vec<(&'static str, u16, &'static str)>) -> String {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut stream) = stream else { continue };
+            let mut buffer = [0u8; 4096];
+            let read = stream.read(&mut buffer).unwrap_or(0);
+            let request = String::from_utf8_lossy(&buffer[..read]).to_string();
+            let target = request.split_whitespace().nth(1).unwrap_or("");
+            let (status, body) = routes
+                .iter()
+                .find(|(prefix, _, _)| target.starts_with(prefix))
+                .map(|(_, status, body)| (*status, *body))
+                .unwrap_or((404, "{}"));
+            let _ = write!(
+                stream,
+                "HTTP/1.1 {status} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                body.len()
+            );
+        }
+    });
+    url
+}
+
+fn run_plan_list(url: &str) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_fubbik"))
+        .args(["--url", url, "plan", "list"])
+        .env_remove("FUBBIK_URL")
+        .output()
+        .expect("binary runs")
+}
+
+#[test]
+fn plan_command_reports_disabled_feature() {
+    // Given a server with plans switched off (its plan routes 404)
+    let url = fake_api(vec![(
+        "/api/capabilities",
+        200,
+        r#"{"features":["requirements"]}"#,
+    )]);
+    // When the user lists plans
+    let out = run_plan_list(&url);
+    // Then the CLI exits 1 and names the disabled feature
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("error: feature \"plans\" is disabled on this server"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn plan_command_keeps_the_original_error_when_capabilities_are_unknown() {
+    // Given an older server: no capabilities endpoint, plans 404
+    let url = fake_api(vec![]);
+    // When the user lists plans
+    let out = run_plan_list(&url);
+    // Then the original 404 is reported
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(!stderr.contains("is disabled"), "{stderr}");
+    assert!(stderr.contains("404"), "{stderr}");
+}

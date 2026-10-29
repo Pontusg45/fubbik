@@ -7,6 +7,15 @@ use crate::client::{Client, Plan};
 use crate::output::{self, OutputMode};
 
 pub async fn run(client: &Client, command: PlanCommand, mode: OutputMode) -> Result<()> {
+    match run_command(client, command, mode).await {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            Err(crate::capabilities::explain_not_found(client.base_url(), "plans", error).await)
+        }
+    }
+}
+
+async fn run_command(client: &Client, command: PlanCommand, mode: OutputMode) -> Result<()> {
     match command {
         PlanCommand::List { status, space } => {
             let space = client.resolve_space(space.as_deref()).await?;

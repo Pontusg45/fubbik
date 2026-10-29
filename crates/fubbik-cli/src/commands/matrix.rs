@@ -9,6 +9,15 @@ use crate::{
 };
 
 pub async fn run(client: &Client, command: MatrixCommand, mode: OutputMode) -> Result<()> {
+    match run_command(client, command, mode).await {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            Err(crate::capabilities::explain_not_found(client.base_url(), "matrices", error).await)
+        }
+    }
+}
+
+async fn run_command(client: &Client, command: MatrixCommand, mode: OutputMode) -> Result<()> {
     match command {
         MatrixCommand::List { layer } => list(client, layer.as_deref(), mode).await,
         MatrixCommand::Create {
