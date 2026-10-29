@@ -22,6 +22,11 @@ use crate::error::{ApiError, ApiResult};
 use crate::extract::Query;
 use fubbik_core::error::AppError;
 
+/// The `fubbik.toml` `overlays` switch, passed to `enrich_chunks`.
+fn overlays_on(state: &AppState) -> bool {
+    state.features.enabled(fubbik_config::Feature::Overlays)
+}
+
 /// `GET /api/context/for-plan?planId=X&maxTokens=N&format=structured-md`.
 ///
 /// `resolve_for_plan` returns `NotFound` for a plan the caller doesn't own
@@ -39,7 +44,7 @@ pub async fn for_plan(
     let format = query.format.unwrap_or_default();
 
     let ids = resolve_for_plan(&state.pool, &user.id, &query.plan_id).await?;
-    let chunks = enrich_chunks(&state.pool, &user.id, &ids).await?;
+    let chunks = enrich_chunks(&state.pool, &user.id, &ids, overlays_on(&state)).await?;
     let structured = budget_and_format(chunks, max_tokens);
     Ok(axum::Json(ContextResponse::from_structured(
         structured, format,
@@ -73,7 +78,7 @@ pub async fn about(
         query.space_id.as_deref(),
     )
     .await?;
-    let chunks = enrich_chunks(&state.pool, &user.id, &ids).await?;
+    let chunks = enrich_chunks(&state.pool, &user.id, &ids, overlays_on(&state)).await?;
     let structured = budget_and_format(chunks, max_tokens);
     Ok(axum::Json(ContextResponse::from_structured(
         structured, format,
@@ -111,7 +116,7 @@ pub async fn for_files(
         query.space_id.as_deref(),
     )
     .await?;
-    let chunks = enrich_chunks(&state.pool, &user.id, &ids).await?;
+    let chunks = enrich_chunks(&state.pool, &user.id, &ids, overlays_on(&state)).await?;
     let structured = budget_and_format(chunks, max_tokens);
     Ok(axum::Json(ContextResponse::from_structured(
         structured, format,

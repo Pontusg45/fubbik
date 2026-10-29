@@ -105,7 +105,13 @@ pub async fn for_file(
         query.space_id.as_deref(),
     )
     .await?;
-    let chunks = enrich_chunks(&state.pool, &user.id, &ids).await?;
+    let chunks = enrich_chunks(
+        &state.pool,
+        &user.id,
+        &ids,
+        state.features.enabled(fubbik_config::Feature::Overlays),
+    )
+    .await?;
     let structured = budget_and_format(chunks, max_tokens);
 
     // Governing behaviours are optional context — a failure here (e.g. a

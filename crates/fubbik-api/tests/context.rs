@@ -488,7 +488,7 @@ async fn enrich_chunks_computes_health_and_flags_stale(pool: sqlx::PgPool) {
 
     let ids = vec![c.id.clone()];
     // When
-    let enriched = fubbik_api::context::service::enrich_chunks(&pool, &user_id, &ids)
+    let enriched = fubbik_api::context::service::enrich_chunks(&pool, &user_id, &ids, true)
         .await
         .unwrap();
 

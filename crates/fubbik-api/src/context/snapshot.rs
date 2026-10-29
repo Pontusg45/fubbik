@@ -167,7 +167,13 @@ pub async fn create_snapshot(
     let max_tokens = body.max_tokens.unwrap_or(DEFAULT_MAX_TOKENS);
 
     let ids = resolve_ids(state, user_id, &body).await?;
-    let enriched = enrich_chunks(&state.pool, user_id, &ids).await?;
+    let enriched = enrich_chunks(
+        &state.pool,
+        user_id,
+        &ids,
+        state.features.enabled(fubbik_config::Feature::Overlays),
+    )
+    .await?;
     let budgeted: Vec<ChunkWithMetadata> = budget_metadata(enriched, max_tokens);
 
     let structured = format_structured(budgeted.clone());

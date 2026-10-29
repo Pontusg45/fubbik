@@ -36,10 +36,16 @@ use sqlx::PgPool;
 /// "optimize" this loop into a concurrent/unordered fetch (e.g.
 /// `futures::stream::iter(...).buffer_unordered(8)`) without re-deriving
 /// that ordering guarantee some other way first.
+///
+/// `overlays` is the `fubbik.toml` `overlays` switch
+/// (`state.features.enabled(Feature::Overlays)`): when it is off, the
+/// user's `user_active_feature` rows are ignored and base content is
+/// returned.
 pub async fn enrich_chunks(
     pool: &PgPool,
     user_id: &str,
     ids: &[String],
+    overlays: bool,
 ) -> AppResult<Vec<ChunkWithMetadata>> {
     if ids.is_empty() {
         return Ok(vec![]);
@@ -135,6 +141,9 @@ pub async fn enrich_chunks(
         });
     }
 
+    if !overlays {
+        return Ok(out);
+    }
     resolve_feature_overlays(pool, user_id, out).await
 }
 

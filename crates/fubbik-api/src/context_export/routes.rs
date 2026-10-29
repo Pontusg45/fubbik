@@ -66,6 +66,7 @@ pub async fn export_context_route(
             max_tokens,
             format,
             for_path: query.for_path.as_deref(),
+            overlays: state.features.enabled(fubbik_config::Feature::Overlays),
         },
     )
     .await?;

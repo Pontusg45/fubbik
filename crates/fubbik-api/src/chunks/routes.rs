@@ -70,7 +70,13 @@ pub async fn get_chunk(
     CurrentUser(user): CurrentUser,
     Path(id): Path<String>,
 ) -> ApiResult<Json<ChunkDetail>> {
-    let active = fubbik_db::repo::feature::active_feature_ids(&state.pool, &user.id).await?;
+    // With `overlays = false` in `fubbik.toml` the user's active-feature
+    // rows are ignored: no ids, so `get_detail` returns base content.
+    let active = if state.features.enabled(fubbik_config::Feature::Overlays) {
+        fubbik_db::repo::feature::active_feature_ids(&state.pool, &user.id).await?
+    } else {
+        Vec::new()
+    };
     Ok(Json(
         service::get_detail(&state.pool, &user.id, &id, &active).await?,
     ))

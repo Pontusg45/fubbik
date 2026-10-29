@@ -426,6 +426,81 @@ async fn detail_applies_active_feature_overlays_in_priority_order(pool: sqlx::Pg
     );
 }
 
+/// With `overlays = false` in `fubbik.toml`, a user's active features are
+/// ignored: the chunk read and the context pipeline both serve base content.
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn overlays_off_serves_base_content_despite_active_features(pool: sqlx::PgPool) {
+    // Given
+    // A delta and an active feature, written while overlays were on.
+    let on = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(on.clone(), "a@b.test", "Alice").await;
+    let id = create_chunk(on.clone(), &cookie, "Base title", "base content").await;
+    let feature = json_body(
+        post(
+            on.clone(),
+            &cookie,
+            "/api/features",
+            serde_json::json!({ "name": "overlay", "priority": 1 }),
+        )
+        .await,
+    )
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    put(
+        on.clone(),
+        &cookie,
+        &format!("/api/chunks/{id}/deltas/{feature}"),
+        serde_json::json!({ "delta": { "title": "Overlay title" } }),
+    )
+    .await;
+    put(
+        on.clone(),
+        &cookie,
+        "/api/features/active",
+        serde_json::json!({ "featureIds": [feature] }),
+    )
+    .await;
+    let overlaid = json_body(get_detail(on, &cookie, &id).await).await;
+    assert_eq!(
+        overlaid["chunk"]["title"], "Overlay title",
+        "precondition: the overlay applies while overlays are on"
+    );
+
+    let features = fubbik_config::Config::from_toml_str("[features]\noverlays = false\n")
+        .unwrap()
+        .features;
+    let off = fubbik_api::router(fubbik_api::AppState {
+        features,
+        ..state(pool.clone())
+    });
+    let user_id: String = sqlx::query_scalar(r#"SELECT id FROM "user" WHERE email = $1"#)
+        .bind("a@b.test")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+    // When
+    let detail = json_body(get_detail(off, &cookie, &id).await).await;
+    let enriched = fubbik_api::context::service::enrich_chunks(
+        &pool,
+        &user_id,
+        std::slice::from_ref(&id),
+        false,
+    )
+    .await
+    .unwrap();
+
+    // Then
+    assert_eq!(detail["chunk"]["title"], "Base title");
+    assert!(
+        detail["_appliedFeatures"].as_array().unwrap().is_empty(),
+        "no feature is applied when overlays are off"
+    );
+    assert_eq!(enriched[0].chunk.title, "Base title");
+}
+
 /// Linked requirements populate `requirements` and drive the `coverage`
 /// half of the health score.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]

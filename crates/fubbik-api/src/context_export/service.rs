@@ -61,6 +61,8 @@ pub struct ExportContextParams<'a> {
     pub max_tokens: usize,
     pub format: ExportFormat,
     pub for_path: Option<&'a str>,
+    /// The `fubbik.toml` `overlays` switch; off means base content only.
+    pub overlays: bool,
 }
 
 /// One chunk in the `format=json` response, matching Node's inline
@@ -137,7 +139,7 @@ pub async fn export_context(
         }
     }
 
-    let mut enriched = enrich_chunks(pool, user_id, &chunk_ids).await?;
+    let mut enriched = enrich_chunks(pool, user_id, &chunk_ids, params.overlays).await?;
 
     if let Some(for_path) = params.for_path {
         let file_ids = resolve_for_files(
