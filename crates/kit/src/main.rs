@@ -5,7 +5,7 @@ use anyhow::{Result, bail};
 use clap::{Parser, Subcommand};
 use kit::git::Git;
 use kit::sync::SyncOutcome;
-use kit::{branch, push, sync};
+use kit::{branch, port, push, sync};
 
 #[derive(Parser)]
 #[command(name = "fk", about = "Everyday commands, safe by default")]
@@ -36,6 +36,22 @@ enum Command {
         #[arg(long)]
         from: Option<String>,
     },
+    /// Manage processes listening on TCP ports
+    Port {
+        #[command(subcommand)]
+        command: PortCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum PortCommand {
+    /// Kill whatever is using each port (a free port is not an error)
+    Kill {
+        #[arg(required = true)]
+        ports: Vec<u16>,
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 fn main() -> ExitCode {
@@ -49,9 +65,9 @@ fn main() -> ExitCode {
 }
 
 fn run(cli: Cli) -> Result<()> {
-    let git = Git::open(std::env::current_dir()?)?;
     match cli.command {
         Command::Sync { dry_run } => {
+            let git = open_git()?;
             let outcome = sync::sync(&git, dry_run)?;
             if cli.json {
                 println!("{}", serde_json::to_string_pretty(&outcome)?);
@@ -68,6 +84,7 @@ fn run(cli: Cli) -> Result<()> {
             }
         }
         Command::Push { yes } => {
+            let git = open_git()?;
             let plan = push::plan(&git)?;
             if cli.json {
                 println!("{}", serde_json::to_string_pretty(&plan)?);
@@ -97,11 +114,36 @@ fn run(cli: Cli) -> Result<()> {
             push::execute(&git, &plan)?;
         }
         Command::Branch { name, from } => {
+            let git = open_git()?;
             branch::create(&git, &name, from.as_deref())?;
             if !cli.json {
                 println!("Switched to new branch {name}");
             }
         }
+        Command::Port {
+            command: PortCommand::Kill { ports, dry_run },
+        } => {
+            let mut failed = 0;
+            for p in ports {
+                match port::kill(p, dry_run) {
+                    Ok(outcome) if cli.json => {
+                        println!("{}", serde_json::to_string_pretty(&outcome)?)
+                    }
+                    Ok(outcome) => println!("{}", port::describe(p, &outcome)),
+                    Err(err) => {
+                        eprintln!("error: port {p}: {err}");
+                        failed += 1;
+                    }
+                }
+            }
+            if failed > 0 {
+                bail!("{failed} port(s) failed");
+            }
+        }
     }
     Ok(())
+}
+
+fn open_git() -> Result<Git> {
+    Git::open(std::env::current_dir()?)
 }

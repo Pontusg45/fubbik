@@ -18,8 +18,7 @@ _dev-services: dev-web dev-rust
 
 # Stop processes on the default dev ports.
 kill-dev:
-    -lsof -ti :3000 | xargs kill -9 2>/dev/null || true
-    -lsof -ti :3001 | xargs kill -9 2>/dev/null || true
+    cargo run -q -p kit -- port kill 3000 3001
 
 # Start only the Rust API server (replaces the Node/Bun server).
 dev-server: dev-rust
