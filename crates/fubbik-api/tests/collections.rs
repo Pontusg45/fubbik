@@ -5,7 +5,7 @@
 //! `EXISTS` SQL guard and, separately, the service-layer pre-check — see
 //! that file and this one's `create_in_another_users_space_is_404` for
 //! which layer catches what). This file covers the five HTTP routes:
-//! response shapes (per `tests/fixtures/node-contract-2b/collections-*.json`),
+//! response shapes (per `legacy/migration/fixtures/node-contract-2b/collections-*.json`),
 //! status codes, PATCH's replace-not-merge `filter` semantics, and —
 //! the highest-severity case in this slice — that
 //! `GET /collections/{id}/chunks` cannot leak another user's chunks even
@@ -552,7 +552,7 @@ async fn get_chunks_cannot_leak_another_users_chunk_via_a_same_named_tag(pool: s
 }
 
 /// Filter mapping end to end for the `type` key, matching
-/// `tests/fixtures/node-contract-2b/collections-chunks-filter-type.json`'s
+/// `legacy/migration/fixtures/node-contract-2b/collections-chunks-filter-type.json`'s
 /// shape (this port's seed data differs, so only the mechanism — not the
 /// literal fixture rows — is asserted).
 #[sqlx::test(migrations = "../fubbik-db/migrations")]

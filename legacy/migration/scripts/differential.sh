@@ -21,7 +21,7 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "ERROR: DATABASE_URL is not set." >&2
   echo "It must point at the Node database — this script reads it once via" >&2
   echo "pg_dump and never writes to it. Example:" >&2
-  echo '  DATABASE_URL="postgres://user@localhost:5432/fubbik" ./scripts/differential.sh' >&2
+  echo '  DATABASE_URL="postgres://user@localhost:5432/fubbik" ./legacy/migration/scripts/differential.sh' >&2
   exit 1
 fi
 
@@ -32,7 +32,7 @@ DIFF_DB="fubbik_diff"
 DIFF_DB_URL="postgres://postgres:password@localhost:5434/${DIFF_DB}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 MIGRATIONS_DIR="${REPO_ROOT}/crates/fubbik-db/migrations"
 
 echo "==> Recreating ${DIFF_DB} (dedicated comparison database, ICU locale provider)"

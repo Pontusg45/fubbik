@@ -12,7 +12,7 @@
 
 1. Clone the repo
 2. `pnpm install`
-3. Copy `apps/server/.env.example` to `apps/server/.env` and fill in values
+3. Copy `.env.example` to `.env` and fill in values
 4. `just rust-test-db-start` — start the canonical database; the Rust server applies migrations
 5. `pnpm dev` — starts web (port 3001) + API (port 3000)
 

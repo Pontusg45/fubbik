@@ -176,7 +176,7 @@ fn serialiser_round_trips_params_and_quotes_text_values_containing_spaces() {
 
 /// C1: pins the exact clause list for `near:"Auth Flow" hops:2`, the full
 /// truth captured in
-/// `tests/fixtures/node-contract-2c/search-parse-near-quoted-hops-2.json`:
+/// `legacy/migration/fixtures/node-contract-2c/search-parse-near-quoted-hops-2.json`:
 /// `{"clauses":[{"field":"near","operator":"is","value":"Auth","params":{"hops":"2"}},{"field":"text","operator":"contains","value":"Flow\""}]}`.
 /// Only a NEGATIVE used to be asserted here (that no clause equals the
 /// literal `"Auth Flow"`) — see the NOTE above on why that round-trip input
@@ -218,6 +218,6 @@ fn near_quoted_with_a_space_produces_a_near_clause_plus_a_stray_text_clause() {
                 negate: None,
             },
         ],
-        "must match tests/fixtures/node-contract-2c/search-parse-near-quoted-hops-2.json exactly"
+        "must match legacy/migration/fixtures/node-contract-2c/search-parse-near-quoted-hops-2.json exactly"
     );
 }

@@ -63,7 +63,7 @@ pub async fn get_all_codebase_settings(
 ///
 /// This ownership check is a **deliberate divergence from Node**
 /// (`packages/api/src/settings/service.ts:39-41` has none at all —
-/// see `tests/fixtures/node-contract-2b/_mutating.md`: "No
+/// see `legacy/migration/fixtures/node-contract-2b/_mutating.md`: "No
 /// ownership/existence check on `codebaseId`"), required by the task
 /// brief ("writing settings on another user's space must be impossible"),
 /// not a silent addition.

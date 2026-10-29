@@ -47,7 +47,7 @@ pub struct AddSpaceBody {
 /// — the workspace row's own fields at the top level, plus a `spaces`
 /// array, NOT nested under a `workspace` key (contrast
 /// `fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).
-/// See `tests/fixtures/node-contract-2b/workspaces-detail.json`.
+/// See `legacy/migration/fixtures/node-contract-2b/workspaces-detail.json`.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceDetail {

@@ -1,6 +1,6 @@
 //! HTTP-level tests for the `favorites` domain.
 //!
-//! Node's captured contract (`tests/fixtures/node-contract-2b/favorites-list.json`,
+//! Node's captured contract (`legacy/migration/fixtures/node-contract-2b/favorites-list.json`,
 //! `_mutating.md`) is the source of truth for three surprising behaviors
 //! reproduced deliberately, not "fixed":
 //!

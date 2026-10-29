@@ -3,7 +3,7 @@
 //! Routes live under `/api/chunks/...`, not `/api/staleness/...`
 //! (`packages/api/src/staleness/routes.ts`). Two response-shape quirks
 //! captured from the running Node server
-//! (`tests/fixtures/node-contract-2c/chunks-stale.json`,
+//! (`legacy/migration/fixtures/node-contract-2c/chunks-stale.json`,
 //! `chunks-stale-count.json`) are load-bearing here:
 //!
 //! 1. `GET /api/chunks/stale` returns a **bare array**.

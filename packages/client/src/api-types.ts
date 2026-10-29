@@ -440,7 +440,7 @@ export interface paths {
          * Returns a **bare number**, not `{"count": N}` — Node's `getStaleCount`
          *     resolves the route handler to a plain `number`, and Elysia serialises a
          *     primitive response as `text/plain`, not JSON
-         *     (`tests/fixtures/node-contract-2c/chunks-stale-count.json`: literally
+         *     (`legacy/migration/fixtures/node-contract-2c/chunks-stale-count.json`: literally
          *     `0`). `String`'s `IntoResponse` impl is what axum uses to produce a
          *     `text/plain; charset=utf-8` body here, matching that content type —
          *     `Json<i64>` would emit the right bytes but the wrong content-type.
@@ -1927,7 +1927,7 @@ export interface paths {
         };
         /**
          * `PlanListRow`, not the bare `Plan` — see that struct's doc comment.
-         *     Confirmed against `tests/fixtures/node-contract-2c/plans-list.json`,
+         *     Confirmed against `legacy/migration/fixtures/node-contract-2c/plans-list.json`,
          *     which carries the rollup fields even though the task brief's own
          *     endpoint table just says "bare array".
          */
@@ -1957,7 +1957,7 @@ export interface paths {
         /**
          * Enveloped `{plan, requirements, analyze, tasks, dependencies}` — the one
          *     plan GET that isn't a bare array/object, confirmed against
-         *     `tests/fixtures/node-contract-2c/plans-detail.json`.
+         *     `legacy/migration/fixtures/node-contract-2c/plans-detail.json`.
          */
         get: operations["get_plan"];
         put?: never;
@@ -2002,7 +2002,7 @@ export interface paths {
         /**
          * Object keyed by kind — `{chunk:[],file:[],risk:[],assumption:[],
          *     question:[]}`, all five keys always present, confirmed against
-         *     `tests/fixtures/node-contract-2c/plans-detail-analyze.json` — the one
+         *     `legacy/migration/fixtures/node-contract-2c/plans-detail-analyze.json` — the one
          *     list-shaped GET in this domain that isn't a bare array.
          */
         get: operations["list_plan_analyze"];
@@ -3027,7 +3027,7 @@ export interface paths {
          *     no `requireSession`, and there is no global auth middleware in
          *     `packages/api/src/index.ts` to backstop it). This was escalated to and
          *     decided by the human partner explicitly (captured, then corrected on
-         *     review, in `tests/fixtures/node-contract-2b/_questions.md` Q2): faithful
+         *     review, in `legacy/migration/fixtures/node-contract-2b/_questions.md` Q2): faithful
          *     port, `GET` open, `PATCH` session-gated (see `set_instance_setting`
          *     below), exactly as Node. `instance_settings` holds zero rows today, the
          *     server binds `127.0.0.1` by default, and the web app may legitimately
@@ -3682,7 +3682,7 @@ export interface components {
         AiStepKeyword: "given" | "when" | "then" | "and";
         /**
          * @description The five fixed analyze-item buckets, always present even when empty —
-         *     confirmed against real bytes in `tests/fixtures/node-contract-2c/
+         *     confirmed against real bytes in `legacy/migration/fixtures/node-contract-2c/
          *     plans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],
          *     risk:[],assumption:[],question:[]}`, never an omitted key. Matches
          *     Node's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which
@@ -4438,7 +4438,7 @@ export interface components {
          *     `#[serde(skip_serializing_if = "Option::is_none")]` on every field keeps
          *     a partial filter (e.g. seed data's `{"type": "convention"}`) from
          *     growing eight extra `null` keys on the way back out. See
-         *     `tests/fixtures/node-contract-2b/collections-list.json`.
+         *     `legacy/migration/fixtures/node-contract-2b/collections-list.json`.
          */
         CollectionFilter: {
             /** @default null */
@@ -4651,7 +4651,7 @@ export interface components {
         };
         /**
          * @description Shape of `GET /api/notifications/count`
-         *     (`tests/fixtures/node-contract-2b/notifications-count.json`): a bare
+         *     (`legacy/migration/fixtures/node-contract-2b/notifications-count.json`): a bare
          *     `{ "count": N }` object, not the chunks-style envelope.
          */
         CountResponse: {
@@ -5527,7 +5527,7 @@ export interface components {
         /**
          * @description `GET /api/settings/features` — a **computed 5-key projection** over
          *     `instance_settings`, not a stored table
-         *     (`tests/fixtures/node-contract-2b/_questions.md` Q2). Every field
+         *     (`legacy/migration/fixtures/node-contract-2b/_questions.md` Q2). Every field
          *     independently defaults to `true` when its key is absent from
          *     `instance_settings`, matching Node's `(map.x as boolean) ?? true`
          *     fallback (`packages/api/src/settings/service.ts:59-75`) for the
@@ -6342,7 +6342,7 @@ export interface components {
         };
         /**
          * @description Response envelope of `GET /api/plans/{id}`
-         *     (`tests/fixtures/node-contract-2c/plans-detail.json`) — `{plan,
+         *     (`legacy/migration/fixtures/node-contract-2c/plans-detail.json`) — `{plan,
          *     requirements, analyze, tasks, dependencies}`, NOT the bare `Plan` that
          *     `GET /api/plans` (as a rollup row) and every plan-mutating endpoint
          *     return.
@@ -6374,7 +6374,7 @@ export interface components {
          *     its tasks' `updated_at` (`lastActivityAt`). Mirrors Node's
          *     `listPlansWithRollups` / `PlanListRow`
          *     (`packages/db/src/repository/plan.ts:65-143`) field-for-field — see
-         *     `tests/fixtures/node-contract-2c/plans-list.json`, captured live, which
+         *     `legacy/migration/fixtures/node-contract-2c/plans-list.json`, captured live, which
          *     carries all five rollup fields even though the task brief's own endpoint
          *     table just says "bare array". Trusting the fixture over the table's
          *     shorthand is deliberate, per this slice's own instruction to check each
@@ -7139,7 +7139,7 @@ export interface components {
          *     `space_code_metadata`. Three different endpoints, three different "space"
          *     shapes: reusing this struct for all of them would silently flatten or
          *     drop the `code` metadata on the detail route. See `_questions.md` in
-         *     `tests/fixtures/node-contract/` ("space detail vs list: nested `code`
+         *     `legacy/migration/fixtures/node-contract/` ("space detail vs list: nested `code`
          *     metadata, not flattened").
          */
         Space: {
@@ -8135,7 +8135,7 @@ export interface components {
          *     — the workspace row's own fields at the top level, plus a `spaces`
          *     array, NOT nested under a `workspace` key (contrast
          *     `fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).
-         *     See `tests/fixtures/node-contract-2b/workspaces-detail.json`.
+         *     See `legacy/migration/fixtures/node-contract-2b/workspaces-detail.json`.
          */
         WorkspaceDetail: {
             /** Format: date-time */
@@ -8167,7 +8167,7 @@ export interface components {
          *     (`packages/db/src/repository/workspace.ts:80-92`), which selects just
          *     these three columns, not a full `Space` row (no `description`,
          *     `userId`, timestamps). See
-         *     `tests/fixtures/node-contract-2b/workspaces-detail.json`.
+         *     `legacy/migration/fixtures/node-contract-2b/workspaces-detail.json`.
          */
         WorkspaceSpaceSummary: {
             id: string;

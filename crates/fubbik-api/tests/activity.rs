@@ -2,7 +2,7 @@
 //! slice, a single route.
 //!
 //! `GET /api/activity` returns a bare JSON array with no `total` field
-//! (`tests/fixtures/node-contract-2b/activity-list.json`,
+//! (`legacy/migration/fixtures/node-contract-2b/activity-list.json`,
 //! `_questions.md` Q3/Q4) — not the `{chunks,total,limit,offset}` envelope
 //! `chunks` uses. There is no mutating HTTP endpoint at all in Node
 //! (`_mutating.md`'s "Activity" section: `createActivity` exists only as

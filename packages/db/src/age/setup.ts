@@ -5,7 +5,7 @@ import { config } from "dotenv";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
-config({ path: resolve(import.meta.dirname, "../../../../apps/server/.env") });
+config({ path: resolve(import.meta.dirname, "../../../../.env") });
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error("DATABASE_URL not set");

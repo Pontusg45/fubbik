@@ -11,7 +11,7 @@ use crate::timestamp::UtcTimestamp;
 /// `space_code_metadata`. Three different endpoints, three different "space"
 /// shapes: reusing this struct for all of them would silently flatten or
 /// drop the `code` metadata on the detail route. See `_questions.md` in
-/// `tests/fixtures/node-contract/` ("space detail vs list: nested `code`
+/// `legacy/migration/fixtures/node-contract/` ("space detail vs list: nested `code`
 /// metadata, not flattened").
 #[derive(Debug, Clone, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]

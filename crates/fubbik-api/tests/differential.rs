@@ -336,7 +336,7 @@ async fn assert_same_with_unordered_field(path: &str, field: &str) {
 /// `/api/settings/codebase?codebaseId=`) meaningful against whatever data
 /// happens to be loaded into the diff database — this harness has no fixed
 /// seed of its own, it runs against a dump of the Node database (see
-/// `scripts/differential.sh`). Fetching the id from `rust`'s own list
+/// `legacy/migration/scripts/differential.sh`). Fetching the id from `rust`'s own list
 /// response (rather than a hardcoded literal) also means the id is
 /// guaranteed to round-trip through Rust's own list endpoint first.
 async fn first_id(base: &str, list_path: &str) -> Option<String> {

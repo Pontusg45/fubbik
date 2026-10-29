@@ -4,22 +4,22 @@
 #
 # READ-ONLY against the Node database: this script issues GET requests only.
 # Mutating endpoints (POST/PATCH/PUT/DELETE) are documented by reading the
-# route source (see tests/fixtures/node-contract/_mutating.md and
-# tests/fixtures/node-contract-2b/_mutating.md), never by executing them
+# route source (see legacy/migration/fixtures/node-contract/_mutating.md and
+# legacy/migration/fixtures/node-contract-2b/_mutating.md), never by executing them
 # against the user's live knowledge base.
 #
 # Phase 2a captured spaces/tags/tag-types/stats into
-# tests/fixtures/node-contract/. Phase 2b extends this same script (rather
+# legacy/migration/fixtures/node-contract/. Phase 2b extends this same script (rather
 # than adding a second one) to capture notifications/settings/workspaces/
-# favorites/collections/activity into tests/fixtures/node-contract-2b/.
+# favorites/collections/activity into legacy/migration/fixtures/node-contract-2b/.
 set -euo pipefail
 
 BASE="${1:?usage: capture-node-contract.sh http://localhost:3000}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-OUT="${REPO_ROOT}/tests/fixtures/node-contract"
-OUT2B="${REPO_ROOT}/tests/fixtures/node-contract-2b"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+OUT="${REPO_ROOT}/legacy/migration/fixtures/node-contract"
+OUT2B="${REPO_ROOT}/legacy/migration/fixtures/node-contract-2b"
 mkdir -p "$OUT" "$OUT2B"
 
 echo "==> Checking Node server is reachable at ${BASE}"

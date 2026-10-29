@@ -1117,8 +1117,10 @@ mod tests {
     #[test]
     fn tool_catalog_matches_the_migration_contract() {
         // Given the retained MCP tool names recorded in the migration manifest
-        let manifest: serde_json::Value =
-            serde_json::from_str(include_str!("../../../migration/rust-migration.json")).unwrap();
+        let manifest: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../legacy/migration/rust-migration.json"
+        ))
+        .unwrap();
         let expected = manifest["executableContracts"]["mcpTools"]["expected"]
             .as_array()
             .unwrap()

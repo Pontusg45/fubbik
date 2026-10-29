@@ -84,7 +84,7 @@ pub async fn set_codebase_setting(
 /// no `requireSession`, and there is no global auth middleware in
 /// `packages/api/src/index.ts` to backstop it). This was escalated to and
 /// decided by the human partner explicitly (captured, then corrected on
-/// review, in `tests/fixtures/node-contract-2b/_questions.md` Q2): faithful
+/// review, in `legacy/migration/fixtures/node-contract-2b/_questions.md` Q2): faithful
 /// port, `GET` open, `PATCH` session-gated (see `set_instance_setting`
 /// below), exactly as Node. `instance_settings` holds zero rows today, the
 /// server binds `127.0.0.1` by default, and the web app may legitimately

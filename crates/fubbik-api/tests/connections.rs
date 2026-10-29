@@ -1,6 +1,6 @@
 //! HTTP-level tests for the `connections` domain.
 //!
-//! Node's captured contract (`tests/fixtures/node-contract/_mutating.md`,
+//! Node's captured contract (`legacy/migration/fixtures/node-contract/_mutating.md`,
 //! "Connections") is the source of truth: `POST /api/connections` returns
 //! the bare inserted row at 201; `DELETE /api/connections/{id}` returns
 //! `{ "message": "Deleted" }` at 200, and 404s both when the id doesn't

@@ -24,7 +24,7 @@ use crate::extract::Json as ReqJson;
 use crate::extract::Query;
 
 /// `PlanListRow`, not the bare `Plan` — see that struct's doc comment.
-/// Confirmed against `tests/fixtures/node-contract-2c/plans-list.json`,
+/// Confirmed against `legacy/migration/fixtures/node-contract-2c/plans-list.json`,
 /// which carries the rollup fields even though the task brief's own
 /// endpoint table just says "bare array".
 #[utoipa::path(get, path = "/api/plans", params(ListPlansQuery),
@@ -56,7 +56,7 @@ pub async fn create_plan(
 
 /// Enveloped `{plan, requirements, analyze, tasks, dependencies}` — the one
 /// plan GET that isn't a bare array/object, confirmed against
-/// `tests/fixtures/node-contract-2c/plans-detail.json`.
+/// `legacy/migration/fixtures/node-contract-2c/plans-detail.json`.
 #[utoipa::path(get, path = "/api/plans/{id}", params(("id" = String, Path,)),
     responses((status = 200, body = PlanDetail), (status = 404)))]
 pub async fn get_plan(
@@ -206,7 +206,7 @@ pub async fn reorder_plan_requirements(
 
 /// Object keyed by kind — `{chunk:[],file:[],risk:[],assumption:[],
 /// question:[]}`, all five keys always present, confirmed against
-/// `tests/fixtures/node-contract-2c/plans-detail-analyze.json` — the one
+/// `legacy/migration/fixtures/node-contract-2c/plans-detail-analyze.json` — the one
 /// list-shaped GET in this domain that isn't a bare array.
 #[utoipa::path(get, path = "/api/plans/{id}/analyze", params(("id" = String, Path,)),
     responses((status = 200, body = AnalyzeGrouped), (status = 404)))]

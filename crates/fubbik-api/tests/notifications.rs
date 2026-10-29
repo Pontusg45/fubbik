@@ -1,6 +1,6 @@
 //! HTTP-level tests for the `notification` domain.
 //!
-//! Node's captured contract (`tests/fixtures/node-contract-2b/notifications-*.json`)
+//! Node's captured contract (`legacy/migration/fixtures/node-contract-2b/notifications-*.json`)
 //! is the source of truth for response shape: `GET /api/notifications`
 //! returns a bare JSON array, `GET /api/notifications/count` returns a bare
 //! `{ "count": N }` object — neither is the `{chunks,total,limit,offset}`
@@ -246,7 +246,7 @@ async fn count_returns_bare_count_object(pool: sqlx::PgPool) {
     assert_eq!(
         body,
         serde_json::json!({ "count": 0 }),
-        "must match tests/fixtures/node-contract-2b/notifications-count.json shape"
+        "must match legacy/migration/fixtures/node-contract-2b/notifications-count.json shape"
     );
 
     seed(&pool, &user_id, "stale_chunks", "One", false).await;

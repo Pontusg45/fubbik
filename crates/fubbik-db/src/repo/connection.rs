@@ -177,7 +177,7 @@ pub async fn find_by_id(pool: &PgPool, id: &str) -> AppResult<Option<Connection>
 /// target` to resolve — "a connection between two chunks neither owned by
 /// the caller is invisible/undeletable, but only one end needs to belong
 /// to the caller for the delete to proceed" (see
-/// `tests/fixtures/node-contract/_mutating.md`).
+/// `legacy/migration/fixtures/node-contract/_mutating.md`).
 ///
 /// Folded into one SQL statement rather than Node's three round trips
 /// (fetch connection, fetch source, fetch target): whether `id` doesn't

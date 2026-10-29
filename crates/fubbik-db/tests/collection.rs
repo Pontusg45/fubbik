@@ -72,7 +72,7 @@ async fn create_and_find_by_id_round_trip(pool: sqlx::PgPool) {
 
 /// A partial filter (only one of the nine keys set) must not grow the other
 /// eight as explicit `null`s on read — matching
-/// `tests/fixtures/node-contract-2b/collections-list.json`, where seed
+/// `legacy/migration/fixtures/node-contract-2b/collections-list.json`, where seed
 /// data's stored `filter` is exactly `{"type": "convention"}`.
 #[sqlx::test]
 async fn partial_filter_round_trips_without_growing_null_keys(pool: sqlx::PgPool) {

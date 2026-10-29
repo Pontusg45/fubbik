@@ -1,6 +1,6 @@
 //! HTTP-level tests for the `tag_type` domain.
 //!
-//! Node's captured contract (`tests/fixtures/node-contract/tag-types-list.json`,
+//! Node's captured contract (`legacy/migration/fixtures/node-contract/tag-types-list.json`,
 //! `_mutating.md`) is the source of truth here: `GET /api/tag-types` returns
 //! a bare JSON array (not the `{chunks,...}` envelope chunks uses), create
 //! is 201, update/delete are 200, and delete's body is `{ "message":

@@ -23,7 +23,7 @@ pub struct Workspace {
 /// (`packages/db/src/repository/workspace.ts:80-92`), which selects just
 /// these three columns, not a full `Space` row (no `description`,
 /// `userId`, timestamps). See
-/// `tests/fixtures/node-contract-2b/workspaces-detail.json`.
+/// `legacy/migration/fixtures/node-contract-2b/workspaces-detail.json`.
 #[derive(Debug, Clone, serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceSpaceSummary {

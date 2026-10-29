@@ -494,7 +494,7 @@ pub async fn duplicate(pool: &PgPool, user_id: &str, source_id: &str) -> AppResu
 /// its tasks' `updated_at` (`lastActivityAt`). Mirrors Node's
 /// `listPlansWithRollups` / `PlanListRow`
 /// (`packages/db/src/repository/plan.ts:65-143`) field-for-field — see
-/// `tests/fixtures/node-contract-2c/plans-list.json`, captured live, which
+/// `legacy/migration/fixtures/node-contract-2c/plans-list.json`, captured live, which
 /// carries all five rollup fields even though the task brief's own endpoint
 /// table just says "bare array". Trusting the fixture over the table's
 /// shorthand is deliberate, per this slice's own instruction to check each

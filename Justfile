@@ -28,7 +28,7 @@ dev-rust:
     #!/usr/bin/env zsh
     set -euo pipefail
     set -a
-    source apps/server/.env
+    source .env
     set +a
     exec cargo run -p fubbik -- serve --port 3000
 

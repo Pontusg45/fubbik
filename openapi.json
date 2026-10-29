@@ -1584,7 +1584,7 @@
         "tags": [
           "crate::staleness::routes"
         ],
-        "summary": "Returns a **bare number**, not `{\"count\": N}` — Node's `getStaleCount`\nresolves the route handler to a plain `number`, and Elysia serialises a\nprimitive response as `text/plain`, not JSON\n(`tests/fixtures/node-contract-2c/chunks-stale-count.json`: literally\n`0`). `String`'s `IntoResponse` impl is what axum uses to produce a\n`text/plain; charset=utf-8` body here, matching that content type —\n`Json<i64>` would emit the right bytes but the wrong content-type.",
+        "summary": "Returns a **bare number**, not `{\"count\": N}` — Node's `getStaleCount`\nresolves the route handler to a plain `number`, and Elysia serialises a\nprimitive response as `text/plain`, not JSON\n(`legacy/migration/fixtures/node-contract-2c/chunks-stale-count.json`: literally\n`0`). `String`'s `IntoResponse` impl is what axum uses to produce a\n`text/plain; charset=utf-8` body here, matching that content type —\n`Json<i64>` would emit the right bytes but the wrong content-type.",
         "operationId": "stale_count",
         "parameters": [
           {
@@ -5913,7 +5913,7 @@
         "tags": [
           "crate::plans::routes"
         ],
-        "summary": "`PlanListRow`, not the bare `Plan` — see that struct's doc comment.\nConfirmed against `tests/fixtures/node-contract-2c/plans-list.json`,\nwhich carries the rollup fields even though the task brief's own\nendpoint table just says \"bare array\".",
+        "summary": "`PlanListRow`, not the bare `Plan` — see that struct's doc comment.\nConfirmed against `legacy/migration/fixtures/node-contract-2c/plans-list.json`,\nwhich carries the rollup fields even though the task brief's own\nendpoint table just says \"bare array\".",
         "operationId": "list_plans",
         "parameters": [
           {
@@ -6018,7 +6018,7 @@
         "tags": [
           "crate::plans::routes"
         ],
-        "summary": "Enveloped `{plan, requirements, analyze, tasks, dependencies}` — the one\nplan GET that isn't a bare array/object, confirmed against\n`tests/fixtures/node-contract-2c/plans-detail.json`.",
+        "summary": "Enveloped `{plan, requirements, analyze, tasks, dependencies}` — the one\nplan GET that isn't a bare array/object, confirmed against\n`legacy/migration/fixtures/node-contract-2c/plans-detail.json`.",
         "operationId": "get_plan",
         "parameters": [
           {
@@ -6165,7 +6165,7 @@
         "tags": [
           "crate::plans::routes"
         ],
-        "summary": "Object keyed by kind — `{chunk:[],file:[],risk:[],assumption:[],\nquestion:[]}`, all five keys always present, confirmed against\n`tests/fixtures/node-contract-2c/plans-detail-analyze.json` — the one\nlist-shaped GET in this domain that isn't a bare array.",
+        "summary": "Object keyed by kind — `{chunk:[],file:[],risk:[],assumption:[],\nquestion:[]}`, all five keys always present, confirmed against\n`legacy/migration/fixtures/node-contract-2c/plans-detail-analyze.json` — the one\nlist-shaped GET in this domain that isn't a bare array.",
         "operationId": "list_plan_analyze",
         "parameters": [
           {
@@ -9191,7 +9191,7 @@
         "tags": [
           "crate::settings::routes"
         ],
-        "summary": "**Deliberately unauthenticated** — matches Node exactly\n(`packages/api/src/settings/routes.ts:55`: `GET /settings/instance` has\nno `requireSession`, and there is no global auth middleware in\n`packages/api/src/index.ts` to backstop it). This was escalated to and\ndecided by the human partner explicitly (captured, then corrected on\nreview, in `tests/fixtures/node-contract-2b/_questions.md` Q2): faithful\nport, `GET` open, `PATCH` session-gated (see `set_instance_setting`\nbelow), exactly as Node. `instance_settings` holds zero rows today, the\nserver binds `127.0.0.1` by default, and the web app may legitimately\nneed to read feature flags before login — do NOT add a session guard\nhere believing it an oversight; that would silently diverge from an\nalready-made decision and could break pre-login flag reads.",
+        "summary": "**Deliberately unauthenticated** — matches Node exactly\n(`packages/api/src/settings/routes.ts:55`: `GET /settings/instance` has\nno `requireSession`, and there is no global auth middleware in\n`packages/api/src/index.ts` to backstop it). This was escalated to and\ndecided by the human partner explicitly (captured, then corrected on\nreview, in `legacy/migration/fixtures/node-contract-2b/_questions.md` Q2): faithful\nport, `GET` open, `PATCH` session-gated (see `set_instance_setting`\nbelow), exactly as Node. `instance_settings` holds zero rows today, the\nserver binds `127.0.0.1` by default, and the web app may legitimately\nneed to read feature flags before login — do NOT add a session guard\nhere believing it an oversight; that would silently diverge from an\nalready-made decision and could break pre-login flag reads.",
         "description": "The real property this leaves: any caller reachable on localhost can\nread the raw instance-settings map with no session at all.",
         "operationId": "get_instance_settings",
         "responses": {
@@ -11144,7 +11144,7 @@
       },
       "AnalyzeGrouped": {
         "type": "object",
-        "description": "The five fixed analyze-item buckets, always present even when empty —\nconfirmed against real bytes in `tests/fixtures/node-contract-2c/\nplans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],\nrisk:[],assumption:[],question:[]}`, never an omitted key. Matches\nNode's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which\ninitialises all five keys unconditionally before bucketing.",
+        "description": "The five fixed analyze-item buckets, always present even when empty —\nconfirmed against real bytes in `legacy/migration/fixtures/node-contract-2c/\nplans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],\nrisk:[],assumption:[],question:[]}`, never an omitted key. Matches\nNode's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which\ninitialises all five keys unconditionally before bucketing.",
         "required": [
           "chunk",
           "file",
@@ -13093,7 +13093,7 @@
       },
       "CollectionFilter": {
         "type": "object",
-        "description": "The nine keys `CollectionFilterSchema` accepts, all optional strings,\nstored and echoed back exactly as received —\n`#[serde(skip_serializing_if = \"Option::is_none\")]` on every field keeps\na partial filter (e.g. seed data's `{\"type\": \"convention\"}`) from\ngrowing eight extra `null` keys on the way back out. See\n`tests/fixtures/node-contract-2b/collections-list.json`.",
+        "description": "The nine keys `CollectionFilterSchema` accepts, all optional strings,\nstored and echoed back exactly as received —\n`#[serde(skip_serializing_if = \"Option::is_none\")]` on every field keeps\na partial filter (e.g. seed data's `{\"type\": \"convention\"}`) from\ngrowing eight extra `null` keys on the way back out. See\n`legacy/migration/fixtures/node-contract-2b/collections-list.json`.",
         "properties": {
           "after": {
             "type": [
@@ -13705,7 +13705,7 @@
       },
       "CountResponse": {
         "type": "object",
-        "description": "Shape of `GET /api/notifications/count`\n(`tests/fixtures/node-contract-2b/notifications-count.json`): a bare\n`{ \"count\": N }` object, not the chunks-style envelope.",
+        "description": "Shape of `GET /api/notifications/count`\n(`legacy/migration/fixtures/node-contract-2b/notifications-count.json`): a bare\n`{ \"count\": N }` object, not the chunks-style envelope.",
         "required": [
           "count"
         ],
@@ -15815,7 +15815,7 @@
       },
       "FeatureFlags": {
         "type": "object",
-        "description": "`GET /api/settings/features` — a **computed 5-key projection** over\n`instance_settings`, not a stored table\n(`tests/fixtures/node-contract-2b/_questions.md` Q2). Every field\nindependently defaults to `true` when its key is absent from\n`instance_settings`, matching Node's `(map.x as boolean) ?? true`\nfallback (`packages/api/src/settings/service.ts:59-75`) for the\ndocumented case — a key that is simply absent. Confirmed live against\nthe empty-table fixture: `settings-features.json` returns all five\n`true` even though `instance_settings` has zero rows.\n\nNode's `?? true` only falls back on `null`/`undefined`, and its `as\nboolean` cast is a compile-time-only no-op — so a value present but not\nactually boolean (e.g. a stored string) would pass through unchanged at\nruntime, breaking `InstanceSettingsMap`'s own typing. Rust's `bool`\nfields can't reproduce that untyped leak; `service::get_feature_flags`\ntreats \"present but not a JSON boolean\" the same as \"absent\" (defaults\n`true`), which is a consequence of Rust's stricter typing, not an\nuntested behavioural choice — the only case the fixtures actually\nexercise is \"absent\", and that path matches Node exactly.",
+        "description": "`GET /api/settings/features` — a **computed 5-key projection** over\n`instance_settings`, not a stored table\n(`legacy/migration/fixtures/node-contract-2b/_questions.md` Q2). Every field\nindependently defaults to `true` when its key is absent from\n`instance_settings`, matching Node's `(map.x as boolean) ?? true`\nfallback (`packages/api/src/settings/service.ts:59-75`) for the\ndocumented case — a key that is simply absent. Confirmed live against\nthe empty-table fixture: `settings-features.json` returns all five\n`true` even though `instance_settings` has zero rows.\n\nNode's `?? true` only falls back on `null`/`undefined`, and its `as\nboolean` cast is a compile-time-only no-op — so a value present but not\nactually boolean (e.g. a stored string) would pass through unchanged at\nruntime, breaking `InstanceSettingsMap`'s own typing. Rust's `bool`\nfields can't reproduce that untyped leak; `service::get_feature_flags`\ntreats \"present but not a JSON boolean\" the same as \"absent\" (defaults\n`true`), which is a consequence of Rust's stricter typing, not an\nuntested behavioural choice — the only case the fixtures actually\nexercise is \"absent\", and that path matches Node exactly.",
         "required": [
           "aiEnabled",
           "enrichmentEnabled",
@@ -17935,7 +17935,7 @@
       },
       "PlanDetail": {
         "type": "object",
-        "description": "Response envelope of `GET /api/plans/{id}`\n(`tests/fixtures/node-contract-2c/plans-detail.json`) — `{plan,\nrequirements, analyze, tasks, dependencies}`, NOT the bare `Plan` that\n`GET /api/plans` (as a rollup row) and every plan-mutating endpoint\nreturn.",
+        "description": "Response envelope of `GET /api/plans/{id}`\n(`legacy/migration/fixtures/node-contract-2c/plans-detail.json`) — `{plan,\nrequirements, analyze, tasks, dependencies}`, NOT the bare `Plan` that\n`GET /api/plans` (as a rollup row) and every plan-mutating endpoint\nreturn.",
         "required": [
           "plan",
           "requirements",
@@ -18012,7 +18012,7 @@
       },
       "PlanListRow": {
         "type": "object",
-        "description": "Row shape of `GET /api/plans` — `Plan`'s own columns plus four rollups\nused by the list page: the linked space's name (`codebaseName`), a\ntask-count progress pair, the title of the first non-`done` task\n(`nextAction`), and the more-recent of the plan's own `updated_at` and\nits tasks' `updated_at` (`lastActivityAt`). Mirrors Node's\n`listPlansWithRollups` / `PlanListRow`\n(`packages/db/src/repository/plan.ts:65-143`) field-for-field — see\n`tests/fixtures/node-contract-2c/plans-list.json`, captured live, which\ncarries all five rollup fields even though the task brief's own endpoint\ntable just says \"bare array\". Trusting the fixture over the table's\nshorthand is deliberate, per this slice's own instruction to check each\nfixture rather than reason by analogy.",
+        "description": "Row shape of `GET /api/plans` — `Plan`'s own columns plus four rollups\nused by the list page: the linked space's name (`codebaseName`), a\ntask-count progress pair, the title of the first non-`done` task\n(`nextAction`), and the more-recent of the plan's own `updated_at` and\nits tasks' `updated_at` (`lastActivityAt`). Mirrors Node's\n`listPlansWithRollups` / `PlanListRow`\n(`packages/db/src/repository/plan.ts:65-143`) field-for-field — see\n`legacy/migration/fixtures/node-contract-2c/plans-list.json`, captured live, which\ncarries all five rollup fields even though the task brief's own endpoint\ntable just says \"bare array\". Trusting the fixture over the table's\nshorthand is deliberate, per this slice's own instruction to check each\nfixture rather than reason by analogy.",
         "required": [
           "id",
           "title",
@@ -19807,7 +19807,7 @@
       },
       "Space": {
         "type": "object",
-        "description": "Bare `space` row shape — what `GET /api/spaces` (list), `POST /api/spaces`\n(create), `PATCH /api/spaces/{id}` (update), and `GET /api/spaces/detect`\non a match all return. **Not** the shape of `GET /api/spaces/{id}`\n(detail) — that one nests this struct inside [`SpaceDetail`] alongside\n`space_code_metadata`. Three different endpoints, three different \"space\"\nshapes: reusing this struct for all of them would silently flatten or\ndrop the `code` metadata on the detail route. See `_questions.md` in\n`tests/fixtures/node-contract/` (\"space detail vs list: nested `code`\nmetadata, not flattened\").",
+        "description": "Bare `space` row shape — what `GET /api/spaces` (list), `POST /api/spaces`\n(create), `PATCH /api/spaces/{id}` (update), and `GET /api/spaces/detect`\non a match all return. **Not** the shape of `GET /api/spaces/{id}`\n(detail) — that one nests this struct inside [`SpaceDetail`] alongside\n`space_code_metadata`. Three different endpoints, three different \"space\"\nshapes: reusing this struct for all of them would silently flatten or\ndrop the `code` metadata on the detail route. See `_questions.md` in\n`legacy/migration/fixtures/node-contract/` (\"space detail vs list: nested `code`\nmetadata, not flattened\").",
         "required": [
           "id",
           "name",
@@ -22360,7 +22360,7 @@
       },
       "WorkspaceDetail": {
         "type": "object",
-        "description": "Response shape of `GET /api/workspaces/{id}`, matching Node's spread\n`{ ...found, spaces }` (`packages/api/src/workspaces/service.ts:19-28`)\n— the workspace row's own fields at the top level, plus a `spaces`\narray, NOT nested under a `workspace` key (contrast\n`fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).\nSee `tests/fixtures/node-contract-2b/workspaces-detail.json`.",
+        "description": "Response shape of `GET /api/workspaces/{id}`, matching Node's spread\n`{ ...found, spaces }` (`packages/api/src/workspaces/service.ts:19-28`)\n— the workspace row's own fields at the top level, plus a `spaces`\narray, NOT nested under a `workspace` key (contrast\n`fubbik_db::repo::space::SpaceDetail`, which nests `{ space, code }`).\nSee `legacy/migration/fixtures/node-contract-2b/workspaces-detail.json`.",
         "required": [
           "id",
           "name",
@@ -22419,7 +22419,7 @@
       },
       "WorkspaceSpaceSummary": {
         "type": "object",
-        "description": "Bare summary of a space attached to a workspace — `{id, name, kind}`\nonly, matching Node's `getSpacesForWorkspace`\n(`packages/db/src/repository/workspace.ts:80-92`), which selects just\nthese three columns, not a full `Space` row (no `description`,\n`userId`, timestamps). See\n`tests/fixtures/node-contract-2b/workspaces-detail.json`.",
+        "description": "Bare summary of a space attached to a workspace — `{id, name, kind}`\nonly, matching Node's `getSpacesForWorkspace`\n(`packages/db/src/repository/workspace.ts:80-92`), which selects just\nthese three columns, not a full `Space` row (no `description`,\n`userId`, timestamps). See\n`legacy/migration/fixtures/node-contract-2b/workspaces-detail.json`.",
         "required": [
           "id",
           "name",

@@ -3,7 +3,7 @@
 //!
 //! Divergence #13's SQL guards are proven load-bearing at the repository
 //! level in `fubbik-db/tests/plan.rs`; this file covers the HTTP routes
-//! themselves: response shapes against `tests/fixtures/node-contract-2c/
+//! themselves: response shapes against `legacy/migration/fixtures/node-contract-2c/
 //! plans-*.json`, status codes (every mutating endpoint is 200, never
 //! 201), `status` validation living in the service layer (not a DTO enum),
 //! the `description`/`spaceId` tri-state on `PATCH`, and that cross-user

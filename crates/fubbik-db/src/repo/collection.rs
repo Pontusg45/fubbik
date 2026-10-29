@@ -39,7 +39,7 @@ use crate::timestamp::UtcTimestamp;
 /// `#[serde(skip_serializing_if = "Option::is_none")]` on every field keeps
 /// a partial filter (e.g. seed data's `{"type": "convention"}`) from
 /// growing eight extra `null` keys on the way back out. See
-/// `tests/fixtures/node-contract-2b/collections-list.json`.
+/// `legacy/migration/fixtures/node-contract-2b/collections-list.json`.
 #[derive(
     Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
 )]

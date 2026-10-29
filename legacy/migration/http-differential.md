@@ -2,7 +2,7 @@
 
 The live comparison passed on 2026-09-26 against a disposable PostgreSQL 18,
 pgvector, and AGE database. The Node/Elysia server and Rust/Axum server read
-separate copies of the Rust demo seed. `./scripts/differential.sh` copied only
+separate copies of the Rust demo seed. `./legacy/migration/scripts/differential.sh` copied only
 the source database's public relational data into a fresh migrated database;
 the source database was read through `pg_dump` and was never written by the
 comparison script.

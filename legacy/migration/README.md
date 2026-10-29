@@ -2,7 +2,7 @@
 
 The migration is complete when the backend, CLI, MCP server, database maintenance commands, and production web server run without Node or Bun. TypeScript remains the source language for the browser application and VS Code extension; their build toolchains are outside the runtime cutover.
 
-[`rust-migration.json`](./rust-migration.json) is the machine-readable source of truth. Every legacy backend route, CLI command module, and MCP source module must appear in exactly one status group. `node scripts/check-rust-migration.mjs` fails when a legacy source is added, removed, or listed twice without updating the contract. It reports source inventory separately from runtime cutover: inventory parity alone does not mean the application runs without Node or Bun.
+[`rust-migration.json`](./rust-migration.json) is the machine-readable source of truth. Every legacy backend route, CLI command module, and MCP source module must appear in exactly one status group. `node legacy/migration/scripts/check-rust-migration.mjs` fails when a legacy source is added, removed, or listed twice without updating the contract. It reports source inventory separately from runtime cutover: inventory parity alone does not mean the application runs without Node or Bun.
 
 Each cutover gate has a stable ID, `pending` or `complete` status, an evidence path, and a verification command. A completed gate with missing evidence fails validation. Mark a gate complete only after running its verification against the current implementation. The checker reports outstanding gates by name; it does not execute long-running integration or container checks automatically.
 

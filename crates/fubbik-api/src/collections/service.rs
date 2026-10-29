@@ -136,7 +136,7 @@ fn filter_to_list_params(filter: &CollectionFilter) -> ListParams {
 /// /api/chunks` — so the response is the `{chunks, total, limit, offset}`
 /// envelope, not a bare array, even though every other list endpoint in
 /// this slice is bare. See
-/// `tests/fixtures/node-contract-2b/collections-chunks-filter-{type,tags}.json`.
+/// `legacy/migration/fixtures/node-contract-2b/collections-chunks-filter-{type,tags}.json`.
 ///
 /// `col.spaceId` (a separate column, not one of `CollectionFilter`'s nine
 /// keys) is threaded through as `ListParams::space_id` here, matching

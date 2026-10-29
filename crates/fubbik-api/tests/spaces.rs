@@ -1,6 +1,6 @@
 //! HTTP-level tests for the `spaces` domain.
 //!
-//! Node's captured contract (`tests/fixtures/node-contract/spaces-*.json`,
+//! Node's captured contract (`legacy/migration/fixtures/node-contract/spaces-*.json`,
 //! `_questions.md`, `_mutating.md`) is the source of truth for three
 //! deliberately different "space" shapes across GET endpoints:
 //!

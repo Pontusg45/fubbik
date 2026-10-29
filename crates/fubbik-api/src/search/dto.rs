@@ -3,7 +3,7 @@
 //! array in `{clauses: [...]}`, `query` returns the `SearchResult`
 //! envelope, `autocomplete`/`saved` (GET) return bare arrays, `saved`
 //! (POST) a bare object — see each route's doc comment in `routes.rs` and
-//! `tests/fixtures/node-contract-2c/search-*.json` for the captured
+//! `legacy/migration/fixtures/node-contract-2c/search-*.json` for the captured
 //! contract.
 //!
 //! [`GraphMeta`], [`GraphContext`], and [`DuplicateHint`] exist for shape

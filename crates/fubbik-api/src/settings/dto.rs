@@ -4,7 +4,7 @@ use std::collections::HashMap;
 /// for a scope" endpoint (`GET /api/settings/user`, `/codebase`,
 /// `/instance`), matching Node's `Record<string, unknown>` reduction
 /// (`packages/api/src/settings/service.ts`). Not an envelope, not an
-/// array — see `tests/fixtures/node-contract-2b/_questions.md` Q3:
+/// array — see `legacy/migration/fixtures/node-contract-2b/_questions.md` Q3:
 /// `settings-user.json` / `settings-codebase.json` / `settings-instance.json`
 /// are all bare objects (`{}` in the captured, empty-table fixtures).
 ///
@@ -70,7 +70,7 @@ pub struct MessageResponse {
 
 /// `GET /api/settings/features` — a **computed 5-key projection** over
 /// `instance_settings`, not a stored table
-/// (`tests/fixtures/node-contract-2b/_questions.md` Q2). Every field
+/// (`legacy/migration/fixtures/node-contract-2b/_questions.md` Q2). Every field
 /// independently defaults to `true` when its key is absent from
 /// `instance_settings`, matching Node's `(map.x as boolean) ?? true`
 /// fallback (`packages/api/src/settings/service.ts:59-75`) for the

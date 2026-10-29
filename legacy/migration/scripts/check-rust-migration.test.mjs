@@ -48,7 +48,7 @@ test("an untracked legacy source fails the contract", () => {
 
 test("a missing Rust MCP tool fails the executable contract", () => {
     // Given the checked-in manifest with one additional expected MCP tool
-    const manifest = structuredClone(JSON.parse(readFileSync(new URL("../migration/rust-migration.json", import.meta.url))));
+    const manifest = structuredClone(JSON.parse(readFileSync(new URL("../rust-migration.json", import.meta.url))));
     manifest.executableContracts.mcpTools.expected.push("missing_tool");
 
     // When the executable contract is checked
@@ -60,7 +60,7 @@ test("a missing Rust MCP tool fails the executable contract", () => {
 
 test("a completed gate requires existing evidence", () => {
     // Given a gate marked complete with a missing evidence file
-    const manifest = structuredClone(JSON.parse(readFileSync(new URL("../migration/rust-migration.json", import.meta.url))));
+    const manifest = structuredClone(JSON.parse(readFileSync(new URL("../rust-migration.json", import.meta.url))));
     manifest.cutoverGates[0].evidence = "missing-cutover-evidence.txt";
 
     // When the migration contract is validated
@@ -72,7 +72,7 @@ test("a completed gate requires existing evidence", () => {
 
 test("gates require unique ids, status, evidence, and verification", () => {
     // Given malformed and duplicate cutover gate declarations
-    const manifest = structuredClone(JSON.parse(readFileSync(new URL("../migration/rust-migration.json", import.meta.url))));
+    const manifest = structuredClone(JSON.parse(readFileSync(new URL("../rust-migration.json", import.meta.url))));
     manifest.cutoverGates.push({ id: "source-inventory", status: "done", evidence: "", verification: "" });
 
     // When the migration contract is validated

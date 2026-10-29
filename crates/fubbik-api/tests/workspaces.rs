@@ -5,7 +5,7 @@
 //! DELETE) are proven load-bearing at the repository level in
 //! `fubbik-db/tests/workspace.rs` — each guard removed and its named test
 //! watched to fail, then restored. This file covers the seven HTTP routes
-//! themselves: response shapes (per `tests/fixtures/node-contract-2b/
+//! themselves: response shapes (per `legacy/migration/fixtures/node-contract-2b/
 //! workspaces-*.json`), status codes, and that the two ownership 404s at
 //! `POST /api/workspaces/{id}/spaces` (`Workspace` vs `Space`) are
 //! distinguishable end to end, matching `_mutating.md`.

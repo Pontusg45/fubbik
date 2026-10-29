@@ -1,6 +1,6 @@
 //! HTTP-level tests for the `tags` domain.
 //!
-//! Node's captured contract (`tests/fixtures/node-contract/tags-list.json`,
+//! Node's captured contract (`legacy/migration/fixtures/node-contract/tags-list.json`,
 //! `_mutating.md`) is the source of truth: `GET /api/tags` returns a bare
 //! JSON array of *joined* rows (id, name, tagTypeId, tagTypeName,
 //! tagTypeColor, tagTypeIcon, chunkCount); create/update return the *bare*

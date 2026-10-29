@@ -1,6 +1,6 @@
 //! HTTP-level tests for the `stats` domain.
 //!
-//! Node's captured contract (`tests/fixtures/node-contract/stats.json`) is
+//! Node's captured contract (`legacy/migration/fixtures/node-contract/stats.json`) is
 //! the source of truth: `GET /api/stats` returns a **bare object** —
 //! `{chunks, connections, tags}` — not an array, and not the
 //! `{chunks,total,limit,offset}` envelope the chunks *list* endpoint uses.
@@ -118,7 +118,7 @@ async fn unauthenticated_request_is_401(pool: sqlx::PgPool) {
 }
 
 /// Matches the captured fixture's field set exactly
-/// (`tests/fixtures/node-contract/stats.json`): `chunks`, `connections`,
+/// (`legacy/migration/fixtures/node-contract/stats.json`): `chunks`, `connections`,
 /// `tags` — no more, no less.
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn response_shape_matches_fixture_field_set(pool: sqlx::PgPool) {

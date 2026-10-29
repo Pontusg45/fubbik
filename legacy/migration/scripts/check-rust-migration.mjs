@@ -4,8 +4,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const defaultManifest = join(repoRoot, "migration/rust-migration.json");
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const defaultManifest = join(repoRoot, "legacy/migration/rust-migration.json");
 
 function filesBelow(root) {
     const results = [];

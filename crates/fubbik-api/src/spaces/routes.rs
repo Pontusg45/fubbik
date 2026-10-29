@@ -16,7 +16,7 @@ use crate::extract::Query;
 /// `GET /api/spaces/detect` returns a bare [`Space`] on a match, but on no
 /// match Node returns a genuinely empty HTTP body — `Content-Length: 0`, no
 /// `content-type` header at all (not `null`, not `{}`, not 404). See
-/// `tests/fixtures/node-contract/spaces-detect-nomatch.json` and
+/// `legacy/migration/fixtures/node-contract/spaces-detect-nomatch.json` and
 /// `_questions.md` ("Null vs. empty-array / empty-object conventions").
 /// `()`'s `IntoResponse` impl in axum produces exactly that shape, so
 /// `NotFound` delegates to it rather than emitting `Json(null)` or

@@ -60,7 +60,7 @@
 //! "requirement-reach"`): `similar-to` sets it to the literal string
 //! `"semantic"` (`service.ts:123`'s `"semantic" as any` — a compile-time
 //! escape hatch that has zero effect on the runtime value, confirmed by
-//! `tests/fixtures/node-contract-2c/_questions.md` Q2). This port
+//! `legacy/migration/fixtures/node-contract-2c/_questions.md` Q2). This port
 //! preserves that runtime value rather than "fixing" it to fit the
 //! narrower `GraphMeta` shape.
 //!
@@ -271,7 +271,7 @@ async fn resolve_graph_clauses(
                 // Node's parser (`parser.ts:71-76`) puts the resolved
                 // endpoints in `clause.params.from`/`.to`, NOT in
                 // `clause.value` split on a comma — `clause.value` is just
-                // `from` alone (`tests/fixtures/node-contract-2c/search-parse-path-A-to-B.json`).
+                // `from` alone (`legacy/migration/fixtures/node-contract-2c/search-parse-path-A-to-B.json`).
                 // Node's own `executeSearch` reads `clause.value.split(",")`
                 // instead (`service.ts:97`), which can never produce two
                 // elements given that shape, making the `path` clause dead

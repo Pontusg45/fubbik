@@ -27,7 +27,7 @@ pub async fn list_stale(
 /// Returns a **bare number**, not `{"count": N}` — Node's `getStaleCount`
 /// resolves the route handler to a plain `number`, and Elysia serialises a
 /// primitive response as `text/plain`, not JSON
-/// (`tests/fixtures/node-contract-2c/chunks-stale-count.json`: literally
+/// (`legacy/migration/fixtures/node-contract-2c/chunks-stale-count.json`: literally
 /// `0`). `String`'s `IntoResponse` impl is what axum uses to produce a
 /// `text/plain; charset=utf-8` body here, matching that content type —
 /// `Json<i64>` would emit the right bytes but the wrong content-type.

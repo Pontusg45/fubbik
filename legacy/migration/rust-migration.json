@@ -9,7 +9,7 @@
     "areas": {
         "backendRoutes": {
             "inventory": {
-                "root": "packages/api/src",
+                "root": "legacy/api/src",
                 "suffix": "routes.ts"
             },
             "statuses": {
@@ -306,9 +306,9 @@
     },
     "legacyPackages": [
         "apps/cli",
-        "apps/server",
-        "packages/api",
-        "packages/auth",
+        "legacy/server",
+        "legacy/api",
+        "legacy/auth",
         "packages/db",
         "packages/mcp"
     ],
@@ -316,8 +316,8 @@
         {
             "id": "source-inventory",
             "status": "complete",
-            "evidence": "scripts/check-rust-migration.test.mjs",
-            "verification": "node --test scripts/check-rust-migration.test.mjs"
+            "evidence": "legacy/migration/scripts/check-rust-migration.test.mjs",
+            "verification": "node --test legacy/migration/scripts/check-rust-migration.test.mjs"
         },
         {
             "id": "rust-workspace",
@@ -328,8 +328,8 @@
         {
             "id": "http-differential",
             "status": "complete",
-            "evidence": "migration/http-differential.md",
-            "verification": "./scripts/differential.sh"
+            "evidence": "legacy/migration/http-differential.md",
+            "verification": "./legacy/migration/scripts/differential.sh"
         },
         {
             "id": "cli-compatibility",
@@ -340,7 +340,7 @@
         {
             "id": "mcp-contracts",
             "status": "complete",
-            "evidence": "migration/mcp-contracts.md",
+            "evidence": "legacy/migration/mcp-contracts.md",
             "verification": "cargo test -p fubbik-mcp && cargo test -p fubbik --test cli mcp_stdio"
         },
         {
@@ -352,8 +352,8 @@
         {
             "id": "rust-seed-parity",
             "status": "complete",
-            "evidence": "migration/seed-parity.md",
-            "verification": "cargo test -p fubbik-db --test seed && node scripts/compare-seed-parity.mjs"
+            "evidence": "legacy/migration/seed-parity.md",
+            "verification": "cargo test -p fubbik-db --test seed && node legacy/migration/scripts/compare-seed-parity.mjs"
         },
         {
             "id": "rust-web-serving",
@@ -371,7 +371,7 @@
             "id": "legacy-runtime-removal",
             "status": "pending",
             "evidence": "package.json",
-            "verification": "node scripts/check-rust-migration.mjs"
+            "verification": "node legacy/migration/scripts/check-rust-migration.mjs"
         },
         {
             "id": "release-smoke",

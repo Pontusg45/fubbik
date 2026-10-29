@@ -345,7 +345,7 @@ pub struct TaskDetail {
 }
 
 /// The five fixed analyze-item buckets, always present even when empty —
-/// confirmed against real bytes in `tests/fixtures/node-contract-2c/
+/// confirmed against real bytes in `legacy/migration/fixtures/node-contract-2c/
 /// plans-detail-analyze.json` (Q1 in `_questions.md`): `{chunk:[],file:[],
 /// risk:[],assumption:[],question:[]}`, never an omitted key. Matches
 /// Node's `groupByKind` (`packages/api/src/plans/analyze.ts:14-28`), which
@@ -381,7 +381,7 @@ impl AnalyzeGrouped {
 }
 
 /// Response envelope of `GET /api/plans/{id}`
-/// (`tests/fixtures/node-contract-2c/plans-detail.json`) — `{plan,
+/// (`legacy/migration/fixtures/node-contract-2c/plans-detail.json`) — `{plan,
 /// requirements, analyze, tasks, dependencies}`, NOT the bare `Plan` that
 /// `GET /api/plans` (as a rollup row) and every plan-mutating endpoint
 /// return.

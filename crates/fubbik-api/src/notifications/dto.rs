@@ -32,7 +32,7 @@ impl ListNotificationsQuery {
 }
 
 /// Shape of `GET /api/notifications/count`
-/// (`tests/fixtures/node-contract-2b/notifications-count.json`): a bare
+/// (`legacy/migration/fixtures/node-contract-2b/notifications-count.json`): a bare
 /// `{ "count": N }` object, not the chunks-style envelope.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct CountResponse {
