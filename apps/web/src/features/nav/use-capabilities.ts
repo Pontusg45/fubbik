@@ -19,8 +19,8 @@ function featureFor(to: string): Feature | undefined {
 }
 
 /** A `null` set (loading, or an older server without /api/capabilities) keeps every item. */
-export function filterNavItems<T extends { to: string }>(items: T[], enabled: Set<string> | null): T[] {
-    if (enabled === null) return items;
+export function filterNavItems<T extends { to: string }>(items: readonly T[], enabled: Set<string> | null): T[] {
+    if (enabled === null) return [...items];
     return items.filter(item => {
         const feature = featureFor(item.to);
         return feature === undefined || enabled.has(feature);
