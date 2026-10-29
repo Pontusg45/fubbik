@@ -5,7 +5,7 @@ import React, { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
 import { useRecentChunks } from "@/features/chunks/use-recent-chunks";
-import { useFeatureEnabled } from "@/features/nav/use-capabilities";
+import { useCapabilities, useFeatureEnabled } from "@/features/nav/use-capabilities";
 import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api } from "@/utils/api";
@@ -140,6 +140,7 @@ export function useCommandSearch({
     });
 
     // Skip gated groups only when the server reports them off.
+    const capabilities = useCapabilities();
     const requirementsEnabled = useFeatureEnabled("requirements");
     const plansEnabled = useFeatureEnabled("plans");
 
@@ -321,7 +322,7 @@ export function useCommandSearch({
             ...buildPageItems(lowerQuery, path => {
                 navigate({ to: path });
                 close();
-            })
+            }, capabilities)
         );
 
         // Chunks from API search
@@ -346,7 +347,7 @@ export function useCommandSearch({
                     navigate({ to: action.path, search: action.search ?? {} });
                     close();
                 }
-            })
+            }, capabilities)
         );
 
         // Quick note creation

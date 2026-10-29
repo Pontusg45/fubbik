@@ -5,6 +5,16 @@ import { unwrapEden } from "@/utils/eden";
 
 export type Feature = "plans" | "requirements" | "matrices" | "coordination" | "learning_paths" | "overlays" | "ai";
 
+export const FEATURE_LABEL: Record<Feature, string> = {
+    plans: "Plans",
+    requirements: "Requirements",
+    matrices: "Matrices",
+    learning_paths: "Learning paths",
+    overlays: "Features",
+    coordination: "Coordination",
+    ai: "AI"
+};
+
 export const FEATURE_BY_ROUTE: Record<string, Feature> = {
     "/plans": "plans",
     "/requirements": "requirements",
@@ -14,7 +24,7 @@ export const FEATURE_BY_ROUTE: Record<string, Feature> = {
     "/features": "overlays"
 };
 
-function featureFor(to: string): Feature | undefined {
+export function featureForPath(to: string): Feature | undefined {
     return FEATURE_BY_ROUTE[to] ?? FEATURE_BY_ROUTE[`/${to.split("/")[1] ?? ""}`];
 }
 
@@ -22,7 +32,7 @@ function featureFor(to: string): Feature | undefined {
 export function filterNavItems<T extends { to: string }>(items: readonly T[], enabled: Set<string> | null): T[] {
     if (enabled === null) return [...items];
     return items.filter(item => {
-        const feature = featureFor(item.to);
+        const feature = featureForPath(item.to);
         return feature === undefined || enabled.has(feature);
     });
 }

@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import React from "react";
 
+import { filterNavItems } from "@/features/nav/use-capabilities";
+
 import type { CommandItem, RecentPage } from "./command-types";
 
 // ---------------------------------------------------------------------------
@@ -188,8 +190,12 @@ export function buildRecentChunkItems(
     return items;
 }
 
-export function buildPageItems(lowerQuery: string, onSelect: (path: string) => void): CommandItem[] {
-    const filtered = PAGE_ITEMS.filter(p => !lowerQuery || p.title.toLowerCase().includes(lowerQuery));
+export function buildPageItems(
+    lowerQuery: string,
+    onSelect: (path: string) => void,
+    enabled: Set<string> | null = null
+): CommandItem[] {
+    const filtered = filterNavItems(PAGE_ITEMS.map(p => ({ ...p, to: p.path })), enabled).filter(p => !lowerQuery || p.title.toLowerCase().includes(lowerQuery));
     return filtered.map(page => ({
         id: page.id,
         title: page.title,
@@ -241,9 +247,13 @@ export function buildPlanItems(
 
 export function buildActionItems(
     lowerQuery: string,
-    onSelect: (action: { path: string; search?: Record<string, string>; subMode?: string }) => void
+    onSelect: (action: { path: string; search?: Record<string, string>; subMode?: string }) => void,
+    enabled: Set<string> | null = null
 ): CommandItem[] {
-    const filtered = ACTION_ITEMS.filter(a => !lowerQuery || a.title.toLowerCase().includes(lowerQuery));
+    const filtered = filterNavItems(
+        ACTION_ITEMS.map(a => ({ ...a, to: a.path })),
+        enabled
+    ).filter(a => !lowerQuery || a.title.toLowerCase().includes(lowerQuery));
     return filtered.map(action => ({
         id: action.id,
         title: action.title,

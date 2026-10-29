@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import ErrorState from "./components/error-state";
 import Loader from "./components/loader";
 import NotFound from "./components/not-found";
+import { FeatureRouteGuard } from "./features/nav/feature-route-guard";
 import { routeTree } from "./routeTree.gen";
 
 export const queryClient = new QueryClient({
@@ -31,6 +32,7 @@ export const getRouter = () => {
         defaultPendingComponent: () => <Loader />,
         defaultNotFoundComponent: () => <NotFound />,
         defaultErrorComponent: ErrorState,
+        InnerWrap: ({ children }) => <FeatureRouteGuard>{children}</FeatureRouteGuard>,
         Wrap: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     });
     return router;
