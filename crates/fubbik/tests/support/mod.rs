@@ -19,6 +19,7 @@ impl TestApplication {
             better_auth_secret: "test-secret-at-least-32-characters-123".into(),
             ai: fubbik_ai::OllamaClient::new("http://127.0.0.1:1"),
             rate_limiter: Default::default(),
+            features: Default::default(),
             background: BackgroundRuntime::new(),
         };
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

@@ -160,6 +160,10 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Serve { port, host } => {
+            // Read first so a bad `fubbik.toml` fails startup before any
+            // connection is made. Only the message is shown: the toml/io
+            // cause is already part of it.
+            let config = fubbik_config::Config::load().map_err(|e| anyhow::anyhow!("{e}"))?;
             let database_url = std::env::var("DATABASE_URL")
                 .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
             let better_auth_secret = std::env::var("BETTER_AUTH_SECRET")
@@ -193,7 +197,11 @@ async fn main() -> anyhow::Result<()> {
             fubbik_db::warn_if_not_icu_collation(&pool).await;
             let background = fubbik_api::background::BackgroundRuntime::new();
             fubbik_api::staleness::service::spawn_background_scan(pool.clone(), background.clone());
-            fubbik_api::graph::sync::spawn_behavior_sync(pool.clone(), background.clone());
+            // Behavior rules only exist to the user through the matrix routes;
+            // with `matrices` off there is nothing to project.
+            if config.features.enabled(fubbik_config::Feature::Matrices) {
+                fubbik_api::graph::sync::spawn_behavior_sync(pool.clone(), background.clone());
+            }
             fubbik_api::graph::projection::spawn_projection_worker(
                 pool.clone(),
                 background.clone(),
@@ -206,6 +214,7 @@ async fn main() -> anyhow::Result<()> {
                 ai: fubbik_ai::OllamaClient::from_env(),
                 rate_limiter: Default::default(),
                 background: background.clone(),
+                features: config.features,
             };
 
             let cors_origin_env =

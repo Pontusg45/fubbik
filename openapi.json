@@ -214,6 +214,27 @@
         }
       }
     },
+    "/api/capabilities": {
+      "get": {
+        "tags": [
+          "crate::capabilities"
+        ],
+        "summary": "**Deliberately unauthenticated**: it reveals only which route groups\nexist, which a 404 would reveal anyway, and the web app needs it before\nsign-in to draw the nav.",
+        "operationId": "capabilities",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitiesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chunk-types": {
       "get": {
         "tags": [
@@ -12082,6 +12103,21 @@
             "type": "integer",
             "format": "int64",
             "minimum": 0
+          }
+        }
+      },
+      "CapabilitiesResponse": {
+        "type": "object",
+        "required": [
+          "features"
+        ],
+        "properties": {
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Enabled feature keys, in a fixed order: `plans`, `requirements`,\n`matrices`, `coordination`, `learning_paths`, `overlays`, `ai`."
           }
         }
       },

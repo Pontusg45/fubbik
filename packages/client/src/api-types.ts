@@ -91,6 +91,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * **Deliberately unauthenticated**: it reveals only which route groups
+         *     exist, which a 404 would reveal anyway, and the web app needs it before
+         *     sign-in to draw the nav.
+         */
+        get: operations["capabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chunk-types": {
         parameters: {
             query?: never;
@@ -4017,6 +4038,13 @@ export interface components {
         BulkUpdated: {
             /** Format: int64 */
             updated: number;
+        };
+        CapabilitiesResponse: {
+            /**
+             * @description Enabled feature keys, in a fixed order: `plans`, `requirements`,
+             *     `matrices`, `coordination`, `learning_paths`, `overlays`, `ai`.
+             */
+            features: string[];
         };
         /**
          * @description The six literals Elysia's `CategorySchema` accepts
@@ -8320,6 +8348,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    capabilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilitiesResponse"];
+                };
             };
         };
     };

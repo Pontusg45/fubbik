@@ -1,0 +1,25 @@
+# fubbik.toml: project choices for this fork. Copy to `fubbik.toml` and commit it.
+#
+# The file is optional. With no file, no [features] table, or a key left out,
+# every feature is on. `fubbik serve` reads ./fubbik.toml, or the file named by
+# FUBBIK_CONFIG. Personal settings (secrets, URLs, ports) go in `.env`, not here.
+#
+# Turning a feature off unmounts its API routes and background jobs. The
+# database schema stays complete either way. `core` (chunks, connections,
+# spaces, tags, search, context, graph, ...) is always on and has no switch.
+
+[features]
+# Plans and their tasks (/api/plans, /api/tasks). Requires nothing.
+plans = true
+# BDD requirements, use cases and coverage/traceability. Requires nothing.
+requirements = true
+# Behavioral matrices and the behavior-graph sync job. Requires `requirements`.
+matrices = true
+# Agent coordination boards on plans (runs, task claims, journal). Requires `plans`.
+coordination = true
+# Learning paths through chunks. Requires nothing.
+learning_paths = true
+# Knowledge-overlay features: per-chunk deltas you can activate and merge. Requires nothing.
+overlays = true
+# AI endpoints under /api/ai (summarize, suggest connections, generate). Requires nothing.
+ai = true

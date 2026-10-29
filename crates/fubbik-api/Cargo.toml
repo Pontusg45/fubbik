@@ -29,6 +29,7 @@ fubbik-core = { path = "../fubbik-core" }
 fubbik-contracts = { path = "../fubbik-contracts" }
 fubbik-db = { path = "../fubbik-db" }
 fubbik-ai = { path = "../fubbik-ai" }
+fubbik-config = { path = "../fubbik-config" }
 # `vocabulary::suggest` now calls Ollama through `fubbik_ai::OllamaClient`;
 # this dependency remains for `tests/differential.rs`'s direct HTTP calls.
 reqwest = { version = "0.12", features = ["json"] }

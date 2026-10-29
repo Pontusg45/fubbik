@@ -3,6 +3,7 @@ pub mod ai;
 pub mod assets;
 pub mod auth;
 pub mod background;
+pub mod capabilities;
 pub mod chunks;
 pub mod collections;
 pub mod comments;
@@ -69,23 +70,28 @@ pub struct AppState {
     /// Process-local, like Node's — this is not a distributed limiter and
     /// is not meant to be.
     pub rate_limiter: crate::middleware::rate_limit::RateLimiter,
+    /// The `fubbik.toml` `[features]` switches, read once at startup.
+    /// `router()` mounts a group's routes only when its feature is on, and
+    /// `GET /api/capabilities` reports the same set to clients.
+    pub features: fubbik_config::Features,
 }
 
 pub fn router(state: AppState) -> Router {
-    Router::new()
+    use fubbik_config::Feature;
+
+    // `core`: always mounted, no switch.
+    let mut app = Router::new()
         .merge(activity::routes::router())
-        .merge(ai::routes::router())
         .merge(auth::routes::router())
+        .merge(capabilities::router())
         .merge(chunks::routes::router())
         .merge(chunks::groups::router())
         .merge(chunks::import_docs::router())
         .merge(collections::routes::router())
         .merge(connections::routes::router())
-        .merge(coordination::routes::router())
         .merge(context::routes::router())
         .merge(context_export::routes::router())
         .merge(context_for_file::routes::router())
-        .merge(coverage::routes::router())
         .merge(documents::routes::router())
         .merge(documents::source_docs::router())
         .merge(enrich::routes::router())
@@ -98,14 +104,8 @@ pub fn router(state: AppState) -> Router {
         .merge(health::routes::router())
         .merge(scope_keys::routes::router())
         .merge(timeline::routes::router())
-        .merge(learning_paths::routes::router())
-        .merge(matrices::routes::router())
-        .merge(features::routes::router())
         .merge(notifications::routes::router())
-        .merge(plans::routes::router())
         .merge(proposals::routes::router())
-        .merge(requirements::routes::router())
-        .merge(requirements::dependency_routes::router())
         .merge(saved_graphs::routes::router())
         .merge(search::routes::router())
         .merge(settings::routes::router())
@@ -114,11 +114,38 @@ pub fn router(state: AppState) -> Router {
         .merge(stats::routes::router())
         .merge(tag_types::routes::router())
         .merge(tags::routes::router())
-        .merge(tasks::router())
         .merge(templates::routes::router())
-        .merge(use_cases::routes::router())
         .merge(vocabularies::routes::router())
         .merge(vocabulary::routes::router())
-        .merge(workspaces::routes::router())
-        .with_state(state)
+        .merge(workspaces::routes::router());
+
+    // Switchable groups — see `fubbik_config::Feature`.
+    let switches = &state.features;
+    if switches.enabled(Feature::Plans) {
+        app = app.merge(plans::routes::router()).merge(tasks::router());
+    }
+    if switches.enabled(Feature::Requirements) {
+        app = app
+            .merge(requirements::routes::router())
+            .merge(requirements::dependency_routes::router())
+            .merge(use_cases::routes::router())
+            .merge(coverage::routes::router());
+    }
+    if switches.enabled(Feature::Matrices) {
+        app = app.merge(matrices::routes::router());
+    }
+    if switches.enabled(Feature::Coordination) {
+        app = app.merge(coordination::routes::router());
+    }
+    if switches.enabled(Feature::LearningPaths) {
+        app = app.merge(learning_paths::routes::router());
+    }
+    if switches.enabled(Feature::Overlays) {
+        app = app.merge(features::routes::router());
+    }
+    if switches.enabled(Feature::Ai) {
+        app = app.merge(ai::routes::router());
+    }
+
+    app.with_state(state)
 }
