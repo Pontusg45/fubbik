@@ -1,0 +1,19 @@
+[package]
+name = "kit"
+edition.workspace = true
+version.workspace = true
+description = "fk: everyday terminal commands, safe by default"
+
+[lib]
+name = "kit"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fk"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true

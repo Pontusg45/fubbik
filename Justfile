@@ -79,7 +79,7 @@ alias test-rust := rust-test
 # Run database-free Rust libraries and CLI HTTP contract tests.
 rust-test-fast:
     cargo fmt --all --check
-    CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 SQLX_OFFLINE=true cargo test -p fubbik-contracts -p fubbik-cli -p fubbik-mcp -p review-harness
+    CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 SQLX_OFFLINE=true cargo test -p fubbik-contracts -p fubbik-cli -p fubbik-mcp -p review-harness -p kit
 
 alias test-rust-fast := rust-test-fast
 
