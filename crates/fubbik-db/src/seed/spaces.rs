@@ -1,4 +1,5 @@
-use std::path::Path;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::Result;
@@ -24,6 +25,18 @@ fn seed_space_location(
     (path.into_iter().collect(), remote)
 }
 
+/// The directory the seed defaults are derived from: the canonical cwd (stable across
+/// symlinks), else the raw cwd, else an empty path (which disables the cwd-derived defaults).
+fn seed_cwd(
+    current: io::Result<PathBuf>,
+    canonicalize: impl Fn(&Path) -> io::Result<PathBuf>,
+) -> PathBuf {
+    match current {
+        Ok(raw) => canonicalize(&raw).unwrap_or(raw),
+        Err(_) => PathBuf::new(),
+    }
+}
+
 fn git_origin_url(cwd: &Path) -> Option<String> {
     let out = Command::new("git")
         .args(["remote", "get-url", "origin"])
@@ -39,10 +52,7 @@ fn git_origin_url(cwd: &Path) -> Option<String> {
 
 /// Inserts the two legacy code spaces under stable seed-owned IDs.
 pub async fn seed_spaces(tx: &mut Transaction<'_, Postgres>) -> Result<usize> {
-    // Canonicalise so the default is stable regardless of symlinks; fall back to the raw cwd.
-    let cwd = std::env::current_dir()
-        .and_then(|d| d.canonicalize())
-        .unwrap_or_default();
+    let cwd = seed_cwd(std::env::current_dir(), |d| d.canonicalize());
     let (paths, main_remote) = seed_space_location(
         std::env::var("FUBBIK_SEED_SPACE_PATH").ok(),
         std::env::var("FUBBIK_SEED_REMOTE_URL").ok(),
@@ -155,5 +165,35 @@ mod tests {
         // Then there is no local path and no remote
         assert!(paths.is_empty());
         assert_eq!(remote, None);
+    }
+
+    #[test]
+    fn seed_cwd_prefers_canonical() {
+        // Given a cwd that canonicalises to a different path
+        let current = Ok(PathBuf::from("/link/repo"));
+        // When the seed cwd is resolved
+        let cwd = seed_cwd(current, |_| Ok(PathBuf::from("/real/repo")));
+        // Then the canonical path is used
+        assert_eq!(cwd, PathBuf::from("/real/repo"));
+    }
+
+    #[test]
+    fn seed_cwd_falls_back_to_raw_when_canonicalize_fails() {
+        // Given a cwd whose canonicalisation fails
+        let current = Ok(PathBuf::from("/link/repo"));
+        // When the seed cwd is resolved
+        let cwd = seed_cwd(current, |_| Err(io::Error::other("boom")));
+        // Then the raw cwd is used
+        assert_eq!(cwd, PathBuf::from("/link/repo"));
+    }
+
+    #[test]
+    fn seed_cwd_is_empty_when_current_dir_fails() {
+        // Given a current_dir() failure
+        let current = Err(io::Error::other("gone"));
+        // When the seed cwd is resolved
+        let cwd = seed_cwd(current, |_| panic!("must not canonicalise without a cwd"));
+        // Then the cwd is empty
+        assert!(cwd.as_os_str().is_empty());
     }
 }
