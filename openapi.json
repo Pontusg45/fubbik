@@ -5929,6 +5929,22 @@
         }
       }
     },
+    "/api/openapi.json": {
+      "get": {
+        "tags": [
+          "crate::api_docs"
+        ],
+        "operationId": "openapi_json",
+        "responses": {
+          "200": {
+            "description": "This API's OpenAPI document",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/plans": {
       "get": {
         "tags": [

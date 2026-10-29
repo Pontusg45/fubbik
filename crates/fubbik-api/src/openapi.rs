@@ -9,6 +9,7 @@ use utoipa::OpenApi;
         crate::ai::routes::suggest_connections,
         crate::ai::routes::generate,
         crate::ai::routes::structure_requirement,
+        crate::api_docs::openapi_json,
         crate::capabilities::capabilities,
         crate::chunks::routes::list_chunks,
         crate::chunks::routes::create_chunk,

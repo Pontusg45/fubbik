@@ -489,7 +489,7 @@ ai = true
 - `POST /api/scope-keys` — register a scope key (key, description, valueType, allowedValues)
 - `DELETE /api/scope-keys/:id` — delete a scope key
 
-The Rust server does not serve Swagger UI. `fubbik openapi` prints the OpenAPI document; the checked-in copy is `openapi.json`, from which
+The Rust server serves the OpenAPI document at `GET /api/openapi.json` and a Swagger UI page at `GET /docs` (unauthenticated; UI loaded from the jsdelivr CDN at a pinned `swagger-ui-dist` version, see `api_docs.rs`). `fubbik openapi` prints the OpenAPI document; the checked-in copy is `openapi.json`, from which
 `pnpm gen:api` generates `packages/client/src/api-types.ts`.
 
 ## Web Pages

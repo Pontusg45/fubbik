@@ -1,5 +1,6 @@
 pub mod activity;
 pub mod ai;
+pub mod api_docs;
 pub mod assets;
 pub mod auth;
 pub mod background;
@@ -82,6 +83,7 @@ pub fn router(state: AppState) -> Router {
     // `core`: always mounted, no switch.
     let mut app = Router::new()
         .merge(activity::routes::router())
+        .merge(api_docs::router())
         .merge(auth::routes::router())
         .merge(capabilities::router())
         .merge(chunks::routes::router())
