@@ -2,7 +2,9 @@
 
 use crate::Check;
 
+pub mod given_when_then;
+
 /// Every registered check, in report order.
 pub fn all() -> Vec<Box<dyn Check>> {
-    vec![]
+    vec![Box::new(given_when_then::GivenWhenThen)]
 }

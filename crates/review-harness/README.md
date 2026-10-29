@@ -69,6 +69,7 @@ pub trait Check: Send + Sync {
     fn roots(&self) -> Vec<&str>;           // repo-relative directories to walk
     fn extensions(&self) -> Vec<&str>;      // e.g. [".ts", ".tsx"]
     fn check(&self, file: &TextFile) -> Vec<Violation>;  // one file at a time
+    fn baseline(&self) -> usize { 0 }       // violations tolerated today; may only go down
 }
 ```
 
@@ -79,6 +80,18 @@ pub fn all() -> Vec<Box<dyn Check>> {
     vec![Box::new(my_check::MyCheck)]
 }
 ```
+
+### Baselines
+
+A check passes while its violation count is at or below `baseline()` (default 0). Use it to adopt a check on a codebase that already has
+violations: set the constant to today's count, and ratchet it down as they are fixed. Output shows `[name] N violation(s) (baseline B)` and
+marks a check that is over its baseline `FAIL`. Violations of a check within a non-zero baseline are hidden unless you pass `--verbose`.
+
+### Built-in checks
+
+| Check             | What it requires                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| `given-when-then` | Every `#[test]`, `#[tokio::test]` or `#[sqlx::test]` function under `crates/` has `// Given`, `// When` and `// Then` comments. `// When and Then`, `// When / Then` and `// Given / When` count for each word they name. Comments inside strings do not count |
 
 Compiled checks and rule-file rules run together and are listed together. Compiled checks need the crate built from source (a fork, or a local
 checkout); installing from git gives you only the rule-file mode. See

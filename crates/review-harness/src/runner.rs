@@ -11,6 +11,14 @@ pub struct CheckResult {
     pub name: String,
     pub files_checked: usize,
     pub violations: Vec<Violation>,
+    /// Violations tolerated before the check fails.
+    pub baseline: usize,
+}
+
+impl CheckResult {
+    pub fn over_baseline(&self) -> bool {
+        self.violations.len() > self.baseline
+    }
 }
 
 /// The outcome of a run.
@@ -25,7 +33,7 @@ impl Report {
     }
 
     pub fn passed(&self) -> bool {
-        self.violation_count() == 0
+        self.results.iter().all(|r| !r.over_baseline())
     }
 }
 
@@ -39,6 +47,7 @@ pub fn run(repo_root: &Path, checks: &[Box<dyn Check>]) -> io::Result<Report> {
             name: check.name().to_string(),
             files_checked: files.len(),
             violations,
+            baseline: check.baseline(),
         });
     }
     Ok(report)
@@ -80,6 +89,29 @@ mod tests {
         }
     }
 
+    struct Baselined(usize);
+
+    impl Check for Baselined {
+        fn name(&self) -> &str {
+            "baselined"
+        }
+        fn description(&self) -> &str {
+            "test check with a baseline"
+        }
+        fn roots(&self) -> Vec<&str> {
+            NoTodo.roots()
+        }
+        fn extensions(&self) -> Vec<&str> {
+            NoTodo.extensions()
+        }
+        fn check(&self, file: &TextFile) -> Vec<Violation> {
+            NoTodo.check(file)
+        }
+        fn baseline(&self) -> usize {
+            self.0
+        }
+    }
+
     fn temp_repo(name: &str) -> std::path::PathBuf {
         let dir =
             std::env::temp_dir().join(format!("review-harness-{name}-{}", std::process::id()));
@@ -109,6 +141,34 @@ mod tests {
                 message: "TODO left in".into(),
             }]
         );
+        assert!(!report.passed());
+        fs::remove_dir_all(repo).unwrap();
+    }
+
+    #[test]
+    fn count_at_baseline_passes() {
+        // Given
+        let repo = temp_repo("at-baseline");
+        fs::write(repo.join("src/a.ts"), "// TODO one\n// TODO two\n").unwrap();
+        let checks: Vec<Box<dyn Check>> = vec![Box::new(Baselined(2))];
+        // When
+        let report = run(&repo, &checks).unwrap();
+        // Then
+        assert_eq!(report.results[0].baseline, 2);
+        assert!(report.passed());
+        fs::remove_dir_all(repo).unwrap();
+    }
+
+    #[test]
+    fn count_over_baseline_fails() {
+        // Given
+        let repo = temp_repo("over-baseline");
+        fs::write(repo.join("src/a.ts"), "// TODO one\n// TODO two\n").unwrap();
+        let checks: Vec<Box<dyn Check>> = vec![Box::new(Baselined(1))];
+        // When
+        let report = run(&repo, &checks).unwrap();
+        // Then
+        assert!(report.results[0].over_baseline());
         assert!(!report.passed());
         fs::remove_dir_all(repo).unwrap();
     }

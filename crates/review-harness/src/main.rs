@@ -31,7 +31,7 @@ enum Command {
         #[arg(long, default_value = ".")]
         root: PathBuf,
     },
-    /// Run checks and exit non-zero on any violation.
+    /// Run checks and exit non-zero when any check exceeds its baseline.
     Run {
         /// Repository root to check.
         #[arg(long, default_value = ".")]
@@ -42,6 +42,9 @@ enum Command {
         /// Rule file (default: <root>/review-rules.toml).
         #[arg(long)]
         rules: Option<PathBuf>,
+        /// Also list violations of checks that are within their baseline.
+        #[arg(long)]
+        verbose: bool,
     },
 }
 
@@ -78,7 +81,12 @@ fn main() -> anyhow::Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
-        Command::Run { root, only, rules } => {
+        Command::Run {
+            root,
+            only,
+            rules,
+            verbose,
+        } => {
             let mut registered = registry(&root, rules)?;
             if let Some(unknown) = only
                 .iter()
@@ -91,9 +99,18 @@ fn main() -> anyhow::Result<ExitCode> {
             }
             let report = run(&root, &registered)?;
             for result in &report.results {
-                for v in &result.violations {
-                    println!("{}:{}  [{}] {}", v.file, v.line, result.name, v.message);
+                if verbose || result.over_baseline() || result.baseline == 0 {
+                    for v in &result.violations {
+                        println!("{}:{}  [{}] {}", v.file, v.line, result.name, v.message);
+                    }
                 }
+                println!(
+                    "[{}] {} violation(s) (baseline {}){}",
+                    result.name,
+                    result.violations.len(),
+                    result.baseline,
+                    if result.over_baseline() { " FAIL" } else { "" }
+                );
             }
             println!(
                 "{} check(s), {} violation(s)",

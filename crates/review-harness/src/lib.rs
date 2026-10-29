@@ -32,4 +32,8 @@ pub trait Check: Send + Sync {
     fn extensions(&self) -> Vec<&str>;
     /// Report every violation in one file.
     fn check(&self, file: &TextFile) -> Vec<Violation>;
+    /// Violations tolerated today. A run passes while the count stays at or below this; it may only go down.
+    fn baseline(&self) -> usize {
+        0
+    }
 }

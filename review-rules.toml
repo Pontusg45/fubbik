@@ -19,6 +19,5 @@ message = "arktype is allowed only in apps/web/src/features/auth/ and packages/e
 # Live uses found by `git grep`: the two sign-in/sign-up forms and env validation.
 allow = ["apps/web/src/features/auth/", "packages/env/"]
 
-# Planned, not expressible here: `given-when-then`. It requires every test body to carry
-# // Given, // When and // Then comments, which is multi-line structure a per-line pattern
-# rule cannot check. It will be a compiled check in `crates/review-harness/src/checks/`.
+# Not expressible here: `given-when-then` (every test body carries // Given, // When and // Then comments).
+# It is multi-line structure, so it is a compiled check in `crates/review-harness/src/checks/given_when_then.rs`.
