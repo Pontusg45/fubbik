@@ -23,9 +23,10 @@ fn command_keys(command: &Command) -> Option<String> {
 fn command_color(command: &Command) -> gpui::Hsla {
     use theme::Hue;
     match command {
-        Command::SelectRepo(_) | Command::ShowTab(_) | Command::Focus { .. } => {
-            theme::hue(Hue::Blue)
-        }
+        Command::SelectRepo(_)
+        | Command::ShowTab(_)
+        | Command::Focus { .. }
+        | Command::ShowLogs { .. } => theme::hue(Hue::Blue),
         Command::StartProcess(..)
         | Command::StopProcess(..)
         | Command::RestartProcess(..)
@@ -52,19 +53,146 @@ fn command_color(command: &Command) -> gpui::Hsla {
 }
 
 impl Workspace {
-    /// `?query` searches chunks; anything else filters the commands.
+    /// The first character picks what the palette lists: `?` chunks, `@`
+    /// repos, `#` tasks, `!` what is running (processes and agents), `>`
+    /// commands only. With no prefix, commands, repos and tasks together.
     pub(super) fn palette_matches(&self) -> Vec<Entry> {
-        if self.palette_field.text.starts_with('?') {
-            return self
-                .palette_search
-                .iter()
-                .map(|chunk| Entry {
-                    label: format!("Open chunk: {} ({})", chunk.title, chunk.kind),
-                    command: Command::OpenWeb(format!("/chunks/{}", chunk.id)),
-                })
-                .collect();
+        let text = self.palette_field.text.as_str();
+        let (entries, query) = match text.chars().next() {
+            Some('?') => {
+                return self
+                    .palette_search
+                    .iter()
+                    .map(|chunk| Entry {
+                        label: format!("Open chunk: {} ({})", chunk.title, chunk.kind),
+                        command: Command::OpenWeb(format!("/chunks/{}", chunk.id)),
+                    })
+                    .collect();
+            }
+            Some('@') => (self.palette_repos(), &text[1..]),
+            Some('#') => (self.palette_tasks(), &text[1..]),
+            Some('!') => (self.palette_running(), &text[1..]),
+            Some('>') => (self.palette_entries(), &text[1..]),
+            _ => {
+                let mut all = self.palette_entries();
+                all.extend(self.palette_tasks());
+                (all, text)
+            }
+        };
+        let query = query.trim_start();
+        let mut matches = palette::filter(&entries, query);
+        if query.is_empty() {
+            palette::recent_first(&mut matches, &self.palette_recent);
         }
-        palette::filter(&self.palette_entries(), &self.palette_field.text)
+        matches
+    }
+
+    /// Runs a palette entry and remembers it as recent.
+    pub(super) fn run_from_palette(&mut self, command: Command, cx: &mut Context<Self>) {
+        self.palette_recent.retain(|c| *c != command);
+        self.palette_recent.insert(0, command.clone());
+        self.palette_recent.truncate(palette::RECENT);
+        self.run(command, cx);
+    }
+
+    /// `@`: every repo, and its tabs.
+    fn palette_repos(&self) -> Vec<Entry> {
+        let mut entries = Vec::new();
+        for (repo, view) in self.repos.iter().enumerate() {
+            let name = view.entry.name();
+            entries.push(Entry {
+                label: name.clone(),
+                command: Command::SelectRepo(repo),
+            });
+            for tab in [
+                Tab::Overview,
+                Tab::Processes,
+                Tab::Sessions,
+                Tab::Plans,
+                Tab::Knowledge,
+            ] {
+                entries.push(Entry {
+                    label: format!("{name} › {}", tab.label()),
+                    command: Command::Focus { repo, tab },
+                });
+            }
+        }
+        entries
+    }
+
+    /// `#`: every task on every plan; ⏎ opens its timeline.
+    fn palette_tasks(&self) -> Vec<Entry> {
+        let mut entries = Vec::new();
+        for (repo, view) in self.repos.iter().enumerate() {
+            let Some(Ok(knowledge)) = &view.knowledge else {
+                continue;
+            };
+            for plan in &knowledge.plan_details {
+                for task in plan.tasks.iter().filter(|t| t.status != "done") {
+                    entries.push(Entry {
+                        label: format!(
+                            "#{} ({}) — {} · {}",
+                            task.title,
+                            task.status.replace('_', " "),
+                            plan.title,
+                            view.entry.name()
+                        ),
+                        command: Command::TaskTimeline {
+                            repo,
+                            plan: plan.id.clone(),
+                            task: task.id.clone(),
+                        },
+                    });
+                }
+            }
+        }
+        entries
+    }
+
+    /// `!`: processes that are up (⏎ shows the log) and live agents (⏎
+    /// opens the pane, or the Sessions tab).
+    fn palette_running(&self) -> Vec<Entry> {
+        let mut entries = Vec::new();
+        for (repo, view) in self.repos.iter().enumerate() {
+            let name = view.entry.name();
+            let Some(snapshot) = &view.snapshot else {
+                continue;
+            };
+            for process in snapshot
+                .processes
+                .iter()
+                .filter(|p| p.status != crate::model::Status::Stopped)
+            {
+                entries.push(Entry {
+                    label: format!(
+                        "{} ({}) — {name}",
+                        process.spec.name,
+                        process.status.label()
+                    ),
+                    command: Command::ShowLogs {
+                        repo,
+                        key: process.key.clone(),
+                    },
+                });
+            }
+            for session in snapshot.sessions.iter().filter(|s| s.state.is_live()) {
+                let command = match &session.pane {
+                    Some(pane) => Command::OpenPane {
+                        pane: pane.clone(),
+                        cwd: session.cwd.clone(),
+                    },
+                    None => Command::Focus {
+                        repo,
+                        tab: Tab::Sessions,
+                    },
+                };
+                entries.push(Entry {
+                    label: format!("{} “{}” — {name}", session.agent.label(), session.title),
+                    command,
+                });
+            }
+        }
+        entries
     }
 
     pub(super) fn palette_entries(&self) -> Vec<Entry> {
@@ -288,7 +416,7 @@ impl Workspace {
                         .hover(|row| row.bg(theme::surface_hover()))
                         .on_click(cx.listener(move |this, _, window, cx| {
                             this.toggle_palette(window);
-                            this.run(command.clone(), cx);
+                            this.run_from_palette(command.clone(), cx);
                         }))
                         .flex()
                         .items_center()
@@ -331,7 +459,12 @@ impl Workspace {
                         this.toggle_palette(window);
                         cx.notify();
                     }))
-                    .child(self.field(Field::Palette, "Type a command…", window, cx))
+                    .child(self.field(
+                        Field::Palette,
+                        "Type a command…   @ repos  # tasks  ! running  > commands  ? chunks",
+                        window,
+                        cx,
+                    ))
                     .child(div().flex().flex_col().children(rows)),
             )
     }

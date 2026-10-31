@@ -79,6 +79,11 @@ pub enum Command {
         pane: crate::tmux::Pane,
         cwd: PathBuf,
     },
+    /// A process's (or script's) log, by its supervisor key.
+    ShowLogs {
+        repo: usize,
+        key: String,
+    },
     /// Select a repo and show one of its tabs.
     Focus {
         repo: usize,
@@ -143,6 +148,30 @@ pub fn score(label: &str, query: &str) -> Option<i32> {
     Some(score)
 }
 
+/// Recent palette commands kept.
+pub const RECENT: usize = 8;
+
+/// Moves entries whose command is in `recent` to the front, newest first;
+/// the rest keep their order.
+pub fn recent_first(entries: &mut Vec<Entry>, recent: &[Command]) {
+    let rank = |e: &Entry| {
+        recent
+            .iter()
+            .position(|c| *c == e.command)
+            .unwrap_or(usize::MAX)
+    };
+    entries.sort_by_key(rank);
+    let mut seen = Vec::new();
+    entries.retain(|e| {
+        if rank(e) == usize::MAX {
+            return true;
+        }
+        let first = !seen.contains(&e.command);
+        seen.push(e.command.clone());
+        first
+    });
+}
+
 pub fn filter(entries: &[Entry], query: &str) -> Vec<Entry> {
     let mut scored: Vec<(i32, &Entry)> = entries
         .iter()
@@ -188,6 +217,34 @@ mod tests {
         // Then
         assert_eq!(ranked[0].label, "Start api — fubbik");
         assert_eq!(ranked.len(), 1);
+    }
+
+    #[test]
+    fn recent_commands_come_first_newest_first() {
+        // Given
+        let mut entries = vec![
+            Entry {
+                label: "a".into(),
+                command: Command::Refresh,
+            },
+            Entry {
+                label: "b".into(),
+                command: Command::RegisterRepo,
+            },
+            Entry {
+                label: "c".into(),
+                command: Command::ToggleTheme,
+            },
+        ];
+
+        // When
+        recent_first(&mut entries, &[Command::ToggleTheme, Command::RegisterRepo]);
+
+        // Then
+        assert_eq!(
+            entries.iter().map(|e| e.label.as_str()).collect::<Vec<_>>(),
+            ["c", "b", "a"]
+        );
     }
 
     #[test]

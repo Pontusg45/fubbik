@@ -912,3 +912,47 @@ fn enter_on_today_runs_the_highlighted_line(cx: &mut TestAppContext) {
     // Then
     assert_eq!(view.read_with(cx, |w, _| w.tab), Tab::Knowledge);
 }
+
+#[gpui::test]
+fn palette_prefixes_pick_what_is_listed_and_recent_comes_first(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: one repo with a plan
+    let repo = tempfile::tempdir().unwrap();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", repo.path().display().to_string()),
+    );
+    view.update(cx, |w, _| with_knowledge(w, plan_with_tasks()));
+    let listed = |cx: &mut gpui::VisualTestContext, text: &str| {
+        view.update(cx, |w, _| {
+            w.palette_field.text = text.into();
+            w.palette_matches()
+                .into_iter()
+                .map(|e| e.label)
+                .collect::<Vec<_>>()
+        })
+    };
+
+    // When
+    let tasks = listed(cx, "#");
+    let repos = listed(cx, "@");
+    let commands = listed(cx, ">tod");
+    let running = listed(cx, "!");
+    view.update(cx, |w, cx| w.run_from_palette(Command::ToggleTheme, cx));
+    let first = listed(cx, "").into_iter().next();
+    view.update(cx, |w, cx| w.run_from_palette(Command::ToggleTheme, cx));
+
+    // Then: open tasks only (not "d", which is done), repo lines, commands
+    assert_eq!(tasks.len(), 3, "{tasks:?}");
+    assert!(tasks.iter().all(|t| t.starts_with('#')), "{tasks:?}");
+    assert!(
+        repos.iter().all(|r| !r.starts_with("Start")) && !repos.is_empty(),
+        "{repos:?}"
+    );
+    assert_eq!(commands.first().map(String::as_str), Some("Today"));
+    assert!(running.is_empty(), "{running:?}");
+    assert!(
+        first.is_some_and(|f| f.starts_with("Theme: switch")),
+        "recent first"
+    );
+}

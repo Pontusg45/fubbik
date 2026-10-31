@@ -37,6 +37,10 @@ pub struct AppConfig {
     /// `"translucent"` or `"opaque"` (the default).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<String>,
+    /// The system-wide key that shows or hides the app, like
+    /// `"ctrl-alt-f"` (the default when unset); `""` or `"none"` turns it off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub global_hotkey: Option<String>,
     #[serde(default, rename = "repo")]
     pub repos: Vec<RepoEntry>,
 }
@@ -69,6 +73,15 @@ pub fn path() -> PathBuf {
 }
 
 impl AppConfig {
+    /// The summon key, or None when turned off.
+    pub fn global_hotkey(&self) -> Option<&str> {
+        match self.global_hotkey.as_deref() {
+            None => Some(crate::global_hotkey::DEFAULT),
+            Some("" | "none") => None,
+            Some(keys) => Some(keys),
+        }
+    }
+
     pub fn load_from(path: &Path) -> Result<AppConfig, String> {
         match std::fs::read_to_string(path) {
             Ok(text) => toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display())),

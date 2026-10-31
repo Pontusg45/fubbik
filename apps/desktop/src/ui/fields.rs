@@ -111,7 +111,7 @@ impl Workspace {
                     .cloned();
                 self.toggle_palette(window);
                 if let Some(entry) = chosen {
-                    self.run(entry.command, cx);
+                    self.run_from_palette(entry.command, cx);
                 }
             }
             (Field::NoteTitle, KeyOutcome::Submit) => self.note_body.focus.focus(window),

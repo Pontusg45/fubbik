@@ -428,6 +428,12 @@ impl Workspace {
                 self.select(repo);
                 self.tab = tab;
             }
+            Command::ShowLogs { repo, key } => {
+                self.select(repo);
+                self.log_key = Some(key);
+                self.log_paused = None;
+                self.tab = Tab::Logs;
+            }
             Command::ReviewWorktree { repo, path } => self.review_worktree(repo, path, cx),
             Command::RunIn {
                 dir,

@@ -199,6 +199,26 @@ impl Workspace {
                 .map(|(group, keys, what)| entry(keys.to_string(), format!("{group}: {what}")))
                 .collect(),
         ));
+        let mut anywhere = vec![
+            entry("⌘K @".into(), "Palette: repos and their tabs".into()),
+            entry("⌘K #".into(), "Palette: open tasks on every plan".into()),
+            entry(
+                "⌘K !".into(),
+                "Palette: running processes and live agents".into(),
+            ),
+            entry("⌘K >".into(), "Palette: commands only".into()),
+            entry("⌘K ?".into(), "Palette: search chunks".into()),
+        ];
+        if let Some(keys) = self.config.global_hotkey() {
+            anywhere.insert(
+                0,
+                entry(
+                    keymap::pretty(keys),
+                    "Show or hide fubbik from any app (global_hotkey in desktop.toml)".into(),
+                ),
+            );
+        }
+        blocks.insert(0, group_block("Anywhere".into(), anywhere));
         div()
             .absolute()
             .inset_0()

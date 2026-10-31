@@ -10,6 +10,7 @@ mod fubbik;
 mod gaps;
 mod ghostty;
 mod git;
+mod global_hotkey;
 mod launch;
 mod model;
 mod poll;
@@ -40,7 +41,13 @@ use ui::{
 
 fn main() {
     launch::adopt_login_path();
-    if let Ok(config) = config::AppConfig::load_from(&config::path()) {
+    let config = config::AppConfig::load_from(&config::path()).ok();
+    let summon = config
+        .as_ref()
+        .map_or(Some(global_hotkey::DEFAULT.to_string()), |c| {
+            c.global_hotkey().map(str::to_string)
+        });
+    if let Some(config) = &config {
         theme::set_translucent(config.translucent());
         if let Err(error) = theme::apply(config.ghostty_theme.as_deref()) {
             eprintln!("fubbik: {error}; using the built-in colors");
@@ -146,6 +153,26 @@ fn main() {
             }
         })
         .detach();
+        if let Some(keys) = summon {
+            match global_hotkey::register(&keys) {
+                // Brings the app forward from anywhere, or hides it when it
+                // is already in front.
+                Ok(presses) => cx
+                    .spawn(async move |cx| {
+                        while presses.recv().await.is_ok() {
+                            let _ = cx.update(|cx| {
+                                if cx.active_window().is_some() {
+                                    cx.hide();
+                                } else {
+                                    cx.activate(true);
+                                }
+                            });
+                        }
+                    })
+                    .detach(),
+                Err(error) => eprintln!("fubbik: summon key: {error}"),
+            }
+        }
         cx.activate(true);
     });
 }

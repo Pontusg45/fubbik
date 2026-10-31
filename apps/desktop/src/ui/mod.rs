@@ -392,6 +392,9 @@ pub struct Workspace {
     palette_selected: usize,
     /// Chunk search results for a palette query starting with `?`.
     palette_search: Vec<ChunkRef>,
+    /// Commands run from the palette, newest first; listed first when the
+    /// query is empty.
+    palette_recent: Vec<Command>,
     global: Option<GlobalStatus>,
     panel: Option<Panel>,
     /// The worktree whose branch context is shown.
@@ -502,6 +505,7 @@ impl Workspace {
             palette_open: false,
             palette_selected: 0,
             palette_search: Vec::new(),
+            palette_recent: Vec::new(),
             global: None,
             panel: None,
             expanded_worktree: None,

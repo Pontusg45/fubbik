@@ -21,7 +21,7 @@ X11/Wayland system libraries, and the notifications and "open in Terminal" use m
 
 - **App config:** `~/.config/fubbik/desktop.toml` (or `FUBBIK_DESKTOP_CONFIG`). It holds the registered repos (`[[repo]]` with `path`
   and an optional `group`), and optional `fubbik_url` (else `FUBBIK_URL`, else `http://localhost:3000`), `web_url` (else
-  `FUBBIK_WEB_URL`, else `http://localhost:3001`), `fubbik_bin`, `theme`, `terminal`, `terminal_persistence` and `ghostty_theme`.
+  `FUBBIK_WEB_URL`, else `http://localhost:3001`), `fubbik_bin`, `theme`, `terminal`, `terminal_persistence`, `ghostty_theme`, `max_agents` and `global_hotkey`.
 - **Per repo:** `fubbik.services.toml` at the repo root lists what to watch. "Generate from repo" writes a starter from `package.json`
   dev scripts and compose database services. This repo's own copy is a worked example.
 
@@ -155,8 +155,7 @@ start = "…"                        # optional, overrides the compose default; 
   Logs; also in ⌘K), and run profiles from the services file — `[profile.dev] processes = ["api", "web"]` starts exactly
   those and stops the repo's others.
 - **Quick capture** (⇧⌘N): a note into the selected repo's fubbik space from anywhere.
-- **All agents** (⇧⌘A): every repo's live agents and recent sessions in one view. In AI Sessions, j/k (↓/↑) move a highlight
-  and enter opens the session's pane or resumes it (when no text field or terminal has focus).
+- **All agents** (⇧⌘A): every repo's live agents and recent sessions in one view.
 - **Worktree review:** "Review" on a worktree shows its commits, diffstat and colored diff against main, with "Open PR"
   (`gh pr create --fill`) and "Merge into main" (`git merge --no-ff`), each run in a terminal tab.
 - **Codex waiting:** Codex has no live-session registry, so a Codex screen that changed and then stayed still for three
@@ -167,7 +166,23 @@ start = "…"                        # optional, overrides the compose default; 
 - **Events over timers:** file changes in a repo's root or Claude's live-session registry trigger a poll at once (300 ms
   debounce); the 1 s tick only redraws for toasts and the live log; knowledge fetches back off while the fubbik API is
   down (60 s, doubling to 5 min).
-- **Keys:** ⌘K command palette · ⌘1–⌘9 and ⌘0 tabs · ⇧⌘H Today · ⇧⌘I Insights · ⇧⌘A all agents · ⇧⌘N capture · ⌘[ / ⌘] previous / next repo · ⌘O register · ⌘R refresh · ⌘Q quit.
+- **Keys:** ⌘/ shows every shortcut, and ⌘K lists each command's key beside it. Tabs: ⌘1 Today, ⌘2 Overview, ⌘3 Processes,
+  ⌘4 Logs, ⌘5 Worktrees, ⌘6 Sessions, ⌘7 Plans, ⌘8 Knowledge, ⌘9 Terminal, ⇧⌘D Databases, ⇧⌘I Insights, ⇧⌘A Agents, ⌘,
+  Setup. ⌃1–⌃9 pick a repo, ⇧⌘J jumps to the next thing that needs you, ⇧⌘R replies to the agent that has waited longest,
+  ⇧⌘S starts the next ready task in the background, ⇧⌘N captures a note. In a terminal: ⌘T new shell, ⌘W close, ⌘1–⌘9 and
+  ⇧⌘[ / ⇧⌘] switch tabs, ⌘D split, ⇧⌘K clear. Rebind any of them in `~/.config/fubbik/keymap.toml` (Setup → Keyboard
+  writes a commented starter; `""` unbinds; conflicts and unknown actions are listed there).
+- **Keyboard lists:** when no text field or terminal has focus, j/k (↓/↑) move a highlight in Today, Processes, Worktrees,
+  AI Sessions and the Knowledge inbox, ⏎ does the row's main thing, and letters do the rest (Processes: s start/stop, r
+  restart, l logs, o open; Worktrees: v review, t shell, n session, x remove; Knowledge: d dismiss, a/r approve/reject). On
+  the plan board, h/l pick a column, j/k a card, ←/→ move it between columns, space opens its checklist, s starts it, b
+  blocks it. ⇧⌘E hands j/k to the sidebar until ⏎ or esc. A hint bar under each view names its keys.
+- **Palette prefixes:** in ⌘K, `@` lists repos and their tabs, `#` open tasks on every plan, `!` running processes (⏎ shows
+  the log) and live agents (⏎ opens the pane), `>` commands only, `?` searches chunks. With nothing typed, the commands you
+  ran last come first.
+- **Summon key:** ⌃⌥F shows fubbik from any app, and hides it when it is already in front. Change it with `global_hotkey =
+  "cmd-shift-space"` in `desktop.toml`, or turn it off with `global_hotkey = ""` (macOS, through Carbon's
+  `RegisterEventHotKey`; no accessibility permission needed). Restart to apply.
 
 Not built: a menu-bar (status bar) icon. GPUI has no API for one.
 
@@ -203,7 +218,9 @@ src/term.rs        TermSession: PTY + libghostty-vt Terminal, frames of styled r
 src/model.rs       Status, ProcessState, DatabaseState, RepoSnapshot, roll-up
 src/poll.rs        one repo poll (runs on the background executor)
 src/launch.rs      editor, Terminal, notifications, login-shell PATH
+src/global_hotkey.rs  the system-wide summon key (Carbon RegisterEventHotKey)
 src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,
                    chrome, preferences, tasks, today, insights), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
-                   setup_view.rs; terminal_view.rs), actions.rs (fubbik calls and scans), palette, text field, widgets
+                   setup_view.rs; terminal_view.rs), actions.rs (fubbik calls and scans), palette, text field, widgets,
+                   keymap.rs (bindings + keymap.toml), hotkeys.rs, lists.rs (keyboard lists)
 ```
