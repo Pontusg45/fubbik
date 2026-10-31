@@ -37,6 +37,36 @@ pub struct Task {
     pub description: Option<String>,
     pub acceptance: Vec<(String, bool)>,
     pub status: String,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+    /// Tasks this one waits on (from the plan's dependencies).
+    pub depends_on: Vec<String>,
+    /// What the desktop app recorded when it started the task.
+    pub link: TaskLink,
+    /// The task's `metadata`, raw JSON, so a write can merge into it.
+    pub metadata_raw: Option<String>,
+}
+
+/// `metadata.fubbikDesktop`: where a task's work happens, so a merge into
+/// main can mark it done.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TaskLink {
+    pub branch: Option<String>,
+    /// Main's commit when the branch was created; a merged branch tip that
+    /// is still this commit means nothing was done yet.
+    pub base_commit: Option<String>,
+    pub worktree: Option<String>,
+}
+
+pub const LINK_KEY: &str = "fubbikDesktop";
+
+/// A coordination-board journal entry.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BoardEntry {
+    pub task_id: Option<String>,
+    pub kind: String,
+    pub body: String,
+    pub created_at: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -70,6 +100,7 @@ pub struct Claim {
     pub task_id: String,
     pub run_id: String,
     pub expired: bool,
+    pub claimed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -79,6 +110,7 @@ pub struct Board {
     pub tasks: Vec<Task>,
     pub runs: Vec<Run>,
     pub claims: Vec<Claim>,
+    pub entries: Vec<BoardEntry>,
 }
 
 impl Board {
@@ -577,6 +609,64 @@ impl FubbikClient {
 
     // ── writes ─────────────────────────────────────────────────────────
 
+    /// One plan's coordination board (for a task's timeline).
+    pub fn board(&self, plan_id: &str) -> Result<Option<Board>, String> {
+        Ok(self
+            .get_json(&format!("/api/plans/{plan_id}/board"), &[("limit", "500")])?
+            .map(|v| parse_board(&v)))
+    }
+
+    /// Moves a task between columns. Unlike a board transition, this needs no
+    /// claim: it is the user deciding.
+    pub fn set_task_status(
+        &self,
+        plan_id: &str,
+        task_id: &str,
+        status: &str,
+    ) -> Result<(), String> {
+        self.patch(
+            &format!("/api/plans/{plan_id}/tasks/{task_id}"),
+            json!({ "status": status }),
+        )
+        .map(|_| ())
+    }
+
+    pub fn set_acceptance(
+        &self,
+        plan_id: &str,
+        task_id: &str,
+        criteria: &[(String, bool)],
+    ) -> Result<(), String> {
+        let criteria: Vec<Value> = criteria
+            .iter()
+            .map(|(text, done)| json!({ "text": text, "done": done }))
+            .collect();
+        self.patch(
+            &format!("/api/plans/{plan_id}/tasks/{task_id}"),
+            json!({ "acceptanceCriteria": criteria }),
+        )
+        .map(|_| ())
+    }
+
+    /// Records where a task's work happens, merged into its existing metadata.
+    pub fn set_task_link(&self, plan_id: &str, task: &Task, link: &TaskLink) -> Result<(), String> {
+        let mut metadata: Value = task
+            .metadata_raw
+            .as_deref()
+            .and_then(|raw| serde_json::from_str(raw).ok())
+            .unwrap_or_else(|| json!({}));
+        metadata[LINK_KEY] = json!({
+            "branch": link.branch,
+            "baseCommit": link.base_commit,
+            "worktree": link.worktree,
+        });
+        self.patch(
+            &format!("/api/plans/{plan_id}/tasks/{}", task.id),
+            json!({ "metadata": metadata }),
+        )
+        .map(|_| ())
+    }
+
     pub fn quick_note(&self, space_id: &str, title: &str, content: &str) -> Result<(), String> {
         self.post(
             "/api/chunks",
@@ -712,6 +802,21 @@ fn parse_task(task: &Value) -> Option<Task> {
             })
             .collect(),
         status: s(task, "status"),
+        created_at: opt(task, "createdAt"),
+        updated_at: opt(task, "updatedAt"),
+        depends_on: Vec::new(),
+        link: {
+            let link = &task["metadata"][LINK_KEY];
+            TaskLink {
+                branch: opt(link, "branch"),
+                base_commit: opt(link, "baseCommit"),
+                worktree: opt(link, "worktree"),
+            }
+        },
+        metadata_raw: task
+            .get("metadata")
+            .filter(|m| m.is_object())
+            .map(|m| m.to_string()),
     })
 }
 
@@ -721,7 +826,16 @@ fn parse_plan_detail(value: &Value) -> PlanDetail {
         id: s(plan, "id"),
         title: s(plan, "title"),
         status: s(plan, "status"),
-        tasks: items(value, Some("tasks")).filter_map(parse_task).collect(),
+        tasks: {
+            let mut tasks: Vec<Task> = items(value, Some("tasks")).filter_map(parse_task).collect();
+            for dep in items(value, Some("dependencies")) {
+                let (task, on) = (s(dep, "taskId"), s(dep, "dependsOnTaskId"));
+                if let Some(t) = tasks.iter_mut().find(|t| t.id == task) {
+                    t.depends_on.push(on);
+                }
+            }
+            tasks
+        },
     }
 }
 
@@ -746,6 +860,15 @@ fn parse_board(value: &Value) -> Board {
                 task_id: s(claim, "taskId"),
                 run_id: s(claim, "agentRunId"),
                 expired: claim["expired"].as_bool().unwrap_or(false),
+                claimed_at: opt(claim, "claimedAt"),
+            })
+            .collect(),
+        entries: items(value, Some("entries"))
+            .map(|e| BoardEntry {
+                task_id: opt(e, "taskId"),
+                kind: s(e, "kind"),
+                body: s(e, "body"),
+                created_at: s(e, "createdAt"),
             })
             .collect(),
     }
@@ -953,6 +1076,75 @@ mod tests {
         assert_eq!(board.tasks_of(&run.id)[0].title, "Prune worktrees");
         assert!(board2.tasks_of(&run2.id).is_empty()); // the claim expired
         assert_eq!(knowledge.active_agents(), 2);
+    }
+
+    #[test]
+    fn plan_detail_carries_dependencies_timestamps_and_link() {
+        // Given
+        let value = json!({
+            "plan": {"id": "p1", "title": "Desktop", "status": "ready"},
+            "tasks": [
+                {"id": "t1", "title": "A", "status": "done", "createdAt": "2026-10-30T10:00:00Z",
+                 "metadata": {"other": 1, "fubbikDesktop": {"branch": "task/a", "baseCommit": "abc", "worktree": "/w/a"}}},
+                {"id": "t2", "title": "B", "status": "pending", "metadata": {}}
+            ],
+            "dependencies": [{"id": "d1", "taskId": "t2", "dependsOnTaskId": "t1"}]
+        });
+
+        // When
+        let plan = parse_plan_detail(&value);
+
+        // Then
+        assert_eq!(plan.tasks[1].depends_on, ["t1"]);
+        assert_eq!(
+            plan.tasks[0].created_at.as_deref(),
+            Some("2026-10-30T10:00:00Z")
+        );
+        assert_eq!(plan.tasks[0].link.branch.as_deref(), Some("task/a"));
+        assert!(
+            plan.tasks[0]
+                .metadata_raw
+                .as_deref()
+                .unwrap()
+                .contains("\"other\":1")
+        );
+    }
+
+    #[test]
+    fn task_writes_patch_status_criteria_and_merged_metadata() {
+        // Given
+        let (base, log) = fake_server(vec![("/api/plans/p1/tasks/t1", 200, "{}".into())]);
+        let client = FubbikClient::new(base);
+        let task = Task {
+            id: "t1".into(),
+            metadata_raw: Some(r#"{"keep":true}"#.into()),
+            ..Default::default()
+        };
+
+        // When
+        client.set_task_status("p1", "t1", "in_progress").unwrap();
+        client
+            .set_acceptance("p1", "t1", &[("works".into(), true)])
+            .unwrap();
+        client
+            .set_task_link(
+                "p1",
+                &task,
+                &TaskLink {
+                    branch: Some("task/x".into()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+
+        // Then
+        let log = log.lock().unwrap();
+        assert_eq!(
+            log.iter()
+                .filter(|r| r.starts_with("PATCH /api/plans/p1/tasks/t1"))
+                .count(),
+            3
+        );
     }
 
     #[test]

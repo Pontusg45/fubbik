@@ -226,6 +226,7 @@ mod tests {
             last_activity: std::time::SystemTime::now(),
             pane: None,
             preview: None,
+            tokens: None,
         }];
 
         // When

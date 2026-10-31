@@ -28,6 +28,16 @@ pub struct ServicesFile {
     pub process: Vec<ProcessSpec>,
     #[serde(default)]
     pub database: Vec<DatabaseSpec>,
+    /// Named sets of processes: "Start profile" runs exactly these and
+    /// stops the repo's others (`[profile.dev] processes = ["api", "web"]`).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub profile: std::collections::BTreeMap<String, Profile>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Profile {
+    pub processes: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -187,6 +197,19 @@ mod tests {
             (report.matrix.as_deref(), report.cell.as_deref()),
             (Some("m1"), Some("c1"))
         );
+    }
+
+    #[test]
+    fn parses_profiles() {
+        // Given
+        let text = "[[process]]\nname = \"api\"\ncommand = \"x\"\n[profile.dev]\nprocesses = [\"api\", \"web\"]\n[profile.test]\nprocesses = []\n";
+
+        // When
+        let file = ServicesFile::parse(text).unwrap();
+
+        // Then
+        assert_eq!(file.profile["dev"].processes, ["api", "web"]);
+        assert!(file.profile["test"].processes.is_empty());
     }
 
     #[test]

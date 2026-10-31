@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::json;
 
-use crate::fubbik::{FubbikClient, PlanDetail, Task};
+use crate::fubbik::{FubbikClient, PlanDetail, Task, TaskLink};
 use crate::worktree;
 
 /// A random (v4) UUID, from `/dev/urandom`.
@@ -112,7 +112,19 @@ pub fn start(
     new_worktree: bool,
 ) -> Result<Started, String> {
     let cwd = if new_worktree {
-        worktree::create(repo, &branch_for(task))?
+        // Main's commit now: a merged branch whose tip moved past it means
+        // the task's work landed (see `worktree::task_merged`).
+        let base_commit = worktree::head(repo).ok();
+        let branch = branch_for(task);
+        let path = worktree::create(repo, &branch)?;
+        let link = TaskLink {
+            branch: Some(branch),
+            base_commit,
+            worktree: Some(path.to_string_lossy().into_owned()),
+        };
+        // Best effort: without it the task just is not closed automatically.
+        let _ = client.set_task_link(&plan.id, task, &link);
+        path
     } else {
         repo.to_path_buf()
     };
@@ -169,6 +181,7 @@ mod tests {
             description: Some("Make it prune.".into()),
             acceptance: vec![("Stale entries vanish".into(), false)],
             status: "pending".into(),
+            ..Default::default()
         }
     }
 

@@ -352,6 +352,7 @@ mod tests {
             last_activity: std::time::SystemTime::now(),
             pane: None,
             preview: Some(preview.into()),
+            tokens: None,
         }
     }
 

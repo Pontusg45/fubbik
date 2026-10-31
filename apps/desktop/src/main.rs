@@ -1,6 +1,7 @@
 //! fubbik desktop: a GPUI app for keeping an eye on registered repos —
 //! their processes, databases, git state and fubbik knowledge.
 
+mod activity;
 mod agent_task;
 mod claude_md;
 mod config;
@@ -13,6 +14,7 @@ mod launch;
 mod model;
 mod poll;
 mod probe;
+mod scripts;
 mod services;
 mod sessions;
 mod setup;

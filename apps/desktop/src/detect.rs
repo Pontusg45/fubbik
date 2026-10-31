@@ -17,6 +17,7 @@ pub fn detect(repo: &Path) -> ServicesFile {
     ServicesFile {
         process: detect_scripts(repo),
         database: detect_compose(repo),
+        profile: Default::default(),
     }
 }
 

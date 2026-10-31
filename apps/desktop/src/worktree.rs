@@ -159,6 +159,36 @@ pub fn changed_paths(worktree: &Path, main_branch: Option<&str>) -> Vec<String> 
     paths
 }
 
+/// The commit HEAD points at.
+pub fn head(dir: &Path) -> Result<String, String> {
+    git(dir, &["rev-parse", "HEAD"]).map(|s| s.trim().to_string())
+}
+
+/// A task branch whose work has landed on `main_branch`: its tip moved past
+/// the commit it started from and is now contained in main. False for a
+/// branch with no commits yet, or one that no longer exists.
+pub fn task_merged(repo: &Path, branch: &str, base_commit: &str, main_branch: &str) -> bool {
+    let Ok(tip) = git(
+        repo,
+        &[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            &format!("refs/heads/{branch}"),
+        ],
+    ) else {
+        return false;
+    };
+    let tip = tip.trim();
+    tip != base_commit
+        && Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(["merge-base", "--is-ancestor", tip, main_branch])
+            .status()
+            .is_ok_and(|s| s.success())
+}
+
 /// Lines of diff kept in a review; the stat above it covers everything.
 pub const REVIEW_DIFF_LINES: usize = 3000;
 
@@ -412,6 +442,68 @@ mod tests {
         assert!(text.contains("a.txt | 1 +"), "{text}");
         assert!(text.contains("+two"), "{text}");
         assert!(text.contains("1 uncommitted change(s)"), "{text}");
+    }
+
+    #[test]
+    fn task_branch_counts_as_merged_only_after_its_work_lands() {
+        // Given
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path().join("app");
+        std::fs::create_dir(&repo).unwrap();
+        let run = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .arg("-C")
+                    .arg(&repo)
+                    .args(args)
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        let commit = |msg: &str| {
+            run(&[
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "user.name=t",
+                "commit",
+                "-q",
+                "--allow-empty",
+                "-m",
+                msg,
+            ])
+        };
+        run(&["init", "-q", "-b", "main"]);
+        commit("base");
+        let base = head(&repo).unwrap();
+        run(&["branch", "task/x"]);
+
+        // When
+        let fresh = task_merged(&repo, "task/x", &base, "main");
+        run(&["checkout", "-q", "task/x"]);
+        commit("work");
+        let unmerged = task_merged(&repo, "task/x", &base, "main");
+        run(&["checkout", "-q", "main"]);
+        run(&[
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=t",
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "merge",
+            "task/x",
+        ]);
+        let merged = task_merged(&repo, "task/x", &base, "main");
+
+        // Then
+        assert!(!fresh, "no commits yet is not done");
+        assert!(!unmerged);
+        assert!(merged);
+        assert!(!task_merged(&repo, "task/missing", &base, "main"));
     }
 
     #[test]

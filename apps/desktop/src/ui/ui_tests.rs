@@ -403,6 +403,7 @@ fn j_and_k_move_through_ai_sessions(cx: &mut TestAppContext) {
             last_activity: std::time::SystemTime::now(),
             pane: None,
             preview: None,
+            tokens: None,
         };
         let mut snapshot = w.repos[0].snapshot.clone().unwrap_or_default();
         snapshot.sessions = vec![session("a"), session("b"), session("c")];

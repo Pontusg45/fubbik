@@ -85,6 +85,8 @@ pub struct AiSession {
     pub pane: Option<crate::tmux::Pane>,
     /// The last lines on that pane's screen (live sessions only).
     pub preview: Option<String>,
+    /// Tokens used so far (Claude Code: input, cache and output).
+    pub tokens: Option<u64>,
 }
 
 /// Claude Code's project folder name for a cwd.
@@ -107,6 +109,10 @@ struct TranscriptMeta {
     branch: Option<String>,
     ai_title: Option<String>,
     custom_title: Option<String>,
+    /// Tokens across the transcript's assistant messages.
+    tokens: u64,
+    /// Message ids already counted (a message can span several lines).
+    counted: std::collections::HashSet<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -154,7 +160,8 @@ fn str_field(value: &Value, key: &str) -> Option<String> {
 fn absorb_line(meta: &mut TranscriptMeta, line: &str) {
     let wants_cwd = meta.cwd.is_none() && line.contains("\"cwd\"");
     let is_title = line.contains("\"ai-title\"") || line.contains("\"custom-title\"");
-    if !wants_cwd && !is_title {
+    let has_usage = line.contains("\"usage\"") && line.contains("\"assistant\"");
+    if !wants_cwd && !is_title && !has_usage {
         return;
     }
     let Ok(value) = serde_json::from_str::<Value>(line) else {
@@ -163,6 +170,23 @@ fn absorb_line(meta: &mut TranscriptMeta, line: &str) {
     if wants_cwd && let Some(cwd) = str_field(&value, "cwd") {
         meta.cwd = Some(PathBuf::from(cwd));
         meta.branch = str_field(&value, "gitBranch");
+    }
+    if has_usage
+        && let Some(message) = value.get("message")
+        && let Some(usage) = message.get("usage")
+    {
+        let id = str_field(message, "id").unwrap_or_else(|| line.len().to_string());
+        if meta.counted.insert(id) {
+            meta.tokens += [
+                "input_tokens",
+                "cache_creation_input_tokens",
+                "cache_read_input_tokens",
+                "output_tokens",
+            ]
+            .iter()
+            .filter_map(|k| usage.get(*k).and_then(Value::as_u64))
+            .sum::<u64>();
+        }
     }
     match value.get("type").and_then(Value::as_str) {
         Some("ai-title") => meta.ai_title = str_field(&value, "aiTitle").or(meta.ai_title.take()),
@@ -384,6 +408,7 @@ impl SessionIndex {
                 last_activity: modified,
                 pane: None,
                 preview: None,
+                tokens: Some(meta.tokens).filter(|t| *t > 0),
                 id,
             });
             if sessions.len() >= RECENT {
@@ -411,6 +436,7 @@ impl SessionIndex {
                     last_activity: SystemTime::now(),
                     pane: None,
                     preview: None,
+                    tokens: None,
                 });
             }
         }
@@ -480,6 +506,7 @@ impl SessionIndex {
                 last_activity: modified,
                 pane: None,
                 preview: None,
+                tokens: None,
             });
         }
         sessions
@@ -602,6 +629,33 @@ mod tests {
         // Then
         assert_eq!(first[0].title, "Untitled session");
         assert_eq!(second[0].title, "Renamed");
+    }
+
+    #[test]
+    fn counts_tokens_once_per_assistant_message() {
+        // Given: one message logged on two lines, and a second message
+        let home = tempfile::tempdir().unwrap();
+        let repo = PathBuf::from("/code/app");
+        let dir = home
+            .path()
+            .join("claude/projects")
+            .join(claude_dir_name(&repo));
+        std::fs::create_dir_all(&dir).unwrap();
+        let usage = |id: &str, n: u64| {
+            format!(
+                "{{\"type\":\"assistant\",\"message\":{{\"id\":\"{id}\",\"usage\":{{\"input_tokens\":{n},\"cache_read_input_tokens\":{n},\"output_tokens\":{n}}}}}}}\n"
+            )
+        };
+        let text = transcript_line(&repo) + &usage("m1", 10) + &usage("m1", 10) + &usage("m2", 1);
+        std::fs::write(dir.join("s1.jsonl"), text).unwrap();
+        let mut index =
+            SessionIndex::with_homes(home.path().join("claude"), home.path().join("codex"));
+
+        // When
+        let sessions = index.scan(&[repo]);
+
+        // Then: m1 counted once (30), plus m2 (3)
+        assert_eq!(sessions[0].tokens, Some(33));
     }
 
     #[test]
