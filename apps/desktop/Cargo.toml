@@ -26,6 +26,10 @@ ureq = { version = "3", default-features = false, features = ["json"] }
 # building it needs Zig 0.17 on PATH) and a PTY for the shell.
 libghostty-vt = "=0.2.2"
 portable-pty = "0.9"
+# Wakes the UI when a PTY has output (instead of a timer per terminal).
+async-channel = "2"
+# Re-polls when services files or Claude's live-session registry change.
+notify = "8"
 
 [dev-dependencies]
 tempfile = "3"

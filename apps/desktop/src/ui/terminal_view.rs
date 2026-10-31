@@ -6,7 +6,6 @@
 use std::cell::Cell;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::time::Duration;
 
 use gpui::{
     Bounds, ClipboardItem, Context, FocusHandle, FontWeight, IntoElement, KeyDownEvent,
@@ -22,8 +21,6 @@ const FONT_FAMILY: &str = "Menlo";
 const FONT_SIZE: f32 = 13.0;
 /// Line height as a multiple of the font size.
 const LINE_SPACING: f32 = 1.3;
-/// Shell output is drained this often while the view exists.
-const PUMP_EVERY: Duration = Duration::from_millis(16);
 
 pub struct TerminalView {
     pub cwd: PathBuf,
@@ -75,15 +72,7 @@ impl TerminalView {
 
     fn with_session(cwd: PathBuf, tmux_session: Option<String>, cx: &mut Context<Self>) -> Self {
         let session = Self::spawn(&cwd, tmux_session.as_deref());
-        let pump = cx.spawn(async move |this, cx| {
-            loop {
-                cx.background_executor().timer(PUMP_EVERY).await;
-                if this.update(cx, |view, cx| view.tick(cx)).is_err() {
-                    break;
-                }
-            }
-        });
-        Self {
+        let mut view = Self {
             cwd,
             session,
             focus: cx.focus_handle(),
@@ -97,8 +86,10 @@ impl TerminalView {
             exited: false,
             dragging: false,
             tmux_session,
-            _pump: pump,
-        }
+            _pump: Task::ready(()),
+        };
+        view.start_pump(cx);
+        view
     }
 
     pub fn title(&self) -> String {
@@ -110,7 +101,7 @@ impl TerminalView {
 
     /// After the shell (or tmux client) ends: reattach while the tmux
     /// session lives, else a fresh login shell.
-    fn restart(&mut self) {
+    fn restart(&mut self, cx: &mut Context<Self>) {
         let server = crate::tmux::Server::fubbik();
         if let Some(name) = &self.tmux_session
             && !crate::tmux::exists(&server, name)
@@ -120,6 +111,36 @@ impl TerminalView {
         self.session = Self::spawn(&self.cwd, self.tmux_session.as_deref());
         self.exited = false;
         self.theme_generation = None; // the new session needs the theme's colors
+        self.start_pump(cx);
+    }
+
+    /// Drains output whenever the PTY reader signals it; ends (after a last
+    /// drain that notices the exit) when the PTY closes.
+    fn start_pump(&mut self, cx: &mut Context<Self>) {
+        let Ok(session) = &self.session else { return };
+        let wake = session.wake();
+        self._pump = cx.spawn(async move |this, cx| {
+            while wake.recv().await.is_ok() {
+                if this.update(cx, |view, cx| view.tick(cx)).is_err() {
+                    return;
+                }
+            }
+            this.update(cx, |view, cx| view.tick(cx)).ok();
+        });
+    }
+
+    /// Fits the grid to the size the view was last painted at.
+    fn fit(&mut self) {
+        let (Ok(session), Some(bounds), Some(cell_w)) =
+            (&mut self.session, self.bounds.get(), self.cell_width)
+        else {
+            return;
+        };
+        let cols = (f32::from(bounds.size.width) / cell_w).floor() as u16;
+        let rows = (f32::from(bounds.size.height) / self.line_height).floor() as u16;
+        if cols > 1 && rows > 1 && (cols, rows) != session.size() {
+            session.resize(cols, rows, cell_w.round() as u32, self.line_height as u32);
+        }
     }
 
     fn tick(&mut self, cx: &mut Context<Self>) {
@@ -127,14 +148,6 @@ impl TerminalView {
             return;
         };
         let mut changed = session.pump();
-        if let (Some(bounds), Some(cell_w)) = (self.bounds.get(), self.cell_width) {
-            let cols = (f32::from(bounds.size.width) / cell_w).floor() as u16;
-            let rows = (f32::from(bounds.size.height) / self.line_height).floor() as u16;
-            if cols > 1 && rows > 1 && (cols, rows) != session.size() {
-                session.resize(cols, rows, cell_w.round() as u32, self.line_height as u32);
-                changed = true;
-            }
-        }
         if !self.exited && session.exited() {
             self.exited = true;
             changed = true;
@@ -148,7 +161,7 @@ impl TerminalView {
         let keystroke = &event.keystroke;
         let mods = &keystroke.modifiers;
         if self.exited && keystroke.key == "enter" {
-            self.restart();
+            self.restart(cx);
             cx.stop_propagation();
             cx.notify();
             return;
@@ -359,14 +372,25 @@ impl Render for TerminalView {
                 .ok()
                 .map(|size| f32::from(size.width));
         }
+        self.fit();
         let line_h = self.line_height;
         let cursor_bar = self.cursor_bar;
         let focused = self.focus.is_focused(window);
         let cell_w = self.cell_width.unwrap_or(8.0);
         let bounds = self.bounds.clone();
-        let measure = canvas(move |b, _, _| bounds.set(Some(b)), |_, _, _, _| {})
-            .absolute()
-            .size_full();
+        // Records the painted size; a change asks for one more frame, in
+        // which `fit` resizes the grid.
+        let measure = canvas(
+            move |b, window, _| {
+                if bounds.get() != Some(b) {
+                    bounds.set(Some(b));
+                    window.refresh();
+                }
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .size_full();
 
         let body = match &mut self.session {
             Err(error) => div()

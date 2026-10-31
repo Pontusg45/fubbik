@@ -73,6 +73,11 @@ const PROBE_EVERY: u64 = 3;
 const KNOWLEDGE_EVERY: u64 = 30;
 /// The macOS titlebar the content runs under.
 const TITLEBAR_HEIGHT: f32 = 28.0;
+/// Knowledge fetches back off this way while the fubbik API is down.
+const API_BACKOFF_MIN: Duration = Duration::from_secs(60);
+const API_BACKOFF_MAX: Duration = Duration::from_secs(300);
+/// File changes wait this long for more before triggering one poll.
+const WATCH_DEBOUNCE: Duration = Duration::from_millis(300);
 const TOAST_FOR: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -270,6 +275,12 @@ pub struct Workspace {
     /// Terminal tabs are tmux sessions (tmux is installed and not turned off).
     tmux_terminals: bool,
     reply_field: TextField,
+    /// How long knowledge fetches wait after the API failed (doubles).
+    api_backoff: Duration,
+    /// Watches services files and Claude's live-session registry.
+    _watcher: Option<notify::RecommendedWatcher>,
+    _watch_task: Task<()>,
+    knowledge_paused_until: Option<Instant>,
     /// Ghostty theme names, read once at startup.
     ghostty_themes: Vec<String>,
     /// The agent's tmux pane a reply goes to.
@@ -341,6 +352,10 @@ impl Workspace {
             active_terminal: None,
             tmux_terminals: false,
             reply_field: TextField::new(cx),
+            api_backoff: Duration::ZERO,
+            _watcher: None,
+            _watch_task: Task::ready(()),
+            knowledge_paused_until: None,
             ghostty_themes: crate::ghostty::list_themes(&crate::ghostty::theme_dirs()),
             reply_target: None,
             focus_terminal: false,
@@ -360,6 +375,7 @@ impl Workspace {
             ));
         }
         workspace.sync_group_field();
+        workspace.watch_files(cx);
         workspace.tmux_terminals = workspace.config.tmux_persistence() && tmux::available();
         if workspace.tmux_terminals {
             workspace.restore_terminals(cx);

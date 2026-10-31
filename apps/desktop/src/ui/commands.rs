@@ -218,6 +218,7 @@ impl Workspace {
                     return;
                 }
                 this.save_config();
+                this.watch_files(cx);
                 this.select(this.repos.len() - 1);
                 this.poll_now(true, cx);
                 cx.notify();
@@ -235,6 +236,7 @@ impl Workspace {
         let removed = self.repos.remove(repo);
         self.config.remove_repo(&removed.entry.path);
         self.save_config();
+        self.watch_files(cx);
         self.selected = self.selected.min(self.repos.len().saturating_sub(1));
         self.sync_group_field();
         self.show_info(format!(

@@ -193,6 +193,8 @@ pub struct TermSession {
     replies: Rc<RefCell<Vec<u8>>>,
     title: Rc<RefCell<String>>,
     output: Receiver<Vec<u8>>,
+    /// Signals that output arrived; closed when the shell's PTY closes.
+    wake: async_channel::Receiver<()>,
     writer: Box<dyn Write + Send>,
     master: Box<dyn MasterPty + Send>,
     child: Box<dyn Child + Send + Sync>,
@@ -253,6 +255,8 @@ impl TermSession {
         let mut reader = pty.master.try_clone_reader().map_err(err)?;
         let writer = pty.master.take_writer().map_err(err)?;
         let (tx, output) = channel();
+        // One pending wake is enough: `pump` drains everything that arrived.
+        let (wake_tx, wake) = async_channel::bounded(1);
         std::thread::spawn(move || {
             let mut buf = [0u8; 16 * 1024];
             loop {
@@ -262,9 +266,11 @@ impl TermSession {
                         if tx.send(buf[..n].to_vec()).is_err() {
                             break;
                         }
+                        let _ = wake_tx.try_send(());
                     }
                 }
             }
+            // Dropping `wake_tx` closes the channel: the view sees the exit.
         });
 
         let mut terminal = Terminal::new(TerminalOptions {
@@ -300,6 +306,7 @@ impl TermSession {
             replies,
             title,
             output,
+            wake,
             writer,
             master: pty.master,
             child,
@@ -335,6 +342,11 @@ impl TermSession {
             self.write(&replies);
         }
         changed
+    }
+
+    /// Resolves when output arrives; errors once the PTY has closed.
+    pub fn wake(&self) -> async_channel::Receiver<()> {
+        self.wake.clone()
     }
 
     pub fn exited(&mut self) -> bool {

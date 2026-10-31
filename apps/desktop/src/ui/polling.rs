@@ -7,20 +7,89 @@ impl Workspace {
 
     pub(super) fn on_tick(&mut self, cx: &mut Context<Self>) {
         if self.tick.is_multiple_of(PROBE_EVERY) {
-            self.poll_now(self.tick.is_multiple_of(KNOWLEDGE_EVERY), cx);
+            // While the fubbik API is down, knowledge waits out its backoff.
+            let knowledge = self.tick.is_multiple_of(KNOWLEDGE_EVERY)
+                && self
+                    .knowledge_paused_until
+                    .is_none_or(|until| Instant::now() >= until);
+            self.poll_now(knowledge, cx);
         }
         self.tick += 1;
+        // Redraw only for what changes with time alone; polls redraw themselves.
+        let mut redraw = false;
         if self
             .toast
             .as_ref()
             .is_some_and(|t| t.at.elapsed() > TOAST_FOR)
         {
             self.toast = None;
+            redraw = true;
         }
         if self.tab == Tab::Logs && self.log_paused.is_none() {
             self.log_scroll.scroll_to_bottom();
+            redraw = true;
         }
-        cx.notify();
+        if redraw {
+            cx.notify();
+        }
+    }
+
+    /// Re-polls as soon as a repo's top-level files (its services file among
+    /// them) or Claude's live-session registry change, instead of waiting for
+    /// the next tick. Called again when repos are added or removed.
+    pub(super) fn watch_files(&mut self, cx: &mut Context<Self>) {
+        use notify::{RecursiveMode, Watcher};
+        let (tx, rx) = async_channel::unbounded::<()>();
+        let watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
+            if event.is_ok_and(|e| !e.kind.is_access()) {
+                let _ = tx.try_send(());
+            }
+        });
+        let Ok(mut watcher) = watcher else {
+            return; // polling still covers everything
+        };
+        let claude_sessions = std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_default()
+            .join(".claude/sessions");
+        let dirs = self
+            .repos
+            .iter()
+            .map(|r| r.entry.path.clone())
+            .chain(std::iter::once(claude_sessions));
+        for dir in dirs.filter(|d| d.is_dir()) {
+            let _ = watcher.watch(&dir, RecursiveMode::NonRecursive);
+        }
+        self._watcher = Some(watcher);
+        self._watch_task = cx.spawn(async move |this, cx| {
+            while rx.recv().await.is_ok() {
+                // Let a burst of writes settle, then poll once for all of them.
+                cx.background_executor().timer(WATCH_DEBOUNCE).await;
+                while rx.try_recv().is_ok() {}
+                if this
+                    .update(cx, |this, cx| this.poll_now(false, cx))
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        });
+    }
+
+    /// After a slow poll: back off knowledge fetches while the API is down
+    /// (60 s, doubling to 5 min), and resume as soon as it answers.
+    pub(super) fn note_api_status(&mut self) {
+        match self.global.as_ref().map(|g| g.api.is_ok()) {
+            Some(true) => {
+                self.api_backoff = Duration::ZERO;
+                self.knowledge_paused_until = None;
+            }
+            Some(false) => {
+                self.api_backoff = (self.api_backoff * 2).clamp(API_BACKOFF_MIN, API_BACKOFF_MAX);
+                self.knowledge_paused_until = Some(Instant::now() + self.api_backoff);
+            }
+            None => {}
+        }
     }
 
     /// Probes every repo on the background executor. A call while a poll is
@@ -92,6 +161,7 @@ impl Workspace {
             this.update(cx, |this, cx| {
                 if global.is_some() {
                     this.global = global;
+                    this.note_api_status();
                 }
                 this.apply(results, cx);
                 this.polling = false;

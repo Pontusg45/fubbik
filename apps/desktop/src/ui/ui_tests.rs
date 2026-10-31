@@ -156,3 +156,92 @@ fn unknown_ghostty_theme_shows_an_error(cx: &mut TestAppContext) {
     assert!(error);
     assert!(message.contains("No Such Theme"));
 }
+
+#[gpui::test]
+fn knowledge_backs_off_while_the_api_is_down(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given
+    let (view, cx) = open(cx, "");
+    let down = |w: &mut Workspace| {
+        w.global = Some(GlobalStatus {
+            api: Err("down".into()),
+            fubbik_bin: None,
+        });
+        w.note_api_status();
+        (w.api_backoff, w.knowledge_paused_until.is_some())
+    };
+
+    // (The window's own first poll may already have found the API down.)
+    view.update(cx, |w, _| {
+        w.api_backoff = Duration::ZERO;
+        w.knowledge_paused_until = None;
+    });
+
+    // When
+    let first = view.update(cx, |w, _| down(w));
+    let second = view.update(cx, |w, _| down(w));
+    let recovered = view.update(cx, |w, _| {
+        w.global = Some(GlobalStatus {
+            api: Ok((crate::fubbik::ApiHealth::default(), Vec::new())),
+            fubbik_bin: None,
+        });
+        w.note_api_status();
+        (w.api_backoff, w.knowledge_paused_until.is_some())
+    });
+
+    // Then
+    assert_eq!(first, (Duration::from_secs(60), true));
+    assert_eq!(second, (Duration::from_secs(120), true));
+    assert_eq!(recovered, (Duration::ZERO, false));
+}
+
+#[gpui::test]
+fn a_new_services_file_is_picked_up_without_waiting_for_the_tick(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a registered repo without a services file, after the first poll
+    let repo = tempfile::tempdir().unwrap();
+    let path = repo.path().canonicalize().unwrap();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", path.display().to_string()),
+    );
+    let before = view.read_with(cx, |w, _| {
+        w.repos[0].snapshot.as_ref().map(|s| s.has_services_file)
+    });
+
+    // When: the file appears; only the watcher (not the 1 s tick) can notice
+    std::fs::write(
+        path.join(crate::services::FILE_NAME),
+        "[[process]]\nname = \"web\"\ncommand = \"true\"\n",
+    )
+    .unwrap();
+    let mut processes = Vec::new();
+    let mut advanced = Duration::ZERO;
+    for _ in 0..40 {
+        std::thread::sleep(Duration::from_millis(100)); // real time for the FS event
+        if advanced < WATCH_DEBOUNCE + Duration::from_millis(100) {
+            // Past the debounce, never as far as the first 1 s tick.
+            cx.executor().advance_clock(Duration::from_millis(100));
+            advanced += Duration::from_millis(100);
+        }
+        cx.run_until_parked();
+        processes = view.read_with(cx, |w, _| {
+            w.repos[0]
+                .snapshot
+                .as_ref()
+                .map(|s| s.processes.iter().map(|p| p.spec.name.clone()).collect())
+                .unwrap_or_default()
+        });
+        if !processes.is_empty() {
+            break;
+        }
+    }
+
+    // Then
+    assert_eq!(before, Some(false));
+    assert_eq!(processes, ["web"]);
+    assert!(
+        advanced < TICK,
+        "found by the watcher, not the tick ({advanced:?})"
+    );
+}
