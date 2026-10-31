@@ -2,6 +2,21 @@
 
 use super::*;
 
+/// The shortcut that does the same as a palette entry, if there is one.
+fn command_keys(command: &Command) -> Option<String> {
+    let action = match command {
+        Command::ShowTab(tab) => tab.action_id().to_string(),
+        Command::Refresh => "refresh".into(),
+        Command::RegisterRepo => "register_repo".into(),
+        Command::ToggleTheme => "toggle_theme".into(),
+        Command::CaptureNote => "capture_note".into(),
+        Command::ToggleSplit => "split_terminal".into(),
+        Command::SelectRepo(i) if *i < 9 => format!("select_repo_{}", i + 1),
+        _ => return None,
+    };
+    keymap::keys_for(&action)
+}
+
 /// What kind of thing a palette entry does, as a color: navigation blue,
 /// processes green, agents orange, tasks pink, worktrees violet, scripts
 /// by tool, themes yellow, the web app cyan, removing red.
@@ -255,38 +270,42 @@ impl Workspace {
     ) -> impl IntoElement {
         let matches = self.palette_matches();
         let selected = self.palette_selected.min(matches.len().saturating_sub(1));
-        let rows = matches
-            .into_iter()
-            .take(12)
-            .enumerate()
-            .map(|(i, entry)| {
-                let command = entry.command.clone();
-                div()
-                    .id(("palette", i))
-                    .px_3()
-                    .py_1p5()
-                    .rounded_md()
-                    .text_sm()
-                    .cursor_pointer()
-                    .when(i == selected, |row| row.bg(theme::surface_hover()))
-                    .hover(|row| row.bg(theme::surface_hover()))
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.toggle_palette(window);
-                        this.run(command.clone(), cx);
-                    }))
-                    .flex()
-                    .items_center()
-                    .gap_2()
-                    .child(
-                        div()
-                            .size(px(7.))
-                            .flex_none()
-                            .rounded_full()
-                            .bg(command_color(&entry.command)),
-                    )
-                    .child(entry.label)
-            })
-            .collect::<Vec<_>>();
+        let rows =
+            matches
+                .into_iter()
+                .take(12)
+                .enumerate()
+                .map(|(i, entry)| {
+                    let command = entry.command.clone();
+                    div()
+                        .id(("palette", i))
+                        .px_3()
+                        .py_1p5()
+                        .rounded_md()
+                        .text_sm()
+                        .cursor_pointer()
+                        .when(i == selected, |row| row.bg(theme::surface_hover()))
+                        .hover(|row| row.bg(theme::surface_hover()))
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            this.toggle_palette(window);
+                            this.run(command.clone(), cx);
+                        }))
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .child(
+                            div()
+                                .size(px(7.))
+                                .flex_none()
+                                .rounded_full()
+                                .bg(command_color(&entry.command)),
+                        )
+                        .child(div().flex_1().child(entry.label))
+                        .children(command_keys(&entry.command).map(|keys| {
+                            div().text_xs().text_color(theme::text_muted()).child(keys)
+                        }))
+                })
+                .collect::<Vec<_>>();
         div()
             .absolute()
             .inset_0()

@@ -26,8 +26,8 @@ mod ui;
 mod worktree;
 
 use gpui::{
-    App, Application, Bounds, KeyBinding, Menu, MenuItem, TitlebarOptions, WindowBounds,
-    WindowOptions, point, prelude::*, px, size,
+    App, Application, Bounds, Menu, MenuItem, TitlebarOptions, WindowBounds, WindowOptions, point,
+    prelude::*, px, size,
 };
 
 use supervisor::Supervisor;
@@ -74,29 +74,7 @@ fn main() {
     }
 
     Application::new().run(move |cx: &mut App| {
-        cx.bind_keys([
-            KeyBinding::new("cmd-q", Quit, None),
-            KeyBinding::new("cmd-k", TogglePalette, None),
-            KeyBinding::new("cmd-]", NextRepo, None),
-            KeyBinding::new("cmd-[", PrevRepo, None),
-            KeyBinding::new("cmd-1", ShowOverview, None),
-            KeyBinding::new("cmd-2", ShowProcesses, None),
-            KeyBinding::new("cmd-3", ShowDatabases, None),
-            KeyBinding::new("cmd-4", ShowLogs, None),
-            KeyBinding::new("cmd-5", ShowWorktrees, None),
-            KeyBinding::new("cmd-6", ShowSessions, None),
-            KeyBinding::new("cmd-7", ShowPlans, None),
-            KeyBinding::new("cmd-8", ShowKnowledge, None),
-            KeyBinding::new("cmd-9", ShowSetup, None),
-            KeyBinding::new("cmd-0", ShowTerminal, None),
-            KeyBinding::new("cmd-shift-a", ShowAgents, None),
-            KeyBinding::new("cmd-shift-h", ShowToday, None),
-            KeyBinding::new("cmd-shift-i", ShowInsights, None),
-            KeyBinding::new("cmd-shift-n", CaptureNote, None),
-            KeyBinding::new("cmd-o", RegisterRepo, None),
-            KeyBinding::new("cmd-shift-t", ToggleTheme, None),
-            KeyBinding::new("cmd-r", Refresh, None),
-        ]);
+        ui::keymap::bind_all(cx, &ui::keymap::path());
         cx.set_menus(vec![
             Menu {
                 name: "fubbik".into(),

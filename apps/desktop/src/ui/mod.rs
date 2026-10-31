@@ -7,7 +7,9 @@ mod chrome;
 mod command_palette;
 mod commands;
 mod fields;
+mod hotkeys;
 mod insights;
+pub mod keymap;
 mod knowledge;
 mod palette;
 mod plans;
@@ -19,7 +21,7 @@ mod tasks;
 mod terminal_view;
 mod terminals;
 mod text;
-mod today;
+pub mod today;
 #[cfg(test)]
 mod ui_tests;
 mod views;
@@ -71,6 +73,35 @@ actions!(
         ChooseTheme,
         RegisterRepo,
         Refresh,
+        ShowCheatSheet,
+        FocusSidebar,
+        NextNeedsYou,
+        ReplyLatest,
+        StartNextTask,
+        SelectRepo1,
+        SelectRepo2,
+        SelectRepo3,
+        SelectRepo4,
+        SelectRepo5,
+        SelectRepo6,
+        SelectRepo7,
+        SelectRepo8,
+        SelectRepo9,
+        NewShell,
+        CloseTerminalTab,
+        PrevTerminalTab,
+        NextTerminalTab,
+        SplitTerminal,
+        ClearTerminal,
+        TerminalTab1,
+        TerminalTab2,
+        TerminalTab3,
+        TerminalTab4,
+        TerminalTab5,
+        TerminalTab6,
+        TerminalTab7,
+        TerminalTab8,
+        TerminalTab9,
     ]
 );
 
@@ -112,19 +143,19 @@ pub enum Tab {
 
 impl Tab {
     pub const ALL: [Tab; 13] = [
+        Tab::Today,
         Tab::Overview,
         Tab::Processes,
-        Tab::Databases,
         Tab::Logs,
         Tab::Worktrees,
         Tab::Sessions,
         Tab::Plans,
         Tab::Knowledge,
-        Tab::Setup,
         Tab::Terminal,
-        Tab::Agents,
-        Tab::Today,
+        Tab::Databases,
         Tab::Insights,
+        Tab::Agents,
+        Tab::Setup,
     ];
 
     /// The tab's own color: its dot and underline in the tab strip.
@@ -143,22 +174,27 @@ impl Tab {
         }
     }
 
-    /// The key that shows the tab.
-    pub fn shortcut(self) -> &'static str {
+    /// The key that shows the tab, as currently bound (keymap.toml).
+    pub fn shortcut(self) -> String {
+        keymap::keys_for(self.action_id()).unwrap_or_default()
+    }
+
+    /// The tab's action in the keymap.
+    pub fn action_id(self) -> &'static str {
         match self {
-            Tab::Overview => "⌘1",
-            Tab::Processes => "⌘2",
-            Tab::Databases => "⌘3",
-            Tab::Logs => "⌘4",
-            Tab::Worktrees => "⌘5",
-            Tab::Sessions => "⌘6",
-            Tab::Plans => "⌘7",
-            Tab::Knowledge => "⌘8",
-            Tab::Setup => "⌘9",
-            Tab::Terminal => "⌘0",
-            Tab::Agents => "⇧⌘A",
-            Tab::Today => "⇧⌘H",
-            Tab::Insights => "⇧⌘I",
+            Tab::Overview => "show_overview",
+            Tab::Processes => "show_processes",
+            Tab::Databases => "show_databases",
+            Tab::Logs => "show_logs",
+            Tab::Worktrees => "show_worktrees",
+            Tab::Sessions => "show_sessions",
+            Tab::Plans => "show_plans",
+            Tab::Knowledge => "show_knowledge",
+            Tab::Setup => "show_setup",
+            Tab::Terminal => "show_terminal",
+            Tab::Agents => "show_agents",
+            Tab::Today => "show_today",
+            Tab::Insights => "show_insights",
         }
     }
 
@@ -383,6 +419,12 @@ pub struct Workspace {
     insights_days: i64,
     /// The quick-capture note overlay is open.
     capture_open: bool,
+    /// The ⌘/ cheat sheet is open.
+    cheat_sheet_open: bool,
+    /// ⇧⌘E: j/k move through the repos until ⏎ or esc.
+    sidebar_nav: bool,
+    /// Where ⇧⌘J goes next among "Needs you".
+    needs_cursor: usize,
     /// A second terminal shown beside the active one (Split).
     split_with: Option<usize>,
     /// The highlighted row in AI Sessions (j/k, enter).
@@ -477,6 +519,9 @@ impl Workspace {
             recent_launches: Vec::new(),
             insights_days: 1,
             capture_open: false,
+            cheat_sheet_open: false,
+            sidebar_nav: false,
+            needs_cursor: 0,
             quiet: HashMap::new(),
             api_backoff: Duration::ZERO,
             _watcher: None,

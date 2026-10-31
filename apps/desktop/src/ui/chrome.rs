@@ -121,6 +121,138 @@ impl Workspace {
     }
 }
 
+impl Workspace {
+    /// ⌘/: every shortcut, from the live keymap, plus the list keys. The
+    /// Terminal group comes first while a terminal has focus.
+    fn render_cheat_sheet(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let in_terminal = self
+            .active_terminal
+            .and_then(|a| self.terminals.iter().find(|t| t.id == a))
+            .is_some_and(|t| t.view.read(cx).focus.is_focused(window));
+        let bindings = keymap::current();
+        let mut groups: Vec<&str> = Vec::new();
+        for binding in &bindings {
+            if !groups.contains(&binding.group) {
+                groups.push(binding.group);
+            }
+        }
+        if in_terminal && let Some(i) = groups.iter().position(|g| *g == "Terminal") {
+            let terminal = groups.remove(i);
+            groups.insert(0, terminal);
+        }
+        let entry = |keys: String, what: String| {
+            div()
+                .flex()
+                .gap_3()
+                .py_0p5()
+                .child(
+                    div()
+                        .w(px(120.))
+                        .flex_none()
+                        .text_color(theme::accent())
+                        .child(keys),
+                )
+                .child(div().text_color(theme::text()).child(what))
+        };
+        let group_block = |title: String, rows: Vec<gpui::Div>| {
+            div()
+                .flex()
+                .flex_col()
+                .gap_0p5()
+                .child(
+                    div()
+                        .pb_1()
+                        .text_xs()
+                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                        .text_color(theme::text_muted())
+                        .child(title.to_uppercase()),
+                )
+                .children(rows)
+        };
+        let mut blocks: Vec<gpui::Div> = groups
+            .iter()
+            .map(|group| {
+                let rows = bindings
+                    .iter()
+                    .filter(|b| b.group == *group && !b.keys.is_empty())
+                    // ⌃1–⌃9 and ⌘1–⌘9 in a terminal: one line each, not nine.
+                    .filter(|b| {
+                        !matches!(b.action.as_bytes().last(), Some(b'2'..=b'9'))
+                            || !(b.action.starts_with("select_repo_")
+                                || b.action.starts_with("terminal_tab_"))
+                    })
+                    .map(|b| entry(keymap::pretty(&b.keys), b.description.to_string()))
+                    .collect();
+                group_block(group.to_string(), rows)
+            })
+            .collect();
+        let mut list_groups: Vec<&str> = Vec::new();
+        for (group, _, _) in keymap::LIST_KEYS {
+            if !list_groups.contains(group) {
+                list_groups.push(group);
+            }
+        }
+        blocks.push(group_block(
+            "In lists (when no text field or terminal has focus)".into(),
+            keymap::LIST_KEYS
+                .iter()
+                .map(|(group, keys, what)| entry(keys.to_string(), format!("{group}: {what}")))
+                .collect(),
+        ));
+        div()
+            .absolute()
+            .inset_0()
+            .flex()
+            .justify_center()
+            .pt(px(60.))
+            .bg(theme::overlay())
+            .child(
+                div()
+                    .id("cheat-sheet")
+                    .w(px(900.))
+                    .max_h(px(640.))
+                    .overflow_y_scroll()
+                    .flex()
+                    .flex_col()
+                    .gap_4()
+                    .p_4()
+                    .rounded_lg()
+                    .border_1()
+                    .border_color(theme::border())
+                    .bg(theme::elevated())
+                    .shadow(theme::frame_shadow())
+                    .text_sm()
+                    .on_mouse_down_out(cx.listener(|this, _, _, cx| {
+                        this.cheat_sheet_open = false;
+                        cx.notify();
+                    }))
+                    .child(
+                        div()
+                            .flex()
+                            .justify_between()
+                            .child(
+                                div()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .child("Keyboard shortcuts"),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme::text_muted())
+                                    .child("esc closes · change keys in Setup → Keyboard"),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_wrap()
+                            .gap_6()
+                            .children(blocks.into_iter().map(|b| b.w(px(410.)))),
+                    ),
+            )
+    }
+}
+
 impl Render for Workspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let translucent = theme::is_translucent();
@@ -183,6 +315,88 @@ impl Render for Workspace {
                     this.run(Command::ShowTab(Tab::Setup), cx)
                 }),
             )
+            .on_action(cx.listener(|this, _: &ShowCheatSheet, _, cx| {
+                this.cheat_sheet_open = !this.cheat_sheet_open;
+                cx.notify();
+            }))
+            .on_action(cx.listener(|this, _: &FocusSidebar, window, cx| {
+                this.sidebar_nav = true;
+                this.focus.focus(window);
+                cx.notify();
+            }))
+            .on_action(cx.listener(|this, _: &NextNeedsYou, _, cx| this.next_needs_you(cx)))
+            .on_action(
+                cx.listener(|this, _: &ReplyLatest, window, cx| this.reply_latest(window, cx)),
+            )
+            .on_action(cx.listener(|this, _: &StartNextTask, _, cx| this.start_next_task(cx)))
+            .on_action(cx.listener(|this, _: &NewShell, _, cx| this.new_shell(cx)))
+            .on_action(cx.listener(|this, _: &CloseTerminalTab, _, cx| this.close_terminal_tab(cx)))
+            .on_action(cx.listener(|this, _: &PrevTerminalTab, _, cx| {
+                this.switch_terminal_tab(None, -1, cx)
+            }))
+            .on_action(
+                cx.listener(|this, _: &NextTerminalTab, _, cx| {
+                    this.switch_terminal_tab(None, 1, cx)
+                }),
+            )
+            .on_action(
+                cx.listener(|this, _: &SplitTerminal, _, cx| this.run(Command::ToggleSplit, cx)),
+            )
+            .on_action(cx.listener(|this, _: &ClearTerminal, _, cx| this.clear_terminal(cx)))
+            .on_action(cx.listener(|this, _: &SelectRepo1, _, cx| this.select_repo_n(0, cx)))
+            .on_action(
+                cx.listener(|this, _: &TerminalTab1, _, cx| {
+                    this.switch_terminal_tab(Some(0), 0, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &SelectRepo2, _, cx| this.select_repo_n(1, cx)))
+            .on_action(
+                cx.listener(|this, _: &TerminalTab2, _, cx| {
+                    this.switch_terminal_tab(Some(1), 0, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &SelectRepo3, _, cx| this.select_repo_n(2, cx)))
+            .on_action(
+                cx.listener(|this, _: &TerminalTab3, _, cx| {
+                    this.switch_terminal_tab(Some(2), 0, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &SelectRepo4, _, cx| this.select_repo_n(3, cx)))
+            .on_action(
+                cx.listener(|this, _: &TerminalTab4, _, cx| {
+                    this.switch_terminal_tab(Some(3), 0, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &SelectRepo5, _, cx| this.select_repo_n(4, cx)))
+            .on_action(
+                cx.listener(|this, _: &TerminalTab5, _, cx| {
+                    this.switch_terminal_tab(Some(4), 0, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &SelectRepo6, _, cx| this.select_repo_n(5, cx)))
+            .on_action(
+                cx.listener(|this, _: &TerminalTab6, _, cx| {
+                    this.switch_terminal_tab(Some(5), 0, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &SelectRepo7, _, cx| this.select_repo_n(6, cx)))
+            .on_action(
+                cx.listener(|this, _: &TerminalTab7, _, cx| {
+                    this.switch_terminal_tab(Some(6), 0, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &SelectRepo8, _, cx| this.select_repo_n(7, cx)))
+            .on_action(
+                cx.listener(|this, _: &TerminalTab8, _, cx| {
+                    this.switch_terminal_tab(Some(7), 0, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &SelectRepo9, _, cx| this.select_repo_n(8, cx)))
+            .on_action(
+                cx.listener(|this, _: &TerminalTab9, _, cx| {
+                    this.switch_terminal_tab(Some(8), 0, cx)
+                }),
+            )
             .on_action(
                 cx.listener(|this, _: &ShowToday, _, cx| {
                     this.run(Command::ShowTab(Tab::Today), cx)
@@ -224,8 +438,11 @@ impl Render for Workspace {
             )
             .on_action(cx.listener(|this, _: &Refresh, _, cx| this.run(Command::Refresh, cx)))
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
-                if event.keystroke.key == "escape" && this.panel.is_some() {
+                if event.keystroke.key == "escape"
+                    && (this.panel.is_some() || this.cheat_sheet_open)
+                {
                     this.panel = None;
+                    this.cheat_sheet_open = false;
                     cx.notify();
                     return;
                 }
@@ -253,6 +470,9 @@ impl Render for Workspace {
             .children(self.render_panel(cx))
             .when(self.capture_open, |root| {
                 root.child(self.render_capture(window, cx))
+            })
+            .when(self.cheat_sheet_open, |root| {
+                root.child(self.render_cheat_sheet(window, cx))
             })
             .children(self.render_toast(cx))
     }

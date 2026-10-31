@@ -780,3 +780,49 @@ fn task_timeline_lists_claims_and_board_notes_in_order(cx: &mut TestAppContext) 
     assert!(created < claimed && claimed < note, "{text}");
     assert!(text.contains("2026-10-31 10:00"), "{text}");
 }
+
+#[gpui::test]
+fn keys_from_the_keymap_drive_the_app(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: two repos, the real keymap, and one repo with stale knowledge
+    cx.update(|cx| keymap::bind_all(cx, std::path::Path::new("/nonexistent/keymap.toml")));
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let config = format!(
+        "[[repo]]\npath = {:?}\n\n[[repo]]\npath = {:?}\n",
+        a.path().display().to_string(),
+        b.path().display().to_string()
+    );
+    let (view, cx) = open(cx, &config);
+    view.update(cx, |w, _| {
+        w.repos[1].knowledge = Some(Ok(crate::fubbik::Knowledge {
+            space: Some(crate::fubbik::Space {
+                id: "s".into(),
+                name: "b".into(),
+            }),
+            stale: 2,
+            ..Default::default()
+        }));
+    });
+    let state = |view: &Entity<Workspace>, cx: &mut VisualTestContext| {
+        view.read_with(cx, |w, _| (w.tab, w.selected))
+    };
+
+    // When / Then
+    cx.simulate_keystrokes("cmd-,");
+    assert_eq!(state(&view, cx).0, Tab::Setup);
+    cx.simulate_keystrokes("cmd-1");
+    assert_eq!(state(&view, cx).0, Tab::Today);
+    cx.simulate_keystrokes("ctrl-2");
+    assert_eq!(state(&view, cx).1, 1);
+    cx.simulate_keystrokes("cmd-/");
+    assert!(view.read_with(cx, |w, _| w.cheat_sheet_open));
+    cx.simulate_keystrokes("escape");
+    assert!(!view.read_with(cx, |w, _| w.cheat_sheet_open));
+    view.update(cx, |w, _| w.select(0));
+    cx.simulate_keystrokes("cmd-shift-j");
+    assert_eq!(
+        state(&view, cx),
+        (Tab::Knowledge, 1),
+        "jumped to the repo with stale knowledge"
+    );
+}

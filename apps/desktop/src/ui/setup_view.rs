@@ -190,5 +190,38 @@ impl Workspace {
             ))
             .child(section("Worktrees: hooks and CLAUDE.md", worktree_rows))
             .child(muted(claude_md_note))
+            .child(self.render_keyboard_setup(cx))
+    }
+
+    /// Keyboard: where keymap.toml is, what is wrong in it, and clashes.
+    fn render_keyboard_setup(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let path = super::keymap::path();
+        let problems = super::keymap::problems();
+        let mut rows: Vec<AnyElement> = vec![
+            row()
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .flex_1()
+                        .child(div().text_sm().child("Key bindings"))
+                        .child(muted(format!(
+                            "{} — changes apply on the next launch; ⌘/ lists them all",
+                            display_path(&path)
+                        ))),
+                )
+                .child(
+                    button("keymap-open", "Open keymap.toml")
+                        .on_click(cx.listener(|this, _, _, cx| this.open_keymap_file(cx))),
+                )
+                .into_any_element(),
+        ];
+        rows.extend(problems.iter().map(|problem| {
+            row()
+                .child(div().w(px(70.)).child(pill("fix", tone(false))))
+                .child(div().text_sm().child(problem.clone()))
+                .into_any_element()
+        }));
+        section("Keyboard", rows)
     }
 }

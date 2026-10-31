@@ -1,5 +1,6 @@
 //! Today: one screen across every repo for what needs you, what is in
-//! flight, and what to start next. Each line acts in one click.
+//! flight, and what to start next. Rows are data first (`today_rows`), so
+//! the list keys and ⇧⌘J / ⇧⌘S act on exactly what is shown.
 
 use gpui::{AnyElement, FontWeight, Hsla, SharedString};
 
@@ -13,31 +14,48 @@ use crate::sessions::SessionState;
 /// Pending tasks shown per plan under "Next up".
 const NEXT_PER_PLAN: usize = 2;
 
-impl Workspace {
-    pub(super) fn render_today(&self, cx: &mut Context<Self>) -> AnyElement {
-        let mut needs: Vec<AnyElement> = Vec::new();
-        let mut flight: Vec<AnyElement> = Vec::new();
-        let mut next: Vec<AnyElement> = Vec::new();
-        let now = activity::now();
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Section {
+    Needs,
+    Flight,
+    Next,
+}
 
+#[derive(Debug, Clone)]
+pub struct TodayRow {
+    pub section: Section,
+    pub repo: String,
+    pub tag: Option<(String, Hsla)>,
+    pub title: String,
+    pub detail: Option<String>,
+    /// What ⏎ (and the first button) does.
+    pub primary: Option<Command>,
+    pub primary_label: &'static str,
+    pub secondary: Vec<(String, Command)>,
+}
+
+impl Workspace {
+    pub(super) fn today_rows(&self) -> Vec<TodayRow> {
+        let mut rows = Vec::new();
+        let now = activity::now();
+        let need = |repo: &str,
+                    tag: String,
+                    color: Hsla,
+                    title: String,
+                    label: &'static str,
+                    command: Command| TodayRow {
+            section: Section::Needs,
+            repo: repo.to_string(),
+            tag: Some((tag, color)),
+            title,
+            detail: None,
+            primary: Some(command),
+            primary_label: label,
+            secondary: Vec::new(),
+        };
         for (repo, view) in self.repos.iter().enumerate() {
             let name = view.entry.name();
-            let id = |kind: &str, n: usize| SharedString::from(format!("today-{kind}-{repo}-{n}"));
-            let open = |label: &'static str,
-                        key: SharedString,
-                        tab: Tab,
-                        cx: &mut Context<Self>| {
-                button(key, label).on_click(
-                    cx.listener(move |this, _, _, cx| this.run(Command::Focus { repo, tab }, cx)),
-                )
-            };
-            let line = |color: Hsla, tag: &str, text: String| {
-                row()
-                    .child(super::views::repo_badge(&name, 18.))
-                    .child(div().w(px(96.)).child(pill(tag.to_string(), color)))
-                    .child(div().flex_1().overflow_hidden().text_sm().child(text))
-            };
-
+            let focus = |tab: Tab| Command::Focus { repo, tab };
             if let Some(snapshot) = &view.snapshot {
                 if snapshot.missing || snapshot.services_error.is_some() {
                     let what = if snapshot.missing {
@@ -45,108 +63,101 @@ impl Workspace {
                     } else {
                         "services file has an error"
                     };
-                    needs.push(
-                        line(theme::danger(), "repo", format!("{name}: {what}"))
-                            .child(open("Open", id("repo", 0), Tab::Overview, cx))
-                            .into_any_element(),
-                    );
+                    rows.push(need(
+                        &name,
+                        "repo".into(),
+                        theme::danger(),
+                        what.into(),
+                        "Open",
+                        focus(Tab::Overview),
+                    ));
                 }
-                for (n, session) in snapshot
+                for session in snapshot
                     .sessions
                     .iter()
                     .filter(|s| s.state == SessionState::Idle)
-                    .enumerate()
                 {
+                    let command = match &session.pane {
+                        Some(pane) => Command::OpenPane {
+                            pane: pane.clone(),
+                            cwd: session.cwd.clone(),
+                        },
+                        None => focus(Tab::Sessions),
+                    };
                     let tag = format!("{} waits", session.agent.label());
-                    let mut r = line(theme::accent(), &tag, format!("{name}: {}", session.title));
-                    if let Some(pane) = session.pane.clone() {
-                        let cwd = session.cwd.clone();
-                        r = r.child(button(id("agent", n), "Open").on_click(cx.listener(
-                            move |this, _, _, cx| {
-                                this.open_pane(pane.clone(), cwd.clone(), cx);
-                                cx.notify();
-                            },
-                        )));
-                    } else {
-                        r = r.child(open("Sessions", id("agent-s", n), Tab::Sessions, cx));
-                    }
-                    needs.push(r.into_any_element());
+                    rows.push(need(
+                        &name,
+                        tag,
+                        theme::agent(session.agent),
+                        session.title.clone(),
+                        "Open",
+                        command,
+                    ));
                 }
-                for (n, process) in snapshot
+                for process in snapshot
                     .processes
                     .iter()
                     .filter(|p| matches!(p.status, Status::Degraded | Status::Error))
-                    .enumerate()
                 {
-                    needs.push(
-                        line(
-                            theme::status(process.status),
-                            process.status.label(),
-                            format!("{name}: {}", process.spec.name),
-                        )
-                        .child(open("Processes", id("proc", n), Tab::Processes, cx))
-                        .into_any_element(),
-                    );
+                    let status = process.status;
+                    rows.push(need(
+                        &name,
+                        status.label().into(),
+                        theme::status(status),
+                        process.spec.name.clone(),
+                        "Processes",
+                        focus(Tab::Processes),
+                    ));
                 }
-                for (n, overlap) in snapshot.overlaps.iter().enumerate() {
-                    needs.push(
-                        line(
-                            theme::status(Status::Degraded),
-                            "overlap",
-                            format!(
-                                "{name}: {} and {} both change {} file(s)",
-                                overlap.a,
-                                overlap.b,
-                                overlap.files.len()
-                            ),
-                        )
-                        .child(open("Worktrees", id("overlap", n), Tab::Worktrees, cx))
-                        .into_any_element(),
+                for overlap in &snapshot.overlaps {
+                    let title = format!(
+                        "{} and {} both change {} file(s)",
+                        overlap.a,
+                        overlap.b,
+                        overlap.files.len()
                     );
+                    rows.push(need(
+                        &name,
+                        "overlap".into(),
+                        theme::status(Status::Degraded),
+                        title,
+                        "Worktrees",
+                        focus(Tab::Worktrees),
+                    ));
                 }
             }
-
             let Some(Ok(knowledge)) = &view.knowledge else {
                 continue;
             };
             let failing = knowledge.requirements.failing + knowledge.violated_cells();
             if failing > 0 {
-                needs.push(
-                    line(
-                        theme::danger(),
-                        "failing",
-                        format!("{name}: {failing} failing requirement(s) or behaviour cell(s)"),
-                    )
-                    .child(open("Knowledge", id("failing", 0), Tab::Knowledge, cx))
-                    .into_any_element(),
-                );
+                let title = format!("{failing} failing requirement(s) or behaviour cell(s)");
+                rows.push(need(
+                    &name,
+                    "failing".into(),
+                    theme::danger(),
+                    title,
+                    "Knowledge",
+                    focus(Tab::Knowledge),
+                ));
             }
             if knowledge.stale > 0 {
-                needs.push(
-                    line(
-                        theme::status(Status::Degraded),
-                        "stale",
-                        format!("{name}: {} stale knowledge flag(s)", knowledge.stale),
-                    )
-                    .child(open("Knowledge", id("stale", 0), Tab::Knowledge, cx))
-                    .into_any_element(),
-                );
+                let title = format!("{} stale knowledge flag(s)", knowledge.stale);
+                rows.push(need(
+                    &name,
+                    "stale".into(),
+                    theme::status(Status::Degraded),
+                    title,
+                    "Knowledge",
+                    focus(Tab::Knowledge),
+                ));
             }
-
             for plan in &knowledge.plan_details {
-                for (n, task) in plan
-                    .tasks
-                    .iter()
-                    .filter(|t| t.status == "in_progress")
-                    .enumerate()
-                {
+                for task in plan.tasks.iter().filter(|t| t.status == "in_progress") {
                     let effort = self.task_effort(repo, &plan.id, task);
-                    let holder = self
-                        .task_holder(repo, &plan.id, &task.id)
-                        .map(|(run, _)| run.handle);
-                    let mut detail = vec![format!("{name} · {}", plan.title)];
-                    if let Some(h) = holder {
-                        detail.push(h);
+                    let mut detail = vec![plan.title.clone()];
+                    if let Some((run, _)) = self.task_holder(repo, &plan.id, &task.id) {
+                        detail.push(run.handle);
                     }
                     if let Some(since) = effort.since {
                         detail.push(format!("{} in progress", activity::short_age(now - since)));
@@ -154,41 +165,20 @@ impl Workspace {
                     if effort.tokens > 0 {
                         detail.push(format!("{}k tokens", effort.tokens / 1000));
                     }
-                    let (p, t) = (plan.id.clone(), task.id.clone());
-                    flight.push(
-                        row()
-                            .child(super::views::repo_badge(&name, 18.))
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .flex_1()
-                                    .overflow_hidden()
-                                    .child(div().text_sm().child(task.title.clone()))
-                                    .child(muted(detail.join("  ·  "))),
-                            )
-                            .child(
-                                button(id(&format!("tl-{}", plan.id), n), "Timeline").on_click(
-                                    cx.listener(move |this, _, _, cx| {
-                                        this.run(
-                                            Command::TaskTimeline {
-                                                repo,
-                                                plan: p.clone(),
-                                                task: t.clone(),
-                                            },
-                                            cx,
-                                        )
-                                    }),
-                                ),
-                            )
-                            .child(open(
-                                "Board",
-                                id(&format!("board-{}", plan.id), n),
-                                Tab::Plans,
-                                cx,
-                            ))
-                            .into_any_element(),
-                    );
+                    rows.push(TodayRow {
+                        section: Section::Flight,
+                        repo: name.clone(),
+                        tag: None,
+                        title: task.title.clone(),
+                        detail: Some(detail.join("  ·  ")),
+                        primary: Some(Command::TaskTimeline {
+                            repo,
+                            plan: plan.id.clone(),
+                            task: task.id.clone(),
+                        }),
+                        primary_label: "Timeline",
+                        secondary: vec![("Board".into(), focus(Tab::Plans))],
+                    });
                 }
                 let startable = plan
                     .tasks
@@ -199,59 +189,76 @@ impl Workspace {
                             && self.task_holder(repo, &plan.id, &t.id).is_none()
                     })
                     .take(NEXT_PER_PLAN);
-                for (n, task) in startable.enumerate() {
-                    let (p, t) = (plan.id.clone(), task.id.clone());
-                    let (bp, bt) = (plan.id.clone(), task.id.clone());
-                    next.push(
-                        row()
-                            .child(super::views::repo_badge(&name, 18.))
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .flex_1()
-                                    .overflow_hidden()
-                                    .child(div().text_sm().child(task.title.clone()))
-                                    .child(muted(format!("{name} · {}", plan.title))),
-                            )
-                            .child(
-                                button(id(&format!("start-{}", plan.id), n), "Start").on_click(
-                                    cx.listener(move |this, _, _, cx| {
-                                        this.run(
-                                            Command::StartTask {
-                                                repo,
-                                                plan: p.clone(),
-                                                task: t.clone(),
-                                                new_worktree: true,
-                                                background: false,
-                                            },
-                                            cx,
-                                        )
-                                    }),
-                                ),
-                            )
-                            .child(
-                                button(id(&format!("bg-{}", plan.id), n), "In background")
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.run(
-                                            Command::StartTask {
-                                                repo,
-                                                plan: bp.clone(),
-                                                task: bt.clone(),
-                                                new_worktree: true,
-                                                background: true,
-                                            },
-                                            cx,
-                                        )
-                                    })),
-                            )
-                            .into_any_element(),
-                    );
+                for task in startable {
+                    let start = |background| Command::StartTask {
+                        repo,
+                        plan: plan.id.clone(),
+                        task: task.id.clone(),
+                        new_worktree: true,
+                        background,
+                    };
+                    rows.push(TodayRow {
+                        section: Section::Next,
+                        repo: name.clone(),
+                        tag: None,
+                        title: task.title.clone(),
+                        detail: Some(plan.title.clone()),
+                        primary: Some(start(false)),
+                        primary_label: "Start",
+                        secondary: vec![("In background".into(), start(true))],
+                    });
                 }
             }
         }
+        rows
+    }
 
+    pub(super) fn render_today(&self, cx: &mut Context<Self>) -> AnyElement {
+        let rows = self.today_rows();
+        let mut sections: [Vec<AnyElement>; 3] = Default::default();
+        for (index, r) in rows.iter().enumerate() {
+            let key = |name: &str| SharedString::from(format!("today-{name}-{index}"));
+            let highlighted = self.tab == Tab::Today && self.list_cursor == Some(index);
+            let mut line = row()
+                .when(highlighted, |d| d.bg(theme::surface_hover()))
+                .child(super::views::repo_badge(&r.repo, 18.));
+            if let Some((tag, color)) = &r.tag {
+                line = line.child(div().w(px(96.)).child(pill(tag.clone(), *color)));
+            }
+            line = line.child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .overflow_hidden()
+                    .child(div().text_sm().child(r.title.clone()))
+                    .child(muted(match &r.detail {
+                        Some(detail) => format!("{} · {detail}", r.repo),
+                        None => r.repo.clone(),
+                    })),
+            );
+            if let Some(command) = r.primary.clone() {
+                line = line
+                    .child(button(key("primary"), r.primary_label).on_click(
+                        cx.listener(move |this, _, _, cx| this.run(command.clone(), cx)),
+                    ));
+            }
+            for (i, (label, command)) in r.secondary.iter().enumerate() {
+                let command = command.clone();
+                line = line
+                    .child(button(key(&format!("extra-{i}")), label.clone()).on_click(
+                        cx.listener(move |this, _, _, cx| this.run(command.clone(), cx)),
+                    ));
+            }
+            let slot = match r.section {
+                Section::Needs => 0,
+                Section::Flight => 1,
+                Section::Next => 2,
+            };
+            sections[slot].push(line.into_any_element());
+        }
         let queued = self.launch_queue.len();
+        let [needs, flight, next] = sections;
         div()
             .flex()
             .flex_col()

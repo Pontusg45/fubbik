@@ -194,6 +194,11 @@ pub fn kill_server(server: &Server) {
     }
 }
 
+/// Drops a session's history (its screen is cleared by the shell).
+pub fn clear(server: &Server, name: &str) -> Result<(), String> {
+    tmux(server, &["clear-history", "-t", &format!("={name}")]).map(|_| ())
+}
+
 pub fn kill(server: &Server, name: &str) -> Result<(), String> {
     tmux(server, &["kill-session", "-t", &format!("={name}")]).map(|_| ())
 }

@@ -590,6 +590,18 @@ impl TerminalView {
             .join("\n")
     }
 
+    /// ⇧⌘K: empties the screen and scrollback; the shell redraws its prompt.
+    pub fn clear(&mut self, cx: &mut Context<Self>) {
+        if let Some(name) = &self.tmux_session {
+            let _ = crate::tmux::clear(&crate::tmux::Server::fubbik(), name);
+        }
+        if let Ok(session) = &mut self.session {
+            session.clear();
+        }
+        self.frame_dirty = true;
+        cx.notify();
+    }
+
     /// Copies the selection, or the whole visible screen without one.
     pub fn copy_screen(&mut self, cx: &mut Context<Self>) {
         let Ok(session) = &mut self.session else {

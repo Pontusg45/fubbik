@@ -419,6 +419,7 @@ impl Workspace {
                 self.drain_launch_queue(cx);
             }
             Command::CaptureNote => self.capture_open = true,
+            Command::OpenPane { pane, cwd } => self.open_pane(pane, cwd, cx),
             Command::Focus { repo, tab } => {
                 self.select(repo);
                 self.tab = tab;

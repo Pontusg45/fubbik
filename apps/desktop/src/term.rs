@@ -557,6 +557,13 @@ impl TermSession {
             .collect()
     }
 
+    /// Clears screen and scrollback in the engine, then asks the shell to
+    /// redraw its prompt (form feed, like ⌃L).
+    pub fn clear(&mut self) {
+        self.terminal.vt_write(b"\x1b[H\x1b[2J\x1b[3J");
+        self.write(b"\x0c");
+    }
+
     pub fn scroll_to_bottom(&mut self) {
         self.terminal.scroll_viewport(ScrollViewport::Bottom);
     }

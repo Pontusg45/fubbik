@@ -74,6 +74,11 @@ pub enum Command {
     SetMaxAgents(Option<usize>),
     /// Quick capture of a note into the selected repo's space.
     CaptureNote,
+    /// An agent's tmux pane: its tab, or attached in a new one.
+    OpenPane {
+        pane: crate::tmux::Pane,
+        cwd: PathBuf,
+    },
     /// Select a repo and show one of its tabs.
     Focus {
         repo: usize,
