@@ -7,6 +7,7 @@ mod chrome;
 mod command_palette;
 mod commands;
 mod fields;
+mod insights;
 mod knowledge;
 mod palette;
 mod plans;
@@ -14,9 +15,11 @@ mod polling;
 mod preferences;
 mod setup_view;
 mod sidebar;
+mod tasks;
 mod terminal_view;
 mod terminals;
 mod text;
+mod today;
 #[cfg(test)]
 mod ui_tests;
 mod views;
@@ -61,6 +64,9 @@ actions!(
         ShowSetup,
         ShowTerminal,
         ShowAgents,
+        ShowToday,
+        ShowInsights,
+        CaptureNote,
         ToggleTheme,
         ChooseTheme,
         RegisterRepo,
@@ -80,6 +86,8 @@ const API_BACKOFF_MIN: Duration = Duration::from_secs(60);
 const API_BACKOFF_MAX: Duration = Duration::from_secs(300);
 /// File changes wait this long for more before triggering one poll.
 const WATCH_DEBOUNCE: Duration = Duration::from_millis(300);
+/// A launched agent counts as running this long, until its session appears.
+const RECENT_LAUNCH: Duration = Duration::from_secs(30);
 const TOAST_FOR: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -96,10 +104,14 @@ pub enum Tab {
     Terminal,
     /// Every agent in every repo.
     Agents,
+    /// What needs you, what is in flight and what is next, across repos.
+    Today,
+    /// One repo's summary, health and activity.
+    Insights,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 11] = [
+    pub const ALL: [Tab; 13] = [
         Tab::Overview,
         Tab::Processes,
         Tab::Databases,
@@ -111,6 +123,8 @@ impl Tab {
         Tab::Setup,
         Tab::Terminal,
         Tab::Agents,
+        Tab::Today,
+        Tab::Insights,
     ];
 
     pub fn label(self) -> &'static str {
@@ -126,6 +140,8 @@ impl Tab {
             Tab::Setup => "Setup",
             Tab::Terminal => "Terminal",
             Tab::Agents => "All agents",
+            Tab::Today => "Today",
+            Tab::Insights => "Insights",
         }
     }
 }
@@ -210,6 +226,9 @@ struct RepoView {
     setup: Option<RepoSetup>,
     branch_context: HashMap<PathBuf, Loadable<BranchContext>>,
     gaps: Option<Loadable<gaps::GapReport>>,
+    insights: Option<Loadable<insights::Insights>>,
+    /// Known vulnerabilities from the last dependency audit.
+    audit: Option<usize>,
 }
 
 impl RepoView {
@@ -221,6 +240,8 @@ impl RepoView {
             setup: None,
             branch_context: HashMap::new(),
             gaps: None,
+            insights: None,
+            audit: None,
         }
     }
 
@@ -251,6 +272,14 @@ struct Toast {
     at: Instant,
     /// Clicking the toast runs this (e.g. jump to the session it is about).
     action: Option<Command>,
+}
+
+/// An agent launch waiting for a free slot.
+#[derive(Debug, Clone)]
+pub struct QueuedLaunch {
+    pub dir: PathBuf,
+    pub label: String,
+    pub command: String,
 }
 
 /// A notification's in-app side: a toast you can click.
@@ -306,6 +335,19 @@ pub struct Workspace {
     fubbik_url_field: TextField,
     web_url_field: TextField,
     fubbik_bin_field: TextField,
+    /// The plan the board shows (else the first in progress).
+    board_plan: Option<String>,
+    /// The task card whose checklist is expanded.
+    open_checklist: Option<String>,
+    /// Agent launches waiting for a free slot (`max_agents`).
+    launch_queue: std::collections::VecDeque<QueuedLaunch>,
+    /// Agents launched in the last moments, counted as running until their
+    /// session shows up in the registry.
+    recent_launches: Vec<Instant>,
+    /// Days the Insights summary covers (1: standup, 7: week).
+    insights_days: i64,
+    /// The quick-capture note overlay is open.
+    capture_open: bool,
     /// A second terminal shown beside the active one (Split).
     split_with: Option<usize>,
     /// The highlighted row in AI Sessions (j/k, enter).
@@ -394,6 +436,12 @@ impl Workspace {
             fubbik_bin_field: TextField::new(cx),
             list_cursor: None,
             split_with: None,
+            board_plan: None,
+            open_checklist: None,
+            launch_queue: Default::default(),
+            recent_launches: Vec::new(),
+            insights_days: 1,
+            capture_open: false,
             quiet: HashMap::new(),
             api_backoff: Duration::ZERO,
             _watcher: None,
@@ -425,6 +473,9 @@ impl Workspace {
             workspace.restore_terminals(cx);
         }
         // A developer hook for smoke runs: open on a tab by name.
+        if !workspace.repos.is_empty() {
+            workspace.tab = Tab::Today;
+        }
         if let Ok(name) = std::env::var("FUBBIK_DESKTOP_TAB")
             && let Some(tab) = Tab::ALL
                 .into_iter()

@@ -79,6 +79,39 @@ impl Workspace {
                     .into_any_element(),
             ),
             choice_row(
+                "Agents at once",
+                match self.config.max_agents {
+                    Some(n) => format!(
+                        "At most {n} running; more launches wait in a queue ({} waiting)",
+                        self.launch_queue.len()
+                    ),
+                    None => "No limit".into(),
+                },
+                div()
+                    .flex()
+                    .gap_1()
+                    .child(button("pref-agents-less", "−").on_click(cx.listener(
+                        |this, _, _, cx| {
+                            let next = this
+                                .config
+                                .max_agents
+                                .map(|n| n.saturating_sub(1).max(1))
+                                .or(Some(4));
+                            this.run(Command::SetMaxAgents(next), cx)
+                        },
+                    )))
+                    .child(button("pref-agents-more", "+").on_click(cx.listener(
+                        |this, _, _, cx| {
+                            let next = this.config.max_agents.map(|n| n + 1).or(Some(4));
+                            this.run(Command::SetMaxAgents(next), cx)
+                        },
+                    )))
+                    .child(button("pref-agents-none", "No limit").on_click(
+                        cx.listener(|this, _, _, cx| this.run(Command::SetMaxAgents(None), cx)),
+                    ))
+                    .into_any_element(),
+            ),
+            choice_row(
                 "Keep terminals running (tmux)",
                 tmux_note.into(),
                 toggle(

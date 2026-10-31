@@ -29,6 +29,70 @@ pub fn now() -> i64 {
         .unwrap_or(0)
 }
 
+/// Days since 1970-01-01 for a civil date (Howard Hinnant's algorithm).
+fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
+fn civil_from_days(z: i64) -> (i64, i64, i64) {
+    let z = z + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    (yoe + era * 400 + i64::from(m <= 2), m, d)
+}
+
+/// `2026-10-31T14:02:05.123Z` / `…+02:00` / `2026-10-31 14:02:05` → unix seconds.
+pub fn parse_rfc3339(text: &str) -> Option<i64> {
+    let text = text.trim();
+    let num = |a: usize, b: usize| text.get(a..b)?.parse::<i64>().ok();
+    let (y, mo, d) = (num(0, 4)?, num(5, 7)?, num(8, 10)?);
+    let (h, mi, s) = (num(11, 13)?, num(14, 16)?, num(17, 19)?);
+    let rest = &text[19..];
+    let rest = rest.trim_start_matches(|c: char| c == '.' || c.is_ascii_digit());
+    let offset = match rest.chars().next() {
+        Some(sign @ ('+' | '-')) => {
+            let hh: i64 = rest.get(1..3)?.parse().ok()?;
+            let mm: i64 = rest.get(4..6).and_then(|m| m.parse().ok()).unwrap_or(0);
+            let off = hh * 3600 + mm * 60;
+            if sign == '+' { off } else { -off }
+        }
+        _ => 0,
+    };
+    Some(days_from_civil(y, mo, d) * DAY + h * 3600 + mi * 60 + s - offset)
+}
+
+/// Unix seconds → `2026-10-31 14:02` (UTC).
+pub fn format_time(t: i64) -> String {
+    let (y, m, d) = civil_from_days(t.div_euclid(DAY));
+    let secs = t.rem_euclid(DAY);
+    format!(
+        "{y:04}-{m:02}-{d:02} {:02}:{:02}",
+        secs / 3600,
+        secs % 3600 / 60
+    )
+}
+
+/// "45s", "12m", "3h", "4d".
+pub fn short_age(seconds: i64) -> String {
+    let s = seconds.max(0);
+    match s {
+        0..60 => format!("{s}s"),
+        60..3600 => format!("{}m", s / 60),
+        3600..86_400 => format!("{}h", s / 3600),
+        _ => format!("{}d", s / 86_400),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Commit {
     pub hash: String,
@@ -289,6 +353,35 @@ pub fn summary(p: &Period) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_and_formats_timestamps() {
+        // Given
+        let texts = [
+            "2026-10-31T14:02:05.123Z",
+            "2026-10-31T16:02:05+02:00",
+            "1970-01-01T00:00:00Z",
+            "junk",
+        ];
+
+        // When
+        let parsed: Vec<Option<i64>> = texts.iter().map(|t| parse_rfc3339(t)).collect();
+
+        // Then
+        assert_eq!(parsed[0], parsed[1], "offsets are applied");
+        assert_eq!(parsed[2], Some(0));
+        assert_eq!(parsed[3], None);
+        assert_eq!(format_time(parsed[0].unwrap()), "2026-10-31 14:02");
+        assert_eq!(
+            [
+                short_age(30),
+                short_age(600),
+                short_age(7200),
+                short_age(3 * DAY)
+            ],
+            ["30s", "10m", "2h", "3d"]
+        );
+    }
 
     #[test]
     fn parses_log_lines() {

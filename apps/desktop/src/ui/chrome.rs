@@ -68,6 +68,59 @@ impl Workspace {
     }
 }
 
+impl Workspace {
+    /// ⇧⌘N: a note into the selected repo's fubbik space, from anywhere.
+    fn render_capture(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let repo = self
+            .repos
+            .get(self.selected)
+            .map(|r| r.entry.name())
+            .unwrap_or_default();
+        div()
+            .absolute()
+            .inset_0()
+            .flex()
+            .justify_center()
+            .pt(px(110.))
+            .bg(theme::overlay())
+            .child(
+                div()
+                    .id("capture")
+                    .w(px(520.))
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .p_3()
+                    .rounded_lg()
+                    .border_1()
+                    .border_color(theme::border())
+                    .bg(theme::elevated())
+                    .shadow(theme::frame_shadow())
+                    .on_mouse_down_out(cx.listener(|this, _, _, cx| {
+                        this.capture_open = false;
+                        cx.notify();
+                    }))
+                    .child(
+                        div()
+                            .text_sm()
+                            .child(format!("Note to {repo}'s fubbik space")),
+                    )
+                    .child(self.field(
+                        Field::NoteTitle,
+                        "Title — enter goes to the text",
+                        window,
+                        cx,
+                    ))
+                    .child(self.field(
+                        Field::NoteBody,
+                        "Text — enter saves, esc cancels",
+                        window,
+                        cx,
+                    )),
+            )
+    }
+}
+
 impl Render for Workspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let translucent = theme::is_translucent();
@@ -130,6 +183,19 @@ impl Render for Workspace {
                     this.run(Command::ShowTab(Tab::Setup), cx)
                 }),
             )
+            .on_action(
+                cx.listener(|this, _: &ShowToday, _, cx| {
+                    this.run(Command::ShowTab(Tab::Today), cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &ShowInsights, _, cx| {
+                this.run(Command::ShowTab(Tab::Insights), cx)
+            }))
+            .on_action(cx.listener(|this, _: &CaptureNote, window, cx| {
+                this.capture_open = true;
+                this.note_title.focus.focus(window);
+                cx.notify();
+            }))
             .on_action(cx.listener(|this, _: &ShowAgents, _, cx| {
                 this.run(Command::ShowTab(Tab::Agents), cx)
             }))
@@ -185,6 +251,9 @@ impl Render for Workspace {
                 root.child(self.render_palette(window, cx))
             })
             .children(self.render_panel(cx))
+            .when(self.capture_open, |root| {
+                root.child(self.render_capture(window, cx))
+            })
             .children(self.render_toast(cx))
     }
 }

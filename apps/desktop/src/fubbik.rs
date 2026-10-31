@@ -987,8 +987,62 @@ fn parse_legacy_chunks(value: &Value) -> Vec<ChunkRef> {
     items(value, Some("chunks")).map(chunk_ref).collect()
 }
 
+/// A fake fubbik server for tests in any module.
+#[cfg(test)]
+pub(crate) mod test_server {
+    /// A tiny HTTP server: path (no query) → (status, body). Each response
+    /// closes its connection. Returns the base URL and the request log.
+    pub(crate) fn fake_server(
+        routes: Vec<(&'static str, u16, String)>,
+    ) -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+        use std::io::{BufRead, BufReader, Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let log = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let seen = log.clone();
+        std::thread::spawn(move || {
+            for stream in listener.incoming().flatten() {
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                let mut request_line = String::new();
+                reader.read_line(&mut request_line).unwrap();
+                let mut length = 0;
+                loop {
+                    let mut header = String::new();
+                    reader.read_line(&mut header).unwrap();
+                    if header.trim().is_empty() {
+                        break;
+                    }
+                    if let Some(v) = header.to_lowercase().strip_prefix("content-length:") {
+                        length = v.trim().parse().unwrap_or(0);
+                    }
+                }
+                let mut body = vec![0; length];
+                reader.read_exact(&mut body).unwrap();
+                let mut parts = request_line.split_whitespace();
+                let method = parts.next().unwrap_or_default().to_string();
+                let target = parts.next().unwrap_or_default().to_string();
+                let path = target.split('?').next().unwrap_or_default().to_string();
+                seen.lock().unwrap().push(format!("{method} {target}"));
+                let (status, text) = routes
+                    .iter()
+                    .find(|(p, ..)| *p == path)
+                    .map(|(_, status, body)| (*status, body.clone()))
+                    .unwrap_or((404, r#"{"message":"not found"}"#.into()));
+                let mut stream = stream;
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 {status} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{text}",
+                    text.len()
+                );
+            }
+        });
+        (base, log)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::test_server::fake_server;
     use super::*;
 
     #[test]
@@ -1183,55 +1237,6 @@ mod tests {
         assert_eq!(parsed[0].fields, ["title"]);
         assert_eq!(grouped.len(), 1);
         assert!(grouped[0].1[0].stale);
-    }
-
-    /// A tiny HTTP server: path (no query) → (status, body). Each response
-    /// closes its connection. Returns the base URL and the request log.
-    fn fake_server(
-        routes: Vec<(&'static str, u16, String)>,
-    ) -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
-        use std::io::{BufRead, BufReader, Read, Write};
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        let base = format!("http://{}", listener.local_addr().unwrap());
-        let log = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-        let seen = log.clone();
-        std::thread::spawn(move || {
-            for stream in listener.incoming().flatten() {
-                let mut reader = BufReader::new(stream.try_clone().unwrap());
-                let mut request_line = String::new();
-                reader.read_line(&mut request_line).unwrap();
-                let mut length = 0;
-                loop {
-                    let mut header = String::new();
-                    reader.read_line(&mut header).unwrap();
-                    if header.trim().is_empty() {
-                        break;
-                    }
-                    if let Some(v) = header.to_lowercase().strip_prefix("content-length:") {
-                        length = v.trim().parse().unwrap_or(0);
-                    }
-                }
-                let mut body = vec![0; length];
-                reader.read_exact(&mut body).unwrap();
-                let mut parts = request_line.split_whitespace();
-                let method = parts.next().unwrap_or_default().to_string();
-                let target = parts.next().unwrap_or_default().to_string();
-                let path = target.split('?').next().unwrap_or_default().to_string();
-                seen.lock().unwrap().push(format!("{method} {target}"));
-                let (status, text) = routes
-                    .iter()
-                    .find(|(p, ..)| *p == path)
-                    .map(|(_, status, body)| (*status, body.clone()))
-                    .unwrap_or((404, r#"{"message":"not found"}"#.into()));
-                let mut stream = stream;
-                let _ = write!(
-                    stream,
-                    "HTTP/1.1 {status} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{text}",
-                    text.len()
-                );
-            }
-        });
-        (base, log)
     }
 
     #[test]

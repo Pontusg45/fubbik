@@ -465,3 +465,318 @@ fn split_opens_a_second_shell_and_unsplit_keeps_it(cx: &mut TestAppContext) {
         (2, None, split.2)
     );
 }
+
+fn git(repo: &std::path::Path, args: &[&str]) {
+    assert!(
+        std::process::Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(args)
+            .status()
+            .unwrap()
+            .success(),
+        "git {args:?}"
+    );
+}
+
+fn commit(repo: &std::path::Path, msg: &str) {
+    git(
+        repo,
+        &[
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=t",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            msg,
+        ],
+    );
+}
+
+/// A plan with one task per status (b waits on a), for board and Today tests.
+fn plan_with_tasks() -> crate::fubbik::PlanDetail {
+    let task = |id: &str, status: &str, deps: &[&str]| crate::fubbik::Task {
+        id: id.into(),
+        title: id.to_uppercase(),
+        status: status.into(),
+        depends_on: deps.iter().map(|d| d.to_string()).collect(),
+        acceptance: vec![("works".into(), false)],
+        ..Default::default()
+    };
+    crate::fubbik::PlanDetail {
+        id: "p1".into(),
+        title: "Desktop".into(),
+        status: "in_progress".into(),
+        tasks: vec![
+            task("a", "in_progress", &[]),
+            task("b", "pending", &["a"]),
+            task("c", "pending", &[]),
+            task("d", "done", &[]),
+        ],
+    }
+}
+
+fn with_knowledge(w: &mut Workspace, plan: crate::fubbik::PlanDetail) {
+    w.repos[0].knowledge = Some(Ok(crate::fubbik::Knowledge {
+        space: Some(crate::fubbik::Space {
+            id: "s1".into(),
+            name: "app".into(),
+        }),
+        plan_details: vec![plan],
+        ..Default::default()
+    }));
+}
+
+#[gpui::test]
+fn merged_task_branch_closes_the_task_and_removes_its_worktree(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a task branch in its own worktree, with work merged into main
+    let dir = tempfile::tempdir().unwrap();
+    let repo = dir.path().join("app");
+    std::fs::create_dir(&repo).unwrap();
+    git(&repo, &["init", "-q", "-b", "main"]);
+    commit(&repo, "base");
+    let base = crate::worktree::head(&repo).unwrap();
+    let wt = crate::worktree::create(&repo, "task/a").unwrap();
+    commit(&wt, "the work");
+    git(
+        &repo,
+        &[
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=t",
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "merge",
+            "task/a",
+        ],
+    );
+    let (server, log) =
+        crate::fubbik::test_server::fake_server(vec![("/api/plans/p1/tasks/a", 200, "{}".into())]);
+    let (view, cx) = open(
+        cx,
+        &format!(
+            "fubbik_url = {server:?}\n[[repo]]\npath = {:?}\n",
+            repo.display().to_string()
+        ),
+    );
+    view.update(cx, |w, _| {
+        let mut plan = plan_with_tasks();
+        plan.tasks[0].link = crate::fubbik::TaskLink {
+            branch: Some("task/a".into()),
+            base_commit: Some(base.clone()),
+            worktree: Some(wt.display().to_string()),
+        };
+        with_knowledge(w, plan);
+        let mut snapshot = w.repos[0].snapshot.clone().unwrap_or_default();
+        snapshot.worktrees = Some(crate::worktree::read(&repo));
+        w.repos[0].snapshot = Some(snapshot);
+    });
+
+    // When
+    view.update(cx, |w, cx| w.close_merged_tasks(cx));
+    cx.run_until_parked();
+
+    // Then: marked done through the API, worktree gone, a note offered
+    let patched = log
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|r| r == "PATCH /api/plans/p1/tasks/a");
+    assert!(patched, "requests: {:?}", log.lock().unwrap());
+    assert!(!wt.exists(), "the clean, merged worktree is removed");
+    let action = view.read_with(cx, |w, _| w.toast.as_ref().and_then(|t| t.action.clone()));
+    assert!(
+        matches!(action, Some(Command::SaveTaskNote { .. })),
+        "{action:?}"
+    );
+}
+
+#[gpui::test]
+fn agents_beyond_the_limit_wait_in_the_queue(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: room for one agent
+    let repo = tempfile::tempdir().unwrap();
+    let path = repo.path().to_path_buf();
+    let (view, cx) = open(
+        cx,
+        &format!(
+            "max_agents = 1\n[[repo]]\npath = {:?}\n",
+            path.display().to_string()
+        ),
+    );
+
+    // When: two launches ("true" stands in for the agent command)
+    view.update(cx, |w, cx| {
+        w.launch_agent(path.clone(), "first".into(), "true".into(), false, cx);
+        w.launch_agent(path.clone(), "second".into(), "true".into(), false, cx);
+    });
+    let (tabs, queued) = view.read_with(cx, |w, _| (w.terminals.len(), w.launch_queue.len()));
+    // The first agent's slot frees (it ended), so the queue drains.
+    view.update(cx, |w, cx| {
+        w.recent_launches.clear();
+        w.drain_launch_queue(cx);
+    });
+
+    // Then
+    assert_eq!((tabs, queued), (1, 1));
+    assert_eq!(
+        view.read_with(cx, |w, _| (w.terminals.len(), w.launch_queue.len())),
+        (2, 0)
+    );
+}
+
+#[gpui::test]
+fn board_moves_and_checklist_ticks_reach_the_api(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given
+    let repo = tempfile::tempdir().unwrap();
+    let (server, log) =
+        crate::fubbik::test_server::fake_server(vec![("/api/plans/p1/tasks/c", 200, "{}".into())]);
+    let (view, cx) = open(
+        cx,
+        &format!(
+            "fubbik_url = {server:?}\n[[repo]]\npath = {:?}\n",
+            repo.path().display().to_string()
+        ),
+    );
+    view.update(cx, |w, cx| {
+        with_knowledge(w, plan_with_tasks());
+        w.run(Command::ShowTab(Tab::Plans), cx);
+    });
+    cx.run_until_parked();
+
+    // When
+    view.update(cx, |w, cx| {
+        w.run(
+            Command::SetTaskStatus {
+                plan: "p1".into(),
+                task: "c".into(),
+                status: "in_progress",
+            },
+            cx,
+        );
+        w.run(
+            Command::ToggleCriterion {
+                repo: 0,
+                plan: "p1".into(),
+                task: "c".into(),
+                index: 0,
+            },
+            cx,
+        );
+    });
+    let ticked = view.read_with(cx, |w, _| {
+        w.find_task(0, "p1", "c").map(|(_, t)| t.acceptance[0].1)
+    });
+    cx.run_until_parked();
+
+    // Then: shown at once, and both writes sent
+    assert_eq!(ticked, Some(true));
+    assert_eq!(
+        log.lock()
+            .unwrap()
+            .iter()
+            .filter(|r| *r == "PATCH /api/plans/p1/tasks/c")
+            .count(),
+        2
+    );
+}
+
+#[gpui::test]
+fn today_insights_and_capture_render(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a repo with a plan
+    let repo = tempfile::tempdir().unwrap();
+    git(repo.path(), &["init", "-q", "-b", "main"]);
+    commit(repo.path(), "base");
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", repo.path().display().to_string()),
+    );
+    view.update(cx, |w, _| with_knowledge(w, plan_with_tasks()));
+
+    // When: each view renders (a panic would fail the test)
+    let initial = view.read_with(cx, |w, _| w.tab);
+    cx.dispatch_action(ShowInsights);
+    cx.run_until_parked();
+    let insights = view.read_with(cx, |w, _| {
+        matches!(w.repos[0].insights, Some(Loadable::Done(Ok(_))))
+    });
+    cx.dispatch_action(ShowToday);
+    cx.run_until_parked();
+    cx.dispatch_action(CaptureNote);
+    cx.run_until_parked();
+    let capturing = view.read_with(cx, |w, _| w.capture_open);
+    cx.simulate_keystrokes("escape");
+
+    // Then
+    assert_eq!(
+        initial,
+        Tab::Today,
+        "Today is the home screen once repos exist"
+    );
+    assert!(insights, "insights were computed in the background");
+    assert!(capturing);
+    assert!(!view.read_with(cx, |w, _| w.capture_open));
+}
+
+#[gpui::test]
+fn task_timeline_lists_claims_and_board_notes_in_order(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a board with a claim and a progress note for task "a"
+    let repo = tempfile::tempdir().unwrap();
+    let board = serde_json::json!({
+        "plan": {"id": "p1", "title": "Desktop"},
+        "tasks": [], "runs": [{"id": "r1", "handle": "claude-1", "status": "active", "metadata": {}}],
+        "claims": [{"taskId": "a", "agentRunId": "r1", "claimedAt": "2026-10-31T10:00:00Z", "expired": false}],
+        "entries": [{"taskId": "a", "kind": "progress", "body": "half way\nmore", "createdAt": "2026-10-31T11:30:00Z"}]
+    });
+    let (server, _) = crate::fubbik::test_server::fake_server(vec![(
+        "/api/plans/p1/board",
+        200,
+        board.to_string(),
+    )]);
+    let (view, cx) = open(
+        cx,
+        &format!(
+            "fubbik_url = {server:?}\n[[repo]]\npath = {:?}\n",
+            repo.path().display().to_string()
+        ),
+    );
+    view.update(cx, |w, _| {
+        let mut plan = plan_with_tasks();
+        plan.tasks[0].created_at = Some("2026-10-30T09:00:00Z".into());
+        with_knowledge(w, plan);
+    });
+
+    // When
+    view.update(cx, |w, cx| {
+        w.run(
+            Command::TaskTimeline {
+                repo: 0,
+                plan: "p1".into(),
+                task: "a".into(),
+            },
+            cx,
+        )
+    });
+    cx.run_until_parked();
+
+    // Then
+    let text = view.read_with(cx, |w, _| match w.panel.as_ref().map(|p| &p.body) {
+        Some(Loadable::Done(Ok(text))) => text.clone(),
+        other => format!("{other:?}"),
+    });
+    let created = text.find("created").expect(&text);
+    let claimed = text.find("claimed by claude-1").expect(&text);
+    let note = text.find("progress: half way").expect(&text);
+    assert!(created < claimed && claimed < note, "{text}");
+    assert!(text.contains("2026-10-31 10:00"), "{text}");
+}

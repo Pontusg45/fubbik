@@ -370,11 +370,11 @@ impl Workspace {
                 self.run_background(cx, "", move || launch::open_in_terminal(&path))
             }
             Command::NewSession(path) => {
-                self.launch_in_terminal(path, "Claude".into(), "claude".into(), cx)
+                self.launch_agent(path, "Claude".into(), "claude".into(), false, cx)
             }
             Command::ResumeSession(agent, id, cwd) => {
                 let label = format!("{} {}", agent.label(), &id[..id.len().min(8)]);
-                self.launch_in_terminal(cwd, label, agent.resume_command(&id), cx);
+                self.launch_agent(cwd, label, agent.resume_command(&id), false, cx);
             }
             Command::CreateWorktree(r) => self.create_worktree(r, cx),
             Command::OpenWeb(path) => cx.open_url(&format!("{}{path}", self.config.web_url())),
@@ -388,6 +388,37 @@ impl Workspace {
                 self.config.terminal = on.then(|| "external".to_string());
                 self.save_config();
             }
+            Command::SetTaskStatus { plan, task, status } => {
+                self.set_task_status(plan, task, status, cx)
+            }
+            Command::ToggleCriterion {
+                repo,
+                plan,
+                task,
+                index,
+            } => self.toggle_criterion(repo, plan, task, index, cx),
+            Command::TaskTimeline { repo, plan, task } => self.task_timeline(repo, plan, task, cx),
+            Command::SaveTaskNote { repo, plan, task } => self.save_task_note(repo, plan, task, cx),
+            Command::SelectPlan(id) => self.board_plan = Some(id),
+            Command::ToggleChecklist(id) => {
+                self.open_checklist = if self.open_checklist.as_ref() == Some(&id) {
+                    None
+                } else {
+                    Some(id)
+                };
+            }
+            Command::RunScript {
+                repo,
+                name,
+                command,
+            } => self.run_script(repo, name, command, cx),
+            Command::StartProfile { repo, profile } => self.start_profile(repo, &profile, cx),
+            Command::SetMaxAgents(max) => {
+                self.config.max_agents = max;
+                self.save_config();
+                self.drain_launch_queue(cx);
+            }
+            Command::CaptureNote => self.capture_open = true,
             Command::Focus { repo, tab } => {
                 self.select(repo);
                 self.tab = tab;
@@ -466,5 +497,56 @@ impl Workspace {
             }
         }
         cx.notify();
+    }
+
+    /// A repo script as a logged task (Logs tab).
+    pub(super) fn run_script(
+        &mut self,
+        repo: usize,
+        name: String,
+        command: String,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(view) = self.repos.get(repo) else {
+            return;
+        };
+        let key = process_key(&view.entry.path, &format!("script:{name}"));
+        let cwd = view.entry.path.clone();
+        self.log_key = Some(key.clone());
+        self.user_stopped.insert(key.clone());
+        let supervisor = self.supervisor.clone();
+        self.run_background(cx, "Running — see Logs", move || {
+            supervisor.stop(&key);
+            supervisor.start(&key, &command, &cwd).map(|_| ())
+        });
+    }
+
+    /// Starts a profile's processes and stops the repo's other processes
+    /// that this app started.
+    pub(super) fn start_profile(&mut self, repo: usize, profile: &str, cx: &mut Context<Self>) {
+        let Some(view) = self.repos.get(repo) else {
+            return;
+        };
+        let Ok(Some(services)) = ServicesFile::load(&view.entry.path) else {
+            return;
+        };
+        let Some(wanted) = services.profile.get(profile).map(|p| p.processes.clone()) else {
+            self.show_error(format!("No profile “{profile}”"));
+            return;
+        };
+        let processes: Vec<(usize, String, bool, bool)> = view
+            .snapshot
+            .iter()
+            .flat_map(|s| s.processes.iter().enumerate())
+            .map(|(i, p)| (i, p.spec.name.clone(), p.owned, p.status.is_up()))
+            .collect();
+        for (index, name, owned, up) in processes {
+            match (wanted.contains(&name), owned, up) {
+                (true, _, false) => self.start_process(repo, index, cx),
+                (false, true, _) => self.stop_process(repo, index, cx),
+                _ => {}
+            }
+        }
+        self.show_info(format!("Profile “{profile}”: {}", wanted.join(", ")));
     }
 }

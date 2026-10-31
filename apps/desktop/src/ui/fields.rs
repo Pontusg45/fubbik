@@ -115,7 +115,11 @@ impl Workspace {
                 }
             }
             (Field::NoteTitle, KeyOutcome::Submit) => self.note_body.focus.focus(window),
-            (Field::NoteBody, KeyOutcome::Submit) => self.submit_note(cx),
+            (Field::NoteBody, KeyOutcome::Submit) => {
+                self.submit_note(cx);
+                self.capture_open = false;
+                self.focus.focus(window);
+            }
             (Field::Reply, KeyOutcome::Submit) => self.send_reply(cx),
             (Field::FubbikUrl | Field::WebUrl | Field::FubbikBin, KeyOutcome::Submit) => {
                 self.submit_preference(field, cx);
@@ -126,7 +130,10 @@ impl Workspace {
                 self.submit_group();
                 self.focus.focus(window);
             }
-            (_, KeyOutcome::Cancel) => self.focus.focus(window),
+            (_, KeyOutcome::Cancel) => {
+                self.capture_open = false;
+                self.focus.focus(window);
+            }
             _ => {}
         }
         cx.notify();

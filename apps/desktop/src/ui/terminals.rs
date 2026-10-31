@@ -111,13 +111,15 @@ impl Workspace {
             self.run_background(cx, "", move || launch::run_in_terminal(&dir, &command));
             return;
         }
-        // Show it in the repo it belongs to.
-        if let Some(repo) = self.repos.iter().position(|r| {
-            dir.starts_with(&r.entry.path)
-                || r.snapshot
-                    .as_ref()
-                    .is_some_and(|s| s.worktree_paths().contains(&dir))
-        }) {
+        // Show it in the repo it belongs to (unless it runs in the background).
+        if !background
+            && let Some(repo) = self.repos.iter().position(|r| {
+                dir.starts_with(&r.entry.path)
+                    || r.snapshot
+                        .as_ref()
+                        .is_some_and(|s| s.worktree_paths().contains(&dir))
+            })
+        {
             self.select(repo);
         }
         if background {
@@ -127,6 +129,51 @@ impl Workspace {
         self.open_terminal(dir, label, Some(command), cx);
         self.tab = Tab::Terminal;
         self.focus_terminal = true;
+    }
+
+    /// An AI agent launch: waits in the queue while `max_agents` are running.
+    pub(super) fn launch_agent(
+        &mut self,
+        dir: PathBuf,
+        label: String,
+        command: String,
+        background: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if self.at_agent_limit() {
+            self.launch_queue.push_back(QueuedLaunch {
+                dir,
+                label,
+                command,
+            });
+            let max = self.config.max_agents.unwrap_or_default();
+            self.show_info(format!(
+                "{max} agents already running — queued ({} waiting)",
+                self.launch_queue.len()
+            ));
+            return;
+        }
+        self.recent_launches.push(Instant::now());
+        self.launch(dir, label, command, background, cx);
+    }
+
+    fn at_agent_limit(&mut self) -> bool {
+        self.recent_launches.retain(|t| t.elapsed() < RECENT_LAUNCH);
+        self.config
+            .max_agents
+            .is_some_and(|max| self.live_agents() + self.recent_launches.len() >= max)
+    }
+
+    /// Starts queued agents while there is room (after each poll).
+    pub(super) fn drain_launch_queue(&mut self, cx: &mut Context<Self>) {
+        while !self.launch_queue.is_empty() && !self.at_agent_limit() {
+            let Some(next) = self.launch_queue.pop_front() else {
+                break;
+            };
+            self.recent_launches.push(Instant::now());
+            self.show_info(format!("Started queued: {}", next.label));
+            self.launch(next.dir, next.label, next.command, true, cx);
+        }
     }
 
     /// Terminal tabs whose directory is the selected repo or one of its worktrees.

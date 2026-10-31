@@ -88,6 +88,40 @@ pub struct RepoSnapshot {
     pub worktrees: Option<Result<Vec<Worktree>, String>>,
     /// AI sessions in the repo or any of its worktrees, live first.
     pub sessions: Vec<AiSession>,
+    /// Worktrees whose branches change the same files (merge conflicts ahead).
+    pub overlaps: Vec<Overlap>,
+    /// Runnable scripts: just recipes, package.json scripts, make targets.
+    pub scripts: Vec<crate::scripts::Script>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Overlap {
+    pub a: String,
+    pub b: String,
+    pub files: Vec<String>,
+}
+
+/// Pairs of worktrees changing the same files: (name, changed files) in,
+/// overlapping pairs out.
+pub fn overlaps(changed: &[(String, Vec<String>)]) -> Vec<Overlap> {
+    let mut out = Vec::new();
+    for (i, (a, a_files)) in changed.iter().enumerate() {
+        for (b, b_files) in &changed[i + 1..] {
+            let files: Vec<String> = a_files
+                .iter()
+                .filter(|f| b_files.contains(f))
+                .cloned()
+                .collect();
+            if !files.is_empty() {
+                out.push(Overlap {
+                    a: a.clone(),
+                    b: b.clone(),
+                    files,
+                });
+            }
+        }
+    }
+    out
 }
 
 impl RepoSnapshot {
@@ -166,6 +200,32 @@ mod tests {
 
         // Then
         assert_eq!(status, Status::Running);
+    }
+
+    #[test]
+    fn finds_worktrees_changing_the_same_files() {
+        // Given
+        let changed = vec![
+            (
+                "task/a".to_string(),
+                vec!["src/x.rs".to_string(), "src/y.rs".to_string()],
+            ),
+            ("task/b".to_string(), vec!["src/y.rs".to_string()]),
+            ("task/c".to_string(), vec!["README.md".to_string()]),
+        ];
+
+        // When
+        let found = overlaps(&changed);
+
+        // Then
+        assert_eq!(
+            found,
+            [Overlap {
+                a: "task/a".into(),
+                b: "task/b".into(),
+                files: vec!["src/y.rs".into()]
+            }]
+        );
     }
 
     #[test]

@@ -26,6 +26,10 @@ pub struct AppConfig {
     /// `"none"`: plain shells that end with the app.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub terminal_persistence: Option<String>,
+    /// Most AI agents running at once across all repos; more launches wait
+    /// in a queue. Unset: no limit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_agents: Option<usize>,
     /// Colors: unset for the built-in look, `"follow"` for your Ghostty
     /// config (its theme, its colors, its font), or a Ghostty theme name.
     #[serde(default, skip_serializing_if = "Option::is_none")]

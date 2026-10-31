@@ -126,10 +126,18 @@ pub fn agents(
     if snapshot.missing {
         return;
     }
-    snapshot.worktrees = match prev.and_then(|p| p.worktrees.clone()) {
-        Some(previous) if !refresh_worktrees => Some(previous),
-        _ => Some(crate::worktree::read(&entry.path)),
-    };
+    match prev {
+        Some(previous) if !refresh_worktrees && previous.worktrees.is_some() => {
+            snapshot.worktrees = previous.worktrees.clone();
+            snapshot.overlaps = previous.overlaps.clone();
+            snapshot.scripts = previous.scripts.clone();
+        }
+        _ => {
+            snapshot.worktrees = Some(crate::worktree::read(&entry.path));
+            snapshot.overlaps = worktree_overlaps(snapshot.worktrees.as_ref());
+            snapshot.scripts = crate::scripts::detect(&entry.path);
+        }
+    }
     let mut roots = vec![entry.path.clone()];
     for path in snapshot.worktree_paths() {
         if !roots.iter().any(|root| path.starts_with(root)) {
@@ -138,6 +146,27 @@ pub fn agents(
     }
     snapshot.sessions = index.lock().unwrap().scan(&roots);
     attach_panes(&mut snapshot.sessions);
+}
+
+/// Files changed by more than one non-main worktree (vs. main).
+fn worktree_overlaps(
+    worktrees: Option<&Result<Vec<crate::worktree::Worktree>, String>>,
+) -> Vec<crate::model::Overlap> {
+    let Some(Ok(worktrees)) = worktrees else {
+        return Vec::new();
+    };
+    let main = worktrees.first().and_then(|w| w.branch.clone());
+    let changed: Vec<(String, Vec<String>)> = worktrees
+        .iter()
+        .filter(|w| !w.main && !w.missing)
+        .map(|w| {
+            (
+                w.name(),
+                crate::worktree::changed_paths(&w.path, main.as_deref()),
+            )
+        })
+        .collect();
+    crate::model::overlaps(&changed)
 }
 
 /// Preview lines kept per live session.

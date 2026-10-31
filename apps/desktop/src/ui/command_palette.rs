@@ -29,6 +29,14 @@ impl Workspace {
                 command: Command::Refresh,
             },
             Entry {
+                label: "Today".into(),
+                command: Command::ShowTab(Tab::Today),
+            },
+            Entry {
+                label: "Capture note…".into(),
+                command: Command::CaptureNote,
+            },
+            Entry {
                 label: "Theme: Built-in".into(),
                 command: Command::SetColors(None),
             },
@@ -99,6 +107,16 @@ impl Workspace {
                 label: format!("Shell (embedded terminal) — {name}"),
                 command: Command::ShellAt(view.entry.path.clone()),
             });
+            for script in view.snapshot.iter().flat_map(|s| s.scripts.iter()) {
+                entries.push(Entry {
+                    label: format!("Run {} — {name}", script.command),
+                    command: Command::RunScript {
+                        repo: r,
+                        name: script.name.clone(),
+                        command: script.command.clone(),
+                    },
+                });
+            }
             entries.push(Entry {
                 label: format!("New Claude session — {name}"),
                 command: Command::NewSession(view.entry.path.clone()),

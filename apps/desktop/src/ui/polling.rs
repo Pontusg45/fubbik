@@ -177,6 +177,7 @@ impl Workspace {
 
     pub(super) fn apply(&mut self, results: Vec<PollResult>, cx: &mut Context<Self>) {
         let mut alerts = Vec::new();
+        let knowledge_arrived = results.iter().any(|r| r.knowledge.is_some());
         for mut result in results {
             let Some(index) = self.repos.iter().position(|r| r.entry.path == result.path) else {
                 continue; // removed while polling
@@ -203,6 +204,10 @@ impl Workspace {
         if let Some(alert) = alerts.pop() {
             self.show_alert(alert);
         }
+        if knowledge_arrived {
+            self.close_merged_tasks(cx);
+        }
+        self.drain_launch_queue(cx);
         self.report_test_exits(cx);
     }
 }

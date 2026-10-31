@@ -12,6 +12,7 @@ use super::widgets::{
 use super::{Field, RepoView, Tab, Workspace, display_path};
 use crate::model::{ProcessState, RepoSnapshot, Status};
 use crate::services::FILE_NAME;
+use crate::services::ServicesFile;
 use crate::theme;
 
 const LOG_RENDER_LINES: usize = 500;
@@ -51,6 +52,7 @@ impl Workspace {
         let terminal = (self.tab == Tab::Terminal)
             .then(|| self.terminal_for_selected(window, cx))
             .flatten();
+        let mut insights = (self.tab == Tab::Insights).then(|| self.render_insights(index, cx));
         let window: &Window = window;
         let repo = &self.repos[index];
         let body: AnyElement = match &repo.snapshot {
@@ -59,8 +61,12 @@ impl Workspace {
                 Tab::Overview => self
                     .render_overview(index, snapshot, window, cx)
                     .into_any_element(),
-                Tab::Processes => self
-                    .render_processes(index, snapshot, cx)
+                Tab::Processes => div()
+                    .flex()
+                    .flex_col()
+                    .gap_6()
+                    .child(self.render_processes(index, snapshot, cx))
+                    .child(self.render_scripts(index, snapshot, cx))
                     .into_any_element(),
                 Tab::Databases => self
                     .render_databases(index, snapshot, cx)
@@ -90,6 +96,10 @@ impl Workspace {
                     .render_sessions(index, snapshot, window, cx)
                     .into_any_element(),
                 Tab::Agents => self.render_all_agents(window, cx),
+                Tab::Today => self.render_today(cx),
+                Tab::Insights => insights
+                    .take()
+                    .unwrap_or_else(|| muted("…").into_any_element()),
             },
         };
         div()
@@ -518,6 +528,88 @@ impl Workspace {
             .map(|(p, process)| self.process_row(index, p, process, cx))
             .collect();
         section("Processes", rows)
+    }
+
+    /// Run profiles and the repo's scripts, each a click away.
+    fn render_scripts(
+        &self,
+        index: usize,
+        snapshot: &RepoSnapshot,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let profiles: Vec<String> = ServicesFile::load(&self.repos[index].entry.path)
+            .ok()
+            .flatten()
+            .map(|s| s.profile.into_keys().collect())
+            .unwrap_or_default();
+        let profile_row = (!profiles.is_empty()).then(|| {
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .child(label("PROFILES"))
+                .children(profiles.into_iter().enumerate().map(|(i, name)| {
+                    let profile = name.clone();
+                    button(("profile", i), format!("▶ {name}")).on_click(cx.listener(
+                        move |this, _, _, cx| {
+                            this.run(
+                                Command::StartProfile {
+                                    repo: index,
+                                    profile: profile.clone(),
+                                },
+                                cx,
+                            )
+                        },
+                    ))
+                }))
+                .child(muted("starts these, stops the repo's others"))
+        });
+        let mut groups: Vec<(String, Vec<&crate::scripts::Script>)> = Vec::new();
+        for script in &snapshot.scripts {
+            match groups.iter_mut().find(|(tool, _)| *tool == script.tool) {
+                Some((_, list)) => list.push(script),
+                None => groups.push((script.tool.clone(), vec![script])),
+            }
+        }
+        let rows: Vec<AnyElement> = groups
+            .into_iter()
+            .map(|(tool, scripts)| {
+                row()
+                    .child(div().w(px(56.)).child(muted(tool.clone())))
+                    .child(
+                        div()
+                            .flex()
+                            .flex_wrap()
+                            .gap_1()
+                            .children(scripts.into_iter().map(|script| {
+                                let (name, command) = (script.name.clone(), script.command.clone());
+                                button(
+                                    SharedString::from(format!("script-{tool}-{}", script.name)),
+                                    script.name.clone(),
+                                )
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
+                                        this.run(
+                                            Command::RunScript {
+                                                repo: index,
+                                                name: name.clone(),
+                                                command: command.clone(),
+                                            },
+                                            cx,
+                                        )
+                                    },
+                                ))
+                            })),
+                    )
+                    .into_any_element()
+            })
+            .collect();
+        div()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .children(profile_row)
+            .child(section("Scripts (output in Logs)", rows))
     }
 
     fn process_row(

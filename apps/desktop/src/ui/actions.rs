@@ -14,6 +14,8 @@ use crate::{agent_task, claude_md, gaps, launch, setup, theme, worktree};
 
 /// Files sent to the per-file lookup for a branch (one request each).
 const LINKED_FILE_LIMIT: usize = 40;
+/// A branch this many commits behind main gets a warning in its review.
+const FAR_BEHIND: usize = 50;
 /// Files sent to the `for-files` context lookup.
 const CONTEXT_FILE_LIMIT: usize = 60;
 
@@ -124,7 +126,7 @@ impl Workspace {
                         this.show_info(format!("Claude is on “{title}” in {place}"));
                         // The new worktree must be in the snapshot for the tab to show under this repo.
                         this.refresh_worktrees = true;
-                        this.launch(
+                        this.launch_agent(
                             started.cwd,
                             format!("Task: {title}"),
                             started.command,
@@ -660,7 +662,14 @@ impl Workspace {
         };
         let main_path = main.path.clone();
         self.panel = Some(Panel {
-            title: format!("{branch} → {main_branch}"),
+            title: if this.behind > FAR_BEHIND {
+                format!(
+                    "{branch} → {main_branch}  ⚠ {} commits behind {main_branch}: merge or rebase it first",
+                    this.behind
+                )
+            } else {
+                format!("{branch} → {main_branch}")
+            },
             body: Loadable::Loading,
             actions: vec![
                 (

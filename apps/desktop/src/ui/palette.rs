@@ -35,6 +35,45 @@ pub enum Command {
     SetPersistence(bool),
     /// AI sessions in Terminal.app (true) or the Terminal tab.
     SetExternalTerminal(bool),
+    SetTaskStatus {
+        plan: String,
+        task: String,
+        status: &'static str,
+    },
+    ToggleCriterion {
+        repo: usize,
+        plan: String,
+        task: String,
+        index: usize,
+    },
+    TaskTimeline {
+        repo: usize,
+        plan: String,
+        task: String,
+    },
+    SaveTaskNote {
+        repo: usize,
+        plan: String,
+        task: String,
+    },
+    /// The plan the board shows.
+    SelectPlan(String),
+    /// Expands or collapses a task card's acceptance checklist.
+    ToggleChecklist(String),
+    /// Runs a repo script (just, npm, make) as a logged task.
+    RunScript {
+        repo: usize,
+        name: String,
+        command: String,
+    },
+    /// Starts exactly a profile's processes and stops the repo's others.
+    StartProfile {
+        repo: usize,
+        profile: String,
+    },
+    SetMaxAgents(Option<usize>),
+    /// Quick capture of a note into the selected repo's space.
+    CaptureNote,
     /// Select a repo and show one of its tabs.
     Focus {
         repo: usize,

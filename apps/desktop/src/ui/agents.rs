@@ -111,6 +111,22 @@ impl Workspace {
         if live > 0 {
             badges = badges.child(pill(format!("{live} AI live"), theme::accent()));
         }
+        let name = worktree.name();
+        for overlap in snapshot
+            .overlaps
+            .iter()
+            .filter(|o| o.a == name || o.b == name)
+        {
+            let other = if overlap.a == name {
+                &overlap.b
+            } else {
+                &overlap.a
+            };
+            badges = badges.child(pill(
+                format!("overlaps {other}: {} file(s)", overlap.files.len()),
+                theme::status(Status::Degraded),
+            ));
+        }
 
         let detail = if worktree.missing {
             "folder is gone — Prune stale cleans it up".to_string()
