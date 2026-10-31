@@ -1,0 +1,155 @@
+//! Text fields: key handling, and what pressing enter in each one does.
+
+use super::*;
+
+impl Workspace {
+    pub(super) fn submit_note(&mut self, cx: &mut Context<Self>) {
+        let title = self.note_title.text.trim().to_string();
+        if title.is_empty() {
+            self.show_error("A note needs a title");
+            return;
+        }
+        let Some(space_id) = self
+            .repos
+            .get(self.selected)
+            .and_then(|v| v.knowledge.as_ref())
+            .and_then(|k| k.as_ref().ok())
+            .and_then(|k| k.space.as_ref())
+            .map(|s| s.id.clone())
+        else {
+            self.show_error("This repo has no fubbik space");
+            return;
+        };
+        let content = self.note_body.text.clone();
+        self.note_title.text.clear();
+        self.note_body.text.clear();
+        let client = self.client.clone();
+        let task = cx
+            .background_executor()
+            .spawn(async move { client.quick_note(&space_id, &title, &content) });
+        cx.spawn(async move |this, cx| {
+            let result = task.await;
+            this.update(cx, |this, cx| {
+                match result {
+                    Ok(()) => this.show_info("Note saved to fubbik"),
+                    Err(error) => this.show_error(format!("Could not save the note: {error}")),
+                }
+                this.poll_now(true, cx);
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    pub(super) fn submit_group(&mut self) {
+        let group = self.group_field.text.trim().to_string();
+        let Some(view) = self.repos.get_mut(self.selected) else {
+            return;
+        };
+        view.entry.group = (!group.is_empty()).then_some(group);
+        self.save_config();
+        self.show_info("Group saved");
+    }
+
+    pub(super) fn field_mut(&mut self, field: Field) -> &mut TextField {
+        match field {
+            Field::Palette => &mut self.palette_field,
+            Field::LogFilter => &mut self.log_filter,
+            Field::NoteTitle => &mut self.note_title,
+            Field::NoteBody => &mut self.note_body,
+            Field::Group => &mut self.group_field,
+            Field::NewWorktree => &mut self.worktree_field,
+            Field::Reply => &mut self.reply_field,
+        }
+    }
+
+    pub(super) fn on_field_key(
+        &mut self,
+        field: Field,
+        event: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let keystroke = &event.keystroke;
+        if keystroke.modifiers.platform && keystroke.key == "v" {
+            if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
+                self.field_mut(field)
+                    .text
+                    .push_str(text.lines().next().unwrap_or_default());
+                cx.stop_propagation();
+                cx.notify();
+            }
+            return;
+        }
+        let outcome = apply_key(
+            &mut self.field_mut(field).text,
+            &keystroke.key,
+            keystroke.key_char.as_deref(),
+            &keystroke.modifiers,
+        );
+        if outcome == KeyOutcome::Ignored {
+            return;
+        }
+        cx.stop_propagation();
+        match (field, outcome) {
+            (Field::Palette, KeyOutcome::Edited) => {
+                self.palette_selected = 0;
+                self.search_chunks(cx);
+            }
+            (Field::Palette, KeyOutcome::Up) => {
+                self.palette_selected = self.palette_selected.saturating_sub(1)
+            }
+            (Field::Palette, KeyOutcome::Down) => self.palette_selected += 1,
+            (Field::Palette, KeyOutcome::Cancel) => self.toggle_palette(window),
+            (Field::Palette, KeyOutcome::Submit) => {
+                let matches = self.palette_matches();
+                let chosen = matches
+                    .get(self.palette_selected.min(matches.len().saturating_sub(1)))
+                    .cloned();
+                self.toggle_palette(window);
+                if let Some(entry) = chosen {
+                    self.run(entry.command, cx);
+                }
+            }
+            (Field::NoteTitle, KeyOutcome::Submit) => self.note_body.focus.focus(window),
+            (Field::NoteBody, KeyOutcome::Submit) => self.submit_note(cx),
+            (Field::Reply, KeyOutcome::Submit) => self.send_reply(cx),
+            (Field::NewWorktree, KeyOutcome::Submit) => self.create_worktree(self.selected, cx),
+            (Field::Group, KeyOutcome::Submit) => {
+                self.submit_group();
+                self.focus.focus(window);
+            }
+            (_, KeyOutcome::Cancel) => self.focus.focus(window),
+            _ => {}
+        }
+        cx.notify();
+    }
+
+    /// Wraps a field's look with focus tracking and key handling.
+    pub(super) fn field(
+        &self,
+        field: Field,
+        placeholder: &str,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let text_field = match field {
+            Field::Palette => &self.palette_field,
+            Field::LogFilter => &self.log_filter,
+            Field::NoteTitle => &self.note_title,
+            Field::NoteBody => &self.note_body,
+            Field::Group => &self.group_field,
+            Field::NewWorktree => &self.worktree_field,
+            Field::Reply => &self.reply_field,
+        };
+        let focus = text_field.focus.clone();
+        widgets::text_box(&text_field.text, placeholder, focus.is_focused(window))
+            .track_focus(&focus)
+            .on_mouse_down(gpui::MouseButton::Left, move |_, window, _| {
+                focus.focus(window)
+            })
+            .on_key_down(cx.listener(move |this, event, window, cx| {
+                this.on_field_key(field, event, window, cx)
+            }))
+    }
+}
