@@ -26,10 +26,22 @@ impl Workspace {
             .child(title)
     }
 
-    pub(super) fn render_toast(&self) -> Option<impl IntoElement> {
+    pub(super) fn render_toast(&self, cx: &mut Context<Self>) -> Option<impl IntoElement> {
         let toast = self.toast.as_ref()?;
+        let action = toast.action.clone();
         Some(
             div()
+                .id("toast")
+                .when(action.is_some(), |d| {
+                    d.cursor_pointer()
+                        .hover(|d| d.border_color(theme::accent()))
+                })
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    if let Some(command) = action.clone() {
+                        this.toast = None;
+                        this.run(command, cx);
+                    }
+                }))
                 .absolute()
                 .bottom_4()
                 .right_4()
@@ -118,6 +130,9 @@ impl Render for Workspace {
                     this.run(Command::ShowTab(Tab::Setup), cx)
                 }),
             )
+            .on_action(cx.listener(|this, _: &ShowAgents, _, cx| {
+                this.run(Command::ShowTab(Tab::Agents), cx)
+            }))
             .on_action(cx.listener(|this, _: &ShowTerminal, _, cx| {
                 this.run(Command::ShowTab(Tab::Terminal), cx)
             }))
@@ -164,6 +179,6 @@ impl Render for Workspace {
                 root.child(self.render_palette(window, cx))
             })
             .children(self.render_panel(cx))
-            .children(self.render_toast())
+            .children(self.render_toast(cx))
     }
 }

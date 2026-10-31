@@ -378,6 +378,16 @@ impl Workspace {
             }
             Command::CreateWorktree(r) => self.create_worktree(r, cx),
             Command::OpenWeb(path) => cx.open_url(&format!("{}{path}", self.config.web_url())),
+            Command::Focus { repo, tab } => {
+                self.select(repo);
+                self.tab = tab;
+            }
+            Command::ReviewWorktree { repo, path } => self.review_worktree(repo, path, cx),
+            Command::RunIn {
+                dir,
+                label,
+                command,
+            } => self.launch_in_terminal(dir, label, command, cx),
             Command::ShellAt(path) => {
                 match self
                     .terminals

@@ -176,12 +176,21 @@ impl Workspace {
     }
 
     pub(super) fn apply(&mut self, results: Vec<PollResult>, cx: &mut Context<Self>) {
-        for result in results {
-            let Some(repo) = self.repos.iter_mut().find(|r| r.entry.path == result.path) else {
+        let mut alerts = Vec::new();
+        for mut result in results {
+            let Some(index) = self.repos.iter().position(|r| r.entry.path == result.path) else {
                 continue; // removed while polling
             };
+            detect_quiet(&mut self.quiet, &mut result.snapshot.sessions);
+            let repo = &mut self.repos[index];
             if let Some(prev) = &repo.snapshot {
-                notify_changes(&repo.entry, prev, &result.snapshot, &mut self.user_stopped);
+                alerts.extend(notify_changes(
+                    index,
+                    &repo.entry,
+                    prev,
+                    &result.snapshot,
+                    &mut self.user_stopped,
+                ));
             }
             repo.snapshot = Some(result.snapshot);
             if let Some(knowledge) = result.knowledge {
@@ -191,7 +200,37 @@ impl Workspace {
                 repo.setup = Some(setup);
             }
         }
+        if let Some(alert) = alerts.pop() {
+            self.show_alert(alert);
+        }
         self.report_test_exits(cx);
+    }
+}
+
+/// Polls of an unchanged screen after which a working agent counts as waiting.
+const QUIET_POLLS: u32 = 3;
+
+/// Agents without a status registry (Codex): a screen that changed and then
+/// stayed still for `QUIET_POLLS` polls means the agent is waiting for input.
+fn detect_quiet(quiet: &mut HashMap<String, Quiet>, sessions: &mut [crate::sessions::AiSession]) {
+    for session in sessions.iter_mut() {
+        if session.agent != crate::sessions::Agent::Codex || !session.state.is_live() {
+            continue;
+        }
+        let Some(preview) = &session.preview else {
+            continue;
+        };
+        let entry = quiet.entry(session.id.clone()).or_default();
+        if entry.preview == *preview {
+            entry.unchanged_polls += 1;
+        } else {
+            entry.was_working |= !entry.preview.is_empty();
+            entry.unchanged_polls = 0;
+            entry.preview = preview.clone();
+        }
+        if entry.was_working && entry.unchanged_polls >= QUIET_POLLS {
+            session.state = SessionState::Idle;
+        }
     }
 }
 
@@ -245,11 +284,20 @@ pub(super) fn fetch_knowledge(
 /// A notification when a process goes down on its own, or starts failing
 /// its health check.
 pub(super) fn notify_changes(
+    index: usize,
     entry: &RepoEntry,
     prev: &RepoSnapshot,
     next: &RepoSnapshot,
     user_stopped: &mut HashSet<String>,
-) {
+) -> Vec<Alert> {
+    let mut alerts = Vec::new();
+    let mut alert = |title: &str, body: String, tab: Tab| {
+        launch::notify(title, &body);
+        alerts.push(Alert {
+            message: format!("{title}: {body} — click to open"),
+            target: Command::Focus { repo: index, tab },
+        });
+    };
     for process in &next.processes {
         let Some(before) = prev.processes.iter().find(|p| p.key == process.key) else {
             continue;
@@ -259,25 +307,93 @@ pub(super) fn notify_changes(
         match (before.status, process.status) {
             (Status::Running | Status::External | Status::Degraded, Status::Stopped) => {
                 if !user_stopped.remove(&process.key) {
-                    launch::notify(&repo, &format!("{name} stopped"));
+                    alert(&repo, format!("{name} stopped"), Tab::Processes);
                 }
             }
             (Status::Running | Status::External, Status::Degraded) => {
-                launch::notify(&repo, &format!("{name} is failing its health check"));
+                alert(
+                    &repo,
+                    format!("{name} is failing its health check"),
+                    Tab::Processes,
+                );
             }
             _ => {}
         }
     }
     for session in &next.sessions {
-        let was_busy = prev
-            .sessions
-            .iter()
-            .any(|s| s.id == session.id && s.state == SessionState::Busy);
-        if was_busy && session.state == SessionState::Idle {
-            launch::notify(
+        let was_working = prev.sessions.iter().any(|s| {
+            s.id == session.id && matches!(s.state, SessionState::Busy | SessionState::Active)
+        });
+        if was_working && session.state == SessionState::Idle {
+            alert(
                 &format!("{} — {}", session.agent.label(), entry.name()),
-                &format!("Waiting for you: {}", session.title),
+                format!("Waiting for you: {}", session.title),
+                Tab::Sessions,
             );
         }
+    }
+    alerts
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sessions::{Agent, AiSession};
+
+    fn codex(preview: &str) -> AiSession {
+        AiSession {
+            agent: Agent::Codex,
+            id: "c1".into(),
+            title: "t".into(),
+            cwd: "/code".into(),
+            branch: None,
+            state: SessionState::Active,
+            pid: None,
+            last_activity: std::time::SystemTime::now(),
+            pane: None,
+            preview: Some(preview.into()),
+        }
+    }
+
+    #[test]
+    fn a_codex_screen_that_stops_changing_is_waiting() {
+        // Given
+        let mut quiet = HashMap::new();
+        let mut states = Vec::new();
+
+        // When: working (the screen changes), then still for three polls
+        for preview in [
+            "thinking.",
+            "thinking..",
+            "done?",
+            "done?",
+            "done?",
+            "done?",
+        ] {
+            let mut sessions = [codex(preview)];
+            detect_quiet(&mut quiet, &mut sessions);
+            states.push(sessions[0].state);
+        }
+
+        // Then
+        use SessionState::{Active, Idle};
+        assert_eq!(states, [Active, Active, Active, Active, Active, Idle]);
+    }
+
+    #[test]
+    fn a_screen_that_never_changed_is_not_called_waiting() {
+        // Given: first seen already still (e.g. the app started meanwhile)
+        let mut quiet = HashMap::new();
+        let mut last = SessionState::Active;
+
+        // When
+        for _ in 0..6 {
+            let mut sessions = [codex("idle prompt")];
+            detect_quiet(&mut quiet, &mut sessions);
+            last = sessions[0].state;
+        }
+
+        // Then
+        assert_eq!(last, SessionState::Active);
     }
 }

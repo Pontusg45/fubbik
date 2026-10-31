@@ -30,9 +30,9 @@ use gpui::{
 
 use supervisor::Supervisor;
 use ui::{
-    ChooseTheme, NextRepo, PrevRepo, Quit, Refresh, RegisterRepo, ShowDatabases, ShowKnowledge,
-    ShowLogs, ShowOverview, ShowPlans, ShowProcesses, ShowSessions, ShowSetup, ShowTerminal,
-    ShowWorktrees, TogglePalette, ToggleTheme, Workspace,
+    ChooseTheme, NextRepo, PrevRepo, Quit, Refresh, RegisterRepo, ShowAgents, ShowDatabases,
+    ShowKnowledge, ShowLogs, ShowOverview, ShowPlans, ShowProcesses, ShowSessions, ShowSetup,
+    ShowTerminal, ShowWorktrees, TogglePalette, ToggleTheme, Workspace,
 };
 
 fn main() {
@@ -86,6 +86,7 @@ fn main() {
             KeyBinding::new("cmd-8", ShowKnowledge, None),
             KeyBinding::new("cmd-9", ShowSetup, None),
             KeyBinding::new("cmd-0", ShowTerminal, None),
+            KeyBinding::new("cmd-shift-a", ShowAgents, None),
             KeyBinding::new("cmd-o", RegisterRepo, None),
             KeyBinding::new("cmd-shift-t", ToggleTheme, None),
             KeyBinding::new("cmd-r", Refresh, None),
@@ -122,6 +123,7 @@ fn main() {
                     MenuItem::action("Knowledge", ShowKnowledge),
                     MenuItem::action("Setup", ShowSetup),
                     MenuItem::action("Terminal", ShowTerminal),
+                    MenuItem::action("All Agents", ShowAgents),
                 ],
             },
         ]);

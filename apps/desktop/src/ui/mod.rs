@@ -59,6 +59,7 @@ actions!(
         ShowPlans,
         ShowSetup,
         ShowTerminal,
+        ShowAgents,
         ToggleTheme,
         ChooseTheme,
         RegisterRepo,
@@ -92,10 +93,12 @@ pub enum Tab {
     Knowledge,
     Setup,
     Terminal,
+    /// Every agent in every repo.
+    Agents,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 10] = [
+    pub const ALL: [Tab; 11] = [
         Tab::Overview,
         Tab::Processes,
         Tab::Databases,
@@ -106,6 +109,7 @@ impl Tab {
         Tab::Knowledge,
         Tab::Setup,
         Tab::Terminal,
+        Tab::Agents,
     ];
 
     pub fn label(self) -> &'static str {
@@ -120,6 +124,7 @@ impl Tab {
             Tab::Knowledge => "Knowledge",
             Tab::Setup => "Setup",
             Tab::Terminal => "Terminal",
+            Tab::Agents => "All agents",
         }
     }
 }
@@ -182,6 +187,8 @@ pub struct BranchContext {
 pub struct Panel {
     pub title: String,
     pub body: Loadable<String>,
+    /// Buttons under the title, e.g. "Open PR".
+    pub actions: Vec<(String, Command)>,
 }
 
 /// The server and the local binary, re-read with the slow poll.
@@ -238,6 +245,23 @@ struct Toast {
     message: SharedString,
     error: bool,
     at: Instant,
+    /// Clicking the toast runs this (e.g. jump to the session it is about).
+    action: Option<Command>,
+}
+
+/// A notification's in-app side: a toast you can click.
+pub struct Alert {
+    pub message: String,
+    pub target: Command,
+}
+
+/// Screen-change tracking for agents without a status registry (Codex).
+#[derive(Default)]
+struct Quiet {
+    preview: String,
+    unchanged_polls: u32,
+    /// The screen changed at least once (the agent was working).
+    was_working: bool,
 }
 
 pub struct Workspace {
@@ -275,6 +299,8 @@ pub struct Workspace {
     /// Terminal tabs are tmux sessions (tmux is installed and not turned off).
     tmux_terminals: bool,
     reply_field: TextField,
+    /// Per agent session id (Codex): how long its screen has been still.
+    quiet: HashMap<String, Quiet>,
     /// How long knowledge fetches wait after the API failed (doubles).
     api_backoff: Duration,
     /// Watches services files and Claude's live-session registry.
@@ -352,6 +378,7 @@ impl Workspace {
             active_terminal: None,
             tmux_terminals: false,
             reply_field: TextField::new(cx),
+            quiet: HashMap::new(),
             api_backoff: Duration::ZERO,
             _watcher: None,
             _watch_task: Task::ready(()),
@@ -399,6 +426,7 @@ impl Workspace {
             message: message.into(),
             error: true,
             at: Instant::now(),
+            action: None,
         });
     }
 
@@ -407,6 +435,17 @@ impl Workspace {
             message: message.into(),
             error: false,
             at: Instant::now(),
+            action: None,
+        });
+    }
+
+    /// A toast that does something when clicked.
+    fn show_alert(&mut self, alert: Alert) {
+        self.toast = Some(Toast {
+            message: alert.message.into(),
+            error: false,
+            at: Instant::now(),
+            action: Some(alert.target),
         });
     }
 

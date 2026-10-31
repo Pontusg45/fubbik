@@ -31,6 +31,22 @@ pub enum Command {
     RemoveWorktree(usize, PathBuf),
     PruneWorktrees(usize),
     ToggleTheme,
+    /// Select a repo and show one of its tabs.
+    Focus {
+        repo: usize,
+        tab: Tab,
+    },
+    /// A worktree's branch against main, with PR and merge actions.
+    ReviewWorktree {
+        repo: usize,
+        path: PathBuf,
+    },
+    /// Runs a command in a terminal tab (where its prompts can be answered).
+    RunIn {
+        dir: PathBuf,
+        label: String,
+        command: String,
+    },
     /// None: built-in; `"follow"`: the Ghostty config; else a theme name.
     SetColors(Option<String>),
     /// The embedded terminal, in this directory.

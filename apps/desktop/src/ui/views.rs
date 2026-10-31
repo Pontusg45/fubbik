@@ -89,6 +89,7 @@ impl Workspace {
                 Tab::Sessions => self
                     .render_sessions(index, snapshot, window, cx)
                     .into_any_element(),
+                Tab::Agents => self.render_all_agents(window, cx),
             },
         };
         div()

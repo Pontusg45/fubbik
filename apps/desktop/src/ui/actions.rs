@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use gpui::{Context, FontWeight, IntoElement, div, prelude::*, px};
 
+use super::palette::Command;
 use super::widgets::{button, muted};
 use super::{BranchContext, Loadable, Panel, Workspace};
 use crate::fubbik::FubbikClient;
@@ -408,6 +409,7 @@ impl Workspace {
         self.panel = Some(Panel {
             title: format!("Why {relative} is the way it is"),
             body: Loadable::Loading,
+            actions: Vec::new(),
         });
         let client = self.client.clone();
         let space = view.space_id();
@@ -491,7 +493,24 @@ impl Workspace {
                 .flex_col()
                 .font_family("Menlo")
                 .text_xs()
-                .children(text.lines().map(|line| div().child(line.to_string())))
+                .children(text.lines().map(|line| {
+                    // Diffs read better colored; other text is unaffected.
+                    let color = if line.starts_with("+++") || line.starts_with("---") {
+                        theme::text_muted()
+                    } else if line.starts_with('+') {
+                        theme::status(crate::model::Status::Running)
+                    } else if line.starts_with('-') {
+                        theme::danger()
+                    } else if line.starts_with("@@") {
+                        theme::accent()
+                    } else {
+                        theme::text()
+                    };
+                    div()
+                        .whitespace_nowrap()
+                        .text_color(color)
+                        .child(line.to_string())
+                }))
                 .into_any_element(),
         };
         Some(
@@ -531,12 +550,28 @@ impl Workspace {
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .child(panel.title.clone()),
                                 )
-                                .child(button("panel-close", "Close  esc").on_click(cx.listener(
-                                    |this, _, _, cx| {
-                                        this.panel = None;
-                                        cx.notify();
-                                    },
-                                ))),
+                                .child(
+                                    div()
+                                        .flex()
+                                        .gap_1()
+                                        .children(panel.actions.iter().enumerate().map(
+                                            |(i, (label, command))| {
+                                                let command = command.clone();
+                                                button(("panel-action", i), label.clone()).on_click(
+                                                    cx.listener(move |this, _, _, cx| {
+                                                        this.panel = None;
+                                                        this.run(command.clone(), cx);
+                                                    }),
+                                                )
+                                            },
+                                        ))
+                                        .child(button("panel-close", "Close  esc").on_click(
+                                            cx.listener(|this, _, _, cx| {
+                                                this.panel = None;
+                                                cx.notify();
+                                            }),
+                                        )),
+                                ),
                         )
                         .child(
                             div()
@@ -598,5 +633,67 @@ impl Workspace {
         }
         self.tab = super::Tab::Terminal;
         self.focus_terminal = true;
+    }
+
+    /// A worktree's branch against main, in the panel, with "Open PR" and
+    /// "Merge into main" (both run in a terminal tab, where their prompts
+    /// and output can be seen).
+    pub(super) fn review_worktree(&mut self, repo: usize, path: PathBuf, cx: &mut Context<Self>) {
+        let Some(view) = self.repos.get(repo) else {
+            return;
+        };
+        let worktrees = view
+            .snapshot
+            .as_ref()
+            .and_then(|s| s.worktrees.as_ref()?.as_ref().ok().cloned())
+            .unwrap_or_default();
+        let (Some(main), Some(this)) = (
+            worktrees.iter().find(|w| w.main),
+            worktrees.iter().find(|w| w.path == path),
+        ) else {
+            self.show_error("That worktree is no longer listed");
+            return;
+        };
+        let (Some(main_branch), Some(branch)) = (main.branch.clone(), this.branch.clone()) else {
+            self.show_error("Review needs both the main worktree and this one on a branch");
+            return;
+        };
+        let main_path = main.path.clone();
+        self.panel = Some(Panel {
+            title: format!("{branch} → {main_branch}"),
+            body: Loadable::Loading,
+            actions: vec![
+                (
+                    "Open PR".into(),
+                    Command::RunIn {
+                        dir: path.clone(),
+                        label: format!("PR {branch}"),
+                        command: "gh pr create --fill".into(),
+                    },
+                ),
+                (
+                    format!("Merge into {main_branch}"),
+                    Command::RunIn {
+                        dir: main_path,
+                        label: format!("Merge {branch}"),
+                        command: format!("git merge --no-ff '{}'", branch.replace('\'', "")),
+                    },
+                ),
+            ],
+        });
+        let task = cx
+            .background_executor()
+            .spawn(async move { worktree::review(&path, &main_branch) });
+        cx.spawn(async move |this, cx| {
+            let result = task.await;
+            this.update(cx, |this, cx| {
+                if let Some(panel) = &mut this.panel {
+                    panel.body = Loadable::Done(result);
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
     }
 }

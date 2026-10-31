@@ -315,3 +315,39 @@ fn cmd_f_searches_the_scrollback(cx: &mut TestAppContext) {
     assert_eq!(status, Some(("157".to_string(), 1)));
     assert_eq!(terminal.read_with(cx, |t, _| t.search_status()), None);
 }
+
+#[gpui::test]
+fn all_agents_tab_and_clickable_alerts(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: two repos, the first selected
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let config = format!(
+        "[[repo]]\npath = {:?}\n\n[[repo]]\npath = {:?}\n",
+        a.path().display().to_string(),
+        b.path().display().to_string()
+    );
+    let (view, cx) = open(cx, &config);
+
+    // When: ⇧⌘A's action, then an alert about the second repo is acted on
+    cx.dispatch_action(ShowAgents);
+    cx.run_until_parked();
+    let on_agents = view.read_with(cx, |w, _| w.tab);
+    view.update(cx, |w, cx| {
+        w.show_alert(Alert {
+            message: "web stopped".into(),
+            target: Command::Focus {
+                repo: 1,
+                tab: Tab::Processes,
+            },
+        });
+        let action = w.toast.as_ref().and_then(|t| t.action.clone()).unwrap();
+        w.run(action, cx);
+    });
+
+    // Then
+    assert_eq!(on_agents, Tab::Agents);
+    assert_eq!(
+        view.read_with(cx, |w, _| (w.selected, w.tab)),
+        (1, Tab::Processes)
+    );
+}

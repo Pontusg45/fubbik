@@ -158,6 +158,21 @@ impl Workspace {
                 )));
         }
         if !worktree.main && !worktree.missing {
+            let review = path.clone();
+            actions = actions.child(button(id("review"), "Review").on_click(cx.listener(
+                move |this, _, _, cx| {
+                    this.run(
+                        Command::ReviewWorktree {
+                            repo,
+                            path: review.clone(),
+                        },
+                        cx,
+                    );
+                    cx.notify();
+                },
+            )));
+        }
+        if !worktree.main && !worktree.missing {
             actions = actions.child(
                 button(id("remove"), "Remove")
                     .text_color(theme::danger())
@@ -376,6 +391,54 @@ impl Workspace {
             )
             .child(section(format!("Live ({live_count})"), live_rows))
             .child(section("Recent", ended_rows))
+    }
+
+    /// Every repo's agents: live ones, then the most recent few, per repo.
+    pub(super) fn render_all_agents(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
+        let now = SystemTime::now();
+        let mut column = div().flex().flex_col().gap_6();
+        let mut any = false;
+        for (repo, view) in self.repos.iter().enumerate() {
+            let Some(snapshot) = &view.snapshot else {
+                continue;
+            };
+            let live = snapshot
+                .sessions
+                .iter()
+                .filter(|s| s.state.is_live())
+                .count();
+            let shown: Vec<&AiSession> = snapshot
+                .sessions
+                .iter()
+                .filter(|s| s.state.is_live())
+                .chain(
+                    snapshot
+                        .sessions
+                        .iter()
+                        .filter(|s| !s.state.is_live())
+                        .take(3),
+                )
+                .collect();
+            if shown.is_empty() {
+                continue;
+            }
+            any = true;
+            let rows = shown
+                .into_iter()
+                .enumerate()
+                .map(|(i, session)| {
+                    self.session_row(repo, 1000 + i, session, snapshot, now, window, cx)
+                })
+                .collect();
+            column = column.child(section(
+                format!("{} — {live} live", view.entry.name()),
+                rows,
+            ));
+        }
+        if !any {
+            column = column.child(muted("No AI sessions in any registered repo yet."));
+        }
+        column.into_any_element()
     }
 
     #[allow(clippy::too_many_arguments)]

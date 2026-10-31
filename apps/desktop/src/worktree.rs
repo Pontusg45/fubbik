@@ -159,6 +159,54 @@ pub fn changed_paths(worktree: &Path, main_branch: Option<&str>) -> Vec<String> 
     paths
 }
 
+/// Lines of diff kept in a review; the stat above it covers everything.
+pub const REVIEW_DIFF_LINES: usize = 3000;
+
+/// What a worktree's branch would bring into `main`: its commits, a
+/// diffstat, the diff, and a note about uncommitted changes.
+pub fn review(worktree: &Path, main_branch: &str) -> Result<String, String> {
+    let range = format!("{main_branch}...HEAD");
+    let log = git(
+        worktree,
+        &[
+            "log",
+            "--oneline",
+            "--no-decorate",
+            &format!("{main_branch}..HEAD"),
+        ],
+    )?;
+    let stat = git(worktree, &["diff", "--stat", &range])?;
+    let diff = git(worktree, &["diff", &range])?;
+    let dirty = git(worktree, &["status", "--porcelain"])?
+        .lines()
+        .filter(|l| !l.is_empty())
+        .count();
+    let mut out = String::new();
+    out.push_str(&format!("Commits not on {main_branch}:\n"));
+    out.push_str(if log.trim().is_empty() {
+        "  (none)\n"
+    } else {
+        &log
+    });
+    if dirty > 0 {
+        out.push_str(&format!(
+            "\n{dirty} uncommitted change(s) are not part of this review.\n"
+        ));
+    }
+    out.push('\n');
+    out.push_str(&stat);
+    out.push('\n');
+    let lines: Vec<&str> = diff.lines().collect();
+    out.push_str(&lines[..lines.len().min(REVIEW_DIFF_LINES)].join("\n"));
+    if lines.len() > REVIEW_DIFF_LINES {
+        out.push_str(&format!(
+            "\n… {} more diff lines",
+            lines.len() - REVIEW_DIFF_LINES
+        ));
+    }
+    Ok(out)
+}
+
 /// A new worktree on a new branch, next to the repo: `<parent>/<repo>-<branch>`.
 pub fn create(repo: &Path, branch: &str) -> Result<PathBuf, String> {
     let branch = branch.trim();
@@ -315,6 +363,55 @@ mod tests {
 
         // Then
         assert_eq!(paths, ["committed.rs", "untracked.md"]);
+    }
+
+    #[test]
+    fn review_shows_commits_stat_and_diff_against_main() {
+        // Given: a branch with one commit and an uncommitted file
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path().join("app");
+        std::fs::create_dir(&repo).unwrap();
+        let run = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .arg("-C")
+                    .arg(&repo)
+                    .args(args)
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        let commit = |msg: &str| {
+            run(&[
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "user.name=t",
+                "commit",
+                "-q",
+                "-m",
+                msg,
+            ])
+        };
+        run(&["init", "-q", "-b", "main"]);
+        std::fs::write(repo.join("a.txt"), "one\n").unwrap();
+        run(&["add", "."]);
+        commit("base");
+        run(&["checkout", "-q", "-b", "feat"]);
+        std::fs::write(repo.join("a.txt"), "one\ntwo\n").unwrap();
+        run(&["add", "."]);
+        commit("add two");
+        std::fs::write(repo.join("scratch.txt"), "x").unwrap();
+
+        // When
+        let text = review(&repo, "main").unwrap();
+
+        // Then
+        assert!(text.contains("add two"), "{text}");
+        assert!(text.contains("a.txt | 1 +"), "{text}");
+        assert!(text.contains("+two"), "{text}");
+        assert!(text.contains("1 uncommitted change(s)"), "{text}");
     }
 
     #[test]
