@@ -133,6 +133,28 @@ start = "…"                        # optional, overrides the compose default; 
   desktop config). The window shows the desktop through the system blur (`WindowBackgroundAppearance::Blurred`) with tinted
   glass panels; the palette, context panel and toasts stay near-opaque. Both themes draw under a transparent titlebar: the
   top strip holds only the title, so the window drags from it.
+- **Today** (⇧⌘H; the home screen once repos exist): across all repos, what needs you (waiting agents, failing processes,
+  failing requirements or behaviour cells, stale knowledge, worktrees changing the same files, broken repos), tasks in
+  flight (holder, time in progress, tokens) and the next startable tasks (dependencies done, unclaimed) with "Start" and
+  "In background".
+- **Plan board** (Plans tab): one plan at a time in columns — Pending, In progress, Blocked, Done. Cards show what a task
+  waits on and unblocks, its acceptance criteria as a checklist you can tick (saved to fubbik), who holds it and what it
+  cost (sessions, tokens, time); ◀ ▶ move it, "Block", "Start" (once its dependencies are done) and "Timeline" (created,
+  claimed, board notes, commits on its branch, merged).
+- **Task to merge:** "Start in new worktree" records the task's branch and main's commit at the time in the task's
+  metadata (`fubbikDesktop`). When the branch's work lands on main, the task is marked done, its worktree removed if clean
+  (git refuses a dirty one), and a toast offers to save a "what changed" note.
+- **Insights** (⇧⌘I): a standup (1 day) or weekly summary built from git, plan tasks, agent sessions and requirements —
+  copy it as Markdown or save it as a chunk; a health score (0–100) with the reasons it lost points (failing processes or
+  requirements, violated cells, vulnerabilities from `cargo audit` / `pnpm audit` when "Run audit" was used, stale
+  branches, idle worktrees, stale knowledge, low knowledge coverage); a 4-week heatmap of commits and agent sessions; stale
+  branches (30+ days) and idle worktrees (7+ days).
+- **Agent limit:** Preferences → "Agents at once" (`max_agents`); launches beyond it wait in a queue and start as slots
+  free. Worktrees changing the same files are flagged on their rows and in Today.
+- **Scripts and profiles** (Processes tab): one-click `just` recipes, `package.json` scripts and Makefile targets (output in
+  Logs; also in ⌘K), and run profiles from the services file — `[profile.dev] processes = ["api", "web"]` starts exactly
+  those and stops the repo's others.
+- **Quick capture** (⇧⌘N): a note into the selected repo's fubbik space from anywhere.
 - **All agents** (⇧⌘A): every repo's live agents and recent sessions in one view. In AI Sessions, j/k (↓/↑) move a highlight
   and enter opens the session's pane or resumes it (when no text field or terminal has focus).
 - **Worktree review:** "Review" on a worktree shows its commits, diffstat and colored diff against main, with "Open PR"
@@ -145,7 +167,7 @@ start = "…"                        # optional, overrides the compose default; 
 - **Events over timers:** file changes in a repo's root or Claude's live-session registry trigger a poll at once (300 ms
   debounce); the 1 s tick only redraws for toasts and the live log; knowledge fetches back off while the fubbik API is
   down (60 s, doubling to 5 min).
-- **Keys:** ⌘K command palette · ⌘1–⌘9 and ⌘0 tabs · ⇧⌘A all agents · ⌘[ / ⌘] previous / next repo · ⌘O register · ⌘R refresh · ⌘Q quit.
+- **Keys:** ⌘K command palette · ⌘1–⌘9 and ⌘0 tabs · ⇧⌘H Today · ⇧⌘I Insights · ⇧⌘A all agents · ⇧⌘N capture · ⌘[ / ⌘] previous / next repo · ⌘O register · ⌘R refresh · ⌘Q quit.
 
 Not built: a menu-bar (status bar) icon. GPUI has no API for one.
 
@@ -173,6 +195,8 @@ src/agent_task.rs  start a Claude session on a plan task (worktree, board run, c
 src/setup.rs       Rust binary lookup, MCP config, pre-commit hook
 src/claude_md.rs   fubbik.config.json claudeMd, CLAUDE.md state and atomic write
 src/gaps.rs        uncovered source files
+src/activity.rs    git activity, heatmap, stale branches, audits, health score, standup summary, timestamps
+src/scripts.rs     just / package.json / make script detection
 src/ghostty.rs     Ghostty theme and config parsing, theme lookup, palette resolution
 src/tmux.rs        the app's tmux server: sessions, panes, capture, send-keys, copy-mode scroll
 src/term.rs        TermSession: PTY + libghostty-vt Terminal, frames of styled runs, key encoding
@@ -180,6 +204,6 @@ src/model.rs       Status, ProcessState, DatabaseState, RepoSnapshot, roll-up
 src/poll.rs        one repo poll (runs on the background executor)
 src/launch.rs      editor, Terminal, notifications, login-shell PATH
 src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,
-                   chrome, preferences), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
+                   chrome, preferences, tasks, today, insights), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
                    setup_view.rs; terminal_view.rs), actions.rs (fubbik calls and scans), palette, text field, widgets
 ```
