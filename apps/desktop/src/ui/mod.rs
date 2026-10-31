@@ -11,6 +11,7 @@ mod hotkeys;
 mod insights;
 pub mod keymap;
 mod knowledge;
+mod lists;
 mod palette;
 mod plans;
 mod polling;
@@ -423,6 +424,8 @@ pub struct Workspace {
     cheat_sheet_open: bool,
     /// ⇧⌘E: j/k move through the repos until ⏎ or esc.
     sidebar_nav: bool,
+    /// The highlighted card on the plan board: (column, row).
+    board_cursor: Option<(usize, usize)>,
     /// Where ⇧⌘J goes next among "Needs you".
     needs_cursor: usize,
     /// A second terminal shown beside the active one (Split).
@@ -522,6 +525,7 @@ impl Workspace {
             cheat_sheet_open: false,
             sidebar_nav: false,
             needs_cursor: 0,
+            board_cursor: None,
             quiet: HashMap::new(),
             api_backoff: Duration::ZERO,
             _watcher: None,
@@ -607,6 +611,8 @@ impl Workspace {
     fn select(&mut self, index: usize) {
         if index < self.repos.len() {
             self.selected = index;
+            self.list_cursor = None;
+            self.board_cursor = None;
             self.log_key = None;
             self.log_paused = None;
             self.sync_group_field();

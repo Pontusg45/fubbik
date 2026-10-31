@@ -226,6 +226,10 @@ impl Workspace {
         });
 
         let line = row()
+            .when(
+                self.tab == Tab::Worktrees && self.list_cursor == Some(w),
+                |r| r.bg(theme::surface_hover()),
+            )
             .child(
                 div()
                     .flex()
@@ -410,7 +414,7 @@ impl Workspace {
     }
 
     /// AI Sessions in display order: live first, then the rest.
-    fn session_order(&self, repo: usize) -> Vec<AiSession> {
+    pub(super) fn session_order(&self, repo: usize) -> Vec<AiSession> {
         let sessions = self
             .repos
             .get(repo)
@@ -419,46 +423,6 @@ impl Workspace {
             .unwrap_or_default();
         let (live, ended): (Vec<_>, Vec<_>) = sessions.into_iter().partition(|s| s.state.is_live());
         live.into_iter().chain(ended).collect()
-    }
-
-    /// j/k (or ↓/↑) move through AI Sessions; enter opens the session's pane
-    /// or resumes it. True when the key was used.
-    pub(super) fn on_list_key(&mut self, key: &str, cx: &mut Context<Self>) -> bool {
-        if self.tab != Tab::Sessions {
-            return false;
-        }
-        let sessions = self.session_order(self.selected);
-        if sessions.is_empty() {
-            return false;
-        }
-        let last = sessions.len() - 1;
-        match key {
-            "j" | "down" => {
-                self.list_cursor = Some(self.list_cursor.map_or(0, |c| (c + 1).min(last)))
-            }
-            "k" | "up" => {
-                self.list_cursor = Some(self.list_cursor.map_or(0, |c| c.saturating_sub(1)))
-            }
-            "enter" => {
-                let Some(session) = self.list_cursor.and_then(|c| sessions.get(c)).cloned() else {
-                    return false;
-                };
-                match session.pane.clone() {
-                    Some(pane) => self.open_pane(pane, session.cwd.clone(), cx),
-                    None if !session.state.is_live() => self.run(
-                        Command::ResumeSession(
-                            session.agent,
-                            session.id.clone(),
-                            session.cwd.clone(),
-                        ),
-                        cx,
-                    ),
-                    None => return false,
-                }
-            }
-            _ => return false,
-        }
-        true
     }
 
     /// Every repo's agents: live ones, then the most recent few, per repo.

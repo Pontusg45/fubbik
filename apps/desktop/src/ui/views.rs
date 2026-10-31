@@ -78,6 +78,7 @@ impl Workspace {
             .then(|| self.terminal_for_selected(window, cx))
             .flatten();
         let mut insights = (self.tab == Tab::Insights).then(|| self.render_insights(index, cx));
+        let hint = self.list_hint();
         let window: &Window = window;
         let repo = &self.repos[index];
         let body: AnyElement = match &repo.snapshot {
@@ -302,11 +303,29 @@ impl Workspace {
                         .into_any_element()
                 }
                 None => div()
-                    .id("content")
+                    .flex()
+                    .flex_col()
                     .flex_1()
-                    .overflow_y_scroll()
-                    .p_6()
-                    .child(body)
+                    .overflow_hidden()
+                    .child(
+                        div()
+                            .id("content")
+                            .flex_1()
+                            .overflow_y_scroll()
+                            .p_6()
+                            .child(body),
+                    )
+                    .children(hint.map(|hint| {
+                        div()
+                            .flex_none()
+                            .px_6()
+                            .py_1p5()
+                            .border_t_1()
+                            .border_color(theme::border())
+                            .text_xs()
+                            .text_color(theme::text_muted())
+                            .child(hint)
+                    }))
                     .into_any_element(),
             })
     }
@@ -736,6 +755,10 @@ impl Workspace {
         )));
 
         row()
+            .when(
+                self.tab == Tab::Processes && self.list_cursor == Some(p),
+                |r| r.bg(theme::surface_hover()),
+            )
             .child(status_dot(process.status))
             .child(
                 div()

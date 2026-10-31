@@ -125,6 +125,10 @@ impl Workspace {
             let (chunk, flag_id) = (flag.chunk_id.clone(), flag.id.clone());
             rows.push(
                 row()
+                    .when(
+                        self.tab == super::Tab::Knowledge && self.list_cursor == Some(i),
+                        |r| r.bg(theme::surface_hover()),
+                    )
                     .child(pill("stale", theme::status(Status::Degraded)))
                     .child(
                         div()
@@ -161,8 +165,13 @@ impl Workspace {
             if let Some(reason) = &proposal.reason {
                 detail.push_str(&format!(" — {reason}"));
             }
+            let at = k.stale_flags.len() + i;
             rows.push(
                 row()
+                    .when(
+                        self.tab == super::Tab::Knowledge && self.list_cursor == Some(at),
+                        |r| r.bg(theme::surface_hover()),
+                    )
                     .child(pill("proposal", theme::accent()))
                     .child(
                         div()

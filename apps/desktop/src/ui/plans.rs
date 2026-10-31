@@ -5,9 +5,9 @@
 
 use gpui::{AnyElement, Context, FontWeight, Hsla, IntoElement, SharedString, div, prelude::*, px};
 
-use super::Workspace;
 use super::palette::Command;
 use super::widgets::{button, muted, pill, progress};
+use super::{Tab, Workspace};
 use crate::activity;
 use crate::fubbik::{PlanDetail, Task};
 use crate::model::Status;
@@ -32,7 +32,7 @@ const COLUMNS: [(&str, &[&str]); 4] = [
 ];
 
 /// Where ◀ / ▶ move a task from each status.
-fn neighbours(status: &str) -> (Option<&'static str>, Option<&'static str>) {
+pub fn neighbours(status: &str) -> (Option<&'static str>, Option<&'static str>) {
     match status {
         "pending" => (None, Some("in_progress")),
         "in_progress" => (Some("pending"), Some("done")),
@@ -40,6 +40,20 @@ fn neighbours(status: &str) -> (Option<&'static str>, Option<&'static str>) {
         "done" | "skipped" => (Some("in_progress"), None),
         _ => (None, None),
     }
+}
+
+/// A plan's tasks by board column, in display order.
+pub fn columns(plan: &PlanDetail) -> Vec<Vec<Task>> {
+    COLUMNS
+        .iter()
+        .map(|(_, statuses)| {
+            plan.tasks
+                .iter()
+                .filter(|t| statuses.contains(&t.status.as_str()))
+                .cloned()
+                .collect()
+        })
+        .collect()
 }
 
 /// Dependencies of `task` that are not done yet.
@@ -52,6 +66,25 @@ pub fn open_dependencies<'a>(plan: &'a PlanDetail, task: &Task) -> Vec<&'a Task>
 }
 
 impl Workspace {
+    /// The plan the board shows: the chosen one, else the first in
+    /// progress, else the first.
+    pub(super) fn board_plan_detail(&self, repo: usize) -> Option<PlanDetail> {
+        let Some(Ok(knowledge)) = self.repos.get(repo)?.knowledge.as_ref() else {
+            return None;
+        };
+        self.board_plan
+            .as_ref()
+            .and_then(|id| knowledge.plan_details.iter().find(|p| p.id == *id))
+            .or_else(|| {
+                knowledge
+                    .plan_details
+                    .iter()
+                    .find(|p| p.status == "in_progress")
+            })
+            .or_else(|| knowledge.plan_details.first())
+            .cloned()
+    }
+
     pub(super) fn render_plans(&self, repo: usize, cx: &mut Context<Self>) -> impl IntoElement {
         let knowledge = match self.knowledge_or_notice(repo) {
             Ok(k) => k,
@@ -119,7 +152,7 @@ impl Workspace {
             );
 
         let mut columns = Vec::new();
-        for (title, statuses) in COLUMNS {
+        for (col, &(title, statuses)) in COLUMNS.iter().enumerate() {
             let tasks: Vec<&Task> = plan
                 .tasks
                 .iter()
@@ -127,7 +160,16 @@ impl Workspace {
                 .collect();
             let cards: Vec<AnyElement> = tasks
                 .iter()
-                .map(|task| self.task_card(repo, plan, task, cx))
+                .enumerate()
+                .map(|(row, task)| {
+                    self.task_card(
+                        repo,
+                        plan,
+                        task,
+                        self.tab == Tab::Plans && self.board_cursor == Some((col, row)),
+                        cx,
+                    )
+                })
                 .collect();
             columns.push(
                 div()
@@ -194,6 +236,7 @@ impl Workspace {
         repo: usize,
         plan: &PlanDetail,
         task: &Task,
+        highlighted: bool,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let key = |name: &str| SharedString::from(format!("card-{name}-{}", task.id));
@@ -385,6 +428,9 @@ impl Workspace {
                 theme::status(Status::Degraded).opacity(0.5)
             })
             .bg(theme::surface())
+            .when(highlighted, |d| {
+                d.border_color(theme::accent()).bg(theme::surface_hover())
+            })
             .relative()
             .overflow_hidden()
             // The status color down the card's left edge.

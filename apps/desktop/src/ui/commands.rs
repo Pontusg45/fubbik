@@ -323,6 +323,10 @@ impl Workspace {
             Command::StartAll(r) => self.start_all(r, cx),
             Command::StopAll(r) => self.stop_all(r, cx),
             Command::ShowTab(tab) => {
+                if self.tab != tab {
+                    self.list_cursor = None;
+                    self.board_cursor = None;
+                }
                 self.tab = tab;
                 self.focus_terminal = tab == Tab::Terminal;
             }

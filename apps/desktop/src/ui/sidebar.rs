@@ -47,6 +47,10 @@ impl Workspace {
             .bg(theme::sidebar())
             .border_r_1()
             .border_color(theme::border())
+            // ⇧⌘E: j/k now move through the repos.
+            .when(self.sidebar_nav, |d| {
+                d.border_r_2().border_color(theme::accent())
+            })
             .child(
                 div()
                     .id("sidebar-scroll")

@@ -826,3 +826,89 @@ fn keys_from_the_keymap_drive_the_app(cx: &mut TestAppContext) {
         "jumped to the repo with stale knowledge"
     );
 }
+
+#[gpui::test]
+fn list_keys_drive_the_board_today_sidebar_and_inbox(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: two repos; the first has a plan, a stale flag and a fake fubbik
+    cx.update(|cx| keymap::bind_all(cx, std::path::Path::new("/nonexistent/keymap.toml")));
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let (server, log) = crate::fubbik::test_server::fake_server(vec![
+        ("/api/plans/p1/tasks/a", 200, "{}".into()),
+        ("/api/plans/p1/tasks/c", 200, "{}".into()),
+        ("/api/chunks/f1/dismiss-staleness", 200, "{}".into()),
+    ]);
+    let config = format!(
+        "fubbik_url = {server:?}\n[[repo]]\npath = {:?}\n\n[[repo]]\npath = {:?}\n",
+        a.path().display().to_string(),
+        b.path().display().to_string()
+    );
+    let (view, cx) = open(cx, &config);
+    view.update(cx, |w, _| with_knowledge(w, plan_with_tasks()));
+
+    // When: board — first card of Pending is "b"; l → In progress ("a"); → moves "a" to done
+    cx.simulate_keystrokes("cmd-7");
+    cx.simulate_keystrokes("j l right");
+    let cursor = view.read_with(cx, |w, _| w.board_cursor);
+    // Knowledge inbox (after the board's refresh settles): the stale flag is row 0; d dismisses it
+    cx.run_until_parked();
+    view.update(cx, |w, _| {
+        with_knowledge(w, plan_with_tasks());
+        if let Some(Ok(k)) = w.repos[0].knowledge.as_mut() {
+            k.stale_flags = vec![crate::fubbik::StaleFlag {
+                id: "f1".into(),
+                chunk_id: "c1".into(),
+                chunk_title: "Old".into(),
+                reason: "age".into(),
+                detail: None,
+            }];
+        }
+    });
+    cx.simulate_keystrokes("cmd-8 j d");
+    // Sidebar: ⇧⌘E, j selects repo 2, esc leaves
+    cx.simulate_keystrokes("cmd-shift-e j escape");
+    let (selected, nav) = view.read_with(cx, |w, _| (w.selected, w.sidebar_nav));
+    cx.run_until_parked();
+
+    // Then
+    assert_eq!(cursor, Some((1, 0)), "on the In progress column");
+    let log = log.lock().unwrap();
+    assert!(
+        log.iter().any(|r| r == "PATCH /api/plans/p1/tasks/a"),
+        "{log:?}"
+    );
+    assert!(
+        log.iter()
+            .any(|r| r == "POST /api/chunks/f1/dismiss-staleness"),
+        "{log:?}"
+    );
+    assert_eq!((selected, nav), (1, false));
+}
+
+#[gpui::test]
+fn enter_on_today_runs_the_highlighted_line(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: Today lists the repo's stale knowledge under "Needs you"
+    cx.update(|cx| keymap::bind_all(cx, std::path::Path::new("/nonexistent/keymap.toml")));
+    let repo = tempfile::tempdir().unwrap();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", repo.path().display().to_string()),
+    );
+    view.update(cx, |w, _| {
+        w.repos[0].knowledge = Some(Ok(crate::fubbik::Knowledge {
+            space: Some(crate::fubbik::Space {
+                id: "s".into(),
+                name: "a".into(),
+            }),
+            stale: 1,
+            ..Default::default()
+        }));
+    });
+
+    // When
+    cx.simulate_keystrokes("cmd-1 j enter");
+
+    // Then
+    assert_eq!(view.read_with(cx, |w, _| w.tab), Tab::Knowledge);
+}

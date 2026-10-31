@@ -447,7 +447,7 @@ impl Render for Workspace {
                     return;
                 }
                 // Lists answer plain keys only when nothing that types has focus.
-                if this.focus.is_focused(window) && this.on_list_key(&event.keystroke.key, cx) {
+                if this.focus.is_focused(window) && this.on_list_key(&event.keystroke, window, cx) {
                     cx.stop_propagation();
                     cx.notify();
                 }
