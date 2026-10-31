@@ -98,11 +98,14 @@ start = "…"                        # optional, overrides the compose default; 
   session finishes its turn and is waiting for you.
 - **Terminal** (⌘0): embedded shells built on Ghostty's VT engine (`libghostty-vt` 0.2.2, pinned; pre-1.0) and a PTY
   (`portable-pty`). Each repo has a strip of terminal tabs (its own and its worktrees'): "+ Shell", "Shell" on a worktree or
-  in ⌘K, ✕ to close. Tabs stay alive across tab and repo switches; their shells end when the tab closes or the app quits.
-  Colors and styles, the cursor, keys through Ghostty's key encoder (cursor-key mode and the Kitty keyboard protocol follow
-  the program), ⌘V paste (bracketed when asked), wheel scrollback, resize to fit. Mouse: drag selects, double click a word,
-  triple click a line (Ghostty's selection, so it follows scrolling content); ⌘C or "Copy" copies it ("Copy" without a
-  selection copies the screen).
+  in ⌘K, ✕ to close, "Split" for a second shell beside the active one. Colors and styles, the cursor, special keys and ctrl
+  combinations through Ghostty's key encoder (cursor-key mode and the Kitty keyboard protocol follow the program); typed
+  text through GPUI's input handler, so IME composition (shown underlined at the cursor) and dead keys work. Option types
+  characters (GPUI does not report which Option key is held, so it is not used as Alt). ⌘V pastes (bracketed when asked),
+  ⌘F searches the scrollback (⏎ / ⇧⏎ step), ⌘-click opens a URL. Mouse: drag selects, double click a word, triple click a
+  line, ⌘C or "Copy" copies; when a program tracks the mouse (vim, htop, Claude's menus) clicks, drags, right/middle
+  buttons and the wheel go to it (hold ⇧ to select anyway). Runs are drawn at their exact cell width so wide and fallback
+  glyphs keep columns aligned. Output wakes the view (no timer per tab), and frames are rebuilt only when something changed.
 - **tmux persistence** (default when tmux is installed; `terminal_persistence = "none"` turns it off): every terminal tab
   is a session on a private tmux server, `tmux -L fubbik`, with its own minimal config (`~/.config/fubbik/tmux.conf`: no
   status bar, no escape delay, 50 000 lines of history, true color) — your own tmux server and `tmux.conf` are untouched.
@@ -116,8 +119,7 @@ start = "…"                        # optional, overrides the compose default; 
   session in a new tab.
 - **AI sessions run in the Terminal tab:** "New Claude", "Resume" and "Start task" open a labelled terminal tab in the right
   directory and type the command into a login shell (so the shell stays when the session ends). `terminal = "external"` in
-  the desktop config sends them to Terminal.app instead. Not yet: mouse reporting to programs, IME composition, font
-  fallback for wide glyphs, links. Building needs Zig 0.15.2 first on PATH (`brew install zig@0.15`; `just desktop` and
+  the desktop config sends them to Terminal.app instead. Building needs Zig 0.15.2 first on PATH (`brew install zig@0.15`; `just desktop` and
   `just desktop-install` set this up). `FUBBIK_DESKTOP_TAB=terminal` opens the app on that tab (any tab name works).
 - **Ghostty themes:** ⌘K → "Theme: …" (or View → Choose Theme…) lists every Ghostty theme — `~/.config/ghostty/themes` first,
   then the ones bundled with Ghostty.app — plus "Built-in" and "Follow Ghostty config". Saved as `ghostty_theme` in the
@@ -131,9 +133,28 @@ start = "…"                        # optional, overrides the compose default; 
   desktop config). The window shows the desktop through the system blur (`WindowBackgroundAppearance::Blurred`) with tinted
   glass panels; the palette, context panel and toasts stay near-opaque. Both themes draw under a transparent titlebar: the
   top strip holds only the title, so the window drags from it.
-- **Keys:** ⌘K command palette · ⌘1–⌘9 and ⌘0 tabs · ⌘[ / ⌘] previous / next repo · ⌘O register · ⌘R refresh · ⌘Q quit.
+- **All agents** (⇧⌘A): every repo's live agents and recent sessions in one view. In AI Sessions, j/k (↓/↑) move a highlight
+  and enter opens the session's pane or resumes it (when no text field or terminal has focus).
+- **Worktree review:** "Review" on a worktree shows its commits, diffstat and colored diff against main, with "Open PR"
+  (`gh pr create --fill`) and "Merge into main" (`git merge --no-ff`), each run in a terminal tab.
+- **Codex waiting:** Codex has no live-session registry, so a Codex screen that changed and then stayed still for three
+  polls counts as waiting for input, with a notification like Claude's.
+- **Alerts:** notifications also raise a toast; clicking it jumps to the repo and tab it is about.
+- **Preferences** at the top of Setup (and on the first-launch screen, with a getting-started checklist): colors,
+  translucency, tmux persistence, where AI sessions open, and the fubbik server, web app and binary.
+- **Events over timers:** file changes in a repo's root or Claude's live-session registry trigger a poll at once (300 ms
+  debounce); the 1 s tick only redraws for toasts and the live log; knowledge fetches back off while the fubbik API is
+  down (60 s, doubling to 5 min).
+- **Keys:** ⌘K command palette · ⌘1–⌘9 and ⌘0 tabs · ⇧⌘A all agents · ⌘[ / ⌘] previous / next repo · ⌘O register · ⌘R refresh · ⌘Q quit.
 
 Not built: a menu-bar (status bar) icon. GPUI has no API for one.
+
+## Tests
+
+`cargo test` in `apps/desktop` (with Zig 0.15.2 on PATH) runs the unit tests and UI tests that drive a real `Workspace` in
+GPUI's test harness (`src/ui/ui_tests.rs`: actions, simulated keystrokes into a real shell, the file watcher, …). Tests that
+need tmux skip without it. CI runs format, Clippy (`-D warnings`) and the tests on macOS (`.github/workflows/desktop.yml`).
+`cargo test claude_tui -- --ignored --nocapture` checks Claude Code's TUI renders in the terminal (needs `claude`).
 
 ## Layout
 
@@ -158,6 +179,7 @@ src/term.rs        TermSession: PTY + libghostty-vt Terminal, frames of styled r
 src/model.rs       Status, ProcessState, DatabaseState, RepoSnapshot, roll-up
 src/poll.rs        one repo poll (runs on the background executor)
 src/launch.rs      editor, Terminal, notifications, login-shell PATH
-src/ui/            Workspace entity, sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
+src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,
+                   chrome, preferences), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
                    setup_view.rs; terminal_view.rs), actions.rs (fubbik calls and scans), palette, text field, widgets
 ```
