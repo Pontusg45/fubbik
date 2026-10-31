@@ -12,8 +12,9 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::mpsc::{Receiver, TryRecvError, channel};
 
-use libghostty_vt::fmt::Format;
+use libghostty_vt::fmt::{Format, Formatter, FormatterOptions};
 use libghostty_vt::key::{self, Action, Key, Mods};
+use libghostty_vt::mouse;
 use libghostty_vt::render::{CellIterator, RenderState, RowIterator};
 use libghostty_vt::screen::{CellWide, TrackedGridRef};
 use libghostty_vt::selection::{FormatOptions, SelectLineOptions, SelectWordOptions, Selection};
@@ -63,6 +64,20 @@ pub struct Run {
     pub italic: bool,
     pub underline: bool,
     pub strikethrough: bool,
+    /// Grid columns the run covers (a wide character takes two), so it can be
+    /// drawn at exactly that width whatever the font's glyph widths.
+    pub cells: u16,
+}
+
+/// How a cell looks; consecutive cells that look the same share a run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Look {
+    pub fg: Rgb,
+    pub bg: Option<Rgb>,
+    pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
+    pub strikethrough: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -72,6 +87,9 @@ pub struct Frame {
     /// (column, row) in the viewport, when visible.
     pub cursor: Option<(u16, u16)>,
     pub background: Option<Rgb>,
+    /// One char per grid column (a wide character's second column is '\0'),
+    /// for finding what is under the mouse.
+    pub lines: Vec<Vec<char>>,
     /// The theme's cursor color, when set.
     pub cursor_color: Option<Rgb>,
     pub foreground: Option<Rgb>,
@@ -188,6 +206,8 @@ pub struct TermSession {
     row_iter: RowIterator<'static>,
     cell_iter: CellIterator<'static>,
     encoder: key::Encoder<'static>,
+    mouse_encoder: mouse::Encoder<'static>,
+    mouse_event: mouse::Event<'static>,
     event: key::Event<'static>,
     /// Bytes the terminal answers back (device status, mode queries).
     replies: Rc<RefCell<Vec<u8>>>,
@@ -302,6 +322,8 @@ impl TermSession {
             row_iter: RowIterator::new().map_err(err)?,
             cell_iter: CellIterator::new().map_err(err)?,
             encoder: key::Encoder::new().map_err(err)?,
+            mouse_encoder: mouse::Encoder::new().map_err(err)?,
+            mouse_event: mouse::Event::new().map_err(err)?,
             event: key::Event::new().map_err(err)?,
             replies,
             title,
@@ -442,6 +464,113 @@ impl TermSession {
         }
     }
 
+    /// A program asked for mouse events (vim, htop, Claude's menus).
+    pub fn mouse_tracking(&self) -> bool {
+        self.terminal.is_mouse_tracking().unwrap_or(false)
+    }
+
+    /// The bytes a mouse event becomes, in the encoding the program asked
+    /// for (X10, SGR, …). Position is in pixels from the grid's top-left.
+    pub fn encode_mouse(
+        &mut self,
+        kind: MouseKind,
+        button: Option<MouseButton>,
+        x: f32,
+        y: f32,
+        mods: Mods,
+        geometry: Geometry,
+    ) -> Vec<u8> {
+        let (cell_w, cell_h) = (geometry.cell_width.max(1), geometry.cell_height.max(1));
+        self.mouse_encoder
+            .set_options_from_terminal(&self.terminal)
+            .set_size(mouse::EncoderSize {
+                screen_width: self.cols as u32 * cell_w,
+                screen_height: self.rows as u32 * cell_h,
+                cell_width: cell_w,
+                cell_height: cell_h,
+                padding_top: 0,
+                padding_bottom: 0,
+                padding_right: 0,
+                padding_left: 0,
+            });
+        let action = match kind {
+            MouseKind::Press => mouse::Action::Press,
+            MouseKind::Release => mouse::Action::Release,
+            MouseKind::Motion => mouse::Action::Motion,
+        };
+        let button = button.map(|b| match b {
+            MouseButton::Left => mouse::Button::Left,
+            MouseButton::Middle => mouse::Button::Middle,
+            MouseButton::Right => mouse::Button::Right,
+            MouseButton::WheelUp => mouse::Button::Four,
+            MouseButton::WheelDown => mouse::Button::Five,
+        });
+        self.mouse_event
+            .set_action(action)
+            .set_button(button)
+            .set_mods(mods)
+            .set_position(mouse::Position { x, y });
+        let mut out = Vec::new();
+        let _ = self
+            .mouse_encoder
+            .encode_to_vec(&self.mouse_event, &mut out);
+        out
+    }
+
+    pub fn mouse(
+        &mut self,
+        kind: MouseKind,
+        button: Option<MouseButton>,
+        x: f32,
+        y: f32,
+        mods: Mods,
+        geometry: Geometry,
+    ) {
+        let bytes = self.encode_mouse(kind, button, x, y, mods, geometry);
+        if !bytes.is_empty() {
+            self.write(&bytes);
+        }
+    }
+
+    /// Lines of the screen and its scrollback containing `query` (case
+    /// insensitive), as (row from the top of the scrollback, line).
+    pub fn search(&self, query: &str) -> Vec<(usize, String)> {
+        let query = query.to_lowercase();
+        if query.is_empty() {
+            return Vec::new();
+        }
+        let options = FormatterOptions::new()
+            .with_format(Format::Plain)
+            .with_unwrap(false)
+            .with_trim(true);
+        let Ok(mut formatter) = Formatter::new(&self.terminal, options) else {
+            return Vec::new();
+        };
+        let Ok(bytes) = formatter.format_alloc(None) else {
+            return Vec::new();
+        };
+        String::from_utf8_lossy(&bytes)
+            .lines()
+            .enumerate()
+            .filter(|(_, line)| line.to_lowercase().contains(&query))
+            .map(|(row, line)| (row, line.trim_end().to_string()))
+            .collect()
+    }
+
+    pub fn scroll_to_bottom(&mut self) {
+        self.terminal.scroll_viewport(ScrollViewport::Bottom);
+    }
+
+    /// Scrolls so a row (from the top of the scrollback) is in view.
+    pub fn scroll_to_row(&mut self, row: usize) {
+        self.terminal.scroll_viewport(ScrollViewport::Row(row));
+    }
+
+    #[cfg(test)]
+    pub fn feed(&mut self, bytes: &[u8]) {
+        self.terminal.vt_write(bytes);
+    }
+
     /// Default colors, the 256-color palette and the cursor from a theme
     /// (programs can still change them with OSC sequences).
     pub fn set_colors(&mut self, theme: &crate::ghostty::Resolved) {
@@ -550,6 +679,7 @@ impl TermSession {
         let mut frame = Frame {
             cols: snapshot.cols().unwrap_or(self.cols),
             rows: Vec::with_capacity(self.rows as usize),
+            lines: Vec::with_capacity(self.rows as usize),
             cursor,
             background: colors.as_ref().map(|c| c.background.into()),
             foreground: Some(default_fg),
@@ -561,6 +691,7 @@ impl TermSession {
         let mut text = String::new();
         while let Some(row) = rows.next() {
             let mut runs: Vec<Run> = Vec::new();
+            let mut line: Vec<char> = Vec::new();
             if let Ok(mut cells) = self.cell_iter.update(row) {
                 while let Some(cell) = cells.next() {
                     let wide = cell
@@ -568,6 +699,7 @@ impl TermSession {
                         .and_then(|c| c.wide())
                         .unwrap_or(CellWide::Narrow);
                     if matches!(wide, CellWide::SpacerTail | CellWide::SpacerHead) {
+                        line.push('\0');
                         continue;
                     }
                     text.clear();
@@ -608,10 +740,21 @@ impl TermSession {
                         fg = self.selection.1;
                         bg = Some(self.selection.0);
                     }
-                    push_cell(&mut runs, &text, fg, bg, bold, italic, underline, strike);
+                    line.push(text.chars().next().unwrap_or(' '));
+                    let cells = if wide == CellWide::Wide { 2 } else { 1 };
+                    let look = Look {
+                        fg,
+                        bg,
+                        bold,
+                        italic,
+                        underline,
+                        strikethrough: strike,
+                    };
+                    push_cell(&mut runs, &text, cells, look);
                 }
             }
             frame.rows.push(runs);
+            frame.lines.push(line);
         }
         frame
     }
@@ -619,36 +762,84 @@ impl TermSession {
 
 /// Appends a cell, extending the last run when it looks the same.
 #[allow(clippy::too_many_arguments)]
-pub fn push_cell(
-    runs: &mut Vec<Run>,
-    text: &str,
-    fg: Rgb,
-    bg: Option<Rgb>,
-    bold: bool,
-    italic: bool,
-    underline: bool,
-    strikethrough: bool,
-) {
+pub fn push_cell(runs: &mut Vec<Run>, text: &str, cells: u16, look: Look) {
     if let Some(last) = runs.last_mut()
-        && last.fg == fg
-        && last.bg == bg
-        && last.bold == bold
-        && last.italic == italic
-        && last.underline == underline
-        && last.strikethrough == strikethrough
+        && last.look() == look
     {
         last.text.push_str(text);
+        last.cells += cells;
         return;
     }
     runs.push(Run {
         text: text.to_string(),
-        fg,
-        bg,
-        bold,
-        italic,
-        underline,
-        strikethrough,
+        fg: look.fg,
+        bg: look.bg,
+        bold: look.bold,
+        italic: look.italic,
+        underline: look.underline,
+        strikethrough: look.strikethrough,
+        cells,
     });
+}
+
+impl Run {
+    pub fn look(&self) -> Look {
+        Look {
+            fg: self.fg,
+            bg: self.bg,
+            bold: self.bold,
+            italic: self.italic,
+            underline: self.underline,
+            strikethrough: self.strikethrough,
+        }
+    }
+}
+
+/// Characters that end a URL when scanning out from a click.
+const URL_STOP: &[char] = &[
+    '"', '\'', '<', '>', '(', ')', '[', ']', '{', '}', '|', '^', '`', '\0',
+];
+
+/// The http(s) URL covering column `col` of a grid line, if any.
+pub fn url_at(line: &[char], col: usize) -> Option<String> {
+    let stop = |c: char| c.is_whitespace() || URL_STOP.contains(&c);
+    if col >= line.len() || stop(line[col]) {
+        return None;
+    }
+    let start = (0..col).rev().find(|&i| stop(line[i])).map_or(0, |i| i + 1);
+    let end = (col..line.len())
+        .find(|&i| stop(line[i]))
+        .unwrap_or(line.len());
+    let token: String = line[start..end].iter().collect();
+    let scheme = token.find("https://").or_else(|| token.find("http://"))?;
+    if start + token[..scheme].chars().count() > col {
+        return None; // the click is before the URL starts
+    }
+    let url = token[scheme..].trim_end_matches(['.', ',', ';', ':', '!', '?']);
+    (url.len() > "https://".len()).then(|| url.to_string())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MouseKind {
+    Press,
+    Release,
+    Motion,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MouseButton {
+    Left,
+    Middle,
+    Right,
+    WheelUp,
+    WheelDown,
+}
+
+/// Grid geometry for mouse encoding, in pixels.
+#[derive(Debug, Clone, Copy)]
+pub struct Geometry {
+    pub cell_width: u32,
+    pub cell_height: u32,
 }
 
 impl Drop for TermSession {
@@ -716,13 +907,30 @@ mod tests {
         let red = Rgb(255, 0, 0);
 
         // When
-        push_cell(&mut runs, "a", white, None, false, false, false, false);
-        push_cell(&mut runs, "b", white, None, false, false, false, false);
-        push_cell(&mut runs, "c", red, None, true, false, false, false);
+        let plain = |fg| Look {
+            fg,
+            bg: None,
+            bold: false,
+            italic: false,
+            underline: false,
+            strikethrough: false,
+        };
+        push_cell(&mut runs, "a", 1, plain(white));
+        push_cell(&mut runs, "b", 1, plain(white));
+        push_cell(
+            &mut runs,
+            "c",
+            1,
+            Look {
+                bold: true,
+                ..plain(red)
+            },
+        );
 
         // Then
         assert_eq!(runs.len(), 2);
         assert_eq!(runs[0].text, "ab");
+        assert_eq!(runs[0].cells, 2);
         assert!(runs[1].bold);
     }
 
@@ -878,6 +1086,91 @@ mod tests {
             red.fg,
             Rgb(0xf3, 0x8b, 0xa8),
             "ANSI red is the theme's palette 1"
+        );
+    }
+
+    #[test]
+    fn finds_the_url_under_a_column() {
+        // Given
+        let line: Vec<char> = "see (https://fubbik.dev/docs?q=1). ok".chars().collect();
+
+        // When
+        let at = |col| url_at(&line, col);
+
+        // Then
+        assert_eq!(at(10).as_deref(), Some("https://fubbik.dev/docs?q=1"));
+        assert_eq!(at(5).as_deref(), Some("https://fubbik.dev/docs?q=1"));
+        assert_eq!(at(1), None, "on 'see'");
+        assert_eq!(at(35), None, "on 'ok'");
+    }
+
+    #[test]
+    fn wide_characters_count_two_cells() {
+        // Given
+        let dir = tempfile::tempdir().unwrap();
+        let mut session = TermSession::spawn(dir.path(), 20, 4).unwrap();
+
+        // When
+        session.feed("\x1b[2J\x1b[Ha漢b".as_bytes());
+        let frame = session.frame();
+
+        // Then
+        let cells: u16 = frame.rows[0].iter().map(|r| r.cells).sum();
+        assert_eq!(cells, 20, "runs cover every column");
+        assert_eq!(&frame.lines[0][..4], &['a', '漢', '\0', 'b']);
+    }
+
+    #[test]
+    fn mouse_events_encode_only_when_a_program_tracks_them() {
+        // Given
+        let dir = tempfile::tempdir().unwrap();
+        let mut session = TermSession::spawn(dir.path(), 20, 5).unwrap();
+        let geometry = Geometry {
+            cell_width: 10,
+            cell_height: 20,
+        };
+        let press = |s: &mut TermSession| {
+            s.encode_mouse(
+                MouseKind::Press,
+                Some(MouseButton::Left),
+                25.0,
+                65.0,
+                Mods::empty(),
+                geometry,
+            )
+        };
+        let before = (session.mouse_tracking(), press(&mut session));
+
+        // When: the program enables button tracking with SGR encoding
+        session.feed(b"\x1b[?1000h\x1b[?1006h");
+        let after = (session.mouse_tracking(), press(&mut session));
+
+        // Then: column 3, row 4 (1-based) in SGR form
+        assert_eq!(before, (false, Vec::new()));
+        assert!(after.0);
+        assert_eq!(String::from_utf8_lossy(&after.1), "\x1b[<0;3;4M");
+    }
+
+    #[test]
+    fn search_finds_lines_in_scrollback_and_scrolls_to_them() {
+        // Given: far more lines than the screen holds
+        let dir = tempfile::tempdir().unwrap();
+        let mut session = TermSession::spawn(dir.path(), 30, 5).unwrap();
+        let text: String = (0..200).map(|i| format!("line-{i:03}\r\n")).collect();
+        session.feed(format!("\x1b[2J\x1b[H{text}").as_bytes());
+
+        // When
+        let hits = session.search("LINE-007");
+        session.scroll_to_row(hits[0].0);
+        let frame = session.frame();
+
+        // Then
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].1, "line-007");
+        let visible: Vec<String> = (0..frame.rows.len()).map(|r| text_of(&frame, r)).collect();
+        assert!(
+            visible.iter().any(|l| l == "line-007"),
+            "visible: {visible:?}"
         );
     }
 

@@ -245,3 +245,73 @@ fn a_new_services_file_is_picked_up_without_waiting_for_the_tick(cx: &mut TestAp
         "found by the watcher, not the tick ({advanced:?})"
     );
 }
+
+#[gpui::test]
+fn typing_reaches_the_shell_through_the_input_handler(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a shell tab, focused
+    let repo = tempfile::tempdir().unwrap();
+    let path = repo.path().to_path_buf();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", path.display().to_string()),
+    );
+    view.update(cx, |w, cx| w.run(Command::ShellAt(path.clone()), cx));
+    cx.run_until_parked();
+    let terminal = view.read_with(cx, |w, _| w.terminals[0].view.clone());
+
+    // When: printable keys (input handler) and enter (key encoder)
+    cx.simulate_keystrokes("e c h o space t y p e d - $ ( ( 4 0 + 2 ) ) enter");
+    let mut screen = String::new();
+    for _ in 0..100 {
+        std::thread::sleep(Duration::from_millis(50));
+        cx.run_until_parked();
+        screen = terminal.update(cx, |t, _| t.screen_text());
+        if screen.contains("typed-42") {
+            break;
+        }
+    }
+
+    // Then: each key arrived once, in order, and the shell ran it
+    assert!(screen.contains("echo typed-$((40+2))"), "screen:\n{screen}");
+    assert!(
+        screen.lines().any(|l| l.trim() == "typed-42"),
+        "screen:\n{screen}"
+    );
+}
+
+#[gpui::test]
+fn cmd_f_searches_the_scrollback(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a shell that printed far more than one screen
+    let repo = tempfile::tempdir().unwrap();
+    let path = repo.path().to_path_buf();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", path.display().to_string()),
+    );
+    view.update(cx, |w, cx| w.run(Command::ShellAt(path.clone()), cx));
+    cx.run_until_parked();
+    let terminal = view.read_with(cx, |w, _| w.terminals[0].view.clone());
+    cx.simulate_keystrokes("s e q space 3 0 0 enter");
+    for _ in 0..100 {
+        std::thread::sleep(Duration::from_millis(50));
+        cx.run_until_parked();
+        if terminal
+            .update(cx, |t, _| t.screen_text())
+            .lines()
+            .any(|l| l.trim() == "300")
+        {
+            break;
+        }
+    }
+
+    // When
+    cx.simulate_keystrokes("cmd-f 1 5 7");
+    let status = terminal.read_with(cx, |t, _| t.search_status());
+    cx.simulate_keystrokes("escape");
+
+    // Then: "157" appears once (seq prints 1..300)
+    assert_eq!(status, Some(("157".to_string(), 1)));
+    assert_eq!(terminal.read_with(cx, |t, _| t.search_status()), None);
+}
