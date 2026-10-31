@@ -56,6 +56,9 @@ pub enum Command {
     /// The embedded terminal, in this directory.
     ShellAt(PathBuf),
     CloseTerminal(usize),
+    /// Splits the Terminal tab: a new shell beside the active one; again to
+    /// unsplit (the second shell keeps running as a tab).
+    ToggleSplit,
     /// A path on the fubbik web app, such as `/chunks/<id>`.
     OpenWeb(String),
     StartTask {

@@ -306,6 +306,8 @@ pub struct Workspace {
     fubbik_url_field: TextField,
     web_url_field: TextField,
     fubbik_bin_field: TextField,
+    /// A second terminal shown beside the active one (Split).
+    split_with: Option<usize>,
     /// The highlighted row in AI Sessions (j/k, enter).
     list_cursor: Option<usize>,
     /// Per agent session id (Codex): how long its screen has been still.
@@ -391,6 +393,7 @@ impl Workspace {
             web_url_field: TextField::new(cx),
             fubbik_bin_field: TextField::new(cx),
             list_cursor: None,
+            split_with: None,
             quiet: HashMap::new(),
             api_backoff: Duration::ZERO,
             _watcher: None,

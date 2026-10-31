@@ -412,7 +412,30 @@ impl Workspace {
                 self.tab = Tab::Terminal;
                 self.focus_terminal = true;
             }
+            Command::ToggleSplit => {
+                if self.split_with.take().is_none()
+                    && let Some(active) = self.active_terminal
+                    && let Some(dir) = self
+                        .terminals
+                        .iter()
+                        .find(|t| t.id == active)
+                        .map(|t| t.dir.clone())
+                {
+                    let second = self.open_terminal_with(
+                        dir,
+                        "Shell".into(),
+                        None,
+                        self.tmux_terminals,
+                        false,
+                        cx,
+                    );
+                    self.split_with = Some(second);
+                }
+            }
             Command::CloseTerminal(id) => {
+                if self.split_with == Some(id) {
+                    self.split_with = None;
+                }
                 // Closing a tab ends its session; quitting the app does not.
                 if let Some(name) = self
                     .terminals

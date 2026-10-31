@@ -128,6 +128,11 @@ pub struct TerminalView {
     search: Option<Search>,
     /// The tmux session this view is attached to, when tmux-backed.
     pub tmux_session: Option<String>,
+    /// The last frame built from the engine; rebuilt only when something
+    /// changed (output, input, scrolling, selection, size, theme), not on
+    /// every redraw of the window.
+    frame_cache: Option<Rc<Frame>>,
+    frame_dirty: bool,
     _pump: Task<()>,
 }
 
@@ -178,6 +183,8 @@ impl TerminalView {
             last_cursor: None,
             search: None,
             tmux_session,
+            frame_cache: None,
+            frame_dirty: true,
             _pump: Task::ready(()),
         };
         view.start_pump(cx);
@@ -194,6 +201,7 @@ impl TerminalView {
     /// After the shell (or tmux client) ends: reattach while the tmux
     /// session lives, else a fresh login shell.
     fn restart(&mut self, cx: &mut Context<Self>) {
+        self.frame_dirty = true;
         let server = crate::tmux::Server::fubbik();
         if let Some(name) = &self.tmux_session
             && !crate::tmux::exists(&server, name)
@@ -232,6 +240,7 @@ impl TerminalView {
         let rows = (f32::from(bounds.size.height) / self.line_height).floor() as u16;
         if cols > 1 && rows > 1 && (cols, rows) != session.size() {
             session.resize(cols, rows, cell_w.round() as u32, self.line_height as u32);
+            self.frame_dirty = true;
         }
     }
 
@@ -245,6 +254,7 @@ impl TerminalView {
             changed = true;
         }
         if changed {
+            self.frame_dirty = true;
             cx.notify();
         }
     }
@@ -279,6 +289,7 @@ impl TerminalView {
     // ── keys ───────────────────────────────────────────────────────────
 
     fn on_key(&mut self, event: &KeyDownEvent, _: &mut Window, cx: &mut Context<Self>) {
+        self.frame_dirty = true;
         let keystroke = &event.keystroke;
         let mods = &keystroke.modifiers;
         if self.search.is_some() && self.on_search_key(keystroke, cx) {
@@ -432,6 +443,7 @@ impl TerminalView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.frame_dirty = true;
         self.focus.focus(window);
         if self.reporting(&event.modifiers) {
             let button = button_of(event.button);
@@ -471,6 +483,7 @@ impl TerminalView {
     }
 
     fn on_mouse_move(&mut self, event: &MouseMoveEvent, _: &mut Window, cx: &mut Context<Self>) {
+        self.frame_dirty = true;
         if let Some(button) = self.reporting_button {
             self.report(
                 MouseKind::Motion,
@@ -493,6 +506,7 @@ impl TerminalView {
     }
 
     fn on_mouse_up(&mut self, event: &MouseUpEvent, _: &mut Window, _: &mut Context<Self>) {
+        self.frame_dirty = true;
         if let Some(button) = self.reporting_button.take() {
             self.report(
                 MouseKind::Release,
@@ -509,6 +523,7 @@ impl TerminalView {
     }
 
     fn on_scroll(&mut self, event: &ScrollWheelEvent, _: &mut Window, cx: &mut Context<Self>) {
+        self.frame_dirty = true;
         let lines = match event.delta {
             ScrollDelta::Lines(p) => p.y,
             ScrollDelta::Pixels(p) => f32::from(p.y) / self.line_height,
@@ -639,6 +654,7 @@ impl EntityInputHandler for TerminalView {
     }
 
     fn unmark_text(&mut self, _: &mut Window, cx: &mut Context<Self>) {
+        self.frame_dirty = true;
         self.marked = None;
         cx.notify();
     }
@@ -650,6 +666,7 @@ impl EntityInputHandler for TerminalView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.frame_dirty = true;
         self.marked = None;
         if self.search.is_none() && !text.is_empty() {
             self.type_text(text);
@@ -665,6 +682,7 @@ impl EntityInputHandler for TerminalView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.frame_dirty = true;
         self.marked = (!text.is_empty()).then(|| text.to_string());
         cx.notify();
     }
@@ -791,6 +809,7 @@ impl Render for TerminalView {
             self.line_height = (self.font_size * LINE_SPACING).round();
             self.cursor_bar = t.cursor_bar;
             self.cell_width = None;
+            self.frame_dirty = true;
         }
         if self.cell_width.is_none() {
             let text_system = window.text_system();
@@ -842,7 +861,15 @@ impl Render for TerminalView {
                 .child(format!("Could not start the shell: {error}"))
                 .into_any_element(),
             Ok(session) => {
-                let frame = session.frame();
+                let frame = match &self.frame_cache {
+                    Some(frame) if !self.frame_dirty => frame.clone(),
+                    _ => {
+                        let frame = Rc::new(session.frame());
+                        self.frame_cache = Some(frame.clone());
+                        self.frame_dirty = false;
+                        frame
+                    }
+                };
                 self.last_cursor = frame.cursor;
                 // On glass, cells with the terminal's default background stay see-through.
                 let default_bg = frame.background.map(|c| c.hex());

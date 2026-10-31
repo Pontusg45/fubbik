@@ -103,6 +103,11 @@ impl Workspace {
             .child(match terminal {
                 Some(view) => {
                     let title = view.read(cx).title();
+                    let second = self
+                        .split_with
+                        .filter(|id| Some(*id) != self.active_terminal)
+                        .and_then(|id| self.terminals.iter().find(|t| t.id == id))
+                        .map(|t| t.view.clone());
                     let repo_path = self.repos[index].entry.path.clone();
                     let active = self.active_terminal;
                     let chips: Vec<AnyElement> = self
@@ -181,6 +186,19 @@ impl Workspace {
                         )))
                         .child(div().flex_1())
                         .child(muted(title))
+                        .child(
+                            button(
+                                "terminal-split",
+                                if self.split_with.is_some() {
+                                    "Unsplit"
+                                } else {
+                                    "Split"
+                                },
+                            )
+                            .on_click(
+                                cx.listener(|this, _, _, cx| this.run(Command::ToggleSplit, cx)),
+                            ),
+                        )
                         .child(button("terminal-copy", "Copy").on_click(cx.listener(
                             move |this, _, _, cx| {
                                 copy.update(cx, |v, cx| v.copy_screen(cx));
@@ -201,7 +219,25 @@ impl Workspace {
                         .bg(theme::terminal_well())
                         .shadow(theme::frame_shadow())
                         .child(header)
-                        .child(div().flex_1().overflow_hidden().px_3().py_2().child(view))
+                        .child(match second {
+                            // Side by side, split by a border.
+                            Some(second) => div()
+                                .flex()
+                                .flex_1()
+                                .overflow_hidden()
+                                .child(div().flex_1().overflow_hidden().px_3().py_2().child(view))
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .overflow_hidden()
+                                        .px_3()
+                                        .py_2()
+                                        .border_l_1()
+                                        .border_color(theme::border())
+                                        .child(second),
+                                ),
+                            None => div().flex_1().overflow_hidden().px_3().py_2().child(view),
+                        })
                         .child(top_highlight());
                     div()
                         .id("content")

@@ -431,3 +431,36 @@ fn first_launch_shows_the_checklist(cx: &mut TestAppContext) {
         ""
     );
 }
+
+#[gpui::test]
+fn split_opens_a_second_shell_and_unsplit_keeps_it(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: one shell tab
+    let repo = tempfile::tempdir().unwrap();
+    let path = repo.path().to_path_buf();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", path.display().to_string()),
+    );
+    view.update(cx, |w, cx| w.run(Command::ShellAt(path.clone()), cx));
+    cx.run_until_parked();
+
+    // When
+    view.update(cx, |w, cx| w.run(Command::ToggleSplit, cx));
+    cx.run_until_parked();
+    let split = view.read_with(cx, |w, _| {
+        (w.terminals.len(), w.split_with.is_some(), w.active_terminal)
+    });
+    view.update(cx, |w, cx| w.run(Command::ToggleSplit, cx));
+
+    // Then: two shells while split; unsplit hides, not closes; the active one stays
+    assert_eq!((split.0, split.1), (2, true));
+    assert_eq!(
+        view.read_with(cx, |w, _| (
+            w.terminals.len(),
+            w.split_with,
+            w.active_terminal
+        )),
+        (2, None, split.2)
+    );
+}
