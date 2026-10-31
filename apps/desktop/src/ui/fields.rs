@@ -60,6 +60,9 @@ impl Workspace {
             Field::Group => &mut self.group_field,
             Field::NewWorktree => &mut self.worktree_field,
             Field::Reply => &mut self.reply_field,
+            Field::FubbikUrl => &mut self.fubbik_url_field,
+            Field::WebUrl => &mut self.web_url_field,
+            Field::FubbikBin => &mut self.fubbik_bin_field,
         }
     }
 
@@ -114,6 +117,10 @@ impl Workspace {
             (Field::NoteTitle, KeyOutcome::Submit) => self.note_body.focus.focus(window),
             (Field::NoteBody, KeyOutcome::Submit) => self.submit_note(cx),
             (Field::Reply, KeyOutcome::Submit) => self.send_reply(cx),
+            (Field::FubbikUrl | Field::WebUrl | Field::FubbikBin, KeyOutcome::Submit) => {
+                self.submit_preference(field, cx);
+                self.focus.focus(window);
+            }
             (Field::NewWorktree, KeyOutcome::Submit) => self.create_worktree(self.selected, cx),
             (Field::Group, KeyOutcome::Submit) => {
                 self.submit_group();
@@ -141,6 +148,9 @@ impl Workspace {
             Field::Group => &self.group_field,
             Field::NewWorktree => &self.worktree_field,
             Field::Reply => &self.reply_field,
+            Field::FubbikUrl => &self.fubbik_url_field,
+            Field::WebUrl => &self.web_url_field,
+            Field::FubbikBin => &self.fubbik_bin_field,
         };
         let focus = text_field.focus.clone();
         widgets::text_box(&text_field.text, placeholder, focus.is_focused(window))

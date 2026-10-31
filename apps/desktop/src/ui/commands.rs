@@ -378,6 +378,16 @@ impl Workspace {
             }
             Command::CreateWorktree(r) => self.create_worktree(r, cx),
             Command::OpenWeb(path) => cx.open_url(&format!("{}{path}", self.config.web_url())),
+            Command::SetPersistence(on) => {
+                self.config.terminal_persistence = if on { None } else { Some("none".into()) };
+                self.tmux_terminals = on && tmux::available();
+                self.save_config();
+                self.show_info("Applies to terminal tabs opened from now on");
+            }
+            Command::SetExternalTerminal(on) => {
+                self.config.terminal = on.then(|| "external".to_string());
+                self.save_config();
+            }
             Command::Focus { repo, tab } => {
                 self.select(repo);
                 self.tab = tab;

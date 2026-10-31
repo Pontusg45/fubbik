@@ -76,7 +76,7 @@ impl Render for Workspace {
             self.applied_translucent = Some(translucent);
         }
         let main = if self.repos.is_empty() {
-            self.render_empty(cx).into_any_element()
+            self.render_empty(window, cx).into_any_element()
         } else {
             self.render_repo(window, cx).into_any_element()
         };
@@ -157,9 +157,15 @@ impl Render for Workspace {
                 cx.listener(|this, _: &RegisterRepo, _, cx| this.run(Command::RegisterRepo, cx)),
             )
             .on_action(cx.listener(|this, _: &Refresh, _, cx| this.run(Command::Refresh, cx)))
-            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" && this.panel.is_some() {
                     this.panel = None;
+                    cx.notify();
+                    return;
+                }
+                // Lists answer plain keys only when nothing that types has focus.
+                if this.focus.is_focused(window) && this.on_list_key(&event.keystroke.key, cx) {
+                    cx.stop_propagation();
                     cx.notify();
                 }
             }))

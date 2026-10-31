@@ -8,7 +8,7 @@ use gpui::{
 
 use super::palette::Command;
 use super::widgets::{button, label, muted, pill, row, section};
-use super::{BranchContext, Field, Loadable, Workspace, display_path};
+use super::{BranchContext, Field, Loadable, Tab, Workspace, display_path};
 use crate::model::{RepoSnapshot, Status};
 use crate::sessions::{AiSession, SessionState, ago};
 use crate::theme;
@@ -393,6 +393,58 @@ impl Workspace {
             .child(section("Recent", ended_rows))
     }
 
+    /// AI Sessions in display order: live first, then the rest.
+    fn session_order(&self, repo: usize) -> Vec<AiSession> {
+        let sessions = self
+            .repos
+            .get(repo)
+            .and_then(|r| r.snapshot.as_ref())
+            .map(|s| s.sessions.clone())
+            .unwrap_or_default();
+        let (live, ended): (Vec<_>, Vec<_>) = sessions.into_iter().partition(|s| s.state.is_live());
+        live.into_iter().chain(ended).collect()
+    }
+
+    /// j/k (or ↓/↑) move through AI Sessions; enter opens the session's pane
+    /// or resumes it. True when the key was used.
+    pub(super) fn on_list_key(&mut self, key: &str, cx: &mut Context<Self>) -> bool {
+        if self.tab != Tab::Sessions {
+            return false;
+        }
+        let sessions = self.session_order(self.selected);
+        if sessions.is_empty() {
+            return false;
+        }
+        let last = sessions.len() - 1;
+        match key {
+            "j" | "down" => {
+                self.list_cursor = Some(self.list_cursor.map_or(0, |c| (c + 1).min(last)))
+            }
+            "k" | "up" => {
+                self.list_cursor = Some(self.list_cursor.map_or(0, |c| c.saturating_sub(1)))
+            }
+            "enter" => {
+                let Some(session) = self.list_cursor.and_then(|c| sessions.get(c)).cloned() else {
+                    return false;
+                };
+                match session.pane.clone() {
+                    Some(pane) => self.open_pane(pane, session.cwd.clone(), cx),
+                    None if !session.state.is_live() => self.run(
+                        Command::ResumeSession(
+                            session.agent,
+                            session.id.clone(),
+                            session.cwd.clone(),
+                        ),
+                        cx,
+                    ),
+                    None => return false,
+                }
+            }
+            _ => return false,
+        }
+        true
+    }
+
     /// Every repo's agents: live ones, then the most recent few, per repo.
     pub(super) fn render_all_agents(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         let now = SystemTime::now();
@@ -531,7 +583,10 @@ impl Workspace {
                 .on_click(cx.listener(move |this, _, _, cx| this.copy(copy_id.clone(), cx))),
         );
 
+        let highlighted =
+            self.tab == Tab::Sessions && repo == self.selected && self.list_cursor == Some(i);
         let row = row()
+            .when(highlighted, |r| r.bg(theme::surface_hover()))
             .child(
                 div()
                     .size_2()

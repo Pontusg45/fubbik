@@ -351,3 +351,83 @@ fn all_agents_tab_and_clickable_alerts(cx: &mut TestAppContext) {
         (1, Tab::Processes)
     );
 }
+
+#[gpui::test]
+fn preferences_save_to_the_config(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given
+    let (view, cx) = open(cx, "");
+
+    // When
+    view.update(cx, |w, cx| {
+        w.fubbik_url_field.text = "http://127.0.0.1:4000".into();
+        w.submit_preference(Field::FubbikUrl, cx);
+        w.run(Command::SetPersistence(true), cx);
+        w.run(Command::SetExternalTerminal(true), cx);
+    });
+    let saved = std::fs::read_to_string(config_file()).unwrap();
+    view.update(cx, |w, cx| w.run(Command::SetPersistence(false), cx));
+    let off = std::fs::read_to_string(config_file()).unwrap();
+
+    // Then
+    assert!(
+        saved.contains("fubbik_url = \"http://127.0.0.1:4000\""),
+        "{saved}"
+    );
+    assert!(
+        !saved.contains("terminal_persistence"),
+        "on is the default, so it is not written: {saved}"
+    );
+    assert!(saved.contains("terminal = \"external\""), "{saved}");
+    assert!(off.contains("terminal_persistence = \"none\""), "{off}");
+}
+
+#[gpui::test]
+fn j_and_k_move_through_ai_sessions(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a repo whose snapshot has three sessions, on AI Sessions
+    let repo = tempfile::tempdir().unwrap();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", repo.path().display().to_string()),
+    );
+    view.update(cx, |w, cx| {
+        let session = |id: &str| crate::sessions::AiSession {
+            agent: crate::sessions::Agent::ClaudeCode,
+            id: id.into(),
+            title: id.into(),
+            cwd: repo.path().to_path_buf(),
+            branch: None,
+            state: crate::sessions::SessionState::Ended,
+            pid: None,
+            last_activity: std::time::SystemTime::now(),
+            pane: None,
+            preview: None,
+        };
+        let mut snapshot = w.repos[0].snapshot.clone().unwrap_or_default();
+        snapshot.sessions = vec![session("a"), session("b"), session("c")];
+        w.repos[0].snapshot = Some(snapshot);
+        w.run(Command::ShowTab(Tab::Sessions), cx);
+    });
+    cx.run_until_parked();
+
+    // When
+    cx.simulate_keystrokes("j j j j k");
+
+    // Then: three rows, so j stops at the last; k goes back one
+    assert_eq!(view.read_with(cx, |w, _| w.list_cursor), Some(1));
+}
+
+#[gpui::test]
+fn first_launch_shows_the_checklist(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given / When
+    let (view, cx) = open(cx, "");
+
+    // Then: it renders with no repos, and preferences are populated from the config
+    assert!(view.read_with(cx, |w, _| w.repos.is_empty()));
+    assert_eq!(
+        view.read_with(cx, |w, _| w.fubbik_url_field.text.clone()),
+        ""
+    );
+}

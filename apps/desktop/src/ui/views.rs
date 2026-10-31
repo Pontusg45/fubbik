@@ -17,27 +17,27 @@ use crate::theme;
 const LOG_RENDER_LINES: usize = 500;
 
 impl Workspace {
-    pub(super) fn render_empty(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    pub(super) fn render_empty(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
+            .id("empty")
             .flex()
             .flex_col()
             .flex_1()
             .items_center()
-            .justify_center()
-            .gap_3()
+            .overflow_y_scroll()
+            .p_6()
             .child(
                 div()
-                    .text_xl()
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .child("No repos yet"),
-            )
-            .child(muted(
-                "Register a repo to watch its processes, databases and git state.",
-            ))
-            .child(
-                button("empty-register", "Register repo…")
-                    .text_sm()
-                    .on_click(cx.listener(|this, _, _, cx| this.run(Command::RegisterRepo, cx))),
+                    .flex()
+                    .flex_col()
+                    .gap_6()
+                    .w_full()
+                    .max_w(px(760.))
+                    .pt_6()
+                    .child(div().text_xl().font_weight(FontWeight::SEMIBOLD).child("Welcome to fubbik"))
+                    .child(muted("Watch your repos' processes, databases, worktrees and AI agents, with fubbik's knowledge alongside."))
+                    .child(self.render_checklist(cx))
+                    .child(self.render_preferences(window, cx)),
             )
     }
 
@@ -68,7 +68,7 @@ impl Workspace {
                 Tab::Logs => self.render_logs(repo, window, cx).into_any_element(),
                 Tab::Knowledge => self.render_knowledge(index, window, cx).into_any_element(),
                 Tab::Plans => self.render_plans(index, cx).into_any_element(),
-                Tab::Setup => self.render_setup(index, cx).into_any_element(),
+                Tab::Setup => self.render_setup(index, window, cx).into_any_element(),
                 Tab::Terminal => {
                     let dir = self.repos[index].entry.path.clone();
                     div()

@@ -11,6 +11,7 @@ mod knowledge;
 mod palette;
 mod plans;
 mod polling;
+mod preferences;
 mod setup_view;
 mod sidebar;
 mod terminal_view;
@@ -138,6 +139,9 @@ enum Field {
     Group,
     NewWorktree,
     Reply,
+    FubbikUrl,
+    WebUrl,
+    FubbikBin,
 }
 
 /// One repo's poll. `knowledge` and `setup` only come with slow polls.
@@ -299,6 +303,11 @@ pub struct Workspace {
     /// Terminal tabs are tmux sessions (tmux is installed and not turned off).
     tmux_terminals: bool,
     reply_field: TextField,
+    fubbik_url_field: TextField,
+    web_url_field: TextField,
+    fubbik_bin_field: TextField,
+    /// The highlighted row in AI Sessions (j/k, enter).
+    list_cursor: Option<usize>,
     /// Per agent session id (Codex): how long its screen has been still.
     quiet: HashMap<String, Quiet>,
     /// How long knowledge fetches wait after the API failed (doubles).
@@ -378,6 +387,10 @@ impl Workspace {
             active_terminal: None,
             tmux_terminals: false,
             reply_field: TextField::new(cx),
+            fubbik_url_field: TextField::new(cx),
+            web_url_field: TextField::new(cx),
+            fubbik_bin_field: TextField::new(cx),
+            list_cursor: None,
             quiet: HashMap::new(),
             api_backoff: Duration::ZERO,
             _watcher: None,
@@ -402,6 +415,7 @@ impl Workspace {
             ));
         }
         workspace.sync_group_field();
+        workspace.sync_preference_fields();
         workspace.watch_files(cx);
         workspace.tmux_terminals = workspace.config.tmux_persistence() && tmux::available();
         if workspace.tmux_terminals {

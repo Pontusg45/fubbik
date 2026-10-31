@@ -38,7 +38,12 @@ fn check(title: &str, ok: bool, detail: String) -> gpui::Div {
 }
 
 impl Workspace {
-    pub(super) fn render_setup(&self, repo: usize, cx: &mut Context<Self>) -> impl IntoElement {
+    pub(super) fn render_setup(
+        &self,
+        repo: usize,
+        window: &gpui::Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
         let view = &self.repos[repo];
         let global = self.global.as_ref();
 
@@ -173,6 +178,7 @@ impl Workspace {
             .flex()
             .flex_col()
             .gap_6()
+            .child(self.render_preferences(window, cx))
             .child(section(
                 "Doctor",
                 vec![

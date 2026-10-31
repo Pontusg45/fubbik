@@ -31,6 +31,10 @@ pub enum Command {
     RemoveWorktree(usize, PathBuf),
     PruneWorktrees(usize),
     ToggleTheme,
+    /// Terminal tabs as tmux sessions (true) or plain shells.
+    SetPersistence(bool),
+    /// AI sessions in Terminal.app (true) or the Terminal tab.
+    SetExternalTerminal(bool),
     /// Select a repo and show one of its tabs.
     Focus {
         repo: usize,
