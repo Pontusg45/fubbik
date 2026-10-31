@@ -127,6 +127,41 @@ impl Tab {
         Tab::Insights,
     ];
 
+    /// The tab's own color: its dot and underline in the tab strip.
+    pub fn color(self) -> gpui::Hsla {
+        use theme::Hue;
+        match self {
+            Tab::Overview | Tab::Today => theme::hue(Hue::Blue),
+            Tab::Processes => theme::hue(Hue::Green),
+            Tab::Databases => theme::hue(Hue::Cyan),
+            Tab::Logs | Tab::Terminal => theme::hue(Hue::Lime),
+            Tab::Worktrees => theme::hue(Hue::Violet),
+            Tab::Sessions | Tab::Agents => theme::hue(Hue::Orange),
+            Tab::Plans | Tab::Insights => theme::hue(Hue::Pink),
+            Tab::Knowledge => theme::hue(Hue::Yellow),
+            Tab::Setup => theme::text_muted(),
+        }
+    }
+
+    /// The key that shows the tab.
+    pub fn shortcut(self) -> &'static str {
+        match self {
+            Tab::Overview => "⌘1",
+            Tab::Processes => "⌘2",
+            Tab::Databases => "⌘3",
+            Tab::Logs => "⌘4",
+            Tab::Worktrees => "⌘5",
+            Tab::Sessions => "⌘6",
+            Tab::Plans => "⌘7",
+            Tab::Knowledge => "⌘8",
+            Tab::Setup => "⌘9",
+            Tab::Terminal => "⌘0",
+            Tab::Agents => "⇧⌘A",
+            Tab::Today => "⇧⌘H",
+            Tab::Insights => "⇧⌘I",
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
             Tab::Overview => "Overview",

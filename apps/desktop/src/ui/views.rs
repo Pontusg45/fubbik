@@ -6,7 +6,7 @@ use gpui::{
 
 use super::palette::Command;
 use super::widgets::{
-    button, label, muted, row, section, sparkline, stat_card, status_dot, status_pill,
+    button, label, muted, pill, row, section, sparkline, stat_card, status_dot, status_pill,
     top_highlight,
 };
 use super::{Field, RepoView, Tab, Workspace, display_path};
@@ -16,6 +16,31 @@ use crate::services::ServicesFile;
 use crate::theme;
 
 const LOG_RENDER_LINES: usize = 500;
+
+/// A repo's initial on its own color: the same in the sidebar and header.
+pub(super) fn repo_badge(name: &str, size: f32) -> impl IntoElement {
+    let color = theme::name_color(name);
+    div()
+        .flex()
+        .flex_none()
+        .items_center()
+        .justify_center()
+        .size(px(size))
+        .rounded_md()
+        .bg(color.opacity(0.22))
+        .border_1()
+        .border_color(color.opacity(0.6))
+        .text_color(color)
+        .text_xs()
+        .font_weight(FontWeight::BOLD)
+        .child(
+            name.chars()
+                .next()
+                .unwrap_or('?')
+                .to_uppercase()
+                .to_string(),
+        )
+}
 
 impl Workspace {
     pub(super) fn render_empty(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -159,6 +184,23 @@ impl Workspace {
                                     this.focus_terminal = true;
                                     cx.notify();
                                 }))
+                                .child(div().size(px(6.)).rounded_full().bg(
+                                    if tab.label.starts_with("Claude")
+                                        || tab.label.starts_with("Task")
+                                    {
+                                        theme::agent(crate::sessions::Agent::ClaudeCode)
+                                    } else if tab.label.starts_with("Codex") {
+                                        theme::agent(crate::sessions::Agent::Codex)
+                                    } else if tab.label.starts_with("tmux") {
+                                        theme::hue(theme::Hue::Violet)
+                                    } else if tab.label.starts_with("PR")
+                                        || tab.label.starts_with("Merge")
+                                    {
+                                        theme::hue(theme::Hue::Pink)
+                                    } else {
+                                        theme::text_muted()
+                                    },
+                                ))
                                 .child(format!("{}{place}", tab.label))
                                 .child(
                                     div()
@@ -309,9 +351,16 @@ impl Workspace {
                             .gap_3()
                             .child(
                                 div()
-                                    .text_xl()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .child(repo.entry.name()),
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(repo_badge(&repo.entry.name(), 24.))
+                                    .child(
+                                        div()
+                                            .text_xl()
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .child(repo.entry.name()),
+                                    ),
                             )
                             .child(status_pill(status)),
                     )
@@ -343,17 +392,20 @@ impl Workspace {
     }
 
     fn render_tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let tabs = Tab::ALL.into_iter().enumerate().map(|(i, tab)| {
+        let tabs = Tab::ALL.into_iter().map(|tab| {
             let active = tab == self.tab;
             div()
                 .id(tab.label())
+                .flex()
+                .items_center()
+                .gap_1p5()
                 .px_3()
                 .py_2()
                 .text_sm()
                 .cursor_pointer()
                 .border_b_2()
                 .border_color(if active {
-                    theme::accent()
+                    tab.color()
                 } else {
                     gpui::transparent_black()
                 })
@@ -364,7 +416,19 @@ impl Workspace {
                 })
                 .hover(|this| this.text_color(theme::text()))
                 .on_click(cx.listener(move |this, _, _, cx| this.run(Command::ShowTab(tab), cx)))
-                .child(format!("{}  ⌘{}", tab.label(), (i + 1) % 10))
+                .child(
+                    div()
+                        .size(px(6.))
+                        .rounded_full()
+                        .bg(tab.color().opacity(if active { 1.0 } else { 0.5 })),
+                )
+                .child(tab.label())
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(theme::text_muted())
+                        .child(tab.shortcut()),
+                )
         });
         div()
             .flex()
@@ -575,7 +639,11 @@ impl Workspace {
             .into_iter()
             .map(|(tool, scripts)| {
                 row()
-                    .child(div().w(px(56.)).child(muted(tool.clone())))
+                    .child(
+                        div()
+                            .w(px(56.))
+                            .child(pill(tool.clone(), theme::tool(&tool))),
+                    )
                     .child(
                         div()
                             .flex()
@@ -898,7 +966,13 @@ impl Workspace {
                 .bg(theme::input())
                 .font_family("Menlo")
                 .text_xs()
-                .children(shown[start..].iter().map(|line| div().child(line.clone())))
+                .children(shown[start..].iter().map(|line| {
+                    let row = div().child(line.clone());
+                    match theme::log_line(line) {
+                        Some(color) => row.text_color(color),
+                        None => row,
+                    }
+                }))
                 .into_any_element()
         };
 

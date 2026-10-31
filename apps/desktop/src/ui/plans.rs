@@ -147,6 +147,12 @@ impl Workspace {
                             .px_1()
                             .child(
                                 div()
+                                    .size(px(8.))
+                                    .rounded_full()
+                                    .bg(task_color(statuses[0])),
+                            )
+                            .child(
+                                div()
                                     .text_xs()
                                     .font_weight(FontWeight::SEMIBOLD)
                                     .child(title.to_uppercase()),
@@ -379,6 +385,19 @@ impl Workspace {
                 theme::status(Status::Degraded).opacity(0.5)
             })
             .bg(theme::surface())
+            .relative()
+            .overflow_hidden()
+            // The status color down the card's left edge.
+            .child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .bottom_0()
+                    .left_0()
+                    .w(px(3.))
+                    .bg(task_color(&task.status)),
+            )
+            .pl_3()
             .shadow(theme::card_shadow())
             .when(task.status == "done", |d| d.opacity(0.6))
             .child(div().text_sm().child(task.title.clone()))

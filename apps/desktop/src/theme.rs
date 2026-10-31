@@ -51,6 +51,8 @@ pub struct Palette {
     pub stopped: u32,
     /// True for dark backgrounds: shadows and highlights are tuned for it.
     pub dark: bool,
+    /// Distinct hues for telling things apart: repos, agents, tabs, tools.
+    pub hues: [u32; 8],
 }
 
 /// What the terminal draws with.
@@ -82,6 +84,9 @@ impl Palette {
         degraded: 0xfbbf24,
         stopped: 0x6b7280,
         dark: true,
+        hues: [
+            0x7c8cff, 0x4ade80, 0xfbbf24, 0xf472b6, 0x22d3ee, 0xfb923c, 0xa78bfa, 0xa3e635,
+        ],
     };
 
     /// The UI from a Ghostty theme.
@@ -109,6 +114,9 @@ impl Palette {
             degraded: p(3),
             stopped: p(8),
             dark,
+            // The theme's ANSI colors, so hues match it: blue, green, yellow,
+            // magenta, cyan, red, bright blue, bright green.
+            hues: [p(4), p(2), p(3), p(5), p(6), p(1), p(12), p(10)],
         }
     }
 }
@@ -340,6 +348,78 @@ pub fn accent() -> Hsla {
     rgb(palette().accent).into()
 }
 
+/// Named hues, so each kind of thing keeps its color across the app.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Hue {
+    Blue = 0,
+    Green = 1,
+    Yellow = 2,
+    Pink = 3,
+    Cyan = 4,
+    Orange = 5,
+    Violet = 6,
+    Lime = 7,
+}
+
+pub fn hue(h: Hue) -> Hsla {
+    rgb(palette().hues[h as usize]).into()
+}
+
+/// A stable color for a name (a repo), from the theme's hues.
+pub fn name_color(name: &str) -> Hsla {
+    let hash = name
+        .bytes()
+        .fold(5381u32, |h, b| h.wrapping_mul(33) ^ b as u32);
+    rgb(palette().hues[hash as usize % 8]).into()
+}
+
+/// Each agent's color.
+pub fn agent(agent: crate::sessions::Agent) -> Hsla {
+    match agent {
+        crate::sessions::Agent::ClaudeCode => hue(Hue::Orange),
+        crate::sessions::Agent::Codex => hue(Hue::Cyan),
+    }
+}
+
+/// Script tools: just, the JavaScript package managers, make.
+pub fn tool(tool: &str) -> Hsla {
+    match tool {
+        "just" => hue(Hue::Violet),
+        "make" => hue(Hue::Lime),
+        _ => hue(Hue::Yellow),
+    }
+}
+
+/// Log lines by what they look like: errors red, warnings yellow, success
+/// green, the app's own markers muted. None: plain text.
+pub fn log_line(line: &str) -> Option<Hsla> {
+    let lower = line.to_ascii_lowercase();
+    if line.starts_with("── ") {
+        Some(text_muted())
+    } else if ["error", "panicked", "failed", "fatal", "exception"]
+        .iter()
+        .any(|w| lower.contains(w))
+    {
+        Some(danger())
+    } else if lower.contains("warn") {
+        Some(status(Status::Degraded))
+    } else if [
+        "ready",
+        "listening",
+        "compiled successfully",
+        "finished",
+        " ok",
+        "passed",
+    ]
+    .iter()
+    .any(|w| lower.contains(w))
+    {
+        Some(status(Status::Running))
+    } else {
+        None
+    }
+}
+
 pub fn danger() -> Hsla {
     rgb(palette().danger).into()
 }
@@ -423,6 +503,27 @@ mod tests {
         // Then
         assert!(!p.dark);
         assert_eq!(p.text, 0x4c4f69);
+    }
+
+    #[test]
+    fn names_keep_their_color_and_logs_are_classified() {
+        // Given
+        let (a, b) = (name_color("fubbik"), name_color("fubbik"));
+
+        // When
+        let lines = [
+            log_line("error[E0425]: oops"),
+            log_line("warning: unused"),
+            log_line("Server listening on :3000"),
+            log_line("hello"),
+        ];
+
+        // Then
+        assert_eq!(a, b);
+        assert_eq!(lines[0], Some(danger()));
+        assert_eq!(lines[1], Some(status(Status::Degraded)));
+        assert_eq!(lines[2], Some(status(Status::Running)));
+        assert_eq!(lines[3], None);
     }
 
     #[test]

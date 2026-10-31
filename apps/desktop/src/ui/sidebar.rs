@@ -166,6 +166,13 @@ impl Workspace {
                 .on_click(
                     cx.listener(move |this, _, _, cx| this.run(Command::SelectRepo(index), cx)),
                 )
+                .border_l_2()
+                .border_color(if index == self.selected {
+                    theme::name_color(&repo.entry.name())
+                } else {
+                    gpui::transparent_black()
+                })
+                .child(super::views::repo_badge(&repo.entry.name(), 20.))
                 .child(status_dot(status))
                 .child(
                     div()

@@ -33,6 +33,7 @@ impl Workspace {
             };
             let line = |color: Hsla, tag: &str, text: String| {
                 row()
+                    .child(super::views::repo_badge(&name, 18.))
                     .child(div().w(px(96.)).child(pill(tag.to_string(), color)))
                     .child(div().flex_1().overflow_hidden().text_sm().child(text))
             };
@@ -156,6 +157,7 @@ impl Workspace {
                     let (p, t) = (plan.id.clone(), task.id.clone());
                     flight.push(
                         row()
+                            .child(super::views::repo_badge(&name, 18.))
                             .child(
                                 div()
                                     .flex()
@@ -202,6 +204,7 @@ impl Workspace {
                     let (bp, bt) = (plan.id.clone(), task.id.clone());
                     next.push(
                         row()
+                            .child(super::views::repo_badge(&name, 18.))
                             .child(
                                 div()
                                     .flex()

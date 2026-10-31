@@ -2,6 +2,40 @@
 
 use super::*;
 
+/// What kind of thing a palette entry does, as a color: navigation blue,
+/// processes green, agents orange, tasks pink, worktrees violet, scripts
+/// by tool, themes yellow, the web app cyan, removing red.
+fn command_color(command: &Command) -> gpui::Hsla {
+    use theme::Hue;
+    match command {
+        Command::SelectRepo(_) | Command::ShowTab(_) | Command::Focus { .. } => {
+            theme::hue(Hue::Blue)
+        }
+        Command::StartProcess(..)
+        | Command::StopProcess(..)
+        | Command::RestartProcess(..)
+        | Command::StartAll(_)
+        | Command::StopAll(_)
+        | Command::StartProfile { .. } => theme::hue(Hue::Green),
+        Command::NewSession(_) | Command::ResumeSession(..) => theme::hue(Hue::Orange),
+        Command::StartTask { .. }
+        | Command::TaskTimeline { .. }
+        | Command::SetTaskStatus { .. } => theme::hue(Hue::Pink),
+        Command::OpenEditorAt(_)
+        | Command::OpenTerminalAt(_)
+        | Command::ShellAt(_)
+        | Command::ReviewWorktree { .. }
+        | Command::CreateWorktree(_) => theme::hue(Hue::Violet),
+        Command::RunScript { command, .. } => {
+            theme::tool(command.split_whitespace().next().unwrap_or_default())
+        }
+        Command::SetColors(_) | Command::ToggleTheme => theme::hue(Hue::Yellow),
+        Command::OpenWeb(_) | Command::OpenGitHub(_) => theme::hue(Hue::Cyan),
+        Command::RemoveRepo(_) | Command::RemoveWorktree(..) => theme::danger(),
+        _ => theme::text_muted(),
+    }
+}
+
 impl Workspace {
     /// `?query` searches chunks; anything else filters the commands.
     pub(super) fn palette_matches(&self) -> Vec<Entry> {
@@ -240,6 +274,16 @@ impl Workspace {
                         this.toggle_palette(window);
                         this.run(command.clone(), cx);
                     }))
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .size(px(7.))
+                            .flex_none()
+                            .rounded_full()
+                            .bg(command_color(&entry.command)),
+                    )
                     .child(entry.label)
             })
             .collect::<Vec<_>>();

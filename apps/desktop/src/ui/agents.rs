@@ -536,7 +536,7 @@ impl Workspace {
             Some(w) => format!("worktree {}", w.name()),
             None => display_path(&session.cwd),
         };
-        let mut detail = vec![session.agent.label().to_string(), place];
+        let mut detail = vec![place];
         if let Some(branch) = &session.branch {
             detail.push(format!("on {branch}"));
         }
@@ -618,9 +618,16 @@ impl Workspace {
                     .overflow_hidden()
                     .child(
                         div()
-                            .text_sm()
-                            .font_weight(FontWeight::MEDIUM)
-                            .child(session.title.clone()),
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(pill(session.agent.label(), theme::agent(session.agent)))
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .child(session.title.clone()),
+                            ),
                     )
                     .child(muted(detail.join("  ·  "))),
             )

@@ -347,7 +347,7 @@ impl Workspace {
             )
             .child(section("What costs points", health_rows));
 
-        let heat = |title: &str, counts: &[u32]| {
+        let heat = |title: &str, counts: &[u32], color: gpui::Hsla| {
             let peak = counts.iter().copied().max().unwrap_or(0).max(1);
             div()
                 .flex()
@@ -363,7 +363,7 @@ impl Workspace {
                     div().size(px(14.)).rounded_sm().bg(if n == 0 {
                         theme::border()
                     } else {
-                        theme::accent().opacity(strength)
+                        color.opacity(strength)
                     })
                 })))
                 .child(muted(format!("{} total", counts.iter().sum::<u32>())))
@@ -375,8 +375,16 @@ impl Workspace {
             .child(label(format!(
                 "ACTIVITY — LAST {HEATMAP_DAYS} DAYS (OLDEST LEFT)"
             )))
-            .child(heat("commits", &insights.commits_per_day))
-            .child(heat("agent sessions", &insights.sessions_per_day));
+            .child(heat(
+                "commits",
+                &insights.commits_per_day,
+                theme::hue(theme::Hue::Green),
+            ))
+            .child(heat(
+                "agent sessions",
+                &insights.sessions_per_day,
+                theme::agent(crate::sessions::Agent::ClaudeCode),
+            ));
 
         let branches: Vec<AnyElement> = insights
             .stale_branches

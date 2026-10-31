@@ -123,7 +123,24 @@ pub fn row() -> Div {
         .border_color(theme::border())
 }
 
+/// A stat card's color, by what it counts.
+fn card_color(title: &str) -> gpui::Hsla {
+    use theme::Hue;
+    match title {
+        "Processes" => theme::hue(Hue::Green),
+        "Databases" => theme::hue(Hue::Cyan),
+        "Git" => theme::hue(Hue::Violet),
+        "Knowledge" | "Chunks" => theme::hue(Hue::Blue),
+        "Stale" => theme::hue(Hue::Yellow),
+        "Orphans" => theme::hue(Hue::Pink),
+        "Thin" => theme::hue(Hue::Lime),
+        "Active agents" | "AI & worktrees" => theme::hue(Hue::Orange),
+        _ => theme::accent(),
+    }
+}
+
 pub fn stat_card(title: &'static str, value: impl Into<SharedString>) -> Div {
+    let color = card_color(title);
     div()
         .flex()
         .flex_col()
@@ -137,8 +154,24 @@ pub fn stat_card(title: &'static str, value: impl Into<SharedString>) -> Div {
         .shadow(theme::card_shadow())
         .relative()
         .overflow_hidden()
-        .child(top_highlight())
-        .child(muted(title))
+        // A colored top edge says what the card counts at a glance.
+        .child(
+            div()
+                .absolute()
+                .top_0()
+                .left_0()
+                .right_0()
+                .h(px(3.))
+                .bg(color),
+        )
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_1p5()
+                .child(div().size(px(6.)).rounded_full().bg(color))
+                .child(muted(title)),
+        )
         .child(
             div()
                 .text_lg()
