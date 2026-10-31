@@ -72,7 +72,8 @@ This file provides context about the project for AI assistants.
 fubbik/
 ├── apps/
 │   ├── web/         # Frontend (TanStack Router + React, Vite SPA)
-│   └── vscode/      # VS Code extension
+│   ├── vscode/      # VS Code extension
+│   └── desktop/     # GPUI desktop project manager (own cargo workspace; `just desktop`; reads `fubbik.services.toml`)
 ├── packages/
 │   ├── client/      # Generated OpenAPI client and wire contracts
 │   ├── db/          # Typed seed adapter and legacy schema reference (Drizzle, read-only)

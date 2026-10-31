@@ -1,0 +1,31 @@
+[package]
+name = "fubbik-desktop"
+edition = "2024"
+version = "0.1.0"
+description = "Desktop project manager for fubbik: registered repos, their processes, databases and status"
+publish = false
+
+# Its own workspace, so GPUI (and its X11/Wayland stack on Linux) stays out of
+# `cargo build --workspace` and CI for the crates under `crates/`.
+[workspace]
+
+[[bin]]
+name = "fubbik-desktop"
+path = "src/main.rs"
+
+[dependencies]
+# `runtime_shaders` compiles the Metal shaders when the app starts, so building
+# does not need Xcode's separate Metal Toolchain download.
+gpui = { version = "0.2.2", features = ["runtime_shaders"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+# Local HTTP only (health checks, the fubbik API), so no TLS stack.
+ureq = { version = "3", default-features = false, features = ["json"] }
+# The embedded terminal: Ghostty's VT engine (pre-1.0, so pinned exactly;
+# building it needs Zig 0.17 on PATH) and a PTY for the shell.
+libghostty-vt = "=0.2.2"
+portable-pty = "0.9"
+
+[dev-dependencies]
+tempfile = "3"

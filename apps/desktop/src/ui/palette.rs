@@ -1,0 +1,140 @@
+//! The ⌘K command palette: every command the app can run, filtered by a
+//! subsequence match on what was typed.
+
+use std::path::PathBuf;
+
+use super::Tab;
+use crate::sessions::Agent;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    SelectRepo(usize),
+    StartProcess(usize, usize),
+    StopProcess(usize, usize),
+    RestartProcess(usize, usize),
+    StartAll(usize),
+    StopAll(usize),
+    ShowTab(Tab),
+    RegisterRepo,
+    RemoveRepo(usize),
+    GenerateServices(usize),
+    OpenEditor(usize),
+    OpenTerminal(usize),
+    OpenGitHub(usize),
+    Refresh,
+    OpenEditorAt(PathBuf),
+    OpenTerminalAt(PathBuf),
+    /// A new Claude Code session in Terminal, in this directory.
+    NewSession(PathBuf),
+    ResumeSession(Agent, String, PathBuf),
+    CreateWorktree(usize),
+    RemoveWorktree(usize, PathBuf),
+    PruneWorktrees(usize),
+    ToggleTheme,
+    /// None: built-in; `"follow"`: the Ghostty config; else a theme name.
+    SetColors(Option<String>),
+    /// The embedded terminal, in this directory.
+    ShellAt(PathBuf),
+    CloseTerminal(usize),
+    /// A path on the fubbik web app, such as `/chunks/<id>`.
+    OpenWeb(String),
+    StartTask {
+        repo: usize,
+        plan: String,
+        task: String,
+        new_worktree: bool,
+        /// Start without switching to it (a detached tmux session).
+        background: bool,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct Entry {
+    pub label: String,
+    pub command: Command,
+}
+
+/// Case-insensitive subsequence match, scored so that earlier and
+/// contiguous hits rank first. None when `query` is not a subsequence.
+pub fn score(label: &str, query: &str) -> Option<i32> {
+    if query.is_empty() {
+        return Some(0);
+    }
+    let label: Vec<char> = label.to_lowercase().chars().collect();
+    let mut score = 0;
+    let mut position = 0;
+    let mut previous: Option<usize> = None;
+    for wanted in query.to_lowercase().chars().filter(|c| !c.is_whitespace()) {
+        let found = (position..label.len()).find(|&i| label[i] == wanted)?;
+        score -= found as i32;
+        if previous.is_some_and(|p| p + 1 == found) {
+            score += 5;
+        }
+        previous = Some(found);
+        position = found + 1;
+    }
+    Some(score)
+}
+
+pub fn filter(entries: &[Entry], query: &str) -> Vec<Entry> {
+    let mut scored: Vec<(i32, &Entry)> = entries
+        .iter()
+        .filter_map(|entry| score(&entry.label, query).map(|s| (s, entry)))
+        .collect();
+    scored.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+    scored.into_iter().map(|(_, entry)| entry.clone()).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry(label: &str) -> Entry {
+        Entry {
+            label: label.into(),
+            command: Command::Refresh,
+        }
+    }
+
+    #[test]
+    fn subsequence_matches() {
+        // Given
+        let label = "Start api — fubbik";
+
+        // When
+        let hit = score(label, "stapi");
+        let miss = score(label, "zz");
+
+        // Then
+        assert!(hit.is_some());
+        assert!(miss.is_none());
+    }
+
+    #[test]
+    fn contiguous_match_ranks_first() {
+        // Given
+        let entries = [entry("Stop all — fubbik"), entry("Start api — fubbik")];
+
+        // When
+        let ranked = filter(&entries, "start");
+
+        // Then
+        assert_eq!(ranked[0].label, "Start api — fubbik");
+        assert_eq!(ranked.len(), 1);
+    }
+
+    #[test]
+    fn empty_query_keeps_order() {
+        // Given
+        let entries = [entry("b"), entry("a")];
+
+        // When
+        let ranked = filter(&entries, "");
+
+        // Then
+        assert_eq!(
+            ranked.iter().map(|e| e.label.as_str()).collect::<Vec<_>>(),
+            ["b", "a"]
+        );
+    }
+}
