@@ -160,7 +160,10 @@ impl Workspace {
             .or(ids.last().copied())
         {
             Some(id) => id,
-            None => self.open_terminal(repo_path, "Shell".into(), None, cx),
+            // A shell opens by itself only when you just switched here (⌘0, a
+            // tab click); after closing the last one, the tab stays empty.
+            None if self.focus_terminal => self.open_terminal(repo_path, "Shell".into(), None, cx),
+            None => return None,
         };
         self.active_terminal = Some(id);
         let view = self.terminals.iter().find(|t| t.id == id)?.view.clone();

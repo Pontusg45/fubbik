@@ -69,7 +69,20 @@ impl Workspace {
                 Tab::Knowledge => self.render_knowledge(index, window, cx).into_any_element(),
                 Tab::Plans => self.render_plans(index, cx).into_any_element(),
                 Tab::Setup => self.render_setup(index, cx).into_any_element(),
-                Tab::Terminal => muted("Starting the shell…").into_any_element(),
+                Tab::Terminal => {
+                    let dir = self.repos[index].entry.path.clone();
+                    div()
+                        .flex()
+                        .flex_col()
+                        .items_start()
+                        .gap_2()
+                        .child(div().text_sm().child("No terminals"))
+                        .child(muted("Shells and AI sessions you open here keep running when you switch away."))
+                        .child(button("terminal-empty-new", "+ Shell").on_click(cx.listener(move |this, _, _, cx| {
+                            this.run(Command::ShellAt(dir.clone()), cx)
+                        })))
+                        .into_any_element()
+                }
                 Tab::Worktrees => self
                     .render_worktrees(index, snapshot, window, cx)
                     .into_any_element(),

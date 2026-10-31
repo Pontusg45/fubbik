@@ -16,6 +16,8 @@ mod sidebar;
 mod terminal_view;
 mod terminals;
 mod text;
+#[cfg(test)]
+mod ui_tests;
 mod views;
 mod widgets;
 
