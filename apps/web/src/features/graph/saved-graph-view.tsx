@@ -155,7 +155,7 @@ function SavedGraphViewInner() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["saved-graphs"] });
             toast.success("Saved graph deleted");
-            navigate({ to: "/graph" });
+            navigate({ to: "/saved-graphs" });
         }
     });
 
@@ -470,11 +470,11 @@ function SavedGraphViewInner() {
                 <div className="pointer-events-none absolute top-4 right-4 left-4 z-10 flex items-center justify-between">
                     <div className="pointer-events-auto flex items-center gap-3">
                         <Link
-                            to="/graph"
+                            to="/saved-graphs"
                             className="bg-background/80 text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs backdrop-blur-sm"
                         >
                             <ArrowLeft className="size-3.5" />
-                            Graph
+                            Saved graphs
                         </Link>
                         <div className="bg-background/80 rounded-md border px-3 py-1.5 backdrop-blur-sm">
                             <h1 className="text-sm font-semibold">{sgName}</h1>

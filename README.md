@@ -218,6 +218,27 @@ fubbik stats
 These workflows support the global `--json` and `--quiet` output modes. The
 compatibility aliases `codebase`, `tags`, and `requirements` are also accepted.
 
+CLI sessions are scoped to the server URL. Sign in with `fubbik auth login
+you@example.com` (or pipe a password with `--password-stdin`), inspect the
+active identity with `fubbik auth whoami`, and revoke it with `fubbik auth
+logout`. Session tokens are stored in a private file under
+`$XDG_CONFIG_HOME/fubbik/sessions.json` or `~/.config/fubbik/sessions.json`;
+`FUBBIK_SESSION` supplies a token for noninteractive jobs. Login requires HTTPS
+except when connecting to localhost.
+
+Use `fubbik task add "Ship release" --priority high` to create a queue task.
+`fubbik task list --status completed` shows queue history; `task claim` and
+`task done` take the task's plan ID. Chunk listing and search accept `--space`,
+`--offset`, `--limit` (up to 100 per page), and `--all` to fetch every page.
+
+For large JSONL imports, run `fubbik bulk-add --file chunks.jsonl --dry-run`
+first, then `fubbik bulk-add --file chunks.jsonl --report import-report.jsonl`.
+If a run is interrupted, repeat it with `--resume import-report.jsonl` to skip
+successful lines. The resume report records line numbers, SHA-256 fingerprints,
+and created IDs; changing a successful line causes the resume to stop. JSON and
+Markdown `fubbik import` also accept `--dry-run`. With `--json`, command results
+go to stdout and errors go to stderr as JSON.
+
 ### Self-hosting
 
 Start the Rust server and PostgreSQL stack with:

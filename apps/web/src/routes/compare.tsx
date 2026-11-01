@@ -13,7 +13,7 @@ import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/compare")({
     component: ComparePage,
-    validateSearch: (search: Record<string, unknown>) => ({
+    validateSearch: (search: Record<string, unknown>): { left?: string; right?: string } => ({
         left: (search.left as string) ?? undefined,
         right: (search.right as string) ?? undefined
     }),

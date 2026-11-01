@@ -1,4 +1,5 @@
 import "@xyflow/react/dist/style.css";
+import { Link } from "@tanstack/react-router";
 import {
     Background,
     BackgroundVariant,
@@ -329,6 +330,9 @@ function GraphViewInner() {
                             >
                                 Graph
                             </button>
+                            <Link to="/saved-graphs" className="bg-background/90 rounded-md border px-2 py-1.5 text-xs backdrop-blur-sm">
+                                Saved graphs
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -408,6 +412,9 @@ function GraphViewInner() {
 
                         {/* Right controls */}
                         <div className="flex flex-wrap items-center gap-2">
+                            <Link to="/saved-graphs" className="bg-background/90 rounded-md border px-2 py-1.5 text-xs backdrop-blur-sm">
+                                Saved graphs
+                            </Link>
                             {zoom.level === "overview" && availableTagTypeIds.size > 1 && (
                                 <>
                                     <button

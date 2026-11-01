@@ -1,6 +1,54 @@
 use super::*;
 
 impl Client {
+    pub async fn query_chunks(
+        &self,
+        chunk_type: Option<&str>,
+        search: Option<&str>,
+        space_id: Option<&str>,
+        limit: u32,
+        offset: u32,
+        all: bool,
+    ) -> Result<Vec<Chunk>> {
+        if limit == 0 || limit > 100 {
+            bail!("limit must be between 1 and 100");
+        }
+        let mut chunks = Vec::new();
+        let mut current = offset;
+        loop {
+            let mut query = vec![
+                ("limit", limit.to_string()),
+                ("offset", current.to_string()),
+                ("sort", "alpha".to_owned()),
+            ];
+            if let Some(value) = chunk_type {
+                query.push(("type", value.to_owned()));
+            }
+            if let Some(value) = search {
+                query.push(("search", value.to_owned()));
+            }
+            if let Some(value) = space_id {
+                query.push(("spaceId", value.to_owned()));
+            }
+            let page: ChunkListResponse = self.get_json("/api/chunks", &query).await?;
+            let count = u32::try_from(page.chunks.len())?;
+            chunks.extend(page.chunks);
+            if !all || i64::from(current) + i64::from(count) >= page.total {
+                break;
+            }
+            if count == 0 {
+                bail!(
+                    "chunk list ended before the reported total of {}",
+                    page.total
+                );
+            }
+            current = current
+                .checked_add(count)
+                .context("too many chunks to paginate")?;
+        }
+        Ok(chunks)
+    }
+
     pub async fn list_chunks(
         &self,
         chunk_type: Option<&str>,
@@ -140,25 +188,19 @@ impl Client {
         spaces: &[String],
         update_tag: Option<&str>,
     ) -> Result<Chunk> {
-        let res = self
-            .http
-            .post(format!("{}/api/chunks", self.base))
-            .json(&serde_json::json!({
+        self.send_json(
+            reqwest::Method::POST,
+            "/api/chunks",
+            serde_json::json!({
                 "title": title,
                 "content": content,
                 "type": chunk_type,
                 "tags": tags,
                 "spaceIds": spaces,
                 "updateTag": update_tag,
-            }))
-            .send()
-            .await
-            .with_context(|| format!("could not reach fubbik at {}", self.base))?;
-
-        if !res.status().is_success() {
-            bail!("create failed with {}", res.status());
-        }
-        Ok(res.json().await?)
+            }),
+        )
+        .await
     }
 
     pub async fn update_chunk(

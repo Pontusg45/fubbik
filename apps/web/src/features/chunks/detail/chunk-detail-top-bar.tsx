@@ -154,6 +154,9 @@ export function ChunkDetailTopBar({
                             <Network className="size-3.5" />
                             Find path in graph
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => void navigate({ to: "/compare", search: { left: chunkId } })}>
+                            Compare with another chunk
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={() =>
                                 void navigate({

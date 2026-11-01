@@ -1,59 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import {
-    Activity,
-    Blocks,
-    BookOpen,
-    ChevronDown,
-    ClipboardCheck,
-    ClipboardList,
-    Clock,
-    FileSearch,
-    FileText,
-    FolderGit2,
-    FolderTree,
-    FolderUp,
-    History,
-    Layers,
-    LayoutDashboard,
-    Menu,
-    Network,
-    Search,
-    Settings,
-    Sparkles,
-    Tags
-} from "lucide-react";
+import { ChevronDown, Menu } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { MANAGE_NAV, PRIMARY_NAV } from "@/features/nav/navigation-items";
 import { filterNavItems, useCapabilities } from "@/features/nav/use-capabilities";
-
-const primaryItems = [
-    { label: "Dashboard", to: "/dashboard" as const, icon: LayoutDashboard },
-    { label: "Features", to: "/features" as const, icon: Sparkles },
-    { label: "Chunks", to: "/chunks" as const, icon: Blocks },
-    { label: "Graph", to: "/graph" as const, icon: Network },
-    { label: "Plans", to: "/plans" as const, icon: ClipboardList },
-    { label: "Requirements", to: "/requirements" as const, icon: ClipboardCheck },
-    { label: "Docs", to: "/docs" as const, icon: FileText },
-    { label: "Search", to: "/search" as const, icon: Search }
-];
-
-const manageItems = [
-    { label: "Tags", to: "/tags" as const, icon: Tags },
-    { label: "Templates", to: "/templates" as const, icon: FileText },
-    { label: "Vocabulary", to: "/vocabulary" as const, icon: BookOpen },
-    { label: "Context", to: "/context" as const, icon: FileSearch },
-    { label: "Spaces", to: "/spaces" as const, icon: FolderGit2 },
-    { label: "Workspaces", to: "/workspaces" as const, icon: Layers },
-    { label: "Import Docs", to: "/import" as const, icon: FolderUp },
-    { label: "Health", to: "/knowledge-health" as const, icon: Activity },
-    { label: "Density", to: "/density" as const, icon: FolderTree },
-    { label: "Timeline", to: "/timeline" as const, icon: History },
-    { label: "Activity", to: "/activity" as const, icon: Clock },
-    { label: "Settings", to: "/settings" as const, icon: Settings }
-];
 
 export function MobileNav() {
     const [open, setOpen] = useState(false);
@@ -65,13 +18,13 @@ export function MobileNav() {
             <SheetTrigger render={<Button variant="ghost" size="sm" className="md:hidden" aria-label="Open navigation menu" />}>
                 <Menu className="size-5" />
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
+            <SheetContent side="left" className="w-64 overflow-y-auto p-0">
                 <div className="p-4">
                     <span className="text-lg font-bold">fubbik</span>
                 </div>
                 <Separator />
                 <nav className="space-y-1 p-2">
-                    {filterNavItems(primaryItems, capabilities).map(item => (
+                    {filterNavItems(PRIMARY_NAV, capabilities).map(item => (
                         <Link
                             key={item.to}
                             to={item.to}
@@ -96,7 +49,7 @@ export function MobileNav() {
                 </button>
                 {manageOpen && (
                     <nav className="space-y-1 p-2">
-                        {manageItems.map(item => (
+                        {filterNavItems(MANAGE_NAV, capabilities).map(item => (
                             <Link
                                 key={item.to}
                                 to={item.to}

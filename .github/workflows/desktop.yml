@@ -1,0 +1,37 @@
+name: desktop
+on:
+    push:
+        paths:
+            - "apps/desktop/**"
+            - ".github/workflows/desktop.yml"
+            - "rust-toolchain.toml"
+    pull_request:
+        paths:
+            - "apps/desktop/**"
+            - ".github/workflows/desktop.yml"
+            - "rust-toolchain.toml"
+
+# apps/desktop is its own cargo workspace (GPUI is macOS-first and heavy), so
+# it builds here on a macOS runner and stays out of rust.yml.
+jobs:
+    test:
+        runs-on: macos-latest
+        defaults:
+            run:
+                working-directory: apps/desktop
+        steps:
+            - uses: actions/checkout@v4
+            # rustup installs the toolchain pinned in rust-toolchain.toml.
+            - run: rustup show
+            # libghostty-vt 0.2.2 runs `zig` from PATH and needs exactly 0.15.2;
+            # tmux lets the tmux tests run instead of skipping.
+            - name: Install Zig 0.15 and tmux
+              run: |
+                  brew install zig@0.15 tmux
+                  echo "$(brew --prefix zig@0.15)/bin" >> "$GITHUB_PATH"
+            - uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: apps/desktop
+            - run: cargo fmt --check
+            - run: cargo clippy --all-targets -- -D warnings
+            - run: cargo test

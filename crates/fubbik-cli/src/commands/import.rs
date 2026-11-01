@@ -35,20 +35,22 @@ impl JsonImport {
 pub async fn run(
     client: &Client,
     path: &Path,
+    dry_run: bool,
     space: Option<&str>,
     default_type: &str,
     recursive: bool,
     mode: OutputMode,
 ) -> Result<()> {
     if path.is_file() && path.extension().and_then(|value| value.to_str()) == Some("json") {
-        return import_json(client, path, space, default_type, mode).await;
+        return import_json(client, path, dry_run, space, default_type, mode).await;
     }
-    import_markdown(client, path, space, recursive, mode).await
+    import_markdown(client, path, dry_run, space, recursive, mode).await
 }
 
 async fn import_json(
     client: &Client,
     path: &Path,
+    dry_run: bool,
     space: Option<&str>,
     default_type: &str,
     mode: OutputMode,
@@ -56,11 +58,25 @@ async fn import_json(
     let raw = std::fs::read_to_string(path)
         .with_context(|| format!("could not read {}", path.display()))?;
     let chunks: JsonImport = serde_json::from_str(&raw).context("invalid JSON import format")?;
+    let chunks = chunks.into_chunks();
+    if chunks.iter().any(|chunk| chunk.title.trim().is_empty()) {
+        bail!("JSON import contains an empty title");
+    }
+    if dry_run {
+        return output::render(
+            mode,
+            output::CommandOutput {
+                data: serde_json::json!({"dryRun": true, "wouldAdd": chunks.len()}),
+                human: format!("Would import {} chunk(s)", chunks.len()),
+                quiet: vec![],
+            },
+        );
+    }
     let space_id = client.resolve_space(space).await?;
     let spaces = space_id.into_iter().collect::<Vec<_>>();
     let mut added = Vec::new();
     let mut errors = Vec::new();
-    for chunk in chunks.into_chunks() {
+    for chunk in chunks {
         match client
             .create_chunk(
                 &chunk.title,
@@ -85,14 +101,14 @@ async fn import_json(
 async fn import_markdown(
     client: &Client,
     path: &Path,
+    dry_run: bool,
     space: Option<&str>,
     recursive: bool,
     mode: OutputMode,
 ) -> Result<()> {
-    let space_id = client
-        .resolve_space(space)
-        .await?
-        .context("Markdown import requires --space")?;
+    if space.is_none() {
+        bail!("Markdown import requires --space");
+    }
     let (base, paths) = markdown_paths(path, recursive)?;
     if paths.is_empty() {
         bail!("no .md files found");
@@ -100,6 +116,24 @@ async fn import_markdown(
     if paths.len() > 500 {
         bail!("found {} files; import at most 500 at a time", paths.len());
     }
+    if dry_run {
+        for path in &paths {
+            std::fs::read_to_string(path)
+                .with_context(|| format!("could not read {}", path.display()))?;
+        }
+        return output::render(
+            mode,
+            output::CommandOutput {
+                data: serde_json::json!({"dryRun": true, "wouldImport": paths.len()}),
+                human: format!("Would import {} Markdown file(s)", paths.len()),
+                quiet: vec![],
+            },
+        );
+    }
+    let space_id = client
+        .resolve_space(space)
+        .await?
+        .context("Markdown import requires --space")?;
     let mut files = Vec::with_capacity(paths.len());
     for path in paths {
         let relative = path.strip_prefix(&base).unwrap_or(&path);
@@ -108,18 +142,21 @@ async fn import_markdown(
         files.push((relative.to_string_lossy().into_owned(), content));
     }
     let result = client.import_chunk_documents(&files, &space_id).await?;
+    let error_count = result["errors"].as_array().map_or(0, Vec::len);
     if mode == OutputMode::Json {
-        return output::json(&result);
-    }
-    if mode == OutputMode::Quiet {
+        output::json(&result)?;
+    } else if mode == OutputMode::Quiet {
         println!("{}", result["created"].as_i64().unwrap_or(0));
     } else {
         println!(
             "Created: {} | Skipped: {} | Errors: {}",
             result["created"].as_i64().unwrap_or(0),
             result["skipped"].as_i64().unwrap_or(0),
-            result["errors"].as_array().map_or(0, Vec::len)
+            error_count
         );
+    }
+    if error_count > 0 {
+        bail!("{error_count} Markdown file(s) could not be imported");
     }
     Ok(())
 }
@@ -198,5 +235,51 @@ mod tests {
         // Then nested Markdown is only present in recursive mode
         assert_eq!(shallow.len(), 1);
         assert_eq!(deep.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn json_dry_run_does_not_contact_the_server() {
+        // Given a JSON import with two valid chunks
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("chunks.json");
+        std::fs::write(&path, r#"[{"title":"First"},{"title":"Second"}]"#).unwrap();
+        let server = wiremock::MockServer::start().await;
+        // When the import is previewed
+        run(
+            &Client::new(server.uri()),
+            &path,
+            true,
+            None,
+            "note",
+            true,
+            OutputMode::Quiet,
+        )
+        .await
+        .unwrap();
+        // Then no chunks are created
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn markdown_dry_run_requires_space_but_makes_no_request() {
+        // Given a Markdown file and a chosen space
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("guide.md");
+        std::fs::write(&path, "# Guide").unwrap();
+        let server = wiremock::MockServer::start().await;
+        // When the import is previewed
+        run(
+            &Client::new(server.uri()),
+            &path,
+            true,
+            Some("docs"),
+            "document",
+            true,
+            OutputMode::Quiet,
+        )
+        .await
+        .unwrap();
+        // Then the server is untouched
+        assert!(server.received_requests().await.unwrap().is_empty());
     }
 }

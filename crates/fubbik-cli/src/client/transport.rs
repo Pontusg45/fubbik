@@ -1,22 +1,65 @@
 use anyhow::{Context, Result, bail};
+use reqwest::header::{COOKIE, HeaderMap, HeaderValue};
 
 use super::Client;
 
 impl Client {
     pub fn new(base: impl Into<String>) -> Self {
-        Self {
+        Self::with_token(base, None).expect("http client builds")
+    }
+
+    pub fn authenticated(base: impl Into<String>) -> Result<Self> {
+        let base = base.into();
+        let token = crate::auth::token_for(&base)?;
+        Self::with_token(base, token.as_deref())
+    }
+
+    pub fn with_token(base: impl Into<String>, token: Option<&str>) -> Result<Self> {
+        let mut headers = HeaderMap::new();
+        if let Some(token) = token {
+            headers.insert(
+                COOKIE,
+                HeaderValue::from_str(&format!("fubbik_session={token}"))?,
+            );
+        }
+        Ok(Self {
             base: base.into().trim_end_matches('/').to_owned(),
             http: reqwest::Client::builder()
                 .cookie_store(true)
+                .default_headers(headers)
+                .redirect(reqwest::redirect::Policy::none())
                 .connect_timeout(std::time::Duration::from_secs(3))
                 .timeout(std::time::Duration::from_secs(60))
-                .build()
-                .expect("http client builds"),
-        }
+                .build()?,
+        })
     }
 
     pub fn base_url(&self) -> &str {
         &self.base
+    }
+
+    pub async fn sign_in(&self, email: &str, password: &str) -> Result<super::SignInResponse> {
+        self.send_json(
+            reqwest::Method::POST,
+            "/api/auth/sign-in/email",
+            serde_json::json!({"email": email, "password": password}),
+        )
+        .await
+    }
+
+    pub async fn sign_out(&self) -> Result<()> {
+        let _: serde_json::Value = self
+            .send_json(
+                reqwest::Method::POST,
+                "/api/auth/sign-out",
+                serde_json::Value::Null,
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn current_session(&self) -> Result<Option<serde_json::Value>> {
+        self.get_json("/api/auth/get-session", &[]).await
     }
 
     async fn response(

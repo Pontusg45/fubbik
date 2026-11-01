@@ -142,9 +142,10 @@ test("duplicating a template creates a second template", async ({ page, network 
             .click()
     );
     // Then the API contains two templates with distinct IDs.
-    const templates = (await (await page.request.get(`${network.origin}/api/templates`)).json()) as Array<{ id: string }>;
-    expect(templates).toHaveLength(2);
-    expect(new Set(templates.map(item => item.id)).size).toBe(2);
+    const templates = (await (await page.request.get(`${network.origin}/api/templates`)).json()) as Array<{ id: string; name: string }>;
+    const copies = templates.filter(item => item.name === template.name || item.name === `${template.name} (copy)`);
+    expect(copies).toHaveLength(2);
+    expect(new Set(copies.map(item => item.id)).size).toBe(2);
 });
 
 test("editing a template changes its persisted content", async ({ page, network }) => {
@@ -180,5 +181,6 @@ test("confirmed template deletion removes it", async ({ page, network }) => {
     // Then the template disappears from the API and UI.
     await page.reload();
     await expect(page.getByRole("button", { name: template.name, exact: true })).toHaveCount(0);
-    expect((await (await page.request.get(`${network.origin}/api/templates`)).json()) as Array<unknown>).toHaveLength(0);
+    const templates = (await (await page.request.get(`${network.origin}/api/templates`)).json()) as Array<{ id: string }>;
+    expect(templates.some(item => item.id === template.id)).toBe(false);
 });

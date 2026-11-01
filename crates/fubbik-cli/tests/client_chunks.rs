@@ -123,6 +123,71 @@ async fn list_builds_the_expected_query_string() {
 }
 
 #[tokio::test]
+async fn filtered_list_paginates_with_stable_order_and_space() {
+    // Given two pages in one space
+    let server = wiremock::MockServer::start().await;
+    for (offset, id) in [(0, "a"), (1, "b")] {
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/api/chunks"))
+            .and(wiremock::matchers::query_param("type", "note"))
+            .and(wiremock::matchers::query_param("spaceId", "space-1"))
+            .and(wiremock::matchers::query_param("sort", "alpha"))
+            .and(wiremock::matchers::query_param(
+                "offset",
+                offset.to_string(),
+            ))
+            .and(wiremock::matchers::query_param("limit", "1"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "chunks": [chunk_json(id, id)], "total": 2, "limit": 1, "offset": offset
+                })),
+            )
+            .mount(&server)
+            .await;
+    }
+    // When all pages are requested
+    let chunks = Client::new(server.uri())
+        .query_chunks(Some("note"), None, Some("space-1"), 1, 0, true)
+        .await
+        .unwrap();
+    // Then both ordered results are returned
+    assert_eq!(
+        chunks
+            .iter()
+            .map(|chunk| chunk.id.as_str())
+            .collect::<Vec<_>>(),
+        ["a", "b"]
+    );
+}
+
+#[tokio::test]
+async fn filtered_search_respects_offset_without_fetching_another_page() {
+    // Given a search page at a requested offset
+    let server = wiremock::MockServer::start().await;
+    wiremock::Mock::given(wiremock::matchers::method("GET"))
+        .and(wiremock::matchers::path("/api/chunks"))
+        .and(wiremock::matchers::query_param("search", "rust"))
+        .and(wiremock::matchers::query_param("offset", "5"))
+        .and(wiremock::matchers::query_param("limit", "10"))
+        .respond_with(
+            wiremock::ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "chunks": [chunk_json("sixth", "Rust")], "total": 6, "limit": 10, "offset": 5
+            })),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    // When one page is requested
+    let chunks = Client::new(server.uri())
+        .query_chunks(None, Some("rust"), None, 10, 5, false)
+        .await
+        .unwrap();
+    // Then it returns just that page
+    assert_eq!(chunks[0].id, "sixth");
+    server.verify().await;
+}
+
+#[tokio::test]
 async fn recent_chunk_listing_forwards_recap_filters() {
     // Given a recent-chunk endpoint scoped to one space
     let server = wiremock::MockServer::start().await;

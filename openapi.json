@@ -9912,6 +9912,20 @@
           "crate::tasks"
         ],
         "operationId": "list_tasks",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "`in_progress` (default) or `completed`.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -9925,6 +9939,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": ""
           }
         }
       },

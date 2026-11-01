@@ -53,6 +53,15 @@ dev-web:
     done
     exec pnpm run dev:web
 
+# Run the GPUI desktop app (its own cargo workspace in apps/desktop). Its embedded
+# terminal (libghostty-vt 0.2.2) builds with Zig 0.15.2: `brew install zig@0.15`.
+desktop:
+    PATH="/opt/homebrew/opt/zig@0.15/bin:$PATH" cargo run --manifest-path apps/desktop/Cargo.toml
+
+# Build the desktop app as ~/Applications/fubbik.app and pin it to the Dock.
+desktop-install:
+    ./apps/desktop/scripts/install-app.sh
+
 # Build all applications and packages.
 build:
     pnpm run build

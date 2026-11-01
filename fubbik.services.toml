@@ -1,0 +1,35 @@
+# What the fubbik desktop app (apps/desktop) watches and runs for this repo.
+# Commands run through your login shell from the repo root.
+
+[[process]]
+name = "api"
+command = "just dev-rust"
+port = 3000
+health_url = "http://127.0.0.1:3000/api/health"
+
+[[process]]
+name = "web"
+command = "pnpm dev:web"
+port = 3001
+
+[[process]]
+name = "ollama"
+command = "ollama serve"
+port = 11434
+health_url = "http://127.0.0.1:11434/api/tags"
+
+# Migrations apply when the server or seed connects, so there is no migrate step.
+[[database]]
+name = "postgres"
+url = "postgresql://localhost:5432/fubbik"
+engine = "PostgreSQL 18 · pgvector · AGE"
+compose_service = "db"
+seed = "pnpm seed"
+studio = "pnpm db:studio"
+
+[[database]]
+name = "test-db"
+url = "postgresql://postgres:password@localhost:5434/fubbik_rs"
+engine = "PostgreSQL 18 (Rust test adapter)"
+start = "just rust-test-db-start"
+stop = "just rust-test-db-stop"
