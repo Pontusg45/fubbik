@@ -60,7 +60,7 @@ Starting the app is all fubbik needs. Docker, `fubbik serve` and `just dev` aren
 
 ## Home
 
-The app opens at Home (⌘0, or "Home" at the top of the sidebar). Home has three tabs: **Projects**, every registered repo
+The app opens at Home (⌘0, or "Home" at the top of the sidebar). Home has four tabs: **Projects**, every registered repo
 as a card with the computer beside them; **All agents** (⇧⌘A), every repo's live agents and recent sessions; and **Tools**
 (⇧⌘T, `src/tools.rs`):
 
@@ -72,6 +72,15 @@ as a card with the computer beside them; **All agents** (⇧⌘A), every repo's 
   copy (a node from mise is not Homebrew's). Install, Upgrade, "Upgrade all" (asks first) and "brew update" run in a
   terminal tab.
 - **Utilities:** copy a new UUID, the Unix time or the UTC time, and open the app's config folder.
+
+**Dependencies** (⇧⌘L, `src/deps.rs`) compares what every registered repo declares: package.json (dependencies, dev, peer;
+pnpm `catalog:` resolved from pnpm-workspace.yaml), Cargo.toml (including `[workspace.dependencies]`), and toolchain pins
+(`packageManager`, `engines.node`, `.nvmrc`, `.node-version`, `.tool-versions`, `mise.toml`, `rust-toolchain`, Cargo
+`rust-version` and `edition`). One row per dependency used by two or more repos, one column per repo, each cell colored by
+how far that repo is behind the newest version any repo uses (red: a major behind, 0.x minors count as majors; yellow: a
+minor behind). Filters: different majors, any difference, all shared; toolchain, npm, cargo. A row opens to the manifests
+that declare it, each opening in the editor. Declared requirements, not lockfiles; workspace, path and git dependencies are
+left out.
 
 - **A card per repo:** status, branch, changes, ahead/behind and the last commit, processes up (one dot each), live and waiting
   agents, worktrees, how many things need you, overlapping worktrees, knowledge chunks and failing requirements. Click a card,
@@ -288,7 +297,7 @@ start = "…"                        # optional, overrides the compose default; 
   debounce); the 1 s tick only redraws for toasts and the live log; knowledge fetches back off while the fubbik API is
   down (60 s, doubling to 5 min).
 - **Keys:** ⌘/ shows every shortcut, and ⌘K lists each command's key beside it. Tabs: ⌘1 Today, ⌘2 Overview, ⌘3 Processes,
-  ⌘4 Logs, ⌘5 Worktrees, ⌘6 Sessions, ⌘7 Plans, ⌘8 Knowledge, ⌘9 Terminal, ⇧⌘D Databases, ⇧⌘I Insights, ⇧⌘G Changes, ⇧⌘A Agents, ⇧⌘T Tools, ⌘,
+  ⌘4 Logs, ⌘5 Worktrees, ⌘6 Sessions, ⌘7 Plans, ⌘8 Knowledge, ⌘9 Terminal, ⇧⌘D Databases, ⇧⌘I Insights, ⇧⌘G Changes, ⇧⌘A Agents, ⇧⌘T Tools, ⇧⌘L Dependencies, ⌘,
   Setup. ⌃1–⌃9 pick a repo, ⇧⌘J jumps to the next thing that needs you, ⇧⌘R replies to the agent that has waited longest,
   ⇧⌘S starts the next ready task in the background, ⇧⌘N captures a note. In a terminal: ⌘T new shell, ⌘W close, ⌘1–⌘9 and
   ⇧⌘[ / ⇧⌘] switch tabs, ⌘D split, ⇧⌘K clear. Rebind any of them in `~/.config/fubbik/keymap.toml` (Setup → Keyboard
@@ -325,6 +334,7 @@ src/git.rs         porcelain v2 status, changed files, diffs, stage / unstage / 
 src/github.rs      pull requests and CI checks per branch (gh pr list)
 src/tmux_events.rs tmux hooks → events file (bells, pane exits), read incrementally
 src/tools.rs       developer tools and services: versions, paths, brew outdated, recent upgrades
+src/deps.rs        manifests across repos: declared dependency versions and toolchain pins, compared
 src/probe.rs       port, owner PID, HTTP health, TCP, compose, ps
 src/supervisor.rs  child processes: process groups, log ring buffers
 src/fubbik.rs      fubbik API client (space, knowledge, quick note)
@@ -348,7 +358,7 @@ src/system.rs      the computer's stats for Home (CPU, memory, disk, battery, ne
 src/mcp.rs         the app's MCP server (HTTP on :3100, --mcp stdio bridge), answering from ui/mcp_publish.rs
 src/backend.rs     the built-in server: Postgres cluster, in-process API, import, backups, server.json, --serve
 src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,
-                                      chrome, preferences, tasks, today, insights, changes, prs, tmux_live, tools_view), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
+                                      chrome, preferences, tasks, today, insights, changes, prs, tmux_live, tools_view, deps_view), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
                    setup_view.rs; terminal_view.rs), actions.rs (fubbik calls and scans), palette, text field, widgets,
                    keymap.rs (bindings + keymap.toml), hotkeys.rs, lists.rs (keyboard lists)
 ```

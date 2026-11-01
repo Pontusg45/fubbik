@@ -6,6 +6,7 @@ mod agent_task;
 mod backend;
 mod claude_md;
 mod config;
+mod deps;
 mod detect;
 mod fubbik;
 mod gaps;
@@ -41,9 +42,9 @@ use gpui::{
 use supervisor::Supervisor;
 use ui::{
     CaptureNote, ChooseTheme, NextRepo, PrevRepo, Quit, QuitKeepServer, Refresh, RegisterRepo,
-    ShowAgents, ShowChanges, ShowDatabases, ShowHome, ShowInsights, ShowKnowledge, ShowLogs,
-    ShowOverview, ShowPlans, ShowProcesses, ShowSessions, ShowSetup, ShowTerminal, ShowToday,
-    ShowTools, ShowWorktrees, TogglePalette, ToggleTheme, Workspace,
+    ShowAgents, ShowChanges, ShowDatabases, ShowDeps, ShowHome, ShowInsights, ShowKnowledge,
+    ShowLogs, ShowOverview, ShowPlans, ShowProcesses, ShowSessions, ShowSetup, ShowTerminal,
+    ShowToday, ShowTools, ShowWorktrees, TogglePalette, ToggleTheme, Workspace,
 };
 
 fn main() {
@@ -167,6 +168,7 @@ fn main() {
                     MenuItem::action("Insights", ShowInsights),
                     MenuItem::action("Changes", ShowChanges),
                     MenuItem::action("Tools", ShowTools),
+                    MenuItem::action("Dependencies", ShowDeps),
                     MenuItem::action("Home", ShowHome),
                     MenuItem::action("Capture Note…", CaptureNote),
                 ],

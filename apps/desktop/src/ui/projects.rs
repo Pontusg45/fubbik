@@ -157,12 +157,13 @@ impl Workspace {
     fn render_home_tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let on_agents = !self.home && self.tab == Tab::Agents;
         let on_tools = !self.home && self.tab == Tab::Tools;
+        let on_deps = !self.home && self.tab == Tab::Deps;
         let projects = super::views::tab_item(
             "home-projects",
             "Projects",
             Tab::Overview.color(),
             Tab::Overview.color(),
-            !on_agents && !on_tools,
+            !on_agents && !on_tools && !on_deps,
             0,
             keymap::keys_for("show_home")
                 .map(|k| keymap::pretty(&k))
@@ -202,10 +203,28 @@ impl Workspace {
             Tab::Tools.shortcut(),
         )
         .on_click(cx.listener(|this, _, _, cx| this.run(Command::ShowTab(Tab::Tools), cx)));
+        let breaking = match &self.deps.report {
+            Some(Loadable::Done(Ok(r))) => r
+                .rows
+                .iter()
+                .filter(|row| row.align == crate::deps::Align::Breaking)
+                .count(),
+            _ => 0,
+        };
+        let deps = super::views::tab_item(
+            "home-deps",
+            "Dependencies",
+            Tab::Deps.color(),
+            Tab::Deps.color(),
+            on_deps,
+            breaking,
+            Tab::Deps.shortcut(),
+        )
+        .on_click(cx.listener(|this, _, _, cx| this.run(Command::ShowTab(Tab::Deps), cx)));
         div().pt(px(32.)).child(super::views::tab_strip(
             "home-tabs",
             &self.home_tabs_scroll,
-            vec![projects, agents, tools],
+            vec![projects, agents, tools, deps],
             cx,
         ))
     }
@@ -254,7 +273,7 @@ impl Workspace {
             .cursor_pointer()
             // Home holds All agents too.
             .when(
-                self.home || matches!(self.tab, Tab::Agents | Tab::Tools),
+                self.home || matches!(self.tab, Tab::Agents | Tab::Tools | Tab::Deps),
                 |d| d.bg(theme::surface_hover()),
             )
             .hover(|d| d.bg(theme::surface_hover()))
@@ -325,10 +344,11 @@ impl Workspace {
     /// Today or All agents: outside any repo, like Home.
     pub(super) fn render_global(&mut self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         // All agents and Tools are Home tabs; Today stands alone.
-        let agents = matches!(self.tab, Tab::Agents | Tab::Tools);
+        let agents = matches!(self.tab, Tab::Agents | Tab::Tools | Tab::Deps);
         let body = match self.tab {
             Tab::Agents => self.render_all_agents(window, cx),
             Tab::Tools => self.render_tools(cx),
+            Tab::Deps => self.render_deps(cx),
             _ => self.render_today(cx),
         };
         div()

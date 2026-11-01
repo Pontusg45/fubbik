@@ -7,6 +7,7 @@ mod changes;
 mod chrome;
 mod command_palette;
 mod commands;
+mod deps_view;
 mod fields;
 mod hotkeys;
 mod insights;
@@ -80,6 +81,7 @@ actions!(
         ShowInsights,
         ShowChanges,
         ShowTools,
+        ShowDeps,
         ShowHome,
         CaptureNote,
         ToggleTheme,
@@ -156,10 +158,12 @@ pub enum Tab {
     Changes,
     /// The machine's developer tools and services (a Home tab).
     Tools,
+    /// Dependencies across repos, and where they disagree (a Home tab).
+    Deps,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 15] = [
+    pub const ALL: [Tab; 16] = [
         Tab::Today,
         Tab::Overview,
         Tab::Changes,
@@ -174,6 +178,7 @@ impl Tab {
         Tab::Insights,
         Tab::Agents,
         Tab::Tools,
+        Tab::Deps,
         Tab::Setup,
     ];
 
@@ -190,12 +195,13 @@ impl Tab {
             Tab::Plans | Tab::Insights => theme::hue(Hue::Pink),
             Tab::Knowledge => theme::hue(Hue::Yellow),
             Tab::Setup | Tab::Tools => theme::text_muted(),
+            Tab::Deps => theme::hue(Hue::Violet),
         }
     }
 
     /// Views across every repo (shown outside a repo, next to Home).
     pub fn is_global(self) -> bool {
-        matches!(self, Tab::Today | Tab::Agents | Tab::Tools)
+        matches!(self, Tab::Today | Tab::Agents | Tab::Tools | Tab::Deps)
     }
 
     /// The key that shows the tab, as currently bound (keymap.toml).
@@ -221,6 +227,7 @@ impl Tab {
             Tab::Insights => "show_insights",
             Tab::Changes => "show_changes",
             Tab::Tools => "show_tools",
+            Tab::Deps => "show_deps",
         }
     }
 
@@ -241,6 +248,7 @@ impl Tab {
             Tab::Insights => "Insights",
             Tab::Changes => "Changes",
             Tab::Tools => "Tools",
+            Tab::Deps => "Dependencies",
         }
     }
 }
@@ -436,6 +444,8 @@ pub struct Workspace {
     /// Home → Tools: the last check, and whether one is running.
     tools: Option<Loadable<crate::tools::Report>>,
     tools_refreshing: bool,
+    /// Home → Dependencies.
+    deps: deps_view::DepsState,
     /// `gh` is on PATH (checked once at startup).
     gh_available: bool,
     changes: changes::ChangesState,
@@ -605,6 +615,7 @@ impl Workspace {
             commit_field: TextField::new(cx),
             tools: None,
             tools_refreshing: false,
+            deps: Default::default(),
             gh_available: std::process::Command::new("gh")
                 .arg("--version")
                 .output()
