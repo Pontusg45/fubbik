@@ -4,7 +4,7 @@ A native project manager built on [GPUI](https://github.com/zed-industries/zed/t
 control their processes, databases, git state and fubbik knowledge.
 
 ```bash
-just desktop                                              # from the repo root
+just start-desktop                                          # from the repo root
 cargo run --manifest-path apps/desktop/Cargo.toml         # same thing
 cargo run --manifest-path apps/desktop/Cargo.toml -- --probe <repo>   # print one status poll, no UI
 ```
@@ -36,7 +36,7 @@ cell = "<cell id>"
 
 [[process]]
 name = "api"
-command = "just dev-rust"          # run through your login shell, in the repo root (or `cwd`)
+command = "just start-api"       # run through your login shell, in the repo root (or `cwd`)
 port = 3000                        # optional: Running/External is decided by who holds it
 health_url = "http://127.0.0.1:3000/api/health"   # optional: failing → Degraded
 
@@ -119,7 +119,7 @@ start = "…"                        # optional, overrides the compose default; 
   session in a new tab.
 - **AI sessions run in the Terminal tab:** "New Claude", "Resume" and "Start task" open a labelled terminal tab in the right
   directory and type the command into a login shell (so the shell stays when the session ends). `terminal = "external"` in
-  the desktop config sends them to Terminal.app instead. Building needs Zig 0.15.2 first on PATH (`brew install zig@0.15`; `just desktop` and
+  the desktop config sends them to Terminal.app instead. Building needs Zig 0.15.2 first on PATH (`brew install zig@0.15`; `just start-desktop` and
   `just desktop-install` set this up). `FUBBIK_DESKTOP_TAB=terminal` opens the app on that tab (any tab name works).
 - **Ghostty themes:** ⌘K → "Theme: …" (or View → Choose Theme…) lists every Ghostty theme — `~/.config/ghostty/themes` first,
   then the ones bundled with Ghostty.app — plus "Built-in" and "Follow Ghostty config". Saved as `ghostty_theme` in the

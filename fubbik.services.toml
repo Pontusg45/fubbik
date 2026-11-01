@@ -3,7 +3,7 @@
 
 [[process]]
 name = "api"
-command = "just dev-rust"
+command = "just start-api"
 port = 3000
 health_url = "http://127.0.0.1:3000/api/health"
 

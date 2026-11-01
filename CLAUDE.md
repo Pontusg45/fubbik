@@ -73,7 +73,7 @@ fubbik/
 ├── apps/
 │   ├── web/         # Frontend (TanStack Router + React, Vite SPA)
 │   ├── vscode/      # VS Code extension
-│   └── desktop/     # GPUI desktop project manager (own cargo workspace; `just desktop`; reads `fubbik.services.toml`)
+│   └── desktop/     # GPUI desktop project manager (own cargo workspace; `just start-desktop`; reads `fubbik.services.toml`)
 ├── packages/
 │   ├── client/      # Generated OpenAPI client and wire contracts
 │   ├── db/          # Typed seed adapter and legacy schema reference (Drizzle, read-only)
@@ -663,7 +663,7 @@ Personal settings live in `.env` (see `docs/guide/getting-started/configuration/
 - `pnpm install` (or `just install`) — install dependencies
 - `pnpm dev` (= `just dev`) — free ports 3000/3001, then start the Rust API (`fubbik serve --port 3000`, sourcing `.env`) and the web app
   (3001)
-- `just dev-rust` / `pnpm dev:server` — Rust API only; `pnpm dev:web` — web app only
+- `just start-api` / `pnpm dev:server` — Rust API only (builds, then `exec`s the binary); `just start-web` / `pnpm dev:web` — web app only; `just start-desktop` — the desktop app. `just` with no arguments lists the recipe groups (`just --list` for every recipe)
 - `pnpm build` — build the TypeScript packages and web app (turbo)
 - `pnpm test` — run the TypeScript tests (turbo)
 - `just rust-test` — full Rust suite against the canonical test database (`just rust-test-db-start` / `just rust-test-db-stop`);
