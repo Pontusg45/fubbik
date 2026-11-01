@@ -1338,3 +1338,55 @@ fn aligning_a_dependency_asks_first_and_names_the_repos(cx: &mut TestAppContext)
         "no worktree before confirming"
     );
 }
+
+#[gpui::test]
+fn the_changes_tab_does_not_reload_on_every_frame_with_untracked_folders(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a repo with an untracked folder of two files (the poll counts
+    // the folder once, the list counts both files)
+    let repo = tempfile::tempdir().unwrap();
+    let git = |args: &[&str]| {
+        assert!(
+            std::process::Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(args)
+                .status()
+                .unwrap()
+                .success()
+        );
+    };
+    git(&["init", "-q", "-b", "main"]);
+    git(&["config", "user.email", "t@example.com"]);
+    git(&["config", "user.name", "t"]);
+    std::fs::write(repo.path().join("a.txt"), "1").unwrap();
+    git(&["add", "a.txt"]);
+    git(&["commit", "-qm", "one"]);
+    std::fs::create_dir_all(repo.path().join("new")).unwrap();
+    std::fs::write(repo.path().join("new/x.txt"), "x").unwrap();
+    std::fs::write(repo.path().join("new/y.txt"), "y").unwrap();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", repo.path().display().to_string()),
+    );
+    view.update(cx, |w, cx| {
+        w.run(Command::ShowTab(Tab::Changes), cx);
+        w.poll_now(false, cx);
+    });
+    cx.run_until_parked();
+
+    // When: a few more frames
+    for _ in 0..3 {
+        cx.update(|window, cx| window.refresh());
+        cx.run_until_parked();
+    }
+    let state = view.read_with(cx, |w, _| {
+        (
+            w.change_files().map(Vec::len),
+            matches!(&w.changes.files, Some((_, Loadable::Loading))),
+        )
+    });
+
+    // Then: the list is there and not being read again
+    assert_eq!(state, (Some(2), false));
+}

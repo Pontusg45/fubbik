@@ -40,7 +40,28 @@ pub struct ChangesState {
     /// Keyed by the staged paths they were looked up for.
     pub related: Option<(Vec<String>, Loadable<Vec<RelatedChunk>>)>,
     pub committing: bool,
+    /// Files (changes), History (commits) or Branches.
+    pub view: ChangesView,
+    pub history: Option<(PathBuf, Loadable<Vec<crate::git::Commit>>)>,
+    pub branches: Option<(PathBuf, Loadable<Vec<crate::git::Branch>>)>,
+    /// A switch or new worktree is running.
+    pub branch_busy: bool,
+    /// The poll's changed-file count when the list was last read: a new
+    /// count means something changed. (The poll counts an untracked folder
+    /// once, the list counts its files, so the two are never compared.)
+    pub polled_count: Option<usize>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ChangesView {
+    #[default]
+    Files,
+    History,
+    Branches,
+}
+
+/// Commits the History view lists.
+const HISTORY: usize = 80;
 
 fn letter_color(letter: char) -> gpui::Hsla {
     match letter {
@@ -313,10 +334,13 @@ impl Workspace {
         let stale = match &self.changes.files {
             Some((d, _)) if *d != dir => true,
             None => true,
-            Some((_, Loadable::Done(Ok(files)))) => polled.is_some_and(|n| n != files.len()),
+            Some((_, Loadable::Done(Ok(_)))) => {
+                polled.is_some() && polled != self.changes.polled_count
+            }
             _ => false,
         };
         if stale {
+            self.changes.polled_count = polled;
             self.load_changes(cx);
         }
 
@@ -349,6 +373,54 @@ impl Workspace {
                         },
                     ))
                 }));
+
+        // Files, History or Branches.
+        let view = self.changes.view;
+        let views = div().flex().gap_1().children(
+            [
+                (ChangesView::Files, "Files"),
+                (ChangesView::History, "History"),
+                (ChangesView::Branches, "Branches"),
+            ]
+            .into_iter()
+            .map(|(v, label)| {
+                segment(
+                    SharedString::from(format!("changes-view-{label}")),
+                    label,
+                    view == v,
+                )
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.changes.view = v;
+                    cx.notify();
+                }))
+            }),
+        );
+        if view != ChangesView::Files {
+            let body = match view {
+                ChangesView::History => self.render_history(index, &dir, snapshot, cx),
+                _ => self.render_branches(&dir, window, cx),
+            };
+            return div()
+                .flex()
+                .flex_col()
+                .gap_3()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .child(views)
+                        .child(chips),
+                )
+                .child(body)
+                .into_any_element();
+        }
+        let chips = div()
+            .flex()
+            .items_center()
+            .gap_3()
+            .child(views)
+            .child(chips);
 
         let files = match &self.changes.files {
             Some((_, Loadable::Done(Ok(files)))) => files.clone(),
@@ -701,5 +773,289 @@ impl Workspace {
                     .bg(theme::surface())
                     .child(body),
             )
+    }
+}
+
+impl Workspace {
+    fn load_history(&mut self, dir: PathBuf, cx: &mut Context<Self>) {
+        self.changes.history = Some((dir.clone(), Loadable::Loading));
+        let work = {
+            let dir = dir.clone();
+            cx.background_executor()
+                .spawn(async move { crate::git::log(&dir, HISTORY) })
+        };
+        cx.spawn(async move |this, cx| {
+            let result = work.await;
+            this.update(cx, |this, cx| {
+                if matches!(&this.changes.history, Some((d, _)) if *d == dir) {
+                    this.changes.history = Some((dir, Loadable::Done(result)));
+                    cx.notify();
+                }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    fn load_branches(&mut self, dir: PathBuf, cx: &mut Context<Self>) {
+        self.changes.branches = Some((dir.clone(), Loadable::Loading));
+        let work = {
+            let dir = dir.clone();
+            cx.background_executor()
+                .spawn(async move { crate::git::branches(&dir) })
+        };
+        cx.spawn(async move |this, cx| {
+            let result = work.await;
+            this.update(cx, |this, cx| {
+                if matches!(&this.changes.branches, Some((d, _)) if *d == dir) {
+                    this.changes.branches = Some((dir, Loadable::Done(result)));
+                    cx.notify();
+                }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Switches the checkout to a branch, or makes a worktree for it.
+    fn branch_action(
+        &mut self,
+        dir: PathBuf,
+        branch: crate::git::Branch,
+        worktree: bool,
+        cx: &mut Context<Self>,
+    ) {
+        self.changes.branch_busy = true;
+        let name = branch.name.clone();
+        let work = {
+            let dir = dir.clone();
+            cx.background_executor().spawn(async move {
+                if worktree {
+                    crate::worktree::add_existing(&dir, &branch).map(Some)
+                } else {
+                    crate::git::switch(&dir, &branch).map(|_| None)
+                }
+            })
+        };
+        cx.spawn(async move |this, cx| {
+            let result = work.await;
+            this.update(cx, |this, cx| {
+                this.changes.branch_busy = false;
+                match result {
+                    Ok(Some(path)) => {
+                        this.show_info(format!("Worktree for {name} at {}", display_path(&path)))
+                    }
+                    Ok(None) => this.show_info(format!("Switched to {name}")),
+                    Err(error) => this.show_error(format!("git: {error}")),
+                }
+                this.load_branches(dir.clone(), cx);
+                this.changes.history = None;
+                this.refresh_worktrees = true;
+                this.poll_now(false, cx);
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    fn render_history(
+        &mut self,
+        index: usize,
+        dir: &PathBuf,
+        snapshot: &RepoSnapshot,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        if !matches!(&self.changes.history, Some((d, _)) if d == dir) {
+            self.load_history(dir.clone(), cx);
+        }
+        let commits = match &self.changes.history {
+            Some((_, Loadable::Done(Ok(commits)))) => commits.clone(),
+            Some((_, Loadable::Done(Err(error)))) => {
+                return muted(format!("git log failed: {error}")).into_any_element();
+            }
+            _ => return loading("Reading the history…").into_any_element(),
+        };
+        let web = snapshot.remote.as_deref().and_then(crate::git::web_url);
+        let _ = index;
+        let rows: Vec<AnyElement> =
+            commits
+                .into_iter()
+                .enumerate()
+                .map(|(i, commit)| {
+                    let hash = commit.hash.clone();
+                    let url = web.as_ref().map(|w| format!("{w}/commit/{}", commit.hash));
+                    div()
+                        .id(("commit", i))
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .px_3()
+                        .py_1()
+                        .child(
+                            div()
+                                .w(px(70.))
+                                .flex_none()
+                                .font_family("Menlo")
+                                .text_xs()
+                                .text_color(theme::accent())
+                                .child(commit.short),
+                        )
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .truncate()
+                                .text_sm()
+                                .child(commit.subject),
+                        )
+                        .children(
+                            commit
+                                .refs
+                                .iter()
+                                .take(3)
+                                .map(|r| pill(r.clone(), theme::hue(Hue::Violet))),
+                        )
+                        .child(
+                            div()
+                                .w(px(110.))
+                                .flex_none()
+                                .truncate()
+                                .child(muted(commit.author)),
+                        )
+                        .child(div().w(px(110.)).flex_none().child(muted(commit.when)))
+                        .child(button(("copy-sha", i), "Copy SHA").on_click(
+                            cx.listener(move |this, _, _, cx| this.copy(hash.clone(), cx)),
+                        ))
+                        .children(url.map(|url| {
+                            button(("open-commit", i), "GitHub").on_click(cx.listener(
+                                move |this, _, _, cx| this.run(Command::OpenUrl(url.clone()), cx),
+                            ))
+                        }))
+                        .into_any_element()
+                })
+                .collect();
+        section_or(
+            format!("Last {HISTORY} commits on this branch"),
+            rows,
+            "No commits yet",
+        )
+        .into_any_element()
+    }
+
+    fn render_branches(
+        &mut self,
+        dir: &PathBuf,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        if !matches!(&self.changes.branches, Some((d, _)) if d == dir) {
+            self.load_branches(dir.clone(), cx);
+        }
+        let all = match &self.changes.branches {
+            Some((_, Loadable::Done(Ok(all)))) => all.clone(),
+            Some((_, Loadable::Done(Err(error)))) => {
+                return muted(format!("git failed: {error}")).into_any_element();
+            }
+            _ => return loading("Reading branches…").into_any_element(),
+        };
+        let query = self.branch_filter.text.trim().to_lowercase();
+        // A remote branch that is already local shows once, as the local one.
+        let locals: Vec<String> = all
+            .iter()
+            .filter(|b| !b.remote)
+            .map(|b| b.name.clone())
+            .collect();
+        let shown: Vec<crate::git::Branch> = all
+            .into_iter()
+            .filter(|b| !b.remote || !locals.contains(&crate::git::local_name(b)))
+            .filter(|b| query.is_empty() || b.name.to_lowercase().contains(&query))
+            .collect();
+        let busy = self.changes.branch_busy;
+        let rows: Vec<AnyElement> = shown
+            .into_iter()
+            .take(200)
+            .enumerate()
+            .map(|(i, branch)| {
+                let (switch_branch, tree_branch) = (branch.clone(), branch.clone());
+                let (dir_a, dir_b) = (dir.clone(), dir.clone());
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_3()
+                    .px_3()
+                    .py_1()
+                    .child(
+                        div()
+                            .w(px(14.))
+                            .flex_none()
+                            .text_color(theme::accent())
+                            .child(if branch.current { "●" } else { "" }),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .truncate()
+                            .text_sm()
+                            .child(branch.name.clone()),
+                    )
+                    .when(branch.remote, |d| {
+                        d.child(pill("remote", theme::text_muted()))
+                    })
+                    .children(branch.upstream.clone().map(|u| muted(format!("→ {u}"))))
+                    .child(
+                        div()
+                            .w(px(260.))
+                            .flex_none()
+                            .truncate()
+                            .child(muted(format!("{} · {}", branch.when, branch.subject))),
+                    )
+                    .when(!branch.current, |d| {
+                        d.child(if busy {
+                            disabled_button(("branch-switch", i), "Switch")
+                        } else {
+                            button(
+                                ("branch-switch", i),
+                                if branch.remote { "Check out" } else { "Switch" },
+                            )
+                            .on_click(cx.listener(
+                                move |this, _, _, cx| {
+                                    this.branch_action(
+                                        dir_a.clone(),
+                                        switch_branch.clone(),
+                                        false,
+                                        cx,
+                                    )
+                                },
+                            ))
+                        })
+                        .child(if busy {
+                            disabled_button(("branch-tree", i), "New worktree")
+                        } else {
+                            button(("branch-tree", i), "New worktree").on_click(cx.listener(
+                                move |this, _, _, cx| {
+                                    this.branch_action(dir_b.clone(), tree_branch.clone(), true, cx)
+                                },
+                            ))
+                        })
+                    })
+                    .into_any_element()
+            })
+            .collect();
+        div()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(div().w(px(320.)).child(self.field(Field::BranchFilter, "Filter branches…", window, cx)))
+                    .child(muted("Switch keeps your changes when git can; it refuses rather than overwrite them")),
+            )
+            .child(section_or("Branches, most recent first", rows, "No branches match"))
+            .into_any_element()
     }
 }
