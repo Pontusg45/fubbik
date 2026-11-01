@@ -8,6 +8,7 @@ mod claude_md;
 mod config;
 mod deps;
 mod detect;
+mod digest;
 mod fubbik;
 mod gaps;
 mod ghostty;

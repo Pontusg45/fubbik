@@ -79,6 +79,9 @@ pub struct Store {
     pub watches: Vec<Watch>,
     #[serde(default)]
     pub alerts: Vec<Alert>,
+    /// The local date the daily digest was last saved to fubbik.
+    #[serde(default)]
+    pub digest_saved_on: Option<String>,
 }
 
 fn now() -> u64 {
@@ -437,6 +440,13 @@ pub fn on_state(repos: &[Value]) {
 
 pub fn complete_note(id: &str) -> Result<(), String> {
     with_store(|s| (s.complete_note(id), Vec::new()))
+}
+
+pub fn set_digest_saved_on(date: &str) {
+    with_store(|s| {
+        s.digest_saved_on = Some(date.to_string());
+        ((), Vec::new())
+    });
 }
 
 pub fn dismiss(id: &str) -> Result<(), String> {

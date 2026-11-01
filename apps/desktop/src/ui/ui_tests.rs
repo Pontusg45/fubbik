@@ -1377,7 +1377,7 @@ fn the_changes_tab_does_not_reload_on_every_frame_with_untracked_folders(cx: &mu
 
     // When: a few more frames
     for _ in 0..3 {
-        cx.update(|window, cx| window.refresh());
+        cx.update(|window, _| window.refresh());
         cx.run_until_parked();
     }
     let state = view.read_with(cx, |w, _| {

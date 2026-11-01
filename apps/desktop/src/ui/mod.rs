@@ -8,6 +8,7 @@ mod chrome;
 mod command_palette;
 mod commands;
 mod deps_view;
+mod digest_view;
 mod fields;
 mod hotkeys;
 mod insights;
@@ -537,6 +538,8 @@ pub struct Workspace {
     alerts_announced: bool,
     /// When a title-bar double-click last zoomed the window.
     titlebar_zoomed_at: Option<Instant>,
+    /// The daily digest is being saved.
+    digest_saving: bool,
     knowledge_paused_until: Option<Instant>,
     /// Ghostty theme names, read once at startup.
     ghostty_themes: Vec<String>,
@@ -685,6 +688,7 @@ impl Workspace {
             alerts_seen: HashSet::new(),
             alerts_announced: false,
             titlebar_zoomed_at: None,
+            digest_saving: false,
             knowledge_paused_until: None,
             ghostty_themes: crate::ghostty::list_themes(&crate::ghostty::theme_dirs()),
             reply_target: None,

@@ -79,7 +79,9 @@ pnpm `catalog:` resolved from pnpm-workspace.yaml), Cargo.toml (including `[work
 `rust-version` and `edition`). One row per dependency used by two or more repos, one column per repo, each cell colored by
 how far that repo is behind the newest version any repo uses (red: a major behind, 0.x minors count as majors; yellow: a
 minor behind). Filters: different majors, any difference, all shared; toolchain, npm, cargo. A row opens to the manifests
-that declare it, each opening in the editor. Declared requirements, not lockfiles; workspace, path and git dependencies are
+that declare it, each opening in the editor, and "Align to <newest> with agents": after a confirmation, each repo that is
+behind gets a worktree on `deps/<name>-<version>` and a Claude session told to bump it, fix what breaks, run the checks and
+commit there (never push or merge). Declared requirements, not lockfiles; workspace, path and git dependencies are
 left out.
 
 - **A card per repo:** status, branch, changes, ahead/behind and the last commit, processes up (one dot each), live and waiting
@@ -294,7 +296,10 @@ start = "…"                        # optional, overrides the compose default; 
 - **Knowledge graph** (Knowledge tab): the repo's space as a graph (`GET /api/graph`, laid out in `src/graph_layout.rs`):
   chunks as nodes colored by type and sized by how connected they are, connections as edges; orphan chunks line up in a
   strip along the bottom. Hover lights up a chunk's neighbours, click selects it and lists its connections (each a click
-  to that chunk) with "Open" for the web app. Type chips hide or show a type; "Labels" labels every node. **3D** lays the same graph out in three
+  to that chunk) with "Open" for the web app. Type chips hide or show a type; "Labels" labels every node. "Color: Attention"
+  colors by what needs attention (flagged: a changed file or diverged duplicate; stale; thin; orphan; healthy). The search
+  field lights up matching chunks and ⏎ selects the first (in 3D, turning the camera to it). With a chunk selected,
+  shift-click another to connect them: pick the relation in the panel and Connect (`POST /api/connections`). **3D** lays the same graph out in three
   dimensions (orphans on a shell around it) and projects it with perspective: drag to turn, scroll to zoom, "Reset view";
   it turns slowly on its own ("Auto-rotate") while nothing is hovered. Nearer chunks are bigger, brighter and on top.
 - **Insights** (⇧⌘I): a standup (1 day) or weekly summary built from git, plan tasks, agent sessions and requirements —
@@ -308,7 +313,9 @@ start = "…"                        # optional, overrides the compose default; 
   Logs; also in ⌘K), and run profiles from the services file — `[profile.dev] processes = ["api", "web"]` starts exactly
   those and stops the repo's others.
 - **Quick capture** (⇧⌘N): a note into the selected repo's fubbik space from anywhere.
-- **Changes** (⇧⌘G): the changed files of the repo or any of its worktrees, staged and not, with each file's colored diff;
+- **Changes** (⇧⌘G) has three views. **History**: the branch's last 80 commits with their refs, Copy SHA and GitHub.
+  **Branches**: local and remote branches, most recent first, with a filter; Switch (a remote one is checked out as a new
+  tracking branch; git refuses rather than overwrite changes) and New worktree. **Files**: the changed files of the repo or any of its worktrees, staged and not, with each file's colored diff;
   stage and unstage files (or all), and commit what is staged. Beside the commit box: the fubbik chunks related to the
   staged files (`fubbik --json check-files --staged`), so the knowledge for a change is in view before it is committed.
 - **Sync with the remote** (`src/ui/sync.rs`): every repo with a remote is fetched quietly every 15 min (prompts off,
@@ -316,6 +323,9 @@ start = "…"                        # optional, overrides the compose default; 
   `git merge --ff-only @{u}`: never a rebase or merge — a diverged branch is left alone with a message), "↑ Push N"
   (asks first, then runs `git push`, or `git push -u origin <branch>` the first time, in a terminal tab where hooks
   and credential prompts show) and "Fetch". Home cards show "↑N unpushed" (amber from 10). Also in ⌘K.
+- **Daily digest** (`src/digest.rs`): Today's "Digest" shows the last 24 hours per repo from the change feed and open
+  alerts (commits, PRs, agents, processes down, worktrees, dependency drift, tool changes); "Save to fubbik" writes each
+  repo's part as a note in its space, and the app does so on its own once a day after 8:00. Agents get it as `get_digest`.
 - **Pull requests** (`gh`, repos with a GitHub remote, read every 3 min and on Refresh): each worktree's branch shows its
   latest PR as a pill (checks, review, conflicts) with a "PR #n" button; the Changes tab shows it for the checkout picked.
   An open PR with failing checks, changes requested or conflicts is a "Needs you" line on Today.

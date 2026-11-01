@@ -228,7 +228,11 @@ fn call_tool_in(state: Published, name: &str, args: &Value) -> Result<Value, Str
     // notes and watches do not need them.
     let independent = matches!(
         name,
-        "get_builtin_server" | "get_system_stats" | "get_changes_since" | "get_toolchain"
+        "get_builtin_server"
+            | "get_system_stats"
+            | "get_changes_since"
+            | "get_toolchain"
+            | "get_digest"
     ) || crate::tracker::mcp_definitions()
         .iter()
         .any(|t| t["name"] == name);

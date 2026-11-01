@@ -15,6 +15,12 @@ const DIFF_LINES: usize = 3000;
 
 pub fn definitions() -> Vec<Value> {
     let mut all = base_definitions();
+    all.push(json!({
+        "name": "get_digest",
+        "description": "A digest of the last `hours` (default 24) across the projects, as Markdown: per repo the commits, pull requests opened / merged / needing the user, agents started / ended / waiting, processes that went down, worktrees added or removed, and open watch alerts; plus machine-wide news (dependencies that drifted or aligned, tools Homebrew changed). Built from the change feed, so it covers what the app saw while it ran. The app also saves it to each repo's fubbik space once a day.",
+        "inputSchema": { "type": "object", "properties": { "hours": { "type": "integer", "description": "How far back (default 24, max 168)" } } },
+        "annotations": { "readOnlyHint": true }
+    }));
     all.extend(crate::tracker::mcp_definitions());
     all
 }
@@ -239,6 +245,15 @@ pub fn call(repos: &[Value], name: &str, args: &Value) -> Option<Result<Value, S
             }))
         }
         "get_dependencies" => dependencies(repos, args),
+        "get_digest" => {
+            let hours = args["hours"].as_u64().unwrap_or(24).clamp(1, 168);
+            let digest = crate::digest::current(hours);
+            let (date, _) = crate::digest::today();
+            Ok(json!({
+                "markdown": crate::digest::markdown(&digest, &format!("Digest {date}")),
+                "repos": digest.repos.keys().collect::<Vec<_>>(),
+            }))
+        }
         "get_toolchain" => Ok(toolchain(args["refresh"].as_bool().unwrap_or(false))),
         "get_pull_requests" => {
             let open_only = args["open_only"].as_bool().unwrap_or(true);

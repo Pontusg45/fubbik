@@ -284,6 +284,10 @@ pub enum Command {
     Pull(usize),
     /// Asks, then pushes in a terminal tab.
     Push(usize),
+    /// The last day's digest in the side panel.
+    ShowDigest,
+    /// Saves the digest as a fubbik note in each repo's space.
+    SaveDigest,
     /// One agent per repo behind on a dependency, each in a new worktree
     /// (`now: false` asks first).
     AlignDependency {

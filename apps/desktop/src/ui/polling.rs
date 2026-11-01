@@ -238,6 +238,7 @@ impl Workspace {
         self.publish_for_mcp();
         self.refresh_prs(false, cx);
         self.fetch_due(None, cx);
+        self.save_digest(true, cx);
         self.announce_alerts();
     }
 

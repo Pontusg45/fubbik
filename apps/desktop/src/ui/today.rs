@@ -394,6 +394,11 @@ impl Workspace {
                             .font_weight(FontWeight::SEMIBOLD)
                             .child("Today"),
                     )
+                    .child(
+                        button("today-digest", "Digest").on_click(
+                            cx.listener(|this, _, _, cx| this.run(Command::ShowDigest, cx)),
+                        ),
+                    )
                     .child(muted(format!(
                         "{} repos · {} live agent(s){}",
                         self.repos.len(),
