@@ -1146,38 +1146,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn tool_catalog_matches_the_migration_contract() {
-        // Given the retained MCP tool names recorded in the migration manifest
-        let manifest = match std::fs::read_to_string(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../legacy/migration/rust-migration.json"
-        )) {
-            Ok(manifest) => manifest,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                eprintln!("skipping: legacy/migration removed");
-                return;
-            }
-            Err(error) => panic!("reading legacy/migration/rust-migration.json: {error}"),
-        };
-        let manifest: serde_json::Value = serde_json::from_str(&manifest).unwrap();
-        let expected = manifest["executableContracts"]["mcpTools"]["expected"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|name| name.as_str().unwrap().to_owned())
-            .collect::<BTreeSet<_>>();
-
-        // When the public Rust catalog is inspected
-        let actual = tools()
-            .into_iter()
-            .map(|tool| tool["name"].as_str().unwrap().to_owned())
-            .collect::<BTreeSet<_>>();
-
-        // Then every retained tool is available and no unexpected tool is exposed
-        assert_eq!(actual, expected);
-    }
-
     #[tokio::test]
     async fn search_chunks_calls_the_active_api() {
         // Given

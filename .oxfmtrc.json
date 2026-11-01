@@ -28,7 +28,6 @@
         ".sqlx/**",
         "docs/**",
         "**/*.md",
-        "legacy/migration/fixtures/**",
         "openapi.json",
         "apps/web/src/utils/api-types.ts",
         "packages/client/src/api-types.ts"

@@ -40,8 +40,6 @@
         "seed": "cargo run --locked -p fubbik -- seed",
         "test": "turbo run test",
         "test:e2e": "turbo run test:e2e",
-        "check:rust-migration": "node legacy/migration/scripts/check-rust-migration.mjs",
-        "test:rust-migration": "node --test legacy/migration/scripts/check-rust-migration.test.mjs",
         "gen:api": "turbo run gen:api --filter=@fubbik/client",
         "lint": "turbo run lint",
         "lint:fix": "oxlint --fix",

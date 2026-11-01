@@ -133,18 +133,3 @@ jobs:
                   name: e2e-test-report
                   path: apps/web/playwright-report/e2e/
                   retention-days: 14
-
-    legacy-removable:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - run: rm -rf legacy
-            - uses: pnpm/action-setup@v4
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: rustup show
-            - run: pnpm install --frozen-lockfile
-            - run: SQLX_OFFLINE=true cargo check --workspace --all-targets
-            - run: pnpm run check-types

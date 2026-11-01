@@ -151,10 +151,9 @@ Good places to start in a fork:
 | Chunk templates        | the built-in templates, or your own via `/templates`     |
 | GUI test screens       | `apps/web/e2e/support/screens/`                          |
 | Review rules           | `review-rules.toml` (compiled checks in `crates/review-harness/src/checks/`) |
-| Retired TypeScript     | `legacy/` is safe to delete after reading `legacy/README.md` |
 
-**What it costs to run:** a Postgres 18 database with pgvector, and optionally Ollama. The Rust backend in `crates/` is the active one. The
-retired TypeScript server and API are kept in `legacy/` for parity checks, and a fork can delete them.
+**What it costs to run:** a Postgres 18 database with pgvector, and optionally Ollama. The Rust backend in `crates/` is the only one;
+the retired TypeScript backend was removed (it is in git history).
 
 Fubbik is MIT-licensed. Forks are the expected way to use it. Issues and ideas are welcome, but don't expect it to grow into a
 general-purpose product.
@@ -296,7 +295,6 @@ fubbik/
 ├── scripts/
 │   ├── test/        # Rust test and test-database scripts
 │   └── release/     # Release packaging and smoke tests
-├── legacy/          # Retired TypeScript server, API, auth, CLI, MCP and migration evidence
 └── docs/
 ```
 

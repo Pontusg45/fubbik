@@ -39,10 +39,6 @@ export SQLX_OFFLINE=true
 
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
-if [ -d legacy/migration ]; then
-    node --test legacy/migration/scripts/check-rust-migration.test.mjs
-    node legacy/migration/scripts/check-rust-migration.mjs
-fi
 
 result=0
 cargo test --workspace --no-fail-fast 2>&1 | tee "$test_log" || result=$?

@@ -16,7 +16,7 @@ description: Required and optional environment variables
 ## Optional
 
 - `PORT` — Server port (default: `3000`)
-- `BETTER_AUTH_URL` — Not read by the Rust server; it is only used by the retired TypeScript code in `legacy/`, so you can leave it unset
+- `BETTER_AUTH_URL` — Not read by the Rust server; it was only used by the retired TypeScript backend, so you can leave it unset
 - `CORS_ORIGIN` — Comma-separated allowed origins (default: `http://localhost:3001`)
 - `OLLAMA_URL` — Ollama server URL (default: `http://localhost:11434`)
 - `STALENESS_SCAN_INTERVAL_HOURS` — Hours between automatic staleness scans (default: `24`, set to `0` to disable)

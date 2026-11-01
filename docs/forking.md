@@ -35,11 +35,7 @@ on afterwards, see [extending.md](extending.md).
    them with yours; `cargo run -p review-harness -- init --root <dir>` writes a fresh starter. Remember to end directory prefixes in `allow`
    with `/`. See [`crates/review-harness/README.md`](../crates/review-harness/README.md).
 
-8. **Delete `legacy/`.** The retired TypeScript is safe to remove (CI's `legacy-removable` job proves it). Then remove by hand what
-   [`legacy/README.md`](../legacy/README.md) lists: the `check:rust-migration` and `test:rust-migration` scripts in the root `package.json`.
-   Also remove the `legacy-removable` job from `.github/workflows/ci.yml`, since there is nothing left to prove.
-
-9. **Rename the project.** Update the `name` in the root `package.json`, the README title and tagline, the `kit` and `review-harness` install
+8. **Rename the project.** Update the `name` in the root `package.json`, the README title and tagline, the `kit` and `review-harness` install
    URLs (they point at the upstream repo), and the `fubbik` names in `CLAUDE.md`. Renaming the Rust crates and the `fubbik` binary is a
    larger, optional change; nothing requires it.
 

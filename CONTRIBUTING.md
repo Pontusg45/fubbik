@@ -37,7 +37,6 @@ fubbik/
 ├── scripts/
 │   ├── test/        # Rust test and test-database scripts
 │   └── release/     # Release packaging and smoke tests
-├── legacy/          # Retired TypeScript server, API, auth and migration evidence
 └── docs/
 ```
 
@@ -45,8 +44,8 @@ fubbik/
 
 The active Rust backend follows **repository → service → route** under
 `crates/fubbik-db` and `crates/fubbik-api`. SQLx migrations are the sole schema
-authority. The old TypeScript backend lives in `legacy/` as a historical porting
-reference and is excluded from the workspace and CI.
+authority. The old TypeScript backend was removed; `git log --diff-filter=D -- legacy`
+finds it, and code comments citing `legacy/…` paths point into that history.
 
 - **Repository** (`crates/fubbik-db/src/repo/`): tenant-scoped PostgreSQL behavior
 - **Service** (`crates/fubbik-api/src/*/service.rs`): domain orchestration

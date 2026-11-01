@@ -58,15 +58,7 @@ temp
 # Compiled artifacts that shouldn't land in src/
 packages/env/src/**/*.js
 packages/env/src/**/*.d.ts
-legacy/cli/src/**/*.js
-legacy/cli/src/**/*.js.map
-legacy/cli/src/**/*.d.ts
-legacy/cli/src/**/*.d.ts.map
 # MCP runs .ts directly via tsx — .js here are stale build output
-legacy/mcp/src/**/*.js
-legacy/mcp/src/**/*.js.map
-legacy/mcp/src/**/*.d.ts
-legacy/mcp/src/**/*.d.ts.map
 
 # Local dev graph screenshots
 /graph-*.png
@@ -75,7 +67,6 @@ legacy/mcp/src/**/*.d.ts.map
 apps/web/node-server.js
 
 # Per-machine CLI config
-legacy/cli/fubbik.config.json
 .superpowers/
 
 # Rust build output

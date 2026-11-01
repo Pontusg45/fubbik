@@ -9,7 +9,7 @@ description:
 # Fubbik Development Patterns
 
 Where code goes, the patterns to copy, and the pitfalls. CLAUDE.md is the full reference (concepts, endpoints, CLI). The retired
-TypeScript backend (Effect, Elysia, Drizzle, Eden) lives in `legacy/` for reference only: never copy patterns from it.
+TypeScript backend (Effect, Elysia, Drizzle, Eden) has been removed; comments citing `legacy/…` paths point into git history. Never copy patterns from it.
 
 ## Quick reference
 
@@ -263,7 +263,7 @@ UI components are shadcn on `@base-ui/react`: use the `render` prop (`<DropdownM
 | A new or changed `query!` without refreshing `.sqlx/` | `SQLX_OFFLINE=true` builds (CI, `just rust-test-fast`) fail. Run `cargo sqlx prepare --workspace` against a migrated database. |
 | A handler or DTO missing from `openapi.rs` | The route works but is missing from `openapi.json` and the TS client. Add it to `paths(...)` / `components(schemas(...))`. |
 | Using axum's `Json`/`Query` extractors for input | Use `crate::extract::{Json, Query}` so parse errors are JSON, like every other error. |
-| Copying a pattern from `legacy/` | It is retired TypeScript. The live code is in `crates/` and `apps/web`. |
+| Copying a pattern from the old `legacy/` code (git history) | It is retired TypeScript. The live code is in `crates/` and `apps/web`. |
 
 ### Environment
 

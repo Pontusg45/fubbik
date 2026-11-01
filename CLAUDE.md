@@ -42,7 +42,7 @@ This file provides context about the project for AI assistants.
 - Database access: sqlx (`crates/fubbik-db`)
 - Errors: `fubbik_core::error::AppError` (`AppResult<T>`), mapped to HTTP statuses by `ApiError` in `crates/fubbik-api/src/error.rs`
 - Project config: optional `fubbik.toml` feature switches (`crates/fubbik-config`, see "Feature switches")
-- The retired TypeScript backend lives in `legacy/` for reference and is not built or run
+- The retired TypeScript backend is gone: the retired TypeScript backend was removed on 2026-11-01 (`git log --diff-filter=D -- legacy` finds it); code comments citing `legacy/…` paths point into that history
 
 ### Database
 
@@ -102,7 +102,6 @@ fubbik/
 ├── scripts/
 │   ├── test/        # Rust test and test-database scripts
 │   └── release/     # Release packaging and smoke tests
-├── legacy/          # Retired TypeScript server, API, auth, CLI, MCP and migration evidence (removable; CI job `legacy-removable`)
 └── docs/
     └── superpowers/
         ├── specs/   # Design specifications
