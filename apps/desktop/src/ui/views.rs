@@ -6,8 +6,8 @@ use gpui::{
 
 use super::palette::Command;
 use super::widgets::{
-    button, label, muted, row, section, sparkline, stat_card, status_dot, status_pill,
-    top_highlight,
+    button, disabled_button, label, muted, muted_line, pill, row, section, sparkline, stat_card,
+    status_dot, status_pill, top_highlight,
 };
 use super::{Field, RepoView, Tab, Workspace, display_path};
 use crate::model::{ProcessState, RepoSnapshot, Status};
@@ -354,6 +354,32 @@ impl Workspace {
             Some(Err(_)) => "not a git repo".into(),
             None => String::new(),
         };
+        let subtitle = [display_path(&repo.entry.path), git]
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join("  ·  ");
+        let processes = repo
+            .snapshot
+            .as_ref()
+            .map_or(&[][..], |s| s.processes.as_slice());
+        let (all_up, none_ours) = (
+            !processes.is_empty() && processes.iter().all(|p| p.status.is_up()),
+            processes.iter().all(|p| !p.owned),
+        );
+        let (working, waiting) = repo.snapshot.as_ref().map_or((0, 0), |s| {
+            use crate::sessions::SessionState;
+            (
+                s.sessions
+                    .iter()
+                    .filter(|s| s.state == SessionState::Busy)
+                    .count(),
+                s.sessions
+                    .iter()
+                    .filter(|s| s.state == SessionState::Idle)
+                    .count(),
+            )
+        });
         div()
             .flex()
             .items_center()
@@ -387,38 +413,109 @@ impl Workspace {
                                             .child(repo.entry.name()),
                                     ),
                             )
-                            .child(status_pill(status)),
+                            .child(match &repo.snapshot {
+                                Some(_) if processes.is_empty() => div().into_any_element(),
+                                Some(_) => status_pill(status).into_any_element(),
+                                None => pill("Checking…", theme::text_muted()).into_any_element(),
+                            })
+                            // Agents are their own state: busy agents are not "stopped".
+                            .when(working + waiting > 0, |d| {
+                                d.child(pill(
+                                    match (working, waiting) {
+                                        (w, 0) => format!("{w} agent(s) working"),
+                                        (0, q) => format!("{q} waiting for you"),
+                                        (w, q) => format!("{w} working · {q} waiting"),
+                                    },
+                                    if waiting > 0 {
+                                        theme::status(Status::Degraded)
+                                    } else {
+                                        theme::agent(crate::sessions::Agent::ClaudeCode)
+                                    },
+                                ))
+                            }),
                     )
-                    .child(muted(format!(
-                        "{}  ·  {git}",
-                        display_path(&repo.entry.path)
-                    ))),
+                    .child(muted_line(subtitle)),
             )
             .child(
                 div()
                     .flex()
                     .gap_2()
-                    .child(button("start-all", "▶ Start all").on_click(
-                        cx.listener(move |this, _, _, cx| this.run(Command::StartAll(index), cx)),
-                    ))
-                    .child(button("stop-all", "■ Stop all").on_click(
-                        cx.listener(move |this, _, _, cx| this.run(Command::StopAll(index), cx)),
-                    ))
+                    .flex_none()
+                    // Only when there is something to start or stop.
+                    .when(!processes.is_empty(), |d| {
+                        d.child(if all_up {
+                            disabled_button("start-all", "▶ Start all").into_any_element()
+                        } else {
+                            button("start-all", "▶ Start all")
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.run(Command::StartAll(index), cx)
+                                }))
+                                .into_any_element()
+                        })
+                        .child(if none_ours {
+                            disabled_button("stop-all", "■ Stop all").into_any_element()
+                        } else {
+                            button("stop-all", "■ Stop all")
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.run(Command::StopAll(index), cx)
+                                }))
+                                .into_any_element()
+                        })
+                    })
                     .child(button("open-editor", "Editor").on_click(
                         cx.listener(move |this, _, _, cx| this.run(Command::OpenEditor(index), cx)),
                     ))
-                    .child(button("open-terminal", "Terminal").on_click(cx.listener(
-                        move |this, _, _, cx| this.run(Command::OpenTerminal(index), cx),
-                    )))
+                    .child(
+                        button("open-terminal", "Terminal.app").on_click(cx.listener(
+                            move |this, _, _, cx| this.run(Command::OpenTerminal(index), cx),
+                        )),
+                    )
                     .child(button("open-github", "GitHub").on_click(
                         cx.listener(move |this, _, _, cx| this.run(Command::OpenGitHub(index), cx)),
                     )),
             )
     }
 
+    /// What a tab holds that needs you, for its badge.
+    fn tab_count(&self, tab: Tab) -> usize {
+        let Some(view) = self.repos.get(self.selected) else {
+            return 0;
+        };
+        let snapshot = view.snapshot.as_ref();
+        match tab {
+            Tab::Sessions => snapshot.map_or(0, |s| {
+                s.sessions
+                    .iter()
+                    .filter(|s| s.state == crate::sessions::SessionState::Idle)
+                    .count()
+            }),
+            Tab::Processes => snapshot.map_or(0, |s| {
+                s.processes
+                    .iter()
+                    .filter(|p| matches!(p.status, Status::Error | Status::Degraded))
+                    .count()
+            }),
+            Tab::Worktrees => snapshot.map_or(0, |s| s.overlaps.len()),
+            Tab::Knowledge => match &view.knowledge {
+                Some(Ok(k)) => {
+                    (k.requirements.failing + k.violated_cells() + k.stale).max(0) as usize
+                }
+                _ => 0,
+            },
+            _ => 0,
+        }
+    }
+
     fn render_tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let tabs = Tab::ALL.into_iter().map(|tab| {
+        // Today and All agents are global views (sidebar); the strip is this repo's.
+        let tabs = Tab::ALL.into_iter().filter(|t| !t.is_global()).map(|tab| {
             let active = tab == self.tab;
+            let count = self.tab_count(tab);
+            let underline = if tab == Tab::Setup {
+                theme::accent()
+            } else {
+                tab.color()
+            };
             div()
                 .id(tab.label())
                 .flex()
@@ -429,8 +526,9 @@ impl Workspace {
                 .text_sm()
                 .cursor_pointer()
                 .border_b_2()
+                .flex_none()
                 .border_color(if active {
-                    tab.color()
+                    underline
                 } else {
                     gpui::transparent_black()
                 })
@@ -448,17 +546,33 @@ impl Workspace {
                         .bg(tab.color().opacity(if active { 1.0 } else { 0.5 })),
                 )
                 .child(tab.label())
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(theme::text_muted())
-                        .child(tab.shortcut()),
-                )
+                .when(count > 0, |d| {
+                    d.child(
+                        div()
+                            .px_1p5()
+                            .rounded_full()
+                            .text_xs()
+                            .bg(theme::status(Status::Degraded).opacity(0.2))
+                            .text_color(theme::status(Status::Degraded))
+                            .child(count.to_string()),
+                    )
+                })
+                // The key only on the active tab (⌘/ lists them all).
+                .when(active, |d| {
+                    d.child(
+                        div()
+                            .text_xs()
+                            .text_color(theme::text_muted())
+                            .child(tab.shortcut()),
+                    )
+                })
         });
         div()
+            .id("tabs")
             .flex()
-            .gap_2()
+            .gap_1()
             .px_6()
+            .overflow_x_scroll()
             .border_b_1()
             .border_color(theme::border())
             .children(tabs)

@@ -43,7 +43,10 @@ impl Workspace {
             }
             return match (key, self.list_cursor) {
                 ("enter", Some(cursor)) => {
-                    self.select(cursor);
+                    let Some(&repo) = self.home_order().get(cursor) else {
+                        return false;
+                    };
+                    self.select(repo);
                     self.tab = Tab::Overview;
                     true
                 }

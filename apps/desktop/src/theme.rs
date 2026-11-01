@@ -250,8 +250,9 @@ pub fn backdrop() -> Background {
     let p = palette();
     linear_gradient(
         180.,
-        linear_color_stop(tone(p.backdrop_top, 0.58), 0.),
-        linear_color_stop(tone(p.backdrop_bottom, 0.45), 1.),
+        // Opaque enough that cards (glass on glass) still read as raised.
+        linear_color_stop(tone(p.backdrop_top, 0.82), 0.),
+        linear_color_stop(tone(p.backdrop_bottom, 0.74), 1.),
     )
 }
 
@@ -294,7 +295,7 @@ pub fn sidebar() -> Hsla {
 }
 
 pub fn surface() -> Hsla {
-    tone(palette().surface, 0.55)
+    tone(palette().surface, 0.8)
 }
 
 pub fn surface_hover() -> Hsla {
@@ -456,8 +457,9 @@ mod tests {
 
         // Then
         assert_eq!(opaque, (1.0, 1.0, 1.0));
+        // Cards stay mostly opaque (glass on glass washed out); the sidebar is glass.
         assert!(
-            glass.0 < 0.6 && glass.1 < 0.4,
+            glass.0 < 0.9 && glass.1 < 0.4,
             "backgrounds are see-through"
         );
         assert_eq!(glass.2, 1.0, "text stays opaque");

@@ -6,13 +6,37 @@ use gpui::{AnyElement, FontWeight, Hsla, SharedString, relative};
 
 use super::today::Section;
 use super::views::repo_badge;
-use super::widgets::{label, muted, muted_line, pill, status_pill, top_highlight};
+use super::widgets::{label, loading, muted, muted_line, pill, status_pill, top_highlight};
 use super::*;
 use crate::model::Status;
 use crate::system::{self, Stats, bytes, percent};
 
+/// Listening ports shown before "Show all".
+const PORTS_SHOWN: usize = 8;
+
 /// Below this much free space the disk card turns red.
 const LOW_DISK: u64 = 10 * 1024 * 1024 * 1024;
+
+/// A pill that goes somewhere when clicked.
+fn link_pill(
+    id: impl Into<gpui::ElementId>,
+    text: String,
+    color: Hsla,
+    command: Command,
+    cx: &mut Context<Workspace>,
+) -> gpui::Stateful<gpui::Div> {
+    div()
+        .id(id.into())
+        .cursor_pointer()
+        .rounded_full()
+        .hover(|d| d.opacity(0.8))
+        .on_click(cx.listener(move |this, _, _, cx| {
+            cx.stop_propagation();
+            this.run(command.clone(), cx);
+            cx.notify();
+        }))
+        .child(pill(text, color))
+}
 
 fn card() -> gpui::Div {
     div()
@@ -191,6 +215,82 @@ impl Workspace {
             .into_any_element()
     }
 
+    /// A sidebar row for a view across every repo (Today, All agents).
+    pub(super) fn global_row(
+        &self,
+        title: &'static str,
+        tab: Tab,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let active = !self.home && self.tab == tab;
+        let count = match tab {
+            Tab::Today => self
+                .today_rows()
+                .iter()
+                .filter(|r| r.section == Section::Needs)
+                .count(),
+            Tab::Agents => self.live_agents(),
+            _ => 0,
+        };
+        div()
+            .id(SharedString::from(format!("global-{title}")))
+            .flex()
+            .items_center()
+            .gap_2()
+            .mx_2()
+            .px_3()
+            .py_1p5()
+            .rounded_md()
+            .cursor_pointer()
+            .when(active, |d| d.bg(theme::surface_hover()))
+            .hover(|d| d.bg(theme::surface_hover()))
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.run(Command::ShowTab(tab), cx);
+                cx.notify();
+            }))
+            .child(div().w(px(12.)))
+            .child(div().flex_1().text_sm().child(title))
+            .when(count > 0, |d| d.child(muted(count.to_string())))
+            .child(muted(
+                keymap::keys_for(tab.action_id())
+                    .map(|k| keymap::pretty(&k))
+                    .unwrap_or_default(),
+            ))
+            .into_any_element()
+    }
+
+    /// Today or All agents: outside any repo, like Home.
+    pub(super) fn render_global(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
+        let body = match self.tab {
+            Tab::Agents => self.render_all_agents(window, cx),
+            _ => self.render_today(cx),
+        };
+        div()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .h_full()
+            .child(
+                div()
+                    .id("global")
+                    .flex_1()
+                    .overflow_y_scroll()
+                    .px_6()
+                    .pt(px(44.))
+                    .pb_6()
+                    .child(body),
+            )
+            .children(self.list_hint().map(|hint| {
+                div()
+                    .px_6()
+                    .py_2()
+                    .border_t_1()
+                    .border_color(theme::border())
+                    .child(muted(hint))
+            }))
+            .into_any_element()
+    }
+
     /// Shows Home (⌘0).
     pub(super) fn go_home(&mut self) {
         if !self.home {
@@ -200,23 +300,44 @@ impl Workspace {
         self.sidebar_nav = false;
     }
 
-    pub(super) fn render_projects(&self, cx: &mut Context<Self>) -> AnyElement {
+    /// "Needs you" lines per repo, by repo index.
+    fn needs_per_repo(&self) -> Vec<usize> {
         let today = self.today_rows();
-        let needs: Vec<(String, usize)> = self
-            .repos
+        self.repos
             .iter()
             .map(|r| {
                 let name = r.entry.name();
-                let n = today
+                today
                     .iter()
                     .filter(|row| row.section == Section::Needs && row.repo == name)
-                    .count();
-                (name, n)
+                    .count()
             })
-            .collect();
-        let total_needs: usize = needs.iter().map(|(_, n)| n).sum();
-        let cards: Vec<AnyElement> = (0..self.repos.len())
-            .map(|i| self.project_card(i, needs[i].1, cx))
+            .collect()
+    }
+
+    /// Home's card order (repo indexes): what needs you first, then the
+    /// busiest; ties keep the sidebar order.
+    pub(super) fn home_order(&self) -> Vec<usize> {
+        let needs = self.needs_per_repo();
+        let mut order: Vec<usize> = (0..self.repos.len()).collect();
+        order.sort_by_key(|&i| {
+            let sessions = self.repos[i]
+                .snapshot
+                .as_ref()
+                .map_or(0, |s| s.live_sessions());
+            (std::cmp::Reverse(needs[i]), std::cmp::Reverse(sessions))
+        });
+        order
+    }
+
+    pub(super) fn render_projects(&self, cx: &mut Context<Self>) -> AnyElement {
+        let needs = self.needs_per_repo();
+        let total_needs: usize = needs.iter().sum();
+        let cards: Vec<AnyElement> = self
+            .home_order()
+            .into_iter()
+            .enumerate()
+            .map(|(position, i)| self.project_card(i, position, needs[i], cx))
             .collect();
         let stats = system::stats();
 
@@ -236,11 +357,19 @@ impl Workspace {
                             .child("Projects"),
                     )
                     .child(muted(format!(
-                        "{} repos · {} live agent(s) · {} need you",
+                        "{} repos · {} live agent(s)",
                         self.repos.len(),
-                        self.live_agents(),
-                        total_needs
-                    ))),
+                        self.live_agents()
+                    )))
+                    .when(total_needs > 0, |d| {
+                        d.child(link_pill(
+                            "home-needs",
+                            format!("{total_needs} need you — Today"),
+                            theme::danger(),
+                            Command::ShowTab(Tab::Today),
+                            cx,
+                        ))
+                    }),
             )
             .child(
                 div()
@@ -248,15 +377,21 @@ impl Workspace {
                     .items_start()
                     .gap_4()
                     .child(two_columns(cards))
-                    .child(self.render_computer(&stats)),
+                    .child(self.render_computer(&stats, cx)),
             )
             .into_any_element()
     }
 
-    fn project_card(&self, index: usize, needs: usize, cx: &mut Context<Self>) -> AnyElement {
+    fn project_card(
+        &self,
+        index: usize,
+        position: usize,
+        needs: usize,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let view = &self.repos[index];
         let name = view.entry.name();
-        let highlighted = self.home && self.list_cursor == Some(index);
+        let highlighted = self.home && self.list_cursor == Some(position);
         let mut body = card()
             .when(highlighted, |c| c.border_color(theme::accent()))
             .child(
@@ -277,7 +412,9 @@ impl Workspace {
                     .children(view.snapshot.as_ref().map(|s| status_pill(s.status()))),
             );
         let Some(snapshot) = &view.snapshot else {
-            return body.child(muted("Checking…")).into_any_element();
+            return body
+                .child(loading("Reading git, processes and sessions…"))
+                .into_any_element();
         };
         if let Some(Ok(git)) = &snapshot.git {
             let mut line = vec![git.branch.clone()];
@@ -304,10 +441,10 @@ impl Workspace {
                 .rounded_full()
                 .bg(theme::status(p.status))
         });
-        let live = snapshot
+        let working = snapshot
             .sessions
             .iter()
-            .filter(|s| s.state.is_live())
+            .filter(|s| s.state == crate::sessions::SessionState::Busy)
             .count();
         let waiting = snapshot
             .sessions
@@ -362,35 +499,78 @@ impl Workspace {
                 )
                 .child(metric(
                     "Agents",
-                    if waiting > 0 {
-                        format!("{live} · {waiting} waiting")
-                    } else {
-                        live.to_string()
+                    match (working, waiting) {
+                        (0, 0) => "—".to_string(),
+                        (w, 0) => format!("{w} working"),
+                        (0, q) => format!("{q} waiting"),
+                        (w, q) => format!("{w} working · {q} waiting"),
                     },
                 ))
                 .child(metric("Worktrees", worktrees.to_string())),
         );
+        // Each tag goes where it is about.
+        let focus = |tab: Tab| Command::Focus { repo: index, tab };
+        let id = |what: &str| SharedString::from(format!("home-{what}-{index}"));
         let mut tags = div().flex().flex_wrap().gap_1();
         if needs > 0 {
-            tags = tags.child(pill(format!("{needs} need you"), theme::danger()));
+            tags = tags.child(link_pill(
+                id("needs"),
+                format!("{needs} need you"),
+                theme::danger(),
+                Command::ShowTab(Tab::Today),
+                cx,
+            ));
+        }
+        if waiting > 0 {
+            tags = tags.child(link_pill(
+                id("waiting"),
+                format!("{waiting} agent(s) waiting"),
+                theme::status(Status::Degraded),
+                focus(Tab::Sessions),
+                cx,
+            ));
+        }
+        let failed = snapshot
+            .processes
+            .iter()
+            .filter(|p| matches!(p.status, Status::Error | Status::Degraded))
+            .count();
+        if failed > 0 {
+            tags = tags.child(link_pill(
+                id("procs"),
+                format!("{failed} process(es) failing"),
+                theme::danger(),
+                focus(Tab::Processes),
+                cx,
+            ));
         }
         if !snapshot.overlaps.is_empty() {
-            tags = tags.child(pill(
+            tags = tags.child(link_pill(
+                id("overlaps"),
                 format!("{} overlap(s)", snapshot.overlaps.len()),
                 theme::status(Status::Degraded),
+                focus(Tab::Worktrees),
+                cx,
             ));
         }
         if let Some(Ok(k)) = &view.knowledge {
-            if k.chunks > 0 {
-                tags = tags.child(pill(
-                    format!("{} chunks", k.chunks),
-                    theme::hue(theme::Hue::Yellow),
+            let failing = k.requirements.failing + k.violated_cells();
+            if failing > 0 {
+                tags = tags.child(link_pill(
+                    id("failing"),
+                    format!("{failing} failing checks"),
+                    theme::danger(),
+                    focus(Tab::Knowledge),
+                    cx,
                 ));
             }
-            if k.requirements.failing > 0 {
-                tags = tags.child(pill(
-                    format!("{} failing", k.requirements.failing),
-                    theme::danger(),
+            if k.chunks > 0 {
+                tags = tags.child(link_pill(
+                    id("chunks"),
+                    format!("{} chunks", k.chunks),
+                    theme::hue(theme::Hue::Yellow),
+                    focus(Tab::Knowledge),
+                    cx,
                 ));
             }
         }
@@ -408,7 +588,7 @@ impl Workspace {
             .into_any_element()
     }
 
-    fn render_computer(&self, stats: &Stats) -> AnyElement {
+    fn render_computer(&self, stats: &Stats, cx: &mut Context<Self>) -> AnyElement {
         let column = div().w(px(340.)).flex_none().flex().flex_col().gap_3();
         if stats.at.is_none() {
             return column
@@ -561,7 +741,16 @@ impl Workspace {
                     .map(|p| format!("{} › {}", r.entry.name(), p.spec.name))
             })
         };
-        let ports = stats.ports.iter().map(|p| {
+        // Repo-owned ports first; the rest behind "Show all".
+        let mut sorted: Vec<&system::Port> = stats.ports.iter().collect();
+        sorted.sort_by_key(|p| (owner(p.port).is_none(), p.port));
+        let shown = if self.ports_all {
+            sorted.len()
+        } else {
+            sorted.len().min(PORTS_SHOWN)
+        };
+        let hidden = sorted.len() - shown;
+        let ports = sorted.into_iter().take(shown).map(|p| {
             let project = owner(p.port);
             div()
                 .flex()
@@ -573,7 +762,13 @@ impl Workspace {
                         .text_color(theme::accent())
                         .child(format!(":{}", p.port)),
                 )
-                .child(div().flex_1().overflow_hidden().child(p.command.clone()))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w(px(0.))
+                        .overflow_hidden()
+                        .child(div().truncate().child(p.command.clone())),
+                )
                 .children(project.map(|name| div().text_color(theme::text_muted()).child(name)))
                 .child(
                     div()
@@ -588,7 +783,25 @@ impl Workspace {
                     "LISTENING PORTS ({})",
                     stats.ports.len()
                 ))))
-                .children(ports),
+                .children(ports)
+                .when(hidden > 0 || self.ports_all, |c| {
+                    c.child(
+                        div()
+                            .id("ports-all")
+                            .text_xs()
+                            .text_color(theme::accent())
+                            .cursor_pointer()
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.ports_all = !this.ports_all;
+                                cx.notify();
+                            }))
+                            .child(if self.ports_all {
+                                "Show fewer".to_string()
+                            } else {
+                                format!("Show all ({} more)", hidden)
+                            }),
+                    )
+                }),
         );
         column.into_any_element()
     }

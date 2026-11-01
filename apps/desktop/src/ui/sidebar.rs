@@ -3,8 +3,8 @@
 use gpui::{Context, FontWeight, IntoElement, SharedString, div, prelude::*, px};
 
 use super::palette::Command;
-use super::widgets::{button, muted, status_dot};
-use super::{Workspace, display_path};
+use super::widgets::{button, muted};
+use super::{Tab, Workspace, display_path};
 use crate::model::Status;
 use crate::sessions::SessionState;
 use crate::theme;
@@ -60,6 +60,8 @@ impl Workspace {
                     .overflow_y_scroll()
                     .pb_2()
                     .child(self.home_row(cx))
+                    .child(self.global_row("Today", Tab::Today, cx))
+                    .child(self.global_row("All agents", Tab::Agents, cx))
                     .children(sections),
             )
             .child(
@@ -100,7 +102,21 @@ impl Workspace {
                                 cx.listener(|this, _, _, cx| this.run(Command::RegisterRepo, cx)),
                             ),
                     )
-                    .child(muted("⌘K commands · ⌘[ ⌘] switch repo")),
+                    .child(muted(format!(
+                        "{} commands · {} {} switch repo · {} shortcuts",
+                        super::keymap::keys_for("toggle_palette")
+                            .map(|k| super::keymap::pretty(&k))
+                            .unwrap_or_default(),
+                        super::keymap::keys_for("prev_repo")
+                            .map(|k| super::keymap::pretty(&k))
+                            .unwrap_or_default(),
+                        super::keymap::keys_for("next_repo")
+                            .map(|k| super::keymap::pretty(&k))
+                            .unwrap_or_default(),
+                        super::keymap::keys_for("show_cheat_sheet")
+                            .map(|k| super::keymap::pretty(&k))
+                            .unwrap_or_default(),
+                    ))),
             )
     }
 
@@ -136,21 +152,20 @@ impl Workspace {
                         .flex()
                         .gap_1()
                         .child(
-                            button(SharedString::from(format!("group-start-{name}")), "▶")
+                            button(SharedString::from(format!("group-start-{name}")), "▶ all")
                                 .on_click(cx.listener(move |this, _, _, cx| {
                                     this.ask_where(super::RunWhat::Group(start.clone()), cx);
                                     cx.notify();
                                 })),
                         )
                         .child(
-                            button(SharedString::from(format!("group-stop-{name}")), "■").on_click(
-                                cx.listener(move |this, _, _, cx| {
+                            button(SharedString::from(format!("group-stop-{name}")), "■ all")
+                                .on_click(cx.listener(move |this, _, _, cx| {
                                     for &repo in &stop {
                                         this.stop_all(repo, cx);
                                     }
                                     cx.notify();
-                                }),
-                            ),
+                                })),
                         ),
                 )
             });
@@ -161,20 +176,38 @@ impl Workspace {
                 .snapshot
                 .as_ref()
                 .map_or(Status::Stopped, |s| s.status());
-            let detail = match &repo.snapshot {
-                Some(s) if s.missing => "folder missing".to_string(),
-                Some(s) if s.services_error.is_some() => "services file error".to_string(),
-                _ if failing(repo) > 0 => format!("✕ {} failing checks", failing(repo)),
+            let waiting = repo.snapshot.as_ref().map_or(0, |s| {
+                s.sessions
+                    .iter()
+                    .filter(|s| s.state == SessionState::Idle)
+                    .count()
+            });
+            // Most actionable first: broken, waiting for you, failing, busy.
+            let (detail, urgent) = match &repo.snapshot {
+                None => ("checking…".to_string(), false),
+                Some(s) if s.missing => ("folder missing".to_string(), true),
+                Some(s) if s.services_error.is_some() => ("services file error".to_string(), true),
+                Some(_) if waiting > 0 => (format!("{waiting} agent(s) waiting for you"), true),
+                _ if failing(repo) > 0 => (format!("✕ {} failing checks", failing(repo)), true),
                 Some(s) if s.live_sessions() > 0 => {
                     let busy = s
                         .sessions
                         .iter()
                         .filter(|s| s.state == SessionState::Busy)
                         .count();
-                    format!("{} AI live · {busy} working", s.live_sessions())
+                    (format!("{busy} agent(s) working"), false)
                 }
-                _ => display_path(&repo.entry.path),
+                _ => (display_path(&repo.entry.path), false),
             };
+            // A repo with busy agents but no services is not "stopped".
+            let dot_color = match &repo.snapshot {
+                None => theme::text_muted().opacity(0.4),
+                Some(s) if status == Status::Stopped && s.live_sessions() > 0 => {
+                    theme::agent(crate::sessions::Agent::ClaudeCode)
+                }
+                _ => theme::status(status),
+            };
+            let selected = index == self.selected && !self.home && !self.tab.is_global();
             div()
                 .id(("repo", index))
                 .group("repo-row")
@@ -186,33 +219,37 @@ impl Workspace {
                 .py_2()
                 .rounded_md()
                 .cursor_pointer()
-                .when(index == self.selected && !self.home, |row| {
-                    row.bg(theme::surface_hover())
-                })
+                .when(selected, |row| row.bg(theme::surface_hover()))
                 .hover(|row| row.bg(theme::surface_hover()))
                 .on_click(
                     cx.listener(move |this, _, _, cx| this.run(Command::SelectRepo(index), cx)),
                 )
                 .border_l_2()
-                .border_color(if index == self.selected && !self.home {
+                .border_color(if selected {
                     theme::name_color(&repo.entry.name())
                 } else {
                     gpui::transparent_black()
                 })
                 .child(super::views::repo_badge(&repo.entry.name(), 20.))
-                .child(status_dot(status))
+                .child(div().size_2().flex_none().rounded_full().bg(dot_color))
                 .child(
                     div()
                         .flex()
                         .flex_col()
                         .flex_1()
+                        .min_w(px(0.))
                         .overflow_hidden()
-                        .child(div().text_sm().child(repo.entry.name()))
+                        .child(div().text_sm().truncate().child(repo.entry.name()))
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(if status == Status::Error {
-                                    theme::danger()
+                                .truncate()
+                                .text_color(if status == Status::Error || urgent {
+                                    if waiting > 0 && status != Status::Error {
+                                        theme::status(Status::Degraded)
+                                    } else {
+                                        theme::danger()
+                                    }
                                 } else {
                                     theme::text_muted()
                                 })

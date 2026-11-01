@@ -181,6 +181,11 @@ impl Tab {
         }
     }
 
+    /// Views across every repo (shown outside a repo, next to Home).
+    pub fn is_global(self) -> bool {
+        matches!(self, Tab::Today | Tab::Agents)
+    }
+
     /// The key that shows the tab, as currently bound (keymap.toml).
     pub fn shortcut(self) -> String {
         keymap::keys_for(self.action_id()).unwrap_or_default()
@@ -484,6 +489,8 @@ pub struct Workspace {
     user_stopped: HashSet<String>,
     /// Newest last; info fades after `TOAST_FOR`, errors stay until closed.
     toasts: Vec<Toast>,
+    /// Home: every listening port, not just the first few.
+    ports_all: bool,
     /// "Are you sure?" while open.
     confirm: Option<Confirm>,
     /// True while a confirmed command runs, so its handler does not ask again.
@@ -581,6 +588,7 @@ impl Workspace {
             log_follow: true,
             user_stopped: HashSet::new(),
             toasts: Vec::new(),
+            ports_all: false,
             confirm: None,
             confirmed: false,
             polling: false,

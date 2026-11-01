@@ -419,6 +419,8 @@ impl Render for Workspace {
             self.render_empty(window, cx).into_any_element()
         } else if self.home {
             self.render_home(cx)
+        } else if self.tab.is_global() {
+            self.render_global(window, cx)
         } else {
             self.render_repo(window, cx).into_any_element()
         };
