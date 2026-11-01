@@ -3,6 +3,7 @@
 
 mod actions;
 mod agents;
+mod changes;
 mod chrome;
 mod command_palette;
 mod commands;
@@ -74,6 +75,7 @@ actions!(
         ShowAgents,
         ShowToday,
         ShowInsights,
+        ShowChanges,
         ShowHome,
         CaptureNote,
         ToggleTheme,
@@ -146,12 +148,15 @@ pub enum Tab {
     Today,
     /// One repo's summary, health and activity.
     Insights,
+    /// Changed files, diffs, staging and committing.
+    Changes,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 13] = [
+    pub const ALL: [Tab; 14] = [
         Tab::Today,
         Tab::Overview,
+        Tab::Changes,
         Tab::Processes,
         Tab::Logs,
         Tab::Worktrees,
@@ -172,7 +177,7 @@ impl Tab {
             Tab::Overview | Tab::Today => theme::hue(Hue::Blue),
             Tab::Processes => theme::hue(Hue::Green),
             Tab::Databases => theme::hue(Hue::Cyan),
-            Tab::Logs | Tab::Terminal => theme::hue(Hue::Lime),
+            Tab::Logs | Tab::Terminal | Tab::Changes => theme::hue(Hue::Lime),
             Tab::Worktrees => theme::hue(Hue::Violet),
             Tab::Sessions | Tab::Agents => theme::hue(Hue::Orange),
             Tab::Plans | Tab::Insights => theme::hue(Hue::Pink),
@@ -207,6 +212,7 @@ impl Tab {
             Tab::Agents => "show_agents",
             Tab::Today => "show_today",
             Tab::Insights => "show_insights",
+            Tab::Changes => "show_changes",
         }
     }
 
@@ -225,6 +231,7 @@ impl Tab {
             Tab::Agents => "All agents",
             Tab::Today => "Today",
             Tab::Insights => "Insights",
+            Tab::Changes => "Changes",
         }
     }
 }
@@ -242,6 +249,7 @@ enum Field {
     FubbikUrl,
     WebUrl,
     FubbikBin,
+    Commit,
 }
 
 /// One repo's poll. `knowledge` and `setup` only come with slow polls.
@@ -412,6 +420,8 @@ pub struct Workspace {
     note_body: TextField,
     group_field: TextField,
     worktree_field: TextField,
+    commit_field: TextField,
+    changes: changes::ChangesState,
     /// Transcript read positions, kept across polls.
     session_index: Arc<Mutex<SessionIndex>>,
     /// Re-read worktrees on the next poll (they are slower than the probes).
@@ -572,6 +582,8 @@ impl Workspace {
             note_body: TextField::new(cx),
             group_field: TextField::new(cx),
             worktree_field: TextField::new(cx),
+            commit_field: TextField::new(cx),
+            changes: Default::default(),
             session_index: Arc::new(Mutex::new(SessionIndex::new())),
             refresh_worktrees: true,
             palette_open: false,
@@ -759,6 +771,9 @@ impl Workspace {
     fn select(&mut self, index: usize) {
         if index < self.repos.len() {
             self.home = false;
+            if index != self.selected {
+                self.changes = Default::default();
+            }
             // Today and All agents are not a repo's: show its last repo tab.
             if self.tab.is_global() {
                 self.tab = self.repo_tab;

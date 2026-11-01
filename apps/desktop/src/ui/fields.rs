@@ -71,6 +71,7 @@ impl Workspace {
             Field::FubbikUrl => &mut self.fubbik_url_field,
             Field::WebUrl => &mut self.web_url_field,
             Field::FubbikBin => &mut self.fubbik_bin_field,
+            Field::Commit => &mut self.commit_field,
         }
     }
 
@@ -145,6 +146,7 @@ impl Workspace {
                 }
             }
             (Field::Reply, KeyOutcome::Submit) => self.send_reply(cx),
+            (Field::Commit, KeyOutcome::Submit) => self.commit_staged(cx),
             (Field::FubbikUrl | Field::WebUrl | Field::FubbikBin, KeyOutcome::Submit) => {
                 self.submit_preference(field, cx);
                 self.focus.focus(window);
@@ -188,6 +190,7 @@ impl Workspace {
             Field::FubbikUrl => &self.fubbik_url_field,
             Field::WebUrl => &self.web_url_field,
             Field::FubbikBin => &self.fubbik_bin_field,
+            Field::Commit => &self.commit_field,
         };
         let focus = text_field.focus.clone();
         widgets::text_box(&text_field.text, placeholder, focus.is_focused(window))

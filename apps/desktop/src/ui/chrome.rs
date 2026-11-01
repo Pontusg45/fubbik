@@ -609,6 +609,9 @@ impl Render for Workspace {
             .on_action(cx.listener(|this, _: &ShowInsights, _, cx| {
                 this.run(Command::ShowTab(Tab::Insights), cx)
             }))
+            .on_action(cx.listener(|this, _: &ShowChanges, _, cx| {
+                this.run(Command::ShowTab(Tab::Changes), cx)
+            }))
             .on_action(cx.listener(|this, _: &ShowHome, _, cx| {
                 this.go_home();
                 cx.notify();

@@ -57,6 +57,106 @@ pub fn read(repo: &Path) -> Result<GitInfo, String> {
     Ok(info)
 }
 
+/// One changed file, from `git status --porcelain=v1 -z`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileChange {
+    pub path: String,
+    /// The index (staged) column: `M`, `A`, `D`, `R`, `C`; None when clean.
+    pub staged: Option<char>,
+    /// The work tree column: `M`, `D`; None when clean.
+    pub unstaged: Option<char>,
+    pub untracked: bool,
+    /// The old path of a rename or copy.
+    pub from: Option<String>,
+}
+
+/// Parses `git status --porcelain=v1 -z` (renames carry their old path as
+/// the next record).
+pub fn parse_changes(text: &str) -> Vec<FileChange> {
+    let mut out = Vec::new();
+    let mut records = text.split('\0').filter(|r| !r.is_empty());
+    while let Some(record) = records.next() {
+        let mut chars = record.chars();
+        let (Some(x), Some(y)) = (chars.next(), chars.next()) else {
+            continue;
+        };
+        let Some(path) = record.get(3..) else {
+            continue;
+        };
+        let column = |c: char| (c != ' ' && c != '?' && c != '!').then_some(c);
+        let from = matches!(x, 'R' | 'C')
+            .then(|| records.next().map(str::to_string))
+            .flatten();
+        if x == '!' {
+            continue;
+        }
+        out.push(FileChange {
+            path: path.to_string(),
+            staged: column(x),
+            unstaged: column(y),
+            untracked: x == '?',
+            from,
+        });
+    }
+    out
+}
+
+/// Every changed file in the work tree.
+pub fn changes(repo: &Path) -> Result<Vec<FileChange>, String> {
+    git(
+        repo,
+        &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    )
+    .map(|s| parse_changes(&s))
+}
+
+/// What changed in one file: staged (index against HEAD) or not (work tree
+/// against the index). An untracked file shows whole.
+pub fn diff(repo: &Path, path: &str, staged: bool, untracked: bool) -> Result<String, String> {
+    if untracked {
+        // `--no-index` exits 1 when the files differ, which they always do.
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(["diff", "--no-color", "--no-index", "--", "/dev/null", path])
+            .output()
+            .map_err(|e| format!("git: {e}"))?;
+        return Ok(String::from_utf8_lossy(&output.stdout).into_owned());
+    }
+    let mut args = vec!["diff", "--no-color"];
+    if staged {
+        args.push("--cached");
+    }
+    args.extend(["--", path]);
+    git(repo, &args)
+}
+
+/// `git add` these paths (all changes when empty).
+pub fn stage(repo: &Path, paths: &[String]) -> Result<(), String> {
+    let mut args = vec!["add", "-A", "--"];
+    args.extend(paths.iter().map(String::as_str));
+    git(repo, &args).map(|_| ())
+}
+
+/// Takes these paths out of the index, keeping the work tree (all when empty).
+pub fn unstage(repo: &Path, paths: &[String]) -> Result<(), String> {
+    let mut args = vec!["reset", "-q", "HEAD", "--"];
+    args.extend(paths.iter().map(String::as_str));
+    if paths.is_empty() {
+        args.push(".");
+    }
+    git(repo, &args).map(|_| ())
+}
+
+/// Commits what is staged; the new commit's short hash and subject.
+pub fn commit(repo: &Path, message: &str) -> Result<String, String> {
+    if message.trim().is_empty() {
+        return Err("A commit needs a message".into());
+    }
+    git(repo, &["commit", "-q", "-m", message])?;
+    git(repo, &["log", "-1", "--format=%h %s"]).map(|s| s.trim().to_string())
+}
+
 /// The repo root containing `path`.
 pub fn toplevel(path: &Path) -> Option<std::path::PathBuf> {
     git(path, &["rev-parse", "--show-toplevel"])
@@ -94,6 +194,78 @@ pub fn web_url(remote: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_staged_unstaged_untracked_and_renames() {
+        // Given: porcelain v1 -z, a rename followed by its old path
+        let text = "M  staged.rs\0 M edited.rs\0MM both.rs\0?? new.rs\0R  new_name.rs\0old_name.rs\0!! ignored\0";
+
+        // When
+        let changes = parse_changes(text);
+
+        // Then
+        let summary: Vec<(&str, Option<char>, Option<char>, bool)> = changes
+            .iter()
+            .map(|c| (c.path.as_str(), c.staged, c.unstaged, c.untracked))
+            .collect();
+        assert_eq!(
+            summary,
+            [
+                ("staged.rs", Some('M'), None, false),
+                ("edited.rs", None, Some('M'), false),
+                ("both.rs", Some('M'), Some('M'), false),
+                ("new.rs", None, None, true),
+                ("new_name.rs", Some('R'), None, false),
+            ]
+        );
+        assert_eq!(changes[4].from.as_deref(), Some("old_name.rs"));
+    }
+
+    #[test]
+    fn stage_diff_unstage_and_commit_in_a_real_repo() {
+        // Given: a repo with one commit, then an edit and a new file
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let run = |args: &[&str]| git(repo, args).unwrap();
+        run(&["init", "-q", "-b", "main"]);
+        run(&["config", "user.email", "t@example.com"]);
+        run(&["config", "user.name", "t"]);
+        std::fs::write(repo.join("a.txt"), "one\n").unwrap();
+        run(&["add", "a.txt"]);
+        run(&["commit", "-q", "-m", "first"]);
+        std::fs::write(repo.join("a.txt"), "two\n").unwrap();
+        std::fs::write(repo.join("b.txt"), "new\n").unwrap();
+
+        // When
+        let before = changes(repo).unwrap();
+        let untracked_diff = diff(repo, "b.txt", false, true).unwrap();
+        stage(repo, &["a.txt".into()]).unwrap();
+        let staged_diff = diff(repo, "a.txt", true, false).unwrap();
+        unstage(repo, &["a.txt".into()]).unwrap();
+        let after_unstage = changes(repo).unwrap();
+        stage(repo, &[]).unwrap();
+        let committed = commit(repo, "second").unwrap();
+        let after_commit = changes(repo).unwrap();
+
+        // Then
+        assert_eq!(before.len(), 2);
+        assert!(untracked_diff.contains("+new"), "{untracked_diff}");
+        assert!(
+            staged_diff.contains("-one") && staged_diff.contains("+two"),
+            "{staged_diff}"
+        );
+        assert_eq!(
+            after_unstage
+                .iter()
+                .find(|c| c.path == "a.txt")
+                .unwrap()
+                .staged,
+            None
+        );
+        assert!(committed.ends_with("second"), "{committed}");
+        assert!(after_commit.is_empty());
+        assert!(commit(repo, "  ").is_err());
+    }
 
     #[test]
     fn parses_branch_head_ahead_behind() {

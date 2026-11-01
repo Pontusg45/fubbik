@@ -38,9 +38,9 @@ use gpui::{
 use supervisor::Supervisor;
 use ui::{
     CaptureNote, ChooseTheme, NextRepo, PrevRepo, Quit, QuitKeepServer, Refresh, RegisterRepo,
-    ShowAgents, ShowDatabases, ShowHome, ShowInsights, ShowKnowledge, ShowLogs, ShowOverview,
-    ShowPlans, ShowProcesses, ShowSessions, ShowSetup, ShowTerminal, ShowToday, ShowWorktrees,
-    TogglePalette, ToggleTheme, Workspace,
+    ShowAgents, ShowChanges, ShowDatabases, ShowHome, ShowInsights, ShowKnowledge, ShowLogs,
+    ShowOverview, ShowPlans, ShowProcesses, ShowSessions, ShowSetup, ShowTerminal, ShowToday,
+    ShowWorktrees, TogglePalette, ToggleTheme, Workspace,
 };
 
 fn main() {
@@ -162,6 +162,7 @@ fn main() {
                     MenuItem::action("Today", ShowToday),
                     MenuItem::action("All Agents", ShowAgents),
                     MenuItem::action("Insights", ShowInsights),
+                    MenuItem::action("Changes", ShowChanges),
                     MenuItem::action("Home", ShowHome),
                     MenuItem::action("Capture Note…", CaptureNote),
                 ],

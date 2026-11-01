@@ -113,6 +113,13 @@ impl Workspace {
             .then(|| self.terminal_for_selected(window, cx))
             .flatten();
         let mut insights = (self.tab == Tab::Insights).then(|| self.render_insights(index, cx));
+        let mut changes = match (&self.repos[index].snapshot, self.tab) {
+            (Some(snapshot), Tab::Changes) => {
+                let snapshot = snapshot.clone();
+                Some(self.render_changes(index, &snapshot, window, cx))
+            }
+            _ => None,
+        };
         let hint = self.list_hint();
         let window: &Window = window;
         let repo = &self.repos[index];
@@ -193,6 +200,9 @@ impl Workspace {
                 Tab::Agents => self.render_all_agents(window, cx),
                 Tab::Today => self.render_today(cx),
                 Tab::Insights => insights
+                    .take()
+                    .unwrap_or_else(|| muted("…").into_any_element()),
+                Tab::Changes => changes
                     .take()
                     .unwrap_or_else(|| muted("…").into_any_element()),
             },

@@ -1149,3 +1149,65 @@ fn selecting_a_repo_leaves_today_and_all_agents(cx: &mut TestAppContext) {
     assert_eq!(from_today, (false, 1, Tab::Processes));
     assert_eq!(from_agents, (false, 0, Tab::Processes));
 }
+
+#[gpui::test]
+fn the_changes_tab_stages_and_commits(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a repo with a commit and an edited file
+    let repo = tempfile::tempdir().unwrap();
+    let git = |args: &[&str]| {
+        let ok = std::process::Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(args)
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "git {args:?}");
+    };
+    git(&["init", "-q", "-b", "main"]);
+    git(&["config", "user.email", "t@example.com"]);
+    git(&["config", "user.name", "t"]);
+    std::fs::write(repo.path().join("a.txt"), "one\n").unwrap();
+    git(&["add", "a.txt"]);
+    git(&["commit", "-q", "-m", "first"]);
+    std::fs::write(repo.path().join("a.txt"), "two\n").unwrap();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", repo.path().display().to_string()),
+    );
+
+    // When: load, stage everything, write a message, commit
+    view.update(cx, |w, cx| w.load_changes(cx));
+    cx.run_until_parked();
+    let listed = view.read_with(cx, |w, _| {
+        w.change_files()
+            .map(|f| f.iter().map(|f| f.path.clone()).collect::<Vec<_>>())
+    });
+    view.update(cx, |w, cx| w.stage_paths(Vec::new(), true, cx));
+    cx.run_until_parked();
+    let staged = view.read_with(cx, |w, _| {
+        w.change_files()
+            .is_some_and(|f| f.iter().all(|f| f.staged.is_some()))
+    });
+    view.update(cx, |w, cx| {
+        w.commit_field.text = "second".into();
+        w.commit_staged(cx);
+    });
+    cx.run_until_parked();
+    let after = view.read_with(cx, |w, _| {
+        (w.change_files().map(Vec::len), w.commit_field.text.clone())
+    });
+
+    // Then
+    assert_eq!(listed, Some(vec!["a.txt".to_string()]));
+    assert!(staged);
+    assert_eq!(after, (Some(0), String::new()));
+    let log = std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(["log", "-1", "--format=%s"])
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&log.stdout).trim(), "second");
+}
