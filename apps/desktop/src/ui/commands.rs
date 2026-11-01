@@ -696,7 +696,8 @@ impl Workspace {
                 if self.config.ghostty_theme.as_deref() == Some("follow") {
                     let _ = theme::apply(Some("follow"));
                 }
-                self.poll_now(true, cx);
+                                self.poll_now(true, cx);
+                self.refresh_prs(true, cx);
             }
             Command::SetColors(choice) => match theme::apply(choice.as_deref()) {
                 Ok(label) => {
@@ -938,7 +939,8 @@ impl Workspace {
             Command::ReplyWaiting => self.show_info("Press ⇧⌘R to reply to the waiting agent"),
             Command::StartNextTask => self.start_next_task(cx),
             Command::NextNeedsYou => self.next_needs_you(cx),
-            Command::ShowHome => self.go_home(),
+                        Command::ShowHome => self.go_home(),
+            Command::OpenUrl(url) => cx.open_url(&url),
             Command::OpenPane { pane, cwd } => self.open_pane(pane, cwd, cx),
             Command::Focus { repo, tab } => {
                 self.select(repo);

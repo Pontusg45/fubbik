@@ -236,6 +236,7 @@ impl Workspace {
         self.drain_launch_queue(cx);
         self.report_test_exits(cx);
         self.publish_for_mcp();
+        self.refresh_prs(false, cx);
     }
 }
 

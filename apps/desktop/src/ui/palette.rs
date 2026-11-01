@@ -268,6 +268,8 @@ pub enum Command {
     /// The next "Needs you" line on Today.
     NextNeedsYou,
     ShowHome,
+    /// Any URL in the browser (a pull request).
+    OpenUrl(String),
 }
 
 #[derive(Debug, Clone)]

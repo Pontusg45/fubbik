@@ -128,6 +128,24 @@ impl Workspace {
         if live > 0 {
             badges = badges.child(pill(format!("{live} AI live"), theme::accent()));
         }
+        // The branch's pull request and its checks (gh).
+        let pr = worktree
+            .branch
+            .as_deref()
+            .and_then(|b| self.pr_for(repo, b))
+            .cloned();
+        if let Some(pr) = &pr {
+            let color = if pr.needs_you().is_some() {
+                theme::danger()
+            } else if pr.ready() {
+                theme::status(Status::Running)
+            } else if pr.open() {
+                theme::hue(crate::theme::Hue::Cyan)
+            } else {
+                theme::text_muted()
+            };
+            badges = badges.child(pill(pr.summary(), color));
+        }
         let name = worktree.name();
         for overlap in snapshot
             .overlaps
@@ -199,6 +217,12 @@ impl Workspace {
                 .child(button(id("claude"), "New Claude").on_click(cx.listener(
                     move |this, _, _, cx| this.run(Command::NewSession(claude.clone()), cx),
                 )));
+        }
+        if let Some(pr) = &pr {
+            let url = pr.url.clone();
+            actions = actions.child(button(id("pr"), format!("PR #{}", pr.number)).on_click(
+                cx.listener(move |this, _, _, cx| this.run(Command::OpenUrl(url.clone()), cx)),
+            ));
         }
         if !worktree.main && !worktree.missing {
             let review = path.clone();

@@ -377,11 +377,37 @@ impl Workspace {
             .filter(|f| f.unstaged.is_some() || f.untracked)
             .collect();
 
+        // The checkout's branch's pull request, if it has one.
+        let pr = snapshot
+            .worktrees
+            .as_ref()
+            .and_then(|w| w.as_ref().ok())
+            .and_then(|w| w.iter().find(|w| w.path == dir))
+            .and_then(|w| w.branch.as_deref())
+            .and_then(|b| self.pr_for(index, b))
+            .cloned();
         let toolbar = div()
             .flex()
             .items_center()
             .gap_2()
             .child(div().flex_1().child(chips))
+            .children(pr.map(|pr| {
+                let url = pr.url.clone();
+                let color = if pr.needs_you().is_some() {
+                    theme::danger()
+                } else if pr.ready() {
+                    theme::status(Status::Running)
+                } else {
+                    theme::hue(Hue::Cyan)
+                };
+                div()
+                    .id("changes-pr")
+                    .cursor_pointer()
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.run(Command::OpenUrl(url.clone()), cx)
+                    }))
+                    .child(pill(pr.summary(), color))
+            }))
             .child(
                 button("changes-refresh", "Refresh").on_click(cx.listener(|this, _, _, cx| {
                     this.load_changes(cx);

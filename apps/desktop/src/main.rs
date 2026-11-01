@@ -11,6 +11,7 @@ mod fubbik;
 mod gaps;
 mod ghostty;
 mod git;
+mod github;
 mod global_hotkey;
 mod launch;
 mod mcp;

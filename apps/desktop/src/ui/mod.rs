@@ -19,6 +19,7 @@ mod plans;
 mod polling;
 mod preferences;
 mod projects;
+mod prs;
 mod run_prompt;
 mod scripts_view;
 mod setup_view;
@@ -325,6 +326,8 @@ struct RepoView {
     insights_refreshing: bool,
     /// A dependency audit is running.
     auditing: bool,
+    /// Pull requests and their checks, by branch (GitHub remotes only).
+    prs: prs::RepoPrs,
 }
 
 impl RepoView {
@@ -339,6 +342,7 @@ impl RepoView {
             insights: None,
             insights_refreshing: false,
             auditing: false,
+            prs: Default::default(),
             audit: None,
         }
     }
@@ -421,6 +425,8 @@ pub struct Workspace {
     group_field: TextField,
     worktree_field: TextField,
     commit_field: TextField,
+    /// `gh` is on PATH (checked once at startup).
+    gh_available: bool,
     changes: changes::ChangesState,
     /// Transcript read positions, kept across polls.
     session_index: Arc<Mutex<SessionIndex>>,
@@ -583,6 +589,10 @@ impl Workspace {
             group_field: TextField::new(cx),
             worktree_field: TextField::new(cx),
             commit_field: TextField::new(cx),
+            gh_available: std::process::Command::new("gh")
+                .arg("--version")
+                .output()
+                .is_ok_and(|o| o.status.success()),
             changes: Default::default(),
             session_index: Arc::new(Mutex::new(SessionIndex::new())),
             refresh_worktrees: true,

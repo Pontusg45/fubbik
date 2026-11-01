@@ -117,6 +117,34 @@ impl Workspace {
                         focus(Tab::Processes),
                     ));
                 }
+                // Pull requests of this repo's checked-out branches that
+                // need you (failing checks, changes requested, conflicts).
+                for worktree in snapshot
+                    .worktrees
+                    .as_ref()
+                    .and_then(|w| w.as_ref().ok())
+                    .into_iter()
+                    .flatten()
+                {
+                    let Some(branch) = worktree.branch.as_deref() else {
+                        continue;
+                    };
+                    let Some(pr) = self.pr_for(repo, branch) else {
+                        continue;
+                    };
+                    if let Some(why) = pr.needs_you() {
+                        let mut row = need(
+                            &name,
+                            "PR".into(),
+                            theme::danger(),
+                            format!("PR #{} ({branch}): {why}", pr.number),
+                            "Open PR",
+                            Command::OpenUrl(pr.url.clone()),
+                        );
+                        row.secondary = vec![("Show worktrees".into(), focus(Tab::Worktrees))];
+                        rows.push(row);
+                    }
+                }
                 for overlap in &snapshot.overlaps {
                     let title = format!(
                         "{} and {} both change {} file(s)",
@@ -226,7 +254,7 @@ impl Workspace {
                 Some("repo") => 0,
                 Some("Error") => 1,
                 Some("Degraded") => 2,
-                Some("failing") => 3,
+                Some("failing") | Some("PR") => 3,
                 Some("overlap") => 5,
                 Some("stale") => 6,
                 _ => 4, // an agent waiting
