@@ -29,6 +29,7 @@ mod theme;
 mod tmux;
 mod tmux_events;
 mod tmux_runs;
+mod tools;
 mod ui;
 mod worktree;
 
@@ -42,7 +43,7 @@ use ui::{
     CaptureNote, ChooseTheme, NextRepo, PrevRepo, Quit, QuitKeepServer, Refresh, RegisterRepo,
     ShowAgents, ShowChanges, ShowDatabases, ShowHome, ShowInsights, ShowKnowledge, ShowLogs,
     ShowOverview, ShowPlans, ShowProcesses, ShowSessions, ShowSetup, ShowTerminal, ShowToday,
-    ShowWorktrees, TogglePalette, ToggleTheme, Workspace,
+    ShowTools, ShowWorktrees, TogglePalette, ToggleTheme, Workspace,
 };
 
 fn main() {
@@ -165,6 +166,7 @@ fn main() {
                     MenuItem::action("All Agents", ShowAgents),
                     MenuItem::action("Insights", ShowInsights),
                     MenuItem::action("Changes", ShowChanges),
+                    MenuItem::action("Tools", ShowTools),
                     MenuItem::action("Home", ShowHome),
                     MenuItem::action("Capture Note…", CaptureNote),
                 ],

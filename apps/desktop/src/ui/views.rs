@@ -200,6 +200,7 @@ impl Workspace {
                     .into_any_element(),
                 Tab::Agents => self.render_all_agents(window, cx),
                 Tab::Today => self.render_today(cx),
+                Tab::Tools => muted("Tools is on Home").into_any_element(),
                 Tab::Insights => insights
                     .take()
                     .unwrap_or_else(|| muted("…").into_any_element()),

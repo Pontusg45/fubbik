@@ -60,8 +60,18 @@ Starting the app is all fubbik needs. Docker, `fubbik serve` and `just dev` aren
 
 ## Home
 
-The app opens at Home (⌘0, or "Home" at the top of the sidebar). Home has two tabs: **Projects**, every registered repo as
-a card with the computer beside them, and **All agents** (⇧⌘A), every repo's live agents and recent sessions.
+The app opens at Home (⌘0, or "Home" at the top of the sidebar). Home has three tabs: **Projects**, every registered repo
+as a card with the computer beside them; **All agents** (⇧⌘A), every repo's live agents and recent sessions; and **Tools**
+(⇧⌘T, `src/tools.rs`):
+
+- **Services:** `gh` signed in, Docker / OrbStack, Ollama and the app's tmux server, each with a fix when it is off (sign in,
+  start OrbStack, start Ollama).
+- **Toolchain:** git, gh, tmux, just, node, pnpm, mise, bun, cargo, rustc, zig, docker, psql, ollama, claude, codex and
+  libgit2 — version, path, what it is for, "missing", the newer version Homebrew offers (`brew outdated`), and "upgraded
+  today / yesterday" (a silent upgrade is a usual cause of "it worked yesterday"). Homebrew facts apply only to Homebrew's
+  copy (a node from mise is not Homebrew's). Install, Upgrade, "Upgrade all" (asks first) and "brew update" run in a
+  terminal tab.
+- **Utilities:** copy a new UUID, the Unix time or the UTC time, and open the app's config folder.
 
 - **A card per repo:** status, branch, changes, ahead/behind and the last commit, processes up (one dot each), live and waiting
   agents, worktrees, how many things need you, overlapping worktrees, knowledge chunks and failing requirements. Click a card,
@@ -278,7 +288,7 @@ start = "…"                        # optional, overrides the compose default; 
   debounce); the 1 s tick only redraws for toasts and the live log; knowledge fetches back off while the fubbik API is
   down (60 s, doubling to 5 min).
 - **Keys:** ⌘/ shows every shortcut, and ⌘K lists each command's key beside it. Tabs: ⌘1 Today, ⌘2 Overview, ⌘3 Processes,
-  ⌘4 Logs, ⌘5 Worktrees, ⌘6 Sessions, ⌘7 Plans, ⌘8 Knowledge, ⌘9 Terminal, ⇧⌘D Databases, ⇧⌘I Insights, ⇧⌘G Changes, ⇧⌘A Agents, ⌘,
+  ⌘4 Logs, ⌘5 Worktrees, ⌘6 Sessions, ⌘7 Plans, ⌘8 Knowledge, ⌘9 Terminal, ⇧⌘D Databases, ⇧⌘I Insights, ⇧⌘G Changes, ⇧⌘A Agents, ⇧⌘T Tools, ⌘,
   Setup. ⌃1–⌃9 pick a repo, ⇧⌘J jumps to the next thing that needs you, ⇧⌘R replies to the agent that has waited longest,
   ⇧⌘S starts the next ready task in the background, ⇧⌘N captures a note. In a terminal: ⌘T new shell, ⌘W close, ⌘1–⌘9 and
   ⇧⌘[ / ⇧⌘] switch tabs, ⌘D split, ⇧⌘K clear. Rebind any of them in `~/.config/fubbik/keymap.toml` (Setup → Keyboard
@@ -314,6 +324,7 @@ src/detect.rs      starter services file from package.json and compose
 src/git.rs         porcelain v2 status, changed files, diffs, stage / unstage / commit, remote → web URL
 src/github.rs      pull requests and CI checks per branch (gh pr list)
 src/tmux_events.rs tmux hooks → events file (bells, pane exits), read incrementally
+src/tools.rs       developer tools and services: versions, paths, brew outdated, recent upgrades
 src/probe.rs       port, owner PID, HTTP health, TCP, compose, ps
 src/supervisor.rs  child processes: process groups, log ring buffers
 src/fubbik.rs      fubbik API client (space, knowledge, quick note)
@@ -337,7 +348,7 @@ src/system.rs      the computer's stats for Home (CPU, memory, disk, battery, ne
 src/mcp.rs         the app's MCP server (HTTP on :3100, --mcp stdio bridge), answering from ui/mcp_publish.rs
 src/backend.rs     the built-in server: Postgres cluster, in-process API, import, backups, server.json, --serve
 src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,
-                                      chrome, preferences, tasks, today, insights, changes, prs, tmux_live), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
+                                      chrome, preferences, tasks, today, insights, changes, prs, tmux_live, tools_view), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
                    setup_view.rs; terminal_view.rs), actions.rs (fubbik calls and scans), palette, text field, widgets,
                    keymap.rs (bindings + keymap.toml), hotkeys.rs, lists.rs (keyboard lists)
 ```

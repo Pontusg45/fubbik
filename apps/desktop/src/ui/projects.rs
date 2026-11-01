@@ -156,12 +156,13 @@ impl Workspace {
     /// Home's own tabs: the project cards, and every agent in every repo.
     fn render_home_tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let on_agents = !self.home && self.tab == Tab::Agents;
+        let on_tools = !self.home && self.tab == Tab::Tools;
         let projects = super::views::tab_item(
             "home-projects",
             "Projects",
             Tab::Overview.color(),
             Tab::Overview.color(),
-            !on_agents,
+            !on_agents && !on_tools,
             0,
             keymap::keys_for("show_home")
                 .map(|k| keymap::pretty(&k))
@@ -181,10 +182,30 @@ impl Workspace {
             Tab::Agents.shortcut(),
         )
         .on_click(cx.listener(|this, _, _, cx| this.run(Command::ShowTab(Tab::Agents), cx)));
+        let outdated = match &self.tools {
+            Some(Loadable::Done(Ok(r))) => {
+                r.tools
+                    .iter()
+                    .filter(|t| t.outdated.is_some() || t.path.is_none())
+                    .count()
+                    + r.services.iter().filter(|s| !s.ok).count()
+            }
+            _ => 0,
+        };
+        let tools = super::views::tab_item(
+            "home-tools",
+            "Tools",
+            Tab::Tools.color(),
+            theme::accent(),
+            on_tools,
+            outdated,
+            Tab::Tools.shortcut(),
+        )
+        .on_click(cx.listener(|this, _, _, cx| this.run(Command::ShowTab(Tab::Tools), cx)));
         div().pt(px(32.)).child(super::views::tab_strip(
             "home-tabs",
             &self.home_tabs_scroll,
-            vec![projects, agents],
+            vec![projects, agents, tools],
             cx,
         ))
     }
@@ -232,9 +253,10 @@ impl Workspace {
             .rounded_md()
             .cursor_pointer()
             // Home holds All agents too.
-            .when(self.home || self.tab == Tab::Agents, |d| {
-                d.bg(theme::surface_hover())
-            })
+            .when(
+                self.home || matches!(self.tab, Tab::Agents | Tab::Tools),
+                |d| d.bg(theme::surface_hover()),
+            )
             .hover(|d| d.bg(theme::surface_hover()))
             .on_click(cx.listener(|this, _, _, cx| {
                 this.go_home();
@@ -301,12 +323,13 @@ impl Workspace {
     }
 
     /// Today or All agents: outside any repo, like Home.
-    pub(super) fn render_global(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
-        let agents = self.tab == Tab::Agents;
-        let body = if agents {
-            self.render_all_agents(window, cx)
-        } else {
-            self.render_today(cx)
+    pub(super) fn render_global(&mut self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
+        // All agents and Tools are Home tabs; Today stands alone.
+        let agents = matches!(self.tab, Tab::Agents | Tab::Tools);
+        let body = match self.tab {
+            Tab::Agents => self.render_all_agents(window, cx),
+            Tab::Tools => self.render_tools(cx),
+            _ => self.render_today(cx),
         };
         div()
             .flex()
@@ -318,7 +341,8 @@ impl Workspace {
             .when(agents, |d| d.child(self.render_home_tabs(cx)))
             .child(
                 div()
-                    .id("global")
+                    // One scroll position per view.
+                    .id(SharedString::from(format!("global-{}", self.tab.label())))
                     .flex_1()
                     .overflow_y_scroll()
                     .px_6()

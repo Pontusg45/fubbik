@@ -30,6 +30,7 @@ mod terminals;
 mod text;
 mod tmux_live;
 pub mod today;
+mod tools_view;
 #[cfg(test)]
 mod ui_tests;
 mod views;
@@ -78,6 +79,7 @@ actions!(
         ShowToday,
         ShowInsights,
         ShowChanges,
+        ShowTools,
         ShowHome,
         CaptureNote,
         ToggleTheme,
@@ -152,10 +154,12 @@ pub enum Tab {
     Insights,
     /// Changed files, diffs, staging and committing.
     Changes,
+    /// The machine's developer tools and services (a Home tab).
+    Tools,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 14] = [
+    pub const ALL: [Tab; 15] = [
         Tab::Today,
         Tab::Overview,
         Tab::Changes,
@@ -169,6 +173,7 @@ impl Tab {
         Tab::Databases,
         Tab::Insights,
         Tab::Agents,
+        Tab::Tools,
         Tab::Setup,
     ];
 
@@ -184,13 +189,13 @@ impl Tab {
             Tab::Sessions | Tab::Agents => theme::hue(Hue::Orange),
             Tab::Plans | Tab::Insights => theme::hue(Hue::Pink),
             Tab::Knowledge => theme::hue(Hue::Yellow),
-            Tab::Setup => theme::text_muted(),
+            Tab::Setup | Tab::Tools => theme::text_muted(),
         }
     }
 
     /// Views across every repo (shown outside a repo, next to Home).
     pub fn is_global(self) -> bool {
-        matches!(self, Tab::Today | Tab::Agents)
+        matches!(self, Tab::Today | Tab::Agents | Tab::Tools)
     }
 
     /// The key that shows the tab, as currently bound (keymap.toml).
@@ -215,6 +220,7 @@ impl Tab {
             Tab::Today => "show_today",
             Tab::Insights => "show_insights",
             Tab::Changes => "show_changes",
+            Tab::Tools => "show_tools",
         }
     }
 
@@ -234,6 +240,7 @@ impl Tab {
             Tab::Today => "Today",
             Tab::Insights => "Insights",
             Tab::Changes => "Changes",
+            Tab::Tools => "Tools",
         }
     }
 }
@@ -426,6 +433,9 @@ pub struct Workspace {
     group_field: TextField,
     worktree_field: TextField,
     commit_field: TextField,
+    /// Home → Tools: the last check, and whether one is running.
+    tools: Option<Loadable<crate::tools::Report>>,
+    tools_refreshing: bool,
     /// `gh` is on PATH (checked once at startup).
     gh_available: bool,
     changes: changes::ChangesState,
@@ -593,6 +603,8 @@ impl Workspace {
             group_field: TextField::new(cx),
             worktree_field: TextField::new(cx),
             commit_field: TextField::new(cx),
+            tools: None,
+            tools_refreshing: false,
             gh_available: std::process::Command::new("gh")
                 .arg("--version")
                 .output()
