@@ -14,6 +14,7 @@ mod ghostty;
 mod git;
 mod github;
 mod global_hotkey;
+mod graph_layout;
 mod launch;
 mod mcp;
 mod mcp_events;

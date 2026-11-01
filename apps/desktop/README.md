@@ -291,6 +291,10 @@ start = "…"                        # optional, overrides the compose default; 
 - **Task to merge:** "Start in new worktree" records the task's branch and main's commit at the time in the task's
   metadata (`fubbikDesktop`). When the branch's work lands on main, the task is marked done, its worktree removed if clean
   (git refuses a dirty one), and a toast offers to save a "what changed" note.
+- **Knowledge graph** (Knowledge tab): the repo's space as a graph (`GET /api/graph`, laid out in `src/graph_layout.rs`):
+  chunks as nodes colored by type and sized by how connected they are, connections as edges; orphan chunks line up in a
+  strip along the bottom. Hover lights up a chunk's neighbours, click selects it and lists its connections (each a click
+  to that chunk) with "Open" for the web app. Type chips hide or show a type; "Labels" labels every node.
 - **Insights** (⇧⌘I): a standup (1 day) or weekly summary built from git, plan tasks, agent sessions and requirements —
   copy it as Markdown or save it as a chunk; a health score (0–100) with the reasons it lost points (failing processes or
   requirements, violated cells, vulnerabilities from `cargo audit` / `pnpm audit` when "Run audit" was used, stale
@@ -366,6 +370,7 @@ src/tmux_events.rs tmux hooks → events file (bells, pane exits), read incremen
 src/mcp_events.rs  the MCP change feed: diffs between published views, pushed events, deps and tools watchers
 src/mcp_more.rs    MCP tools for a tracker agent: changes since, dependencies, toolchain, PRs, worktrees, changes, diffs
 src/tracker.rs     notes, todos, decisions and watches (alerts) for a tracker agent
+src/graph_layout.rs  the knowledge graph: nodes and edges from /api/graph, force-directed layout
 src/tools.rs       developer tools and services: versions, paths, brew outdated, recent upgrades
 src/deps.rs        manifests across repos: declared dependency versions and toolchain pins, compared
 src/probe.rs       port, owner PID, HTTP health, TCP, compose, ps

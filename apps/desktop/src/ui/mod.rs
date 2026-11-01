@@ -13,6 +13,7 @@ mod hotkeys;
 mod insights;
 pub mod keymap;
 mod knowledge;
+mod knowledge_graph;
 mod lists;
 mod mcp_publish;
 mod palette;
@@ -450,6 +451,8 @@ pub struct Workspace {
     tools_refreshing: bool,
     /// Home → Dependencies.
     deps: deps_view::DepsState,
+    /// The Knowledge tab's graph.
+    graph: knowledge_graph::GraphState,
     /// `gh` is on PATH (checked once at startup).
     gh_available: bool,
     changes: changes::ChangesState,
@@ -623,6 +626,7 @@ impl Workspace {
             tools: None,
             tools_refreshing: false,
             deps: Default::default(),
+            graph: Default::default(),
             gh_available: std::process::Command::new("gh")
                 .arg("--version")
                 .output()

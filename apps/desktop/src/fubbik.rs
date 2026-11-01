@@ -578,6 +578,14 @@ impl FubbikClient {
         Ok(s(&value, "content"))
     }
 
+    /// A space's chunks and connections, laid out (`GET /api/graph`).
+    pub fn graph(&self, space_id: &str) -> Result<crate::graph_layout::Graph, String> {
+        let json = self
+            .get_json("/api/graph", &[("spaceId", space_id)])?
+            .ok_or("the server has no /api/graph")?;
+        Ok(crate::graph_layout::Graph::from_api(&json))
+    }
+
     pub fn search(&self, query: &str, space_id: Option<&str>) -> Result<Vec<ChunkRef>, String> {
         let mut params = vec![("search", query), ("limit", "8")];
         if let Some(space) = space_id {

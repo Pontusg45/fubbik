@@ -114,6 +114,9 @@ impl Workspace {
             .then(|| self.terminal_for_selected(window, cx))
             .flatten();
         let mut insights = (self.tab == Tab::Insights).then(|| self.render_insights(index, cx));
+        if self.tab == Tab::Knowledge {
+            self.ensure_graph(index, false, cx);
+        }
         let mut changes = match (&self.repos[index].snapshot, self.tab) {
             (Some(snapshot), Tab::Changes) => {
                 let snapshot = snapshot.clone();
