@@ -25,6 +25,20 @@ impl Workspace {
             self.toast = None;
             redraw = true;
         }
+        for message in crate::backend::take_notices() {
+            self.show_info(message);
+            redraw = true;
+        }
+        let backend = crate::backend::status();
+        if backend != self.backend_seen {
+            if let crate::backend::Status::Failed(error) = &backend {
+                self.show_error(format!(
+                    "Built-in server failed: {error} (Logs → built-in server)"
+                ));
+            }
+            self.backend_seen = backend;
+            redraw = true;
+        }
         if self.tab == Tab::Logs && self.log_paused.is_none() {
             self.log_scroll.scroll_to_bottom();
             redraw = true;

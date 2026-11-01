@@ -53,6 +53,7 @@ actions!(
     fubbik_desktop,
     [
         Quit,
+        QuitKeepServer,
         TogglePalette,
         NextRepo,
         PrevRepo,
@@ -395,6 +396,8 @@ pub struct Workspace {
     /// Commands run from the palette, newest first; listed first when the
     /// query is empty.
     palette_recent: Vec<Command>,
+    /// The built-in server's status at the last tick, to notice changes.
+    backend_seen: crate::backend::Status,
     global: Option<GlobalStatus>,
     panel: Option<Panel>,
     /// The worktree whose branch context is shown.
@@ -506,6 +509,7 @@ impl Workspace {
             palette_selected: 0,
             palette_search: Vec::new(),
             palette_recent: Vec::new(),
+            backend_seen: crate::backend::status(),
             global: None,
             panel: None,
             expanded_worktree: None,

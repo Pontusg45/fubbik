@@ -393,13 +393,35 @@ impl Workspace {
                 self.save_config();
             }
             Command::ImportDatabase(source) => {
-                match crate::backend::request_import(&crate::backend::data_dir(), &source) {
-                    Ok(()) => self.show_info(
-                        "Restart fubbik to import: the built-in database is replaced by a copy (the source is only read)",
-                    ),
-                    Err(error) => self.show_error(format!("Could not queue the import: {error}")),
+                use crate::backend::{Control, data_dir, request_import, send};
+                if send(Control::Import(source.clone())) {
+                    self.show_info("Importing: the API pauses for the copy, then comes back");
+                } else {
+                    match request_import(&data_dir(), &source) {
+                        Ok(()) => self.show_info(
+                            "The built-in server is not running here: the import runs when it next starts",
+                        ),
+                        Err(error) => self.show_error(format!("Could not queue the import: {error}")),
+                    }
                 }
             }
+            Command::BackupNow => {
+                if !crate::backend::send(crate::backend::Control::BackupNow) {
+                    self.show_error("The built-in server is not running in this app");
+                }
+            }
+            Command::ShowBackups => {
+                let dir = crate::backend::data_dir().join("backups");
+                let _ = std::fs::create_dir_all(&dir);
+                cx.open_url(&format!(
+                    "file://{}",
+                    dir.display().to_string().replace(' ', "%20")
+                ));
+            }
+            Command::StopBackgroundServer => match crate::backend::stop_background() {
+                Ok(()) => self.show_info("Stopped the background server"),
+                Err(error) => self.show_error(error),
+            },
             Command::SetEmbeddedBackend(on) => {
                 self.config.backend = (!on).then(|| "off".to_string());
                 self.save_config();

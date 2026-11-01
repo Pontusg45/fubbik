@@ -69,6 +69,28 @@ impl Workspace {
                     .p_3()
                     .border_t_1()
                     .border_color(theme::border())
+                    .children(self.backend_seen.short().map(|(label, health)| {
+                        use crate::backend::Health;
+                        let color = match health {
+                            Health::Good => theme::status(crate::model::Status::Running),
+                            Health::Pending => theme::status(crate::model::Status::Degraded),
+                            Health::Bad => theme::danger(),
+                        };
+                        div()
+                            .id("backend-status")
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .text_xs()
+                            .text_color(theme::text_muted())
+                            .cursor_pointer()
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.tab = super::Tab::Setup;
+                                cx.notify();
+                            }))
+                            .child(div().size(px(7.)).rounded_full().bg(color))
+                            .child(label)
+                    }))
                     .child(
                         button("register-repo", "+ Register repo")
                             .text_sm()

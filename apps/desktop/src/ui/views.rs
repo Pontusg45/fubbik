@@ -42,6 +42,12 @@ pub(super) fn repo_badge(name: &str, size: f32) -> impl IntoElement {
         )
 }
 
+/// Log chips for the built-in server, shown in every repo's Logs tab.
+const BUILTIN_LOGS: [(&str, crate::backend::LogFile); 2] = [
+    ("builtin::server", crate::backend::LogFile::Server),
+    ("builtin::postgres", crate::backend::LogFile::Postgres),
+];
+
 impl Workspace {
     pub(super) fn render_empty(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
@@ -877,6 +883,14 @@ impl Workspace {
         section("Databases", rows)
     }
 
+    /// A process's captured output, or a built-in server log file's tail.
+    fn log_lines(&self, key: &str) -> Vec<String> {
+        match BUILTIN_LOGS.iter().find(|(k, _)| *k == key) {
+            Some((_, file)) => crate::backend::tail(&file.path(), 2000),
+            None => self.supervisor.logs(key),
+        }
+    }
+
     fn render_logs(
         &self,
         repo: &RepoView,
@@ -894,6 +908,12 @@ impl Workspace {
                 keys.push(key);
             }
         }
+        // The built-in server's logs, the same in every repo.
+        for (key, file) in BUILTIN_LOGS {
+            if file.path().exists() {
+                keys.push(key.to_string());
+            }
+        }
         let current = self
             .log_key
             .clone()
@@ -904,7 +924,11 @@ impl Workspace {
             .iter()
             .enumerate()
             .map(|(i, key)| {
-                let name = key.strip_prefix(&prefix).unwrap_or(key).to_string();
+                let name = match BUILTIN_LOGS.iter().find(|(k, _)| k == key) {
+                    Some((_, crate::backend::LogFile::Server)) => "built-in server".to_string(),
+                    Some((_, crate::backend::LogFile::Postgres)) => "built-in postgres".to_string(),
+                    None => key.strip_prefix(&prefix).unwrap_or(key).to_string(),
+                };
                 let active = current.as_ref() == Some(key);
                 let key = key.clone();
                 button(("log-chip", i), name)
@@ -921,7 +945,7 @@ impl Workspace {
 
         let lines = match (&self.log_paused, &current) {
             (Some(frozen), _) => frozen.clone(),
-            (None, Some(key)) => self.supervisor.logs(key),
+            (None, Some(key)) => self.log_lines(key),
             (None, None) => Vec::new(),
         };
         let filter = self.log_filter.text.to_lowercase();
@@ -949,7 +973,7 @@ impl Workspace {
                     move |this, _, _, cx| {
                         this.log_paused = match (&this.log_paused, &pause_key) {
                             (Some(_), _) | (None, None) => None,
-                            (None, Some(key)) => Some(this.supervisor.logs(key)),
+                            (None, Some(key)) => Some(this.log_lines(key)),
                         };
                         cx.notify();
                     },

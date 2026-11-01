@@ -39,7 +39,9 @@ fubbik-db = { path = "../../crates/fubbik-db" }
 fubbik-config = { path = "../../crates/fubbik-config" }
 fubbik-ai = { path = "../../crates/fubbik-ai" }
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres"] }
-tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros", "process", "signal"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 [dev-dependencies]
 tempfile = "3"

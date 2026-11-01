@@ -15,8 +15,18 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-/// Where the embedded API listens.
-pub const API_ADDR: &str = "127.0.0.1:3000";
+/// Where the embedded API listens: 127.0.0.1:3000, or the port in
+/// `FUBBIK_DESKTOP_PORT`.
+pub fn api_addr() -> &'static str {
+    static ADDR: OnceLock<String> = OnceLock::new();
+    ADDR.get_or_init(|| {
+        let port = std::env::var("FUBBIK_DESKTOP_PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(3000);
+        format!("127.0.0.1:{port}")
+    })
+}
 /// Names the socket file (`.s.PGSQL.<port>`); there is no TCP listener.
 const PG_PORT: u16 = 5432;
 const PG_USER: &str = "fubbik";
@@ -41,14 +51,98 @@ impl Status {
         match self {
             Status::Off => "Off — the app does not start a server".into(),
             Status::Starting(step) => format!("Starting — {step}"),
-            Status::External => format!("Using the server already running on {API_ADDR}"),
+            Status::External => format!("Using the server already running on {}", api_addr()),
             Status::Running { postgres } => format!(
-                "Running on {API_ADDR} · Postgres from {}",
+                "Running on {} · Postgres from {}",
+                api_addr(),
                 postgres.display()
             ),
             Status::Failed(error) => format!("Failed — {error}"),
         }
     }
+}
+
+impl Status {
+    /// For the sidebar: a short word and whether it is fine, pending or bad.
+    pub fn short(&self) -> Option<(&'static str, Health)> {
+        Some(match self {
+            Status::Off => return None,
+            Status::Starting(_) => ("Server starting…", Health::Pending),
+            Status::External => ("Server: using a running one", Health::Good),
+            Status::Running { .. } => ("Server running", Health::Good),
+            Status::Failed(_) => ("Server failed", Health::Bad),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Health {
+    Good,
+    Pending,
+    Bad,
+}
+
+/// The built-in server's own log (the API's tracing output) and Postgres's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogFile {
+    Server,
+    Postgres,
+}
+
+impl LogFile {
+    pub fn path(self) -> PathBuf {
+        data_dir().join(match self {
+            LogFile::Server => "backend.log",
+            LogFile::Postgres => "postgres.log",
+        })
+    }
+}
+
+/// The last `lines` lines of a log (reads at most the last 512 KB).
+pub fn tail(path: &Path, lines: usize) -> Vec<String> {
+    use std::io::{Read, Seek, SeekFrom};
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return Vec::new();
+    };
+    let len = file.metadata().map_or(0, |m| m.len());
+    let from = len.saturating_sub(512 * 1024);
+    if file.seek(SeekFrom::Start(from)).is_err() {
+        return Vec::new();
+    }
+    let mut text = String::new();
+    let _ = file.take(512 * 1024).read_to_string(&mut text);
+    let mut all: Vec<String> = text.lines().map(str::to_string).collect();
+    if from > 0 && !all.is_empty() {
+        all.remove(0); // a partial first line
+    }
+    let skip = all.len().saturating_sub(lines);
+    all.split_off(skip)
+}
+
+/// Sends the in-process API's `tracing` output to `backend.log` (the
+/// previous one kept as `backend.log.1` once it passes 5 MB). `RUST_LOG`
+/// filters it; the default is info, with sqlx's per-query lines at warn.
+fn init_logging(root: &Path) {
+    use tracing_subscriber::EnvFilter;
+    let _ = std::fs::create_dir_all(root);
+    let path = root.join("backend.log");
+    if std::fs::metadata(&path).is_ok_and(|m| m.len() > 5 * 1024 * 1024) {
+        let _ = std::fs::rename(&path, root.join("backend.log.1"));
+    }
+    let Ok(file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    else {
+        return;
+    };
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,sqlx=warn"));
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_ansi(false)
+        .with_writer(Mutex::new(file))
+        .try_init();
 }
 
 fn status_cell() -> &'static Mutex<Status> {
@@ -271,6 +365,8 @@ impl Cluster {
         let mut child = Command::new(binaries.tool("postgres"))
             .arg("-D")
             .arg(self.data())
+            // The bundle leaves out LLVM; never try to JIT.
+            .args(["-c", "jit=off"])
             .stdin(Stdio::null())
             .stdout(log.try_clone().map_err(|e| e.to_string())?)
             .stderr(log)
@@ -368,14 +464,57 @@ fn api_is_up() -> bool {
         .build()
         .into();
     agent
-        .get(format!("http://{API_ADDR}/api/health"))
+        .get(format!("http://{}/api/health", api_addr()))
         .call()
         .is_ok()
 }
 
+/// Messages to the running backend.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Control {
+    /// Stop serving (quitting).
+    Stop,
+    /// Stop the API, replace the database with a copy of this one, serve again.
+    Import(String),
+    /// A backup now, without stopping anything.
+    BackupNow,
+}
+
+fn control_cell() -> &'static Mutex<Option<tokio::sync::mpsc::UnboundedSender<Control>>> {
+    static CONTROL: OnceLock<Mutex<Option<tokio::sync::mpsc::UnboundedSender<Control>>>> =
+        OnceLock::new();
+    CONTROL.get_or_init(|| Mutex::new(None))
+}
+
+/// Sends `control` to the built-in server; false when it is not running
+/// here (off, failed, or another server is in use).
+pub fn send(control: Control) -> bool {
+    matches!(status(), Status::Running { .. })
+        && control_cell()
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|tx| tx.send(control).is_ok())
+}
+
+fn notices_cell() -> &'static Mutex<Vec<String>> {
+    static NOTICES: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+    NOTICES.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+fn notice(message: impl Into<String>) {
+    let message = message.into();
+    tracing::info!("{message}");
+    notices_cell().lock().unwrap().push(message);
+}
+
+/// Messages for the user since the last call (imports, backups).
+pub fn take_notices() -> Vec<String> {
+    std::mem::take(&mut *notices_cell().lock().unwrap())
+}
+
 /// The running backend, kept so quitting can stop it.
 pub struct Backend {
-    shutdown: Option<tokio::sync::oneshot::Sender<()>>,
     thread: Option<std::thread::JoinHandle<()>>,
     postgres: Held,
 }
@@ -384,21 +523,23 @@ impl Backend {
     /// Starts everything on a background thread and returns at once; the
     /// progress shows in `status()`.
     pub fn start(root: PathBuf) -> Backend {
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        *control_cell().lock().unwrap() = Some(tx);
         let postgres = std::sync::Arc::new(Mutex::new(None));
         let held = postgres.clone();
+        init_logging(&root);
         set_status(Status::Starting("checking for a running server".into()));
         let thread = std::thread::Builder::new()
             .name("fubbik-backend".into())
             .spawn(move || {
                 if let Err(error) = run_backend(root, held, rx) {
+                    tracing::error!("built-in server: {error}");
                     eprintln!("fubbik: backend: {error}");
                     set_status(Status::Failed(error));
                 }
             })
             .expect("spawn backend thread");
         Backend {
-            shutdown: Some(tx),
             thread: Some(thread),
             postgres,
         }
@@ -406,8 +547,8 @@ impl Backend {
 
     /// Stops the API (draining requests, up to ~15 s), then Postgres.
     pub fn stop(&mut self) {
-        if let Some(tx) = self.shutdown.take() {
-            let _ = tx.send(());
+        if let Some(tx) = control_cell().lock().unwrap().take() {
+            let _ = tx.send(Control::Stop);
         }
         if let Some(thread) = self.thread.take() {
             let deadline = Instant::now() + Duration::from_secs(15);
@@ -421,6 +562,7 @@ impl Backend {
                 let _ = child.wait();
             }
         }
+        discovery::remove();
         if !matches!(status(), Status::Failed(_)) {
             set_status(Status::Off);
         }
@@ -429,10 +571,60 @@ impl Backend {
 
 type Held = std::sync::Arc<Mutex<Option<(Binaries, Cluster, Option<Child>)>>>;
 
+/// Starts `<this app> --serve` detached, so the server outlives the app,
+/// and waits (up to 30 s) until it answers.
+pub fn spawn_background() -> Result<(), String> {
+    use std::os::unix::process::CommandExt;
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    Command::new(exe)
+        .arg("--serve")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .process_group(0)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while Instant::now() < deadline {
+        if api_is_up() {
+            return Ok(());
+        }
+        std::thread::sleep(Duration::from_millis(250));
+    }
+    Err("the background server did not answer within 30 s".into())
+}
+
+/// Stops a background server (`--serve`) that `server.json` names.
+pub fn stop_background() -> Result<(), String> {
+    let pid = discovery::owner_pid().ok_or("no background server is running")?;
+    if pid == std::process::id() {
+        return Err("the server is this app's own".into());
+    }
+    run(Command::new("kill").args(["-TERM", &pid.to_string()])).map(|_| ())
+}
+
+/// Refuses a data folder made by another PostgreSQL major version: its files
+/// only open with that version (`pg_upgrade`, or a dump and restore, moves it).
+fn check_data_version(cluster: &Cluster) -> Result<(), String> {
+    let Ok(version) = std::fs::read_to_string(cluster.data().join("PG_VERSION")) else {
+        return Ok(());
+    };
+    let version = version.trim();
+    if version == PG_MAJOR {
+        return Ok(());
+    }
+    Err(format!(
+        "{} was created by PostgreSQL {version}, but this app runs PostgreSQL {PG_MAJOR}. \
+         Back it up with that version's pg_dump, move the folder aside, restart, and import the dump \
+         (or run pg_upgrade) — see the desktop README, \"Built-in server\"",
+        cluster.data().display()
+    ))
+}
+
 fn run_backend(
     root: PathBuf,
     held: Held,
-    shutdown: tokio::sync::oneshot::Receiver<()>,
+    control: tokio::sync::mpsc::UnboundedReceiver<Control>,
 ) -> Result<(), String> {
     if api_is_up() {
         set_status(Status::External);
@@ -441,6 +633,7 @@ fn run_backend(
     set_status(Status::Starting("finding PostgreSQL".into()));
     let binaries = Binaries::find()?;
     let cluster = Cluster::new(root.clone());
+    check_data_version(&cluster)?;
     if !cluster.initialized() {
         set_status(Status::Starting("creating the database (first run)".into()));
         cluster.init(&binaries)?;
@@ -457,11 +650,8 @@ fn run_backend(
         .map_err(|e| e.to_string())?;
     runtime.block_on(async {
         if let Ok(source) = std::fs::read_to_string(cluster.import_request()) {
-            let source = source.trim().to_string();
-            set_status(Status::Starting(format!("importing {}", redact(&source))));
             let _ = std::fs::remove_file(cluster.import_request());
-            import_database(&binaries, &cluster, &source).await?;
-            let _ = std::fs::write(cluster.seeded_marker(), "imported\n");
+            run_import(&binaries, &cluster, source.trim()).await?;
         }
         create_database(&cluster).await?;
         let url = cluster.url(DB_NAME);
@@ -470,30 +660,264 @@ fn run_backend(
             seed_core(&url).await?;
             let _ = std::fs::write(cluster.seeded_marker(), "core\n");
         }
-        set_status(Status::Starting("starting the API".into()));
-        let listener = tokio::net::TcpListener::bind(API_ADDR)
+        tokio::spawn(backup::daily(binaries.clone(), cluster.clone()));
+
+        let control = std::sync::Arc::new(tokio::sync::Mutex::new(control));
+        loop {
+            set_status(Status::Starting("starting the API".into()));
+            let listener = bind_api().await?;
+            let options = fubbik_api::server::ServerOptions {
+                database_url: url.clone(),
+                better_auth_secret: secret.clone(),
+                implicit_dev_session: true,
+                features: fubbik_config::Features::default(),
+                ai: fubbik_ai::OllamaClient::from_env(),
+                cors_origins: fubbik_api::server::parse_cors_origins(&format!(
+                    "http://localhost:3001,http://{}",
+                    api_addr()
+                )),
+                web_assets: web_assets(),
+            };
+            set_status(Status::Running {
+                postgres: binaries.bin.clone(),
+            });
+            discovery::write();
+            // Serve until a message that needs the API stopped arrives.
+            let next = std::sync::Arc::new(Mutex::new(None));
+            let (until, rx, b, c) = (
+                next.clone(),
+                control.clone(),
+                binaries.clone(),
+                cluster.clone(),
+            );
+            fubbik_api::server::serve(options, listener, async move {
+                let mut rx = rx.lock().await;
+                loop {
+                    match rx.recv().await {
+                        Some(Control::BackupNow) => {
+                            let (b, c) = (b.clone(), c.clone());
+                            tokio::spawn(async move { backup::now(&b, &c).await });
+                        }
+                        message => {
+                            *until.lock().unwrap() = message;
+                            break;
+                        }
+                    }
+                }
+            })
             .await
-            .map_err(|e| format!("{API_ADDR} is in use: {e}"))?;
-        let options = fubbik_api::server::ServerOptions {
-            database_url: url,
-            better_auth_secret: secret,
-            implicit_dev_session: true,
-            features: fubbik_config::Features::default(),
-            ai: fubbik_ai::OllamaClient::from_env(),
-            cors_origins: fubbik_api::server::parse_cors_origins(&format!(
-                "http://localhost:3001,http://{API_ADDR}"
-            )),
-            web_assets: web_assets(),
-        };
-        set_status(Status::Running {
-            postgres: binaries.bin.clone(),
-        });
-        fubbik_api::server::serve(options, listener, async {
-            let _ = shutdown.await;
-        })
-        .await
-        .map_err(|e| e.to_string())
+            .map_err(|e| e.to_string())?;
+            discovery::remove();
+            let next = next.lock().unwrap().take();
+            match next {
+                Some(Control::Import(source)) => {
+                    if let Err(error) = run_import(&binaries, &cluster, &source).await {
+                        notice(format!("Import failed: {error}"));
+                    }
+                }
+                _ => return Ok(()),
+            }
+        }
     })
+}
+
+/// Binds the API's address, waiting out a just-closed listener.
+async fn bind_api() -> Result<tokio::net::TcpListener, String> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match tokio::net::TcpListener::bind(api_addr()).await {
+            Ok(listener) => return Ok(listener),
+            Err(_) if Instant::now() < deadline => {
+                tokio::time::sleep(Duration::from_millis(200)).await
+            }
+            Err(error) => return Err(format!("{} is in use: {error}", api_addr())),
+        }
+    }
+}
+
+/// An import with status and a notice of the outcome.
+async fn run_import(binaries: &Binaries, cluster: &Cluster, source: &str) -> Result<(), String> {
+    set_status(Status::Starting(format!("importing {}", redact(source))));
+    let skipped = import_database(binaries, cluster, source).await?;
+    let _ = std::fs::write(cluster.seeded_marker(), "imported\n");
+    notice(match skipped {
+        0 => format!("Imported {}", redact(source)),
+        n => format!(
+            "Imported {}; skipped {n} object(s) this Postgres cannot create (the AGE graph) — see import.log",
+            redact(source)
+        ),
+    });
+    Ok(())
+}
+
+/// `server.json`: tells the CLI and MCP where the built-in server is while
+/// it runs (`fubbik_cli::config::discovered_server` reads it).
+pub mod discovery {
+    use std::path::PathBuf;
+
+    pub fn path() -> Option<PathBuf> {
+        let base = std::env::var_os("XDG_CONFIG_HOME")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))?;
+        Some(base.join("fubbik/server.json"))
+    }
+
+    pub fn write() {
+        let Some(path) = path() else { return };
+        if let Some(dir) = path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let body = serde_json::json!({
+            "url": format!("http://{}", super::api_addr()),
+            "pid": std::process::id(),
+            "owner": "fubbik-desktop",
+        });
+        let _ = std::fs::write(path, body.to_string());
+    }
+
+    /// The pid in `server.json`, when the desktop app wrote it.
+    pub fn owner_pid() -> Option<u32> {
+        let text = std::fs::read_to_string(path()?).ok()?;
+        let value: serde_json::Value = serde_json::from_str(&text).ok()?;
+        (value["owner"] == "fubbik-desktop")
+            .then(|| value["pid"].as_u64())?
+            .map(|p| p as u32)
+    }
+
+    /// Removes the file if this process wrote it.
+    pub fn remove() {
+        if owner_pid() == Some(std::process::id())
+            && let Some(path) = path()
+        {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+/// Backups of the built-in database: one a day (the last 7 kept) in
+/// `<data>/backups`, and on demand.
+pub mod backup {
+    use std::path::PathBuf;
+    use std::time::{Duration, SystemTime};
+
+    use super::{Binaries, Cluster, DB_NAME, notice};
+
+    const KEEP: usize = 7;
+    const EVERY: Duration = Duration::from_secs(24 * 60 * 60);
+
+    pub fn dir(cluster: &Cluster) -> PathBuf {
+        cluster.root.join("backups")
+    }
+
+    /// `fubbik-YYYYMMDD-HHMMSS.dump` (UTC), so names sort by time.
+    pub fn file_name(at: SystemTime) -> String {
+        let secs = at
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+        let (days, rest) = (secs / 86_400, secs % 86_400);
+        // Civil date from days since 1970-01-01 (Howard Hinnant's algorithm).
+        let z = days as i64 + 719_468;
+        let era = z.div_euclid(146_097);
+        let doe = z - era * 146_097;
+        let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let day = doy - (153 * mp + 2) / 5 + 1;
+        let month = if mp < 10 { mp + 3 } else { mp - 9 };
+        let year = yoe + era * 400 + i64::from(month <= 2);
+        format!(
+            "fubbik-{year:04}{month:02}{day:02}-{:02}{:02}{:02}.dump",
+            rest / 3600,
+            rest % 3600 / 60,
+            rest % 60
+        )
+    }
+
+    /// The backups, newest first.
+    pub fn list(cluster: &Cluster) -> Vec<PathBuf> {
+        let mut files: Vec<PathBuf> = std::fs::read_dir(dir(cluster))
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e == "dump"))
+            .collect();
+        files.sort();
+        files.reverse();
+        files
+    }
+
+    /// Keeps the newest `KEEP`.
+    pub fn prune(cluster: &Cluster) {
+        for old in list(cluster).into_iter().skip(KEEP) {
+            let _ = std::fs::remove_file(old);
+        }
+    }
+
+    /// A `pg_dump -Fc` of the database; the path on success.
+    pub async fn create(binaries: &Binaries, cluster: &Cluster) -> Result<PathBuf, String> {
+        // One at a time: the daily one and "Back up now" can coincide.
+        static RUNNING: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+        let _one = RUNNING.lock().await;
+        let dir = dir(cluster);
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let mut path = dir.join(file_name(SystemTime::now()));
+        for n in 1.. {
+            if !path.exists() {
+                break;
+            }
+            let name = file_name(SystemTime::now()).replace(".dump", &format!("-{n}.dump"));
+            path = dir.join(name);
+        }
+        let partial = path.with_extension("dump.partial");
+        let output = tokio::process::Command::new(binaries.bin.join("pg_dump"))
+            .args(["-Fc", "--no-owner", "-d", &cluster.url(DB_NAME), "-f"])
+            .arg(&partial)
+            .output()
+            .await
+            .map_err(|e| format!("pg_dump: {e}"))?;
+        if !output.status.success() {
+            let _ = std::fs::remove_file(&partial);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(stderr
+                .lines()
+                .last()
+                .unwrap_or("pg_dump failed")
+                .to_string());
+        }
+        std::fs::rename(&partial, &path).map_err(|e| e.to_string())?;
+        prune(cluster);
+        Ok(path)
+    }
+
+    /// "Back up now": a backup and a notice with where it went.
+    pub async fn now(binaries: &Binaries, cluster: &Cluster) {
+        match create(binaries, cluster).await {
+            Ok(path) => notice(format!("Backed up to {}", path.display())),
+            Err(error) => notice(format!("Backup failed: {error}")),
+        }
+    }
+
+    /// Whether the newest backup is older than a day (or there is none).
+    pub fn due(cluster: &Cluster) -> bool {
+        list(cluster)
+            .first()
+            .and_then(|p| p.metadata().ok()?.modified().ok())
+            .is_none_or(|at| SystemTime::now().duration_since(at).unwrap_or_default() >= EVERY)
+    }
+
+    /// Checks hourly and backs up when one is due.
+    pub async fn daily(binaries: Binaries, cluster: Cluster) {
+        loop {
+            if due(&cluster)
+                && let Err(error) = create(&binaries, &cluster).await
+            {
+                tracing::warn!("daily backup failed: {error}");
+            }
+            tokio::time::sleep(Duration::from_secs(60 * 60)).await;
+        }
+    }
 }
 
 /// The database `fubbik serve` uses by default (Postgres.app, compose).
@@ -525,7 +949,7 @@ async fn import_database(
     binaries: &Binaries,
     cluster: &Cluster,
     source: &str,
-) -> Result<(), String> {
+) -> Result<usize, String> {
     let mut conn = connect_admin(cluster).await?;
     use sqlx::Connection;
     for statement in [
@@ -544,7 +968,7 @@ async fn import_database(
         cluster.import_log(),
     );
     let (source, target) = (source.to_string(), cluster.url(DB_NAME));
-    tokio::task::spawn_blocking(move || -> Result<(), String> {
+    tokio::task::spawn_blocking(move || -> Result<usize, String> {
         let log_file = std::fs::File::create(&log).map_err(|e| e.to_string())?;
         let mut dumper = Command::new(&dump)
             .args(["-Fc", "--no-owner", "--no-privileges", "-d", &source])
@@ -572,10 +996,19 @@ async fn import_database(
         if !restored.success() && !messages.contains("errors ignored on restore") {
             return Err(format!("pg_restore failed; see {}", log.display()));
         }
-        Ok(())
+        Ok(skipped_count(&messages))
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// N from pg_restore's "errors ignored on restore: N".
+fn skipped_count(messages: &str) -> usize {
+    messages
+        .lines()
+        .find_map(|l| l.split("errors ignored on restore:").nth(1))
+        .and_then(|n| n.trim().parse().ok())
+        .unwrap_or(0)
 }
 
 /// A connection to the cluster's `postgres` database, waiting out startup.
@@ -671,6 +1104,78 @@ mod tests {
     }
 
     #[test]
+    fn backup_names_sort_by_utc_time() {
+        // Given: 2026-11-01 12:34:56 UTC and the epoch
+        let at = std::time::UNIX_EPOCH + Duration::from_secs(1_793_536_496);
+
+        // When
+        let names = [
+            backup::file_name(at),
+            backup::file_name(std::time::UNIX_EPOCH),
+        ];
+
+        // Then
+        assert_eq!(
+            names,
+            ["fubbik-20261101-123456.dump", "fubbik-19700101-000000.dump"]
+        );
+    }
+
+    #[test]
+    fn backups_keep_the_newest_seven() {
+        // Given: nine backups
+        let root = tempfile::tempdir().unwrap();
+        let cluster = Cluster::new(root.path().to_path_buf());
+        std::fs::create_dir_all(backup::dir(&cluster)).unwrap();
+        for day in 1..=9 {
+            std::fs::write(
+                backup::dir(&cluster).join(format!("fubbik-202611{day:02}-000000.dump")),
+                "",
+            )
+            .unwrap();
+        }
+
+        // When
+        backup::prune(&cluster);
+
+        // Then
+        let kept = backup::list(&cluster);
+        assert_eq!(kept.len(), 7);
+        assert!(kept[0].ends_with("fubbik-20261109-000000.dump"));
+        assert!(!backup::due(&cluster), "a backup was just written");
+    }
+
+    #[test]
+    fn skipped_objects_are_counted_from_pg_restore() {
+        // Given
+        let log = "pg_restore: error: could not execute query\npg_restore: warning: errors ignored on restore: 12\n";
+
+        // When
+        let counts = (skipped_count(log), skipped_count("all fine"));
+
+        // Then
+        assert_eq!(counts, (12, 0));
+    }
+
+    #[test]
+    fn a_data_folder_from_another_major_version_is_refused() {
+        // Given
+        let root = tempfile::tempdir().unwrap();
+        let cluster = Cluster::new(root.path().to_path_buf());
+        std::fs::create_dir_all(cluster.data()).unwrap();
+
+        // When
+        std::fs::write(cluster.data().join("PG_VERSION"), "17\n").unwrap();
+        let old = check_data_version(&cluster);
+        std::fs::write(cluster.data().join("PG_VERSION"), "18\n").unwrap();
+        let current = check_data_version(&cluster);
+
+        // Then
+        assert!(old.unwrap_err().contains("PostgreSQL 17"));
+        assert!(current.is_ok());
+    }
+
+    #[test]
     fn passwords_stay_out_of_messages() {
         // Given
         let urls = [
@@ -738,5 +1243,82 @@ mod tests {
         assert!(tables > 0, "core seed loaded chunk types");
         assert!(exited);
         assert!(!cluster.running(&binaries));
+    }
+
+    /// The whole lifecycle on port 3107: start, serve, back up, import live,
+    /// stop. Needs PostgreSQL 18 with pgvector and a source database:
+    /// `FUBBIK_IMPORT_TEST_URL=<url> cargo test full_lifecycle -- --ignored`.
+    #[test]
+    #[ignore = "starts a real server; needs FUBBIK_IMPORT_TEST_URL"]
+    fn full_lifecycle_serves_backs_up_imports_and_stops() {
+        // Given
+        let source = std::env::var("FUBBIK_IMPORT_TEST_URL").expect("FUBBIK_IMPORT_TEST_URL");
+        let config = tempfile::tempdir().unwrap();
+        // SAFETY: this test runs alone (ignored by default), before any thread reads these.
+        unsafe {
+            std::env::set_var("FUBBIK_DESKTOP_PORT", "3107");
+            std::env::set_var("XDG_CONFIG_HOME", config.path());
+        }
+        let root = tempfile::Builder::new().prefix("fk").tempdir().unwrap();
+        let wait = |what: &str, secs: u64, done: &dyn Fn() -> bool| {
+            let deadline = Instant::now() + Duration::from_secs(secs);
+            while !done() {
+                assert!(
+                    Instant::now() < deadline,
+                    "timed out waiting for {what}; status {:?}; notices {:?}",
+                    status(),
+                    notices_cell().lock().unwrap()
+                );
+                std::thread::sleep(Duration::from_millis(200));
+            }
+        };
+        let get = |path: &str| -> Option<serde_json::Value> {
+            ureq::get(format!("http://127.0.0.1:3107{path}"))
+                .call()
+                .ok()?
+                .body_mut()
+                .read_json()
+                .ok()
+        };
+        let cluster = Cluster::new(root.path().to_path_buf());
+
+        // When: it starts
+        let mut server = Backend::start(root.path().to_path_buf());
+        wait("running", 90, &|| {
+            matches!(status(), Status::Running { .. })
+        });
+        let health = get("/api/health");
+        let advertised = discovery::owner_pid();
+        // ... backs up (the first daily one, plus one on demand)
+        assert!(send(Control::BackupNow));
+        wait("two backups", 60, &|| backup::list(&cluster).len() >= 2);
+        // ... imports while running
+        assert!(send(Control::Import(source.clone())));
+        wait("the import notice", 120, &|| {
+            notices_cell()
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|n| n.starts_with("Imported"))
+        });
+        wait("running again", 30, &|| {
+            matches!(status(), Status::Running { .. }) && get("/api/health").is_some()
+        });
+        let chunks = get("/api/stats").and_then(|s| s["chunks"].as_i64());
+        // ... and stops
+        server.stop();
+
+        // Then
+        assert_eq!(
+            health
+                .and_then(|h| h["db"].as_str().map(str::to_string))
+                .as_deref(),
+            Some("connected")
+        );
+        assert_eq!(advertised, Some(std::process::id()));
+        assert!(chunks.unwrap_or(0) > 0, "imported chunks: {chunks:?}");
+        assert_eq!(status(), Status::Off);
+        assert_eq!(discovery::owner_pid(), None, "server.json removed");
+        assert!(get("/api/health").is_none(), "API stopped");
     }
 }

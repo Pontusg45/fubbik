@@ -22,7 +22,7 @@ impl ApiClient {
             .query(query)
             .send()
             .await
-            .with_context(|| format!("could not reach fubbik at {}", self.base))?;
+            .with_context(|| format!("could not reach fubbik at {} (is the fubbik desktop app, or `fubbik serve`, running?)", self.base))?;
         decode(response, path).await
     }
 
@@ -56,7 +56,7 @@ impl ApiClient {
             .json(&body)
             .send()
             .await
-            .with_context(|| format!("could not reach fubbik at {}", self.base))?;
+            .with_context(|| format!("could not reach fubbik at {} (is the fubbik desktop app, or `fubbik serve`, running?)", self.base))?;
         decode(response, path).await
     }
 }

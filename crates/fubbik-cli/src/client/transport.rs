@@ -71,7 +71,7 @@ impl Client {
         let response = request
             .send()
             .await
-            .with_context(|| format!("could not reach fubbik at {}", self.base))?;
+            .with_context(|| format!("could not reach fubbik at {} (is the fubbik desktop app, or `fubbik serve`, running?)", self.base))?;
         if response.status().is_success() {
             return Ok(response);
         }

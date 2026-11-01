@@ -123,15 +123,72 @@ pub fn resolve_base_url(explicit: Option<&str>) -> Result<String> {
 fn server_url_or_default(config: &Config) -> String {
     config
         .server_url
+        .clone()
+        .or_else(|| discovered_server().map(|d| d.url))
         .as_deref()
         .unwrap_or(DEFAULT_SERVER_URL)
         .trim_end_matches('/')
         .into()
 }
 
+/// Written by the fubbik desktop app while its built-in server runs:
+/// `$XDG_CONFIG_HOME/fubbik/server.json`, else `~/.config/fubbik/server.json`.
+pub fn discovery_path() -> Option<PathBuf> {
+    let base = std::env::var_os("XDG_CONFIG_HOME")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))?;
+    Some(base.join("fubbik/server.json"))
+}
+
+/// The desktop app's running server, as `server.json` describes it.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct DiscoveredServer {
+    pub url: String,
+    pub pid: u32,
+}
+
+/// The server in `server.json`, if its process is still alive (a stale
+/// file from a crash is ignored).
+pub fn discovered_server() -> Option<DiscoveredServer> {
+    parse_discovery(&std::fs::read_to_string(discovery_path()?).ok()?)
+        .filter(|d| process_alive(d.pid))
+}
+
+fn parse_discovery(text: &str) -> Option<DiscoveredServer> {
+    serde_json::from_str(text).ok()
+}
+
+fn process_alive(pid: u32) -> bool {
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn server_json_gives_url_and_pid() {
+        // Given
+        let text = r#"{"url": "http://127.0.0.1:3100", "pid": 4242, "owner": "fubbik-desktop"}"#;
+
+        // When
+        let parsed = parse_discovery(text);
+
+        // Then
+        assert_eq!(
+            parsed,
+            Some(DiscoveredServer {
+                url: "http://127.0.0.1:3100".into(),
+                pid: 4242
+            })
+        );
+        assert_eq!(parse_discovery("not json"), None);
+    }
 
     #[test]
     fn default_server_url_is_port_3000() {

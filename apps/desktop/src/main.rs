@@ -34,10 +34,10 @@ use gpui::{
 
 use supervisor::Supervisor;
 use ui::{
-    CaptureNote, ChooseTheme, NextRepo, PrevRepo, Quit, Refresh, RegisterRepo, ShowAgents,
-    ShowDatabases, ShowInsights, ShowKnowledge, ShowLogs, ShowOverview, ShowPlans, ShowProcesses,
-    ShowSessions, ShowSetup, ShowTerminal, ShowToday, ShowWorktrees, TogglePalette, ToggleTheme,
-    Workspace,
+    CaptureNote, ChooseTheme, NextRepo, PrevRepo, Quit, QuitKeepServer, Refresh, RegisterRepo,
+    ShowAgents, ShowDatabases, ShowInsights, ShowKnowledge, ShowLogs, ShowOverview, ShowPlans,
+    ShowProcesses, ShowSessions, ShowSetup, ShowTerminal, ShowToday, ShowWorktrees, TogglePalette,
+    ToggleTheme, Workspace,
 };
 
 fn main() {
@@ -57,8 +57,15 @@ fn main() {
     let supervisor = Supervisor::new();
     let embedded = config.as_ref().is_none_or(|c| c.embedded_backend());
 
-    // `fubbik-desktop --probe <repo>`: print one poll of a repo without the UI.
     let args: Vec<String> = std::env::args().collect();
+    // `fubbik-desktop --serve`: only the built-in server, no window, until
+    // SIGTERM or Ctrl-C. "Quit, Keep Server Running" starts one of these.
+    if args.get(1).map(String::as_str) == Some("--serve") {
+        serve_headless();
+        return;
+    }
+
+    // `fubbik-desktop --probe <repo>`: print one poll of a repo without the UI.
     if let [_, flag, repo] = args.as_slice()
         && flag == "--probe"
     {
@@ -97,7 +104,10 @@ fn main() {
         cx.set_menus(vec![
             Menu {
                 name: "fubbik".into(),
-                items: vec![MenuItem::action("Quit fubbik", Quit)],
+                items: vec![
+                    MenuItem::action("Quit, Keep Server Running", QuitKeepServer),
+                    MenuItem::action("Quit fubbik", Quit),
+                ],
             },
             Menu {
                 name: "Repo".into(),
@@ -133,6 +143,20 @@ fn main() {
                 ],
             },
         ]);
+
+        let keep_quit = supervisor.clone();
+        let stop_for_keep = stop_backend.clone();
+        cx.on_action(move |_: &QuitKeepServer, cx| {
+            keep_quit.stop_all();
+            // Hand over: stop ours (freeing :3000 and the data folder), then a
+            // background copy of this app serves until stopped from Setup.
+            let ours = matches!(backend::status(), backend::Status::Running { .. });
+            stop_for_keep();
+            if ours && let Err(error) = backend::spawn_background() {
+                eprintln!("fubbik: could not keep the server running: {error}");
+            }
+            cx.quit();
+        });
 
         let on_quit = supervisor.clone();
         cx.on_action(move |_: &Quit, cx| {
@@ -189,4 +213,23 @@ fn main() {
         }
         cx.activate(true);
     });
+}
+
+/// `--serve`: the built-in server alone, stopped by SIGTERM or Ctrl-C.
+fn serve_headless() {
+    let mut server = backend::Backend::start(backend::data_dir());
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    runtime.block_on(async {
+        let mut terminate =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .expect("SIGTERM handler");
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {},
+            _ = terminate.recv() => {},
+        }
+    });
+    server.stop();
 }

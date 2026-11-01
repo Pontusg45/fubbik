@@ -37,8 +37,12 @@ pub enum Command {
     SetExternalTerminal(bool),
     /// The built-in server (API + PostgreSQL) on (true) or off; on restart.
     SetEmbeddedBackend(bool),
-    /// Replace the built-in database with a copy of this one, on restart.
+    /// Replace the built-in database with a copy of this one.
     ImportDatabase(String),
+    BackupNow,
+    ShowBackups,
+    /// Stop a `--serve` server left running by "Quit, Keep Server Running".
+    StopBackgroundServer,
     SetTaskStatus {
         plan: String,
         task: String,

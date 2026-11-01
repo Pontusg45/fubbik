@@ -72,7 +72,7 @@ impl Client {
             .query(&query)
             .send()
             .await
-            .with_context(|| format!("could not reach fubbik at {}", self.base))?;
+            .with_context(|| format!("could not reach fubbik at {} (is the fubbik desktop app, or `fubbik serve`, running?)", self.base))?;
         if !response.status().is_success() {
             bail!("request to {path} failed with {}", response.status());
         }

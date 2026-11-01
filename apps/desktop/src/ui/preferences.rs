@@ -155,17 +155,70 @@ impl Workspace {
             ),
             choice_row(
                 "Import existing data",
+                "Replace the built-in database with a copy of one of these (each is only read)"
+                    .into(),
+                div()
+                    .flex()
+                    .gap_2()
+                    .children(
+                        self.import_sources()
+                            .into_iter()
+                            .enumerate()
+                            .map(|(i, source)| {
+                                let label =
+                                    source.split('@').next_back().unwrap_or(&source).to_string();
+                                button(("pref-import", i), label).on_click(cx.listener(
+                                    move |this, _, _, cx| {
+                                        this.run(Command::ImportDatabase(source.clone()), cx)
+                                    },
+                                ))
+                            }),
+                    )
+                    .into_any_element(),
+            ),
+            choice_row(
+                "Backups",
                 format!(
-                    "Copy {} into the built-in database on the next start (it replaces the built-in data)",
-                    crate::backend::DEFAULT_IMPORT_SOURCE
+                    "One a day, the last 7 kept, in {}",
+                    display_path(&crate::backend::data_dir().join("backups"))
                 ),
-                button("pref-import", "Import on restart")
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.run(
-                            Command::ImportDatabase(crate::backend::DEFAULT_IMPORT_SOURCE.into()),
-                            cx,
-                        )
-                    }))
+                div()
+                    .flex()
+                    .gap_2()
+                    .child(
+                        button("pref-backup", "Back up now").on_click(
+                            cx.listener(|this, _, _, cx| this.run(Command::BackupNow, cx)),
+                        ),
+                    )
+                    .child(
+                        button("pref-backups-show", "Show in Finder").on_click(
+                            cx.listener(|this, _, _, cx| this.run(Command::ShowBackups, cx)),
+                        ),
+                    )
+                    .into_any_element(),
+            ),
+            choice_row(
+                "When the app quits",
+                if matches!(crate::backend::status(), crate::backend::Status::External)
+                    && crate::backend::discovery::owner_pid().is_some()
+                {
+                    "A background server (from \"Quit, Keep Server Running\") is serving".into()
+                } else {
+                    "Quit stops the server; \"Quit, Keep Server Running\" leaves it serving MCP and the CLI".into()
+                },
+                div()
+                    .flex()
+                    .gap_2()
+                    .child(
+                        button("pref-keep", "Quit, keep server running").on_click(cx.listener(
+                            |_, _, window, cx| {
+                                window.dispatch_action(Box::new(super::QuitKeepServer), cx)
+                            },
+                        )),
+                    )
+                    .child(button("pref-stop-bg", "Stop background server").on_click(
+                        cx.listener(|this, _, _, cx| this.run(Command::StopBackgroundServer, cx)),
+                    ))
                     .into_any_element(),
             ),
             field_row(
@@ -195,6 +248,25 @@ impl Workspace {
             rows,
         )
         .into_any_element()
+    }
+
+    /// Databases to import from: the registered repos' PostgreSQL databases
+    /// (services files) and the default, without duplicates.
+    fn import_sources(&self) -> Vec<String> {
+        let mut sources = vec![crate::backend::DEFAULT_IMPORT_SOURCE.to_string()];
+        for db in self
+            .repos
+            .iter()
+            .filter_map(|r| r.snapshot.as_ref())
+            .flat_map(|s| s.databases.iter())
+        {
+            let url = db.spec.url.clone();
+            if url.starts_with("postgres") && !sources.contains(&url) {
+                sources.push(url);
+            }
+        }
+        sources.truncate(4);
+        sources
     }
 
     /// The palette, filtered to themes.

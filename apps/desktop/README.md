@@ -17,26 +17,46 @@ the folder). Re-run it after changes; the Dock entry is kept.
 
 Starting the app is all fubbik needs. Docker, `fubbik serve` and `just dev` aren't needed.
 
-- **The API runs inside the app**, on `127.0.0.1:3000`. The CLI, MCP, VS Code and Claude Code reach it as usual while the app is
-  open, and the web UI is served there too (from `apps/web/dist`, bundled by `just desktop-install`). The app runs the same
-  `fubbik_api::server::serve` as `fubbik serve`, with every feature on and the local dev session.
+- **The API runs inside the app**, on `127.0.0.1:3000` (`FUBBIK_DESKTOP_PORT` changes the port). The CLI, MCP, VS Code and
+  Claude Code reach it as usual while the app is open, and the web UI is served there too (from `apps/web/dist`, bundled by
+  `just desktop-install`). The app runs the same `fubbik_api::server::serve` as `fubbik serve`, with every feature on and the
+  local dev session.
+- **The CLI and MCP find it through `~/.config/fubbik/server.json`** (`$XDG_CONFIG_HOME/fubbik`), which holds the URL and the
+  server's pid. It is written while the server runs, and ignored once that pid is gone. An explicit `--url`, `FUBBIK_URL` or
+  `serverUrl` still wins. When nothing answers, the error asks whether the desktop app or `fubbik serve` is running.
 - **Its own PostgreSQL 18**, a private cluster in `~/Library/Application Support/fubbik/pgdata` (`FUBBIK_DESKTOP_DATA` moves
-  it). It listens only on a Unix socket in `…/fubbik/run`, so it never takes a TCP port, and it starts with the app and
-  stops when the app quits (fast shutdown).
+  it). It listens only on a Unix socket in `…/fubbik/run`, or a private `/tmp/fubbik-<uid>` when that path would pass the
+  103-byte socket limit. It starts with the app (JIT off) and stops when the app quits (fast shutdown).
   - **First run:** `initdb` (ICU collation), the migrations, and the `core` seed (built-in types, relations, templates).
-  - **Binaries:** `fubbik.app/Contents/Resources/postgres`, a trimmed copy of Postgres.app 18 that `install-app.sh` bundles
-    (about 200 MB, with pgvector). Otherwise `FUBBIK_POSTGRES_BIN`, Postgres.app, then Homebrew `postgresql@18`; each needs
-    pgvector.
-  - **No AGE:** the bundle has no Apache AGE, so graph projection is off, as on any Postgres without it.
-- **Already running?** When something healthy answers on `:3000` (for example `just dev`), the app uses it and starts nothing.
-- **Existing data:** Setup → "Import on restart" copies `postgresql://localhost:5432/fubbik` into the built-in database on the
-  next launch.
-  - The source is only read (`pg_dump`). The built-in database is replaced, and AGE objects are skipped.
-  - `pg_restore`'s messages go to `import.log` in the data folder.
-- **Turning it off:** `backend = "off"` in `desktop.toml` (or the Setup toggle) makes the app start neither. Run `fubbik serve`
+  - **Binaries:** `fubbik.app/Contents/Resources/postgres`, a trimmed copy of Postgres.app 18 (about 130 MB). It has the
+    server tools, `pg_dump`/`pg_restore`, pgvector and `pg_trgm`, but not PostGIS or the language handlers. Otherwise
+    `FUBBIK_POSTGRES_BIN`, Postgres.app, then Homebrew `postgresql@18`; each needs pgvector.
+  - **AGE:** `install-app.sh` also builds Apache AGE once (`scripts/build-age.sh`: the pinned `PG18/v1.7.0-rc0`, against the
+    bundled Postgres, cached in `~/Library/Caches/fubbik`) and bundles it, so graph projection works. It needs Bison 3
+    (`brew install bison`). If the build fails, the app runs without AGE, as on any Postgres without it.
+    `FUBBIK_SKIP_AGE=1` skips the build.
+  - **Major versions:** the data folder only opens with the PostgreSQL major that created it. A folder from another version is
+    refused with what to do: back it up with that version's `pg_dump`, move the folder aside, restart, then import the dump
+    (or run `pg_upgrade`).
+- **Status:** the sidebar's footer shows it (running, starting, using another server, or failed; click it for Setup). A
+  failure raises a toast. Logs → "built-in server" is the API's log (`backend.log`, `RUST_LOG` filters it), and "built-in
+  postgres" is `postgres.log`.
+- **Already running?** When something healthy answers on the port (for example `just dev`), the app uses it and starts nothing.
+  `just kill-dev` refuses to kill the app's server.
+- **Existing data:** Setup → "Import existing data" lists the default `postgresql://localhost:5432/fubbik` and the PostgreSQL
+  databases in your repos' services files.
+  - Import runs live: the API pauses, the built-in database is replaced by a copy (the source is only read, with `pg_dump`),
+    and the API comes back.
+  - A toast says how many objects were skipped (AGE's graph, when the bundle has no AGE). `import.log` has `pg_restore`'s
+    messages.
+- **Backups:** one a day while the server runs, the last 7 kept, in `…/fubbik/backups` (`pg_dump -Fc`; restore one with
+  `pg_restore`). Setup has "Back up now" and "Show in Finder".
+- **Quitting** stops the server. "Quit, Keep Server Running" (the fubbik menu, or Setup) hands it to a background copy of the
+  app (`fubbik-desktop --serve`, no window), so MCP and the CLI keep working. The next launch uses that server, and Setup →
+  "Stop background server" ends it.
+- **Turning it off:** `backend = "off"` in `desktop.toml` (or the Setup toggle) makes the app start nothing. Run `fubbik serve`
   yourself then.
-- **Quitting** stops the API, so MCP and the CLI lose fubbik until the app runs again.
-- **Files:** in the data folder, `postgres.log` is the server log and `auth-secret` signs session cookies (generated once).
+- **Files:** `auth-secret` in the data folder signs session cookies (generated once).
 
 It is its own cargo workspace (not a member of the root one under `crates/`), so `cargo build --workspace` and CI never compile GPUI.
 It links `fubbik-api` and `fubbik-db` by path for the built-in server; their sqlx queries build from the checked-in `.sqlx/`
@@ -246,7 +266,7 @@ src/model.rs       Status, ProcessState, DatabaseState, RepoSnapshot, roll-up
 src/poll.rs        one repo poll (runs on the background executor)
 src/launch.rs      editor, Terminal, notifications, login-shell PATH
 src/global_hotkey.rs  the system-wide summon key (Carbon RegisterEventHotKey)
-src/backend.rs     the built-in server: finds Postgres, owns its cluster, runs the API in-process, import
+src/backend.rs     the built-in server: Postgres cluster, in-process API, import, backups, server.json, --serve
 src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,
                    chrome, preferences, tasks, today, insights), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
                    setup_view.rs; terminal_view.rs), actions.rs (fubbik calls and scans), palette, text field, widgets,
