@@ -130,6 +130,23 @@ Other agents can read what the app shows, and start and stop its processes and s
   - `start_process` and `run_script`: `where` is `tmux` (the default, attachable from any terminal), `background` or
     `terminal`. The result names the tmux session and the attach command.
   - `stop_process` and `restart_process`: only for what the app started; anything started elsewhere is left alone.
+  - For an agent that keeps track of every project (`src/mcp_more.rs`, read-only):
+    - `get_changes_since(cursor?, repo?)`: the change feed (`src/mcp_events.rs`) — commits and branch switches, processes
+      up or down, agents started / waiting / ended, worktrees added or removed, PRs opened / merged / needing you, bells,
+      dependencies that start or stop disagreeing by a major (checked every 10 min) and tools Homebrew changed (every 30).
+      Pass back the returned cursor to get only what is new; cursors survive app restarts (sequence numbers start at the
+      start time). The feed keeps 2000 events in memory.
+    - `get_dependencies(filter?, ecosystem?, name?)`: the Dependencies tab, with each declaring file.
+    - `get_toolchain(refresh?)`: the Tools tab (cached 2 min).
+    - `get_pull_requests(repo?, open_only?)`: PRs and checks per branch, plus `errors` for repos gh could not read.
+    - `list_worktrees(repo)`: with merged state, sessions, overlaps and the branch's PR.
+    - `get_changes(repo, worktree?)` and `get_diff(repo, worktree?, path, staged?)`: a checkout's changed files and one
+      file's diff (only the repo's own checkouts, paths inside them).
+- **A tracker workspace:** Setup → "Projects tracker" (or ⌘K "Set up the projects tracker") writes, in the repos' common
+  folder (`~/projects`), a `.mcp.json` with both servers (`fubbik-desktop` over HTTP and `fubbik mcp`), merged into an
+  existing one, and a `CLAUDE.md` with the tracker's job (each check: the change feed from a saved cursor, then Today;
+  weekly: dependencies, toolchain, worktrees; read-only, never commits or pushes). An existing CLAUDE.md is kept. Run
+  `claude` in that folder and ask "what changed?".
 - **How it works:** the UI publishes a JSON view after every poll (`src/ui/mcp_publish.rs`), and `src/mcp.rs` answers from it,
   so calls never wait on git or the network. For the knowledge base itself, use `fubbik mcp`.
 
@@ -333,6 +350,8 @@ src/detect.rs      starter services file from package.json and compose
 src/git.rs         porcelain v2 status, changed files, diffs, stage / unstage / commit, remote → web URL
 src/github.rs      pull requests and CI checks per branch (gh pr list)
 src/tmux_events.rs tmux hooks → events file (bells, pane exits), read incrementally
+src/mcp_events.rs  the MCP change feed: diffs between published views, pushed events, deps and tools watchers
+src/mcp_more.rs    MCP tools for a tracker agent: changes since, dependencies, toolchain, PRs, worktrees, changes, diffs
 src/tools.rs       developer tools and services: versions, paths, brew outdated, recent upgrades
 src/deps.rs        manifests across repos: declared dependency versions and toolchain pins, compared
 src/probe.rs       port, owner PID, HTTP health, TCP, compose, ps

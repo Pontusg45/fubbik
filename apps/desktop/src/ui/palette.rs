@@ -272,6 +272,8 @@ pub enum Command {
     OpenUrl(String),
     /// A terminal tab by id, in its repo (clears its bell).
     FocusTerminal(usize),
+    /// `.mcp.json` and CLAUDE.md for a tracker agent in the repos' folder.
+    SetupTracker,
 }
 
 #[derive(Debug, Clone)]

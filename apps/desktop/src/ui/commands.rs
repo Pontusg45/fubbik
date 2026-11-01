@@ -942,6 +942,7 @@ impl Workspace {
                         Command::ShowHome => self.go_home(),
                         Command::OpenUrl(url) => cx.open_url(&url),
             Command::FocusTerminal(id) => self.focus_terminal_tab(id),
+            Command::SetupTracker => self.setup_tracker(),
             Command::OpenPane { pane, cwd } => self.open_pane(pane, cwd, cx),
             Command::Focus { repo, tab } => {
                 self.select(repo);

@@ -8,6 +8,9 @@
 //!   app (for clients that only start stdio servers).
 //! - Reads come from a JSON view the UI publishes after every poll
 //!   (`ui/mcp_publish.rs`), so a read never waits on git or the network.
+//! - Tracker tools (`mcp_more.rs`): the change feed (`mcp_events.rs`),
+//!   dependencies across repos, the toolchain, pull requests, worktrees,
+//!   a checkout's changes and diffs.
 //! - start_process / run_script / stop_process / restart_process act
 //!   through the app's supervisor, by default in tmux sessions
 //!   (`tmux_runs.rs`) the user can attach from any terminal.
@@ -36,11 +39,32 @@ fn published() -> &'static Mutex<Published> {
 }
 
 pub fn publish(repos: Vec<Value>, today: Vec<Value>) {
-    *published().lock().unwrap() = Published {
+    let mut published = published().lock().unwrap();
+    // What changed since the last view goes to the change feed.
+    if published.at.is_some() {
+        crate::mcp_events::on_publish(&published.repos, &repos);
+    }
+    *published = Published {
         repos,
         today,
         at: Some(SystemTime::now()),
     };
+}
+
+/// The registered repos' names and paths, as last published.
+fn published_paths() -> Vec<(String, std::path::PathBuf)> {
+    published()
+        .lock()
+        .unwrap()
+        .repos
+        .iter()
+        .filter_map(|r| {
+            Some((
+                r["name"].as_str()?.to_string(),
+                std::path::PathBuf::from(r["path"].as_str()?),
+            ))
+        })
+        .collect()
 }
 
 fn supervisor_cell() -> &'static OnceLock<Supervisor> {
@@ -63,6 +87,14 @@ pub fn addr() -> String {
 }
 
 fn tools() -> Value {
+    let mut all = base_tools();
+    if let Some(list) = all.as_array_mut() {
+        list.extend(crate::mcp_more::definitions());
+    }
+    all
+}
+
+fn base_tools() -> Value {
     let repo = json!({
         "type": "string",
         "description": "Repo name (its folder name, as list_repos shows) or its path"
@@ -192,7 +224,12 @@ fn call_tool(name: &str, args: &Value) -> Result<Value, String> {
 
 /// A tool call against a published view.
 fn call_tool_in(state: Published, name: &str, args: &Value) -> Result<Value, String> {
-    if state.at.is_none() && !matches!(name, "get_builtin_server" | "get_system_stats") {
+    if state.at.is_none()
+        && !matches!(
+            name,
+            "get_builtin_server" | "get_system_stats" | "get_changes_since" | "get_toolchain"
+        )
+    {
         return Err("the app has not finished its first poll yet; try again in a moment".into());
     }
     let arg = |key: &str| args.get(key).and_then(Value::as_str);
@@ -396,7 +433,8 @@ fn call_tool_in(state: Published, name: &str, args: &Value) -> Result<Value, Str
                 "backups": root.join("backups"),
             }))
         }
-        other => Err(format!("unknown tool: {other}")),
+        other => crate::mcp_more::call(&state.repos, other, args)
+            .unwrap_or_else(|| Err(format!("unknown tool: {other}"))),
     }
 }
 
@@ -499,6 +537,7 @@ pub fn handle(request: &Value) -> Option<Value> {
 
 /// Serves `POST /mcp` on its own thread for the life of the app.
 pub fn start_http() {
+    crate::mcp_events::start_watchers(published_paths);
     let addr = addr();
     let spawned = std::thread::Builder::new()
         .name("fubbik-mcp".into())

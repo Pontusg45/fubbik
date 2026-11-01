@@ -220,6 +220,7 @@ impl Workspace {
                 },
             ))
             .child(muted(claude_md_note))
+            .child(self.render_tracker_setup(cx))
             .child(self.render_preferences(window, cx))
             .child(self.render_keyboard_setup(cx))
     }
@@ -254,5 +255,68 @@ impl Workspace {
                 .into_any_element()
         }));
         section("Keyboard", rows)
+    }
+}
+
+impl Workspace {
+    fn tracker_dir(&self) -> std::path::PathBuf {
+        let paths: Vec<std::path::PathBuf> =
+            self.repos.iter().map(|r| r.entry.path.clone()).collect();
+        crate::setup::tracker_dir(&paths)
+    }
+
+    /// Writes the tracker files and says what it did.
+    pub(super) fn setup_tracker(&mut self) {
+        let dir = self.tracker_dir();
+        let bin = self.global.as_ref().and_then(|g| g.fubbik_bin.clone());
+        let url = self.config.fubbik_url();
+        let mcp = format!("http://{}/mcp", crate::mcp::addr());
+        match crate::setup::install_tracker(&dir, bin.as_deref(), &url, &mcp) {
+            Ok(done) => self.show_info(format!(
+                "Tracker workspace ready — start `claude` in {}. {}",
+                display_path(&dir),
+                done.join("; ")
+            )),
+            Err(error) => self.show_error(format!("Could not set up the tracker: {error}")),
+        }
+    }
+
+    /// Setup → a folder where an agent keeps track of every project.
+    fn render_tracker_setup(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let dir = self.tracker_dir();
+        let has_mcp = std::fs::read_to_string(dir.join(".mcp.json"))
+            .is_ok_and(|t| t.contains("fubbik-desktop"));
+        let has_claude = dir.join("CLAUDE.md").exists();
+        let state = match (has_mcp, has_claude) {
+            (true, true) => "set up: .mcp.json has fubbik-desktop, CLAUDE.md exists",
+            (true, false) => ".mcp.json is set up; no CLAUDE.md yet",
+            (false, true) => "has a CLAUDE.md; .mcp.json lacks fubbik-desktop",
+            (false, false) => "not set up",
+        };
+        section(
+            "Projects tracker",
+            vec![
+                row()
+                    .child(
+                        div()
+                            .flex_1()
+                            .flex()
+                            .flex_col()
+                            .gap_0p5()
+                            .child(div().text_sm().child(format!(
+                                "An agent in {} that keeps track of every project",
+                                display_path(&dir)
+                            )))
+                            .child(muted(format!(
+                                "Writes .mcp.json (this app's MCP server and fubbik's) and a CLAUDE.md with the tracker's job (never overwrites one). Then run `claude` there and ask \"what changed?\" — {state}."
+                            ))),
+                    )
+                    .child(
+                        button("tracker-setup", if has_mcp { "Update" } else { "Set up" })
+                            .on_click(cx.listener(|this, _, _, cx| this.run(super::palette::Command::SetupTracker, cx))),
+                    )
+                    .into_any_element(),
+            ],
+        )
     }
 }

@@ -70,6 +70,16 @@ impl Workspace {
                         continue;
                     }
                     self.bells.push((id, Instant::now()));
+                    let repo = self
+                        .repos
+                        .iter()
+                        .find(|r| tab.dir.starts_with(&r.entry.path))
+                        .map(|r| r.entry.name());
+                    crate::mcp_events::record(
+                        repo.as_deref(),
+                        "bell",
+                        format!("{label} rang the bell"),
+                    );
                     self.show_alert(Alert {
                         message: format!("🔔 {label} wants your attention"),
                         target: Command::FocusTerminal(id),

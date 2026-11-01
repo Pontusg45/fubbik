@@ -83,17 +83,59 @@ fn repo_json(view: &RepoView, supervisor: &crate::supervisor::Supervisor) -> Val
         .iter()
         .map(|d| json!({ "name": d.spec.name, "engine": d.spec.engine, "status": d.status.label(), "up": d.status.is_up() }))
         .collect();
+    let prs = match &view.prs.by_branch {
+        Some(Ok(map)) => Some(map),
+        _ => None,
+    };
+    let checked_out: Vec<String> = match &snapshot.worktrees {
+        Some(Ok(list)) => list.iter().filter_map(|w| w.branch.clone()).collect(),
+        _ => Vec::new(),
+    };
+    let pr_json = |branch: &str, pr: &crate::github::PrStatus| {
+        json!({
+            "branch": branch,
+            "number": pr.number,
+            "state": pr.state,
+            "draft": pr.draft,
+            "url": pr.url,
+            "review": pr.review,
+            "checks": { "passed": pr.checks.passed, "failed": pr.checks.failed, "pending": pr.checks.pending },
+            "conflicting": pr.conflicting,
+            "needs_you": pr.needs_you(),
+            "ready_to_merge": pr.ready(),
+            "summary": pr.summary(),
+            "checked_out": checked_out.iter().any(|b| b == branch),
+        })
+    };
     let worktrees: Vec<Value> = match &snapshot.worktrees {
         Some(Ok(list)) => list
             .iter()
             .map(|w| {
+                let name = w.name();
                 json!({
                     "path": w.path, "branch": w.branch, "head": w.head, "main": w.main, "missing": w.missing,
                     "changed_files": w.changed_files, "ahead": w.ahead, "behind": w.behind,
+                    "merged": w.merged(),
+                    "sessions": snapshot.sessions.iter().filter(|s| s.cwd.starts_with(&w.path)).map(|s| json!({
+                        "agent": s.agent.label(), "title": s.title, "state": s.state.label(),
+                    })).collect::<Vec<_>>(),
+                    "overlaps": snapshot.overlaps.iter().filter(|o| o.a == name || o.b == name).map(|o| json!({
+                        "with": if o.a == name { &o.b } else { &o.a }, "files": o.files,
+                    })).collect::<Vec<_>>(),
+                    "pull_request": w.branch.as_deref().and_then(|b| Some(pr_json(b, prs?.get(b)?))),
                 })
             })
             .collect(),
         _ => Vec::new(),
+    };
+    // Null until gh has answered once (the change feed waits for a baseline).
+    let pull_requests: Value = match prs {
+        Some(map) => {
+            let mut list: Vec<(&String, &crate::github::PrStatus)> = map.iter().collect();
+            list.sort_by_key(|(_, pr)| std::cmp::Reverse(pr.number));
+            Value::Array(list.into_iter().map(|(b, pr)| pr_json(b, pr)).collect())
+        }
+        None => Value::Null,
     };
     let sessions: Vec<Value> = snapshot
         .sessions
@@ -174,5 +216,10 @@ fn repo_json(view: &RepoView, supervisor: &crate::supervisor::Supervisor) -> Val
         "overlaps": overlaps,
         "scripts": scripts,
         "knowledge": knowledge,
+        "pull_requests": pull_requests,
+        "pull_requests_error": match &view.prs.by_branch {
+            Some(Err(error)) => Some(error.clone()),
+            _ => None,
+        },
     })
 }

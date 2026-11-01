@@ -288,3 +288,182 @@ mod tests {
         assert_eq!(hook_status(repo.path()), HookStatus::Installed);
     }
 }
+
+/// The folder a tracker agent works from: the registered repos' common
+/// parent (`~/projects`), else the home folder.
+pub fn tracker_dir(repos: &[PathBuf]) -> PathBuf {
+    let parents: Vec<&Path> = repos.iter().filter_map(|r| r.parent()).collect();
+    match parents.first() {
+        Some(first) if parents.iter().all(|p| p == first) => first.to_path_buf(),
+        _ => std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("/")),
+    }
+}
+
+/// What a tracker agent is told (the CLAUDE.md written for it).
+pub const TRACKER_CLAUDE_MD: &str = r#"# Projects tracker
+
+You keep track of every project in this folder. You do not write features here: you watch, summarize, and point
+at what needs attention. The fubbik desktop app does the watching; you read it through two MCP servers (`.mcp.json`):
+
+- `fubbik-desktop` — the app (it must be running): repos, processes, agents, worktrees, git changes, pull requests,
+  dependencies across repos, the toolchain, and a feed of what changed.
+- `fubbik` — the knowledge base: chunks, plans, requirements, agent boards.
+
+## Each check
+
+1. `get_changes_since` with the cursor from last time (kept in `.tracker-cursor` in this folder; none on the first
+   run). Save the new cursor. If `dropped` is true, read `get_today` and `list_repos` in full instead.
+2. `get_today`: what needs the user, what is in flight, what is next.
+3. Report briefly, most urgent first: agents waiting, processes down, pull requests needing the user (failing
+   checks, changes requested, conflicts), worktrees that overlap, new dependency misalignments, tools Homebrew
+   upgraded (these often explain "it worked yesterday").
+
+## Weekly, or when asked
+
+- `get_dependencies` (filter `breaking`): which repos are a major behind, and the files to change. Propose an order
+  (shared tooling first: TypeScript, vitest, vite, pnpm).
+- `get_toolchain`: missing tools, available upgrades, services that are off.
+- `list_worktrees` per repo: merged worktrees that can go, stale ones, overlaps.
+
+## Rules
+
+- Read-only by default. Start, stop or restart processes and run scripts only when the user asks.
+- Never commit, push, merge, delete branches or worktrees, or upgrade tools yourself: say what you would do and why.
+- Keep reports short: a line per item, the repo first, and what to do about it.
+- Record decisions and things to watch as fubbik chunks (the `fubbik` server) in the relevant repo's space, not in
+  this folder.
+"#;
+
+/// Makes `dir` a workspace for a tracker agent: `.mcp.json` with both
+/// servers (merged into an existing one) and a CLAUDE.md (only if there is
+/// none). Returns what it did, one line per file.
+pub fn install_tracker(
+    dir: &Path,
+    fubbik_bin: Option<&Path>,
+    server_url: &str,
+    desktop_mcp_url: &str,
+) -> Result<Vec<String>, String> {
+    let mut done = Vec::new();
+    let mcp = dir.join(".mcp.json");
+    if let Some(bin) = fubbik_bin {
+        install_mcp(dir, bin, server_url)?;
+    }
+    let mut config: Value = match std::fs::read_to_string(&mcp) {
+        Ok(text) => {
+            serde_json::from_str(&text).map_err(|e| format!(".mcp.json is not valid JSON: {e}"))?
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => json!({}),
+        Err(e) => return Err(e.to_string()),
+    };
+    config
+        .as_object_mut()
+        .ok_or(".mcp.json is not a JSON object")?
+        .entry("mcpServers")
+        .or_insert_with(|| json!({}))
+        .as_object_mut()
+        .ok_or("mcpServers is not an object")?
+        .insert(
+            "fubbik-desktop".into(),
+            json!({ "type": "http", "url": desktop_mcp_url }),
+        );
+    let text = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())? + "\n";
+    std::fs::write(&mcp, text).map_err(|e| e.to_string())?;
+    done.push(format!(
+        "{} — fubbik-desktop{}",
+        mcp.display(),
+        if fubbik_bin.is_some() {
+            " and fubbik"
+        } else {
+            " (fubbik binary not found: knowledge server left out)"
+        }
+    ));
+    let claude = dir.join("CLAUDE.md");
+    if claude.exists() {
+        done.push(format!(
+            "{} — kept (it exists; the tracker text was not added)",
+            claude.display()
+        ));
+    } else {
+        std::fs::write(&claude, TRACKER_CLAUDE_MD).map_err(|e| e.to_string())?;
+        done.push(format!("{} — written", claude.display()));
+    }
+    Ok(done)
+}
+
+#[cfg(test)]
+mod tracker_tests {
+    use super::*;
+
+    #[test]
+    fn tracker_dir_is_the_common_parent() {
+        // Given
+        let same = [
+            PathBuf::from("/u/projects/a"),
+            PathBuf::from("/u/projects/b"),
+        ];
+        let mixed = [PathBuf::from("/u/projects/a"), PathBuf::from("/u/work/b")];
+
+        // When
+        let common = tracker_dir(&same);
+        let fallback = tracker_dir(&mixed);
+
+        // Then
+        assert_eq!(common, PathBuf::from("/u/projects"));
+        assert_ne!(fallback, PathBuf::from("/u/projects"));
+    }
+
+    #[test]
+    fn install_tracker_merges_mcp_json_and_keeps_an_existing_claude_md() {
+        // Given: a folder with another MCP server and its own CLAUDE.md
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join(".mcp.json"),
+            r#"{"mcpServers": {"other": {"command": "x"}}}"#,
+        )
+        .unwrap();
+        std::fs::write(dir.path().join("CLAUDE.md"), "mine\n").unwrap();
+
+        // When
+        let done = install_tracker(
+            dir.path(),
+            Some(Path::new("/bin/fubbik")),
+            "http://localhost:3000",
+            "http://127.0.0.1:3100/mcp",
+        )
+        .unwrap();
+        let again = install_tracker(dir.path(), None, "u", "http://127.0.0.1:3100/mcp");
+
+        // Then
+        let config: Value =
+            serde_json::from_str(&std::fs::read_to_string(dir.path().join(".mcp.json")).unwrap())
+                .unwrap();
+        let servers = config["mcpServers"].as_object().unwrap();
+        assert!(servers.contains_key("other"));
+        assert_eq!(
+            servers["fubbik-desktop"]["url"],
+            "http://127.0.0.1:3100/mcp"
+        );
+        assert_eq!(servers["fubbik"]["args"][0], "mcp");
+        assert_eq!(
+            std::fs::read_to_string(dir.path().join("CLAUDE.md")).unwrap(),
+            "mine\n"
+        );
+        assert!(done[1].contains("kept"));
+        assert!(again.is_ok(), "running it twice is fine");
+    }
+
+    #[test]
+    fn install_tracker_writes_claude_md_when_missing() {
+        // Given
+        let dir = tempfile::tempdir().unwrap();
+
+        // When
+        install_tracker(dir.path(), None, "u", "http://127.0.0.1:3100/mcp").unwrap();
+
+        // Then
+        let text = std::fs::read_to_string(dir.path().join("CLAUDE.md")).unwrap();
+        assert!(text.contains("get_changes_since"));
+    }
+}

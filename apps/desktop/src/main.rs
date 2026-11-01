@@ -16,6 +16,8 @@ mod github;
 mod global_hotkey;
 mod launch;
 mod mcp;
+mod mcp_events;
+mod mcp_more;
 mod model;
 mod poll;
 mod probe;

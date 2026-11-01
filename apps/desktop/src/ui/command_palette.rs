@@ -285,6 +285,10 @@ impl Workspace {
                 command: Command::NextNeedsYou,
             },
             Entry {
+                label: "Set up the projects tracker (.mcp.json + CLAUDE.md)".into(),
+                command: Command::SetupTracker,
+            },
+            Entry {
                 label: "Theme: Built-in".into(),
                 command: Command::SetColors(None),
             },
