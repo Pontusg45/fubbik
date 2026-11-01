@@ -78,12 +78,13 @@ impl Workspace {
         slot: &str,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
-        let running = self.repos.get(repo).is_some_and(|r| {
-            self.supervisor.is_running(&process_key(
-                &r.entry.path,
-                &format!("script:{}", script.name),
-            ))
-        });
+        let key = self
+            .repos
+            .get(repo)
+            .map(|r| process_key(&r.entry.path, &format!("script:{}", script.name)))
+            .unwrap_or_default();
+        let running = !key.is_empty() && self.supervisor.is_running(&key);
+        let stop_key = key.clone();
         let (name, command) = (script.name.clone(), script.command.clone());
         div()
             .id(SharedString::from(format!(
@@ -113,15 +114,41 @@ impl Workspace {
                     )
             })
             .child(script.name.clone())
-            .on_click(cx.listener(move |this, _, _, cx| {
-                this.run(
-                    Command::RunScript {
-                        repo,
-                        name: name.clone(),
-                        command: command.clone(),
-                    },
-                    cx,
+            // Running: ■ stops it (the chip itself shows its output).
+            .when(running, |c| {
+                c.child(
+                    div()
+                        .id(SharedString::from(format!(
+                            "script-stop-{slot}-{}-{}",
+                            script.tool, script.name
+                        )))
+                        .px_1()
+                        .rounded_sm()
+                        .text_color(theme::danger())
+                        .hover(|d| d.bg(theme::surface_hover()))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            this.run(Command::StopKey(stop_key.clone()), cx);
+                        }))
+                        .child("■"),
                 )
+            })
+            .on_click(cx.listener(move |this, _, _, cx| {
+                if running {
+                    // Never restart silently: show what it is doing.
+                    this.log_key = Some(key.clone());
+                    this.log_paused = None;
+                    this.run(Command::ShowTab(Tab::Logs), cx);
+                } else {
+                    this.run(
+                        Command::RunScript {
+                            repo,
+                            name: name.clone(),
+                            command: command.clone(),
+                        },
+                        cx,
+                    )
+                }
             }))
     }
 

@@ -1,7 +1,9 @@
 //! The window: the root render with its key actions, the titlebar strip,
 //! and toasts.
 
+use super::widgets::button;
 use super::*;
+use gpui::AnyElement;
 
 impl Workspace {
     /// The strip under the transparent system titlebar: traffic lights on
@@ -26,25 +28,20 @@ impl Workspace {
             .child(title)
     }
 
+    /// The toasts, newest at the bottom: × closes one; one with an action
+    /// shows where it goes and runs it on click.
     pub(super) fn render_toast(&self, cx: &mut Context<Self>) -> Option<impl IntoElement> {
-        let toast = self.toast.as_ref()?;
-        let action = toast.action.clone();
-        Some(
+        if self.toasts.is_empty() {
+            return None;
+        }
+        let rows = self.toasts.iter().enumerate().map(|(i, toast)| {
+            let action = toast.action.clone();
+            let has_action = action.is_some();
             div()
-                .id("toast")
-                .when(action.is_some(), |d| {
-                    d.cursor_pointer()
-                        .hover(|d| d.border_color(theme::accent()))
-                })
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    if let Some(command) = action.clone() {
-                        this.toast = None;
-                        this.run(command, cx);
-                    }
-                }))
-                .absolute()
-                .bottom_4()
-                .right_4()
+                .id(("toast", i))
+                .flex()
+                .items_start()
+                .gap_3()
                 .max_w(px(460.))
                 .px_4()
                 .py_2()
@@ -58,13 +55,149 @@ impl Workspace {
                 .bg(theme::elevated())
                 .shadow(theme::frame_shadow())
                 .text_sm()
-                .text_color(if toast.error {
-                    theme::danger()
-                } else {
-                    theme::text()
+                .when(has_action, |d| {
+                    d.cursor_pointer()
+                        .hover(|d| d.border_color(theme::accent()))
                 })
-                .child(toast.message.clone()),
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    if let Some(command) = action.clone() {
+                        this.run(Command::DismissToast(i), cx);
+                        this.run(command, cx);
+                    }
+                }))
+                .child(
+                    div()
+                        .flex_1()
+                        .text_color(if toast.error {
+                            theme::danger()
+                        } else {
+                            theme::text()
+                        })
+                        .child(toast.message.clone()),
+                )
+                .when(has_action, |d| {
+                    d.child(div().text_xs().text_color(theme::accent()).child("Open →"))
+                })
+                .child(
+                    div()
+                        .id(("toast-close", i))
+                        .text_xs()
+                        .text_color(theme::text_muted())
+                        .cursor_pointer()
+                        .hover(|d| d.text_color(theme::text()))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            this.run(Command::DismissToast(i), cx);
+                            cx.notify();
+                        }))
+                        .child("✕"),
+                )
+        });
+        Some(
+            div()
+                .absolute()
+                .bottom_4()
+                .right_4()
+                .flex()
+                .flex_col()
+                .items_end()
+                .gap_2()
+                .children(rows),
         )
+    }
+
+    /// "Are you sure?": ⏎ confirms, esc cancels.
+    pub(super) fn render_confirm(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        let confirm = self.confirm.clone()?;
+        Some(
+            div()
+                .absolute()
+                .inset_0()
+                .flex()
+                .justify_center()
+                .pt(px(140.))
+                .bg(theme::overlay())
+                .child(
+                    div()
+                        .id("confirm")
+                        .w(px(460.))
+                        .flex()
+                        .flex_col()
+                        .gap_3()
+                        .p_4()
+                        .rounded_lg()
+                        .border_1()
+                        .border_color(if confirm.danger {
+                            theme::danger()
+                        } else {
+                            theme::border()
+                        })
+                        .bg(theme::elevated())
+                        .shadow(theme::frame_shadow())
+                        .on_mouse_down_out(cx.listener(|this, _, _, cx| {
+                            this.confirm = None;
+                            cx.notify();
+                        }))
+                        .child(
+                            div()
+                                .text_sm()
+                                .font_weight(gpui::FontWeight::SEMIBOLD)
+                                .child(confirm.title.clone()),
+                        )
+                        .when(!confirm.detail.is_empty(), |d| {
+                            d.child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme::text_muted())
+                                    .child(confirm.detail.clone()),
+                            )
+                        })
+                        .child(
+                            div()
+                                .flex()
+                                .justify_end()
+                                .gap_2()
+                                .child(button("confirm-cancel", "Cancel (esc)").on_click(
+                                    cx.listener(|this, _, _, cx| {
+                                        this.confirm = None;
+                                        cx.notify();
+                                    }),
+                                ))
+                                .child(
+                                    button("confirm-ok", format!("{} (⏎)", confirm.action))
+                                        .when(confirm.danger, |b| {
+                                            b.text_color(theme::danger())
+                                                .border_color(theme::danger())
+                                        })
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.confirm_now(cx);
+                                            cx.notify();
+                                        })),
+                                ),
+                        ),
+                )
+                .into_any_element(),
+        )
+    }
+
+    /// Runs the open confirmation's command.
+    pub(super) fn confirm_now(&mut self, cx: &mut Context<Self>) {
+        if let Some(confirm) = self.confirm.take() {
+            self.run(confirm.command, cx);
+        }
+    }
+
+    /// Keys while the confirmation is open; true when used.
+    pub(super) fn on_confirm_key(&mut self, key: &str, cx: &mut Context<Self>) -> bool {
+        if self.confirm.is_none() {
+            return false;
+        }
+        match key {
+            "enter" => self.confirm_now(cx),
+            "escape" => self.confirm = None,
+            _ => {}
+        }
+        true
     }
 }
 
@@ -464,6 +597,11 @@ impl Render for Workspace {
             )
             .on_action(cx.listener(|this, _: &Refresh, _, cx| this.run(Command::Refresh, cx)))
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                if this.on_confirm_key(&event.keystroke.key, cx) {
+                    cx.stop_propagation();
+                    cx.notify();
+                    return;
+                }
                 if this.on_run_prompt_key(&event.keystroke, cx) {
                     cx.stop_propagation();
                     cx.notify();
@@ -503,6 +641,7 @@ impl Render for Workspace {
                 root.child(self.render_capture(window, cx))
             })
             .children(self.render_run_prompt(cx))
+            .children(self.render_confirm(cx))
             .when(self.cheat_sheet_open, |root| {
                 root.child(self.render_cheat_sheet(window, cx))
             })

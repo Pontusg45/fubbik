@@ -67,10 +67,19 @@ impl Workspace {
     ) {
         match target {
             RunTarget::Background => {
+                if self.supervisor.is_running(&key) {
+                    self.show_error(format!(
+                        "{label} is still running — stop it first (or Restart)"
+                    ));
+                    return;
+                }
                 self.log_key = Some(key.clone());
+                self.show_alert(Alert {
+                    message: format!("Started {label} — output in Logs"),
+                    target: Command::ShowTab(Tab::Logs),
+                });
                 let supervisor = self.supervisor.clone();
                 self.run_background(cx, "", move || {
-                    supervisor.stop(&key);
                     supervisor.start(&key, &command, &cwd).map(|_| ())
                 });
             }
@@ -120,6 +129,11 @@ impl Workspace {
         match what {
             RunWhat::Process { repo, index } => self.start_process(repo, index, target, cx),
             RunWhat::All(repo) => self.start_all(repo, target, cx),
+            RunWhat::Group(repos) => {
+                for repo in repos {
+                    self.start_all(repo, target, cx);
+                }
+            }
             RunWhat::Profile { repo, profile } => self.start_profile(repo, &profile, target, cx),
             RunWhat::Script {
                 repo,
@@ -155,6 +169,14 @@ impl Workspace {
                 }
             }
             RunWhat::All(repo) => format!("every stopped process — {}", repo_name(*repo)),
+            RunWhat::Group(repos) => format!(
+                "every stopped process in {}",
+                repos
+                    .iter()
+                    .map(|r| repo_name(*r))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
             RunWhat::Profile { repo, profile } => {
                 format!("profile {profile} — {}", repo_name(*repo))
             }
@@ -289,12 +311,23 @@ impl Workspace {
             return;
         };
         let key = process_key(&view.entry.path, &format!("{}:{action}", spec.name));
+        if self.supervisor.is_running(&key) {
+            self.show_error(format!(
+                "{} {action} is still running — see Logs",
+                spec.name
+            ));
+            return;
+        }
+        let message = format!("{} {action} started — output in Logs", spec.name);
+        let cwd = view.entry.path.clone();
         self.log_key = Some(key.clone());
         self.user_stopped.insert(key.clone());
+        self.show_alert(Alert {
+            message,
+            target: Command::ShowTab(Tab::Logs),
+        });
         let supervisor = self.supervisor.clone();
-        let cwd = view.entry.path.clone();
         self.run_background(cx, "", move || {
-            supervisor.stop(&key);
             supervisor.start(&key, &command, &cwd).map(|_| ())
         });
     }
@@ -400,12 +433,18 @@ impl Workspace {
             self.show_error("Type a branch name for the new worktree");
             return;
         }
-        self.worktree_field.text.clear();
         self.refresh_worktrees = true;
         let path = view.entry.path.clone();
-        self.run_background(cx, "Worktree created", move || {
-            worktree::create(&path, &branch).map(|_| ())
-        });
+        self.run_background_then(
+            cx,
+            "Worktree created",
+            move || worktree::create(&path, &branch).map(|_| ()),
+            |this, ok| {
+                if ok {
+                    this.worktree_field.text.clear();
+                }
+            },
+        );
     }
 
     pub(super) fn remove_worktree(&mut self, repo: usize, path: PathBuf, cx: &mut Context<Self>) {
@@ -595,6 +634,20 @@ impl Workspace {
                 self.save_config();
             }
             Command::AttachRun(session) => self.attach_run(session, cx),
+            Command::AskFirst(confirm) => self.confirm = Some(*confirm),
+            Command::StopKey(key) => {
+                self.user_stopped.insert(key.clone());
+                let supervisor = self.supervisor.clone();
+                self.run_background(cx, "Stopped", move || {
+                    supervisor.stop(&key);
+                    Ok(())
+                });
+            }
+            Command::DismissToast(index) => {
+                if index < self.toasts.len() {
+                    self.toasts.remove(index);
+                }
+            }
             Command::SetMaxAgents(max) => {
                 self.config.max_agents = max;
                 self.save_config();
@@ -656,12 +709,14 @@ impl Workspace {
                 if self.split_with == Some(id) {
                     self.split_with = None;
                 }
-                // Closing a tab ends its session; quitting the app does not.
+                // Closing a tab ends its shell session; quitting the app does
+                // not. A process or script run (fk-run-*) only detaches.
                 if let Some(name) = self
                     .terminals
                     .iter()
                     .find(|t| t.id == id)
                     .and_then(|t| t.tmux.clone())
+                    .filter(|name| !name.starts_with(crate::tmux_runs::PREFIX))
                 {
                     let _ = tmux::kill(&tmux::Server::fubbik(), &name);
                 }

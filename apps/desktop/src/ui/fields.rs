@@ -1,5 +1,6 @@
 //! Text fields: key handling, and what pressing enter in each one does.
 
+use super::command_palette::PALETTE_ROWS;
 use super::*;
 
 impl Workspace {
@@ -21,8 +22,6 @@ impl Workspace {
             return;
         };
         let content = self.note_body.text.clone();
-        self.note_title.text.clear();
-        self.note_body.text.clear();
         let client = self.client.clone();
         let task = cx
             .background_executor()
@@ -31,7 +30,12 @@ impl Workspace {
             let result = task.await;
             this.update(cx, |this, cx| {
                 match result {
-                    Ok(()) => this.show_info("Note saved to fubbik"),
+                    Ok(()) => {
+                        // Cleared only once saved; a failure keeps the text.
+                        this.note_title.text.clear();
+                        this.note_body.text.clear();
+                        this.show_info("Note saved to fubbik")
+                    }
                     Err(error) => this.show_error(format!("Could not save the note: {error}")),
                 }
                 this.poll_now(true, cx);
@@ -76,7 +80,7 @@ impl Workspace {
     ) {
         let keystroke = &event.keystroke;
         // The run prompt answers keys even when a field had focus.
-        if self.run_prompt.is_some() {
+        if self.run_prompt.is_some() || self.confirm.is_some() {
             return;
         }
         if keystroke.modifiers.platform && keystroke.key == "v" {
@@ -107,12 +111,23 @@ impl Workspace {
             (Field::Palette, KeyOutcome::Up) => {
                 self.palette_selected = self.palette_selected.saturating_sub(1)
             }
-            (Field::Palette, KeyOutcome::Down) => self.palette_selected += 1,
+            (Field::Palette, KeyOutcome::Down) => {
+                // Only the rows shown can be chosen.
+                let last = self
+                    .palette_matches()
+                    .len()
+                    .min(PALETTE_ROWS)
+                    .saturating_sub(1);
+                self.palette_selected = (self.palette_selected + 1).min(last);
+            }
             (Field::Palette, KeyOutcome::Cancel) => self.toggle_palette(window),
             (Field::Palette, KeyOutcome::Submit) => {
                 let matches = self.palette_matches();
                 let chosen = matches
-                    .get(self.palette_selected.min(matches.len().saturating_sub(1)))
+                    .get(
+                        self.palette_selected
+                            .min(matches.len().min(PALETTE_ROWS).saturating_sub(1)),
+                    )
                     .cloned();
                 self.toggle_palette(window);
                 if let Some(entry) = chosen {

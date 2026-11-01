@@ -86,7 +86,7 @@ impl Workspace {
                             .text_color(theme::text_muted())
                             .cursor_pointer()
                             .on_click(cx.listener(|this, _, _, cx| {
-                                this.tab = super::Tab::Setup;
+                                this.run(Command::ShowTab(super::Tab::Setup), cx);
                                 cx.notify();
                             }))
                             .child(div().size(px(7.)).rounded_full().bg(color))
@@ -138,9 +138,7 @@ impl Workspace {
                         .child(
                             button(SharedString::from(format!("group-start-{name}")), "▶")
                                 .on_click(cx.listener(move |this, _, _, cx| {
-                                    for &repo in &start {
-                                        this.ask_where(super::RunWhat::All(repo), cx);
-                                    }
+                                    this.ask_where(super::RunWhat::Group(start.clone()), cx);
                                     cx.notify();
                                 })),
                         )

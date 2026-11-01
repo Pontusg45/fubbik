@@ -50,7 +50,7 @@ use crate::sessions::{AiSession, SessionIndex, SessionState};
 use crate::supervisor::{self, Supervisor};
 use crate::{claude_md, detect, gaps, git, launch, poll, setup, theme, tmux, worktree};
 
-use palette::{Command, Entry, RunTarget, RunWhat};
+use palette::{Command, Confirm, Entry, RunTarget, RunWhat};
 use text::{KeyOutcome, TextField, apply_key};
 
 actions!(
@@ -353,6 +353,9 @@ struct Toast {
     action: Option<Command>,
 }
 
+/// Toasts kept at once.
+const TOASTS_MAX: usize = 4;
+
 /// An agent launch waiting for a free slot.
 #[derive(Debug, Clone)]
 pub struct QueuedLaunch {
@@ -475,9 +478,14 @@ pub struct Workspace {
     /// A frozen copy of the log while paused.
     log_paused: Option<Vec<String>>,
     log_scroll: ScrollHandle,
+    /// The log follows new output only while it was at the bottom.
+    log_follow: bool,
     /// Processes the user stopped, so their exit is not reported as a crash.
     user_stopped: HashSet<String>,
-    toast: Option<Toast>,
+    /// Newest last; info fades after `TOAST_FOR`, errors stay until closed.
+    toasts: Vec<Toast>,
+    /// "Are you sure?" while open.
+    confirm: Option<Confirm>,
     polling: bool,
     poll_again: bool,
     tick: u64,
@@ -568,8 +576,10 @@ impl Workspace {
             log_key: None,
             log_paused: None,
             log_scroll: ScrollHandle::new(),
+            log_follow: true,
             user_stopped: HashSet::new(),
-            toast: None,
+            toasts: Vec::new(),
+            confirm: None,
             polling: false,
             poll_again: false,
             tick: 0,
@@ -607,8 +617,17 @@ impl Workspace {
 
     // ── state helpers ──────────────────────────────────────────────────
 
+    fn push_toast(&mut self, toast: Toast) {
+        // The same message again refreshes it instead of stacking.
+        self.toasts.retain(|t| t.message != toast.message);
+        self.toasts.push(toast);
+        if self.toasts.len() > TOASTS_MAX {
+            self.toasts.remove(0);
+        }
+    }
+
     fn show_error(&mut self, message: impl Into<SharedString>) {
-        self.toast = Some(Toast {
+        self.push_toast(Toast {
             message: message.into(),
             error: true,
             at: Instant::now(),
@@ -617,7 +636,7 @@ impl Workspace {
     }
 
     fn show_info(&mut self, message: impl Into<SharedString>) {
-        self.toast = Some(Toast {
+        self.push_toast(Toast {
             message: message.into(),
             error: false,
             at: Instant::now(),
@@ -627,11 +646,34 @@ impl Workspace {
 
     /// A toast that does something when clicked.
     fn show_alert(&mut self, alert: Alert) {
-        self.toast = Some(Toast {
+        self.push_toast(Toast {
             message: alert.message.into(),
             error: false,
             at: Instant::now(),
             action: Some(alert.target),
+        });
+    }
+
+    /// The newest toast.
+    #[cfg(test)]
+    fn toast(&self) -> Option<&Toast> {
+        self.toasts.last()
+    }
+
+    /// Asks before running `command`.
+    fn ask(
+        &mut self,
+        title: impl Into<String>,
+        detail: impl Into<String>,
+        action: &str,
+        command: Command,
+    ) {
+        self.confirm = Some(Confirm {
+            title: title.into(),
+            detail: detail.into(),
+            action: action.to_string(),
+            danger: true,
+            command,
         });
     }
 
@@ -663,6 +705,34 @@ impl Workspace {
     }
 
     /// Runs blocking work off the main thread, then reports and re-polls.
+    /// Like `run_background`, then `after(ok)` on the main thread (to clear
+    /// a field only once its action worked, or put text back on failure).
+    fn run_background_then(
+        &mut self,
+        cx: &mut Context<Self>,
+        done: &'static str,
+        work: impl FnOnce() -> Result<(), String> + Send + 'static,
+        after: impl FnOnce(&mut Self, bool) + 'static,
+    ) {
+        let task = cx.background_executor().spawn(async move { work() });
+        cx.spawn(async move |this, cx| {
+            let result = task.await;
+            this.update(cx, |this, cx| {
+                let ok = result.is_ok();
+                match result {
+                    Ok(()) if !done.is_empty() => this.show_info(done),
+                    Ok(()) => {}
+                    Err(error) => this.show_error(error),
+                }
+                after(this, ok);
+                this.poll_now(false, cx);
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     fn run_background(
         &mut self,
         cx: &mut Context<Self>,

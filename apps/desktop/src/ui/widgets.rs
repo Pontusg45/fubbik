@@ -31,10 +31,56 @@ pub fn pill(text: impl Into<SharedString>, color: Hsla) -> Div {
         .px_2()
         .py_0p5()
         .rounded_full()
+        .max_w(px(240.))
+        .overflow_hidden()
         .bg(color.opacity(0.15))
         .text_xs()
         .text_color(color)
-        .child(text.into())
+        .child(div().truncate().child(text.into()))
+}
+
+/// A button that cannot be pressed now; `why` says so on hover-free UIs
+/// by replacing nothing — callers put the reason in nearby text.
+pub fn disabled_button(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Stateful<Div> {
+    div()
+        .id(id.into())
+        .flex_none()
+        .px_2()
+        .py_1()
+        .rounded_md()
+        .border_1()
+        .border_color(theme::border())
+        .text_xs()
+        .text_color(theme::text_muted())
+        .opacity(0.6)
+        .child(label.into())
+}
+
+/// One line of muted metadata, cut with an ellipsis instead of wrapping.
+pub fn muted_line(text: impl Into<SharedString>) -> Div {
+    div()
+        .min_w(px(0.))
+        .overflow_hidden()
+        .text_xs()
+        .text_color(theme::text_muted())
+        .child(div().truncate().child(text.into()))
+}
+
+/// "Checking …" while something loads, saying what.
+pub fn loading(what: impl Into<SharedString>) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .gap_2()
+        .text_xs()
+        .text_color(theme::text_muted())
+        .child(
+            div()
+                .size(px(6.))
+                .rounded_full()
+                .bg(theme::accent().opacity(0.7)),
+        )
+        .child(what.into())
 }
 
 pub fn button(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Stateful<Div> {
@@ -69,12 +115,18 @@ pub fn muted(text: impl Into<SharedString>) -> Div {
 }
 
 pub fn section(title: impl Into<SharedString>, rows: Vec<AnyElement>) -> Div {
+    section_or(title, rows, "Nothing here yet")
+}
+
+/// A section that says `empty` when it has no rows ("All clear", "No live
+/// agents"…), instead of a generic line.
+pub fn section_or(title: impl Into<SharedString>, rows: Vec<AnyElement>, empty: &str) -> Div {
     let body = if rows.is_empty() {
         vec![
             div()
                 .px_4()
                 .py_3()
-                .child(muted("Nothing configured"))
+                .child(muted(empty.to_string()))
                 .into_any_element(),
         ]
     } else {

@@ -52,6 +52,9 @@ fn command_color(command: &Command) -> gpui::Hsla {
     }
 }
 
+/// Palette rows shown (and choosable) at once.
+pub(super) const PALETTE_ROWS: usize = 12;
+
 impl Workspace {
     /// The first character picks what the palette lists: `?` chunks, `@`
     /// repos, `#` tasks, `!` what is running (processes and agents), `>`
@@ -397,11 +400,13 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let matches = self.palette_matches();
-        let selected = self.palette_selected.min(matches.len().saturating_sub(1));
+        let selected = self
+            .palette_selected
+            .min(matches.len().min(PALETTE_ROWS).saturating_sub(1));
         let rows =
             matches
                 .into_iter()
-                .take(12)
+                .take(PALETTE_ROWS)
                 .enumerate()
                 .map(|(i, entry)| {
                     let command = entry.command.clone();

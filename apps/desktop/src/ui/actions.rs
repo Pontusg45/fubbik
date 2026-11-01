@@ -606,11 +606,21 @@ impl Workspace {
         let Some(pane) = self.reply_target.clone() else {
             return;
         };
-        let text = std::mem::take(&mut self.reply_field.text);
+        let text = self.reply_field.text.clone();
         if text.trim().is_empty() {
             return;
         }
-        self.run_background(cx, "Sent", move || crate::tmux::send(&pane, &text));
+        // Cleared only once it reached the agent; a failed send keeps it.
+        self.run_background_then(
+            cx,
+            "Sent",
+            move || crate::tmux::send(&pane, &text),
+            |this, ok| {
+                if ok {
+                    this.reply_field.text.clear();
+                }
+            },
+        );
     }
 
     /// Shows an agent's pane: its tab when it is one of the app's sessions,
@@ -681,12 +691,28 @@ impl Workspace {
                     },
                 ),
                 (
-                    format!("Merge into {main_branch}"),
-                    Command::RunIn {
-                        dir: main_path,
-                        label: format!("Merge {branch}"),
-                        command: format!("git merge --no-ff '{}'", branch.replace('\'', "")),
-                    },
+                    format!("Merge into {main_branch}…"),
+                    Command::AskFirst(Box::new(super::palette::Confirm {
+                        title: format!("Merge {branch} into {main_branch}?"),
+                        detail: if this.behind > FAR_BEHIND {
+                            format!(
+                                "{branch} is {} commits behind {main_branch}: expect conflicts (rebase it first). Runs git merge --no-ff in the main checkout, in a terminal tab.",
+                                this.behind
+                            )
+                        } else {
+                            format!(
+                                "Runs git merge --no-ff in the main checkout ({}), in a terminal tab.",
+                                super::display_path(&main_path)
+                            )
+                        },
+                        action: "Merge".into(),
+                        danger: this.behind > FAR_BEHIND,
+                        command: Command::RunIn {
+                            dir: main_path,
+                            label: format!("Merge {branch}"),
+                            command: format!("git merge --no-ff '{}'", branch.replace('\'', "")),
+                        },
+                    })),
                 ),
             ],
         });

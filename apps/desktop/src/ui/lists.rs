@@ -105,10 +105,15 @@ impl Workspace {
                     return false;
                 };
                 match key {
-                    "enter" | "s" if process.owned => {
-                        self.run(Command::StopProcess(repo, cursor), cx)
+                    // ⏎ never stops: on a running process it shows the output.
+                    "enter" if process.owned || process.status.is_up() => {
+                        self.log_key = Some(process.key.clone());
+                        self.log_paused = None;
+                        self.tab = Tab::Logs;
                     }
-                    "enter" | "s" => self.run(Command::StartProcess(repo, cursor), cx),
+                    "enter" => self.run(Command::StartProcess(repo, cursor), cx),
+                    "s" if process.owned => self.run(Command::StopProcess(repo, cursor), cx),
+                    "s" => self.run(Command::StartProcess(repo, cursor), cx),
                     "r" => self.run(Command::RestartProcess(repo, cursor), cx),
                     "l" => {
                         self.log_key = Some(process.key.clone());
@@ -116,8 +121,10 @@ impl Workspace {
                         self.tab = Tab::Logs;
                     }
                     "o" => match process.spec.port {
-                        Some(port) => cx.open_url(&format!("http://localhost:{port}")),
-                        None => return false,
+                        Some(port) if process.status.is_up() => {
+                            cx.open_url(&format!("http://localhost:{port}"))
+                        }
+                        _ => return false,
                     },
                     _ => return false,
                 }

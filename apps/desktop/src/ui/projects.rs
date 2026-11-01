@@ -6,7 +6,7 @@ use gpui::{AnyElement, FontWeight, Hsla, SharedString, relative};
 
 use super::today::Section;
 use super::views::repo_badge;
-use super::widgets::{label, muted, pill, status_pill, top_highlight};
+use super::widgets::{label, muted, muted_line, pill, status_pill, top_highlight};
 use super::*;
 use crate::model::Status;
 use crate::system::{self, Stats, bytes, percent};
@@ -61,13 +61,16 @@ fn two_columns(cards: Vec<AnyElement>) -> gpui::Div {
             .flex()
             .flex_col()
             .flex_1()
-            .min_w(px(260.))
+            // Shrinks with the window: long text truncates, never widens it.
+            .min_w(px(0.))
+            .overflow_hidden()
             .gap_3()
             .children(cards)
     };
     div()
         .flex()
         .flex_1()
+        .min_w(px(0.))
         .items_start()
         .gap_3()
         .child(column(left))
@@ -265,10 +268,11 @@ impl Workspace {
                     .child(
                         div()
                             .flex_1()
+                            .min_w(px(0.))
                             .overflow_hidden()
                             .text_sm()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .child(name.clone()),
+                            .child(div().truncate().child(name.clone())),
                     )
                     .children(view.snapshot.as_ref().map(|s| status_pill(s.status()))),
             );
@@ -283,15 +287,9 @@ impl Workspace {
             if git.ahead > 0 || git.behind > 0 {
                 line.push(format!("↑{} ↓{}", git.ahead, git.behind));
             }
-            body = body.child(muted(line.join(" · ")));
+            body = body.child(muted_line(line.join(" · ")));
             if !git.last_commit.is_empty() {
-                body = body.child(
-                    div()
-                        .text_xs()
-                        .text_color(theme::text_muted())
-                        .overflow_hidden()
-                        .child(git.last_commit.clone()),
-                );
+                body = body.child(muted_line(git.last_commit.clone()));
             }
         }
 

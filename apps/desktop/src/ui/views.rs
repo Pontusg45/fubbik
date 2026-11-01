@@ -1029,6 +1029,19 @@ impl Workspace {
                 .id("log-lines")
                 .track_scroll(&self.log_scroll)
                 .overflow_y_scroll()
+                // Scrolling up stops following new output; back at the
+                // bottom, it follows again.
+                .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
+                    let up = event.delta.pixel_delta(px(16.)).y > px(0.);
+                    if up {
+                        this.log_follow = false;
+                    } else {
+                        let max = this.log_scroll.max_offset().height;
+                        let at = -this.log_scroll.offset().y;
+                        this.log_follow = at >= max - px(24.);
+                    }
+                    cx.notify();
+                }))
                 .h(px(460.))
                 .p_3()
                 .rounded_lg()

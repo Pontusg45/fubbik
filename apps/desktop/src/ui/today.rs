@@ -223,7 +223,12 @@ impl Workspace {
                 .when(highlighted, |d| d.bg(theme::surface_hover()))
                 .child(super::views::repo_badge(&r.repo, 18.));
             if let Some((tag, color)) = &r.tag {
-                line = line.child(div().w(px(96.)).child(pill(tag.clone(), *color)));
+                line = line.child(
+                    div()
+                        .w(px(124.))
+                        .flex_none()
+                        .child(pill(tag.clone(), *color)),
+                );
             }
             line = line.child(
                 div()

@@ -17,12 +17,18 @@ impl Workspace {
         self.tick += 1;
         // Redraw only for what changes with time alone; polls redraw themselves.
         let mut redraw = false;
-        if self
-            .toast
-            .as_ref()
-            .is_some_and(|t| t.at.elapsed() > TOAST_FOR)
-        {
-            self.toast = None;
+        let before = self.toasts.len();
+        // Errors stay until closed; the rest fade (alerts get longer).
+        self.toasts.retain(|t| {
+            t.error
+                || t.at.elapsed()
+                    < if t.action.is_some() {
+                        TOAST_FOR * 3
+                    } else {
+                        TOAST_FOR
+                    }
+        });
+        if self.toasts.len() != before {
             redraw = true;
         }
         for message in crate::backend::take_notices() {
@@ -44,7 +50,9 @@ impl Workspace {
             redraw = true;
         }
         if self.tab == Tab::Logs && self.log_paused.is_none() {
-            self.log_scroll.scroll_to_bottom();
+            if self.log_follow {
+                self.log_scroll.scroll_to_bottom();
+            }
             redraw = true;
         }
         if redraw {

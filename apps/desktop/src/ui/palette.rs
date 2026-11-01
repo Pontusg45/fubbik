@@ -62,6 +62,17 @@ impl RunTarget {
     }
 }
 
+/// A confirmation before something that cannot be undone.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Confirm {
+    pub title: String,
+    pub detail: String,
+    /// The confirm button's label ("Remove", "Kill", "Merge"…).
+    pub action: String,
+    pub danger: bool,
+    pub command: Command,
+}
+
 /// What to run, before knowing where.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RunWhat {
@@ -71,6 +82,8 @@ pub enum RunWhat {
     },
     /// Every stopped process in a repo.
     All(usize),
+    /// Every stopped process in each of these repos (a sidebar group).
+    Group(Vec<usize>),
     Profile {
         repo: usize,
         profile: String,
@@ -126,6 +139,12 @@ pub enum Command {
     SetRunIn(Option<RunTarget>),
     /// A run's tmux session, in a terminal tab.
     AttachRun(String),
+    /// Closes toast `index` (0 = oldest shown).
+    DismissToast(usize),
+    /// Asks first, then runs the confirmation's command.
+    AskFirst(Box<Confirm>),
+    /// Stops whatever the supervisor runs under this key (a script, a task).
+    StopKey(String),
     ShowBackups,
     /// Stop a `--serve` server left running by "Quit, Keep Server Running".
     StopBackgroundServer,

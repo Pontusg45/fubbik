@@ -161,7 +161,7 @@ fn unknown_ghostty_theme_shows_an_error(cx: &mut TestAppContext) {
 
     // Then
     let toast = view.read_with(cx, |w, _| {
-        w.toast.as_ref().map(|t| (t.error, t.message.to_string()))
+        w.toast().map(|t| (t.error, t.message.to_string()))
     });
     let (error, message) = toast.expect("a toast");
     assert!(error);
@@ -351,7 +351,7 @@ fn all_agents_tab_and_clickable_alerts(cx: &mut TestAppContext) {
                 tab: Tab::Processes,
             },
         });
-        let action = w.toast.as_ref().and_then(|t| t.action.clone()).unwrap();
+        let action = w.toast().and_then(|t| t.action.clone()).unwrap();
         w.run(action, cx);
     });
 
@@ -602,7 +602,7 @@ fn merged_task_branch_closes_the_task_and_removes_its_worktree(cx: &mut TestAppC
         .any(|r| r == "PATCH /api/plans/p1/tasks/a");
     assert!(patched, "requests: {:?}", log.lock().unwrap());
     assert!(!wt.exists(), "the clean, merged worktree is removed");
-    let action = view.read_with(cx, |w, _| w.toast.as_ref().and_then(|t| t.action.clone()));
+    let action = view.read_with(cx, |w, _| w.toast().and_then(|t| t.action.clone()));
     assert!(
         matches!(action, Some(Command::SaveTaskNote { .. })),
         "{action:?}"
