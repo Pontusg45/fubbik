@@ -73,6 +73,7 @@ impl Workspace {
             Field::FubbikBin => &mut self.fubbik_bin_field,
             Field::Commit => &mut self.commit_field,
             Field::GraphSearch => &mut self.graph_search,
+            Field::BranchFilter => &mut self.branch_filter,
         }
     }
 
@@ -198,6 +199,7 @@ impl Workspace {
             Field::FubbikBin => &self.fubbik_bin_field,
             Field::Commit => &self.commit_field,
             Field::GraphSearch => &self.graph_search,
+            Field::BranchFilter => &self.branch_filter,
         };
         let focus = text_field.focus.clone();
         widgets::text_box(&text_field.text, placeholder, focus.is_focused(window))

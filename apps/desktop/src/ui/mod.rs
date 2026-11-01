@@ -270,6 +270,7 @@ enum Field {
     FubbikBin,
     Commit,
     GraphSearch,
+    BranchFilter,
 }
 
 /// One repo's poll. `knowledge` and `setup` only come with slow polls.
@@ -448,6 +449,7 @@ pub struct Workspace {
     worktree_field: TextField,
     commit_field: TextField,
     graph_search: TextField,
+    branch_filter: TextField,
     /// Home → Tools: the last check, and whether one is running.
     tools: Option<Loadable<crate::tools::Report>>,
     tools_refreshing: bool,
@@ -628,6 +630,7 @@ impl Workspace {
             worktree_field: TextField::new(cx),
             commit_field: TextField::new(cx),
             graph_search: TextField::new(cx),
+            branch_filter: TextField::new(cx),
             tools: None,
             tools_refreshing: false,
             deps: Default::default(),

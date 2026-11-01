@@ -219,7 +219,124 @@ pub fn push_command(repo: &Path, branch: &str) -> String {
     }
 }
 
-/// The repo root containing `path`.
+/// One commit in the log.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Commit {
+    pub hash: String,
+    pub short: String,
+    pub subject: String,
+    pub author: String,
+    /// `3 hours ago`.
+    pub when: String,
+    /// Branch and tag names pointing at it (`HEAD -> main`, `origin/main`).
+    pub refs: Vec<String>,
+}
+
+/// The last `n` commits of the current branch.
+pub fn log(repo: &Path, n: usize) -> Result<Vec<Commit>, String> {
+    let count = format!("-n{n}");
+    let out = git(
+        repo,
+        &[
+            "log",
+            &count,
+            "--format=%H%x1f%h%x1f%s%x1f%an%x1f%cr%x1f%D%x1e",
+        ],
+    )?;
+    Ok(out
+        .split('\x1e')
+        .filter_map(|record| {
+            let mut f = record.trim_start_matches('\n').split('\x1f');
+            let hash = f.next().filter(|h| !h.is_empty())?.to_string();
+            Some(Commit {
+                hash,
+                short: f.next()?.to_string(),
+                subject: f.next()?.to_string(),
+                author: f.next()?.to_string(),
+                when: f.next()?.to_string(),
+                refs: f
+                    .next()
+                    .unwrap_or_default()
+                    .split(", ")
+                    .map(str::trim)
+                    .filter(|r| !r.is_empty())
+                    .map(str::to_string)
+                    .collect(),
+            })
+        })
+        .collect())
+}
+
+/// A local or remote-tracking branch.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Branch {
+    /// `main`, or `origin/feat` for a remote one.
+    pub name: String,
+    pub remote: bool,
+    pub current: bool,
+    pub upstream: Option<String>,
+    pub when: String,
+    pub subject: String,
+}
+
+/// Every local and remote branch, most recently committed first.
+pub fn branches(repo: &Path) -> Result<Vec<Branch>, String> {
+    let out = git(
+        repo,
+        &[
+            "for-each-ref",
+            "--sort=-committerdate",
+            "--format=%(refname)%1f%(refname:short)%1f%(HEAD)%1f%(upstream:short)%1f%(committerdate:relative)%1f%(subject)%1e",
+            "refs/heads",
+            "refs/remotes",
+        ],
+    )?;
+    Ok(out
+        .split('\x1e')
+        .filter_map(|record| {
+            let mut f = record.trim_start_matches('\n').split('\x1f');
+            let full = f.next().filter(|r| !r.is_empty())?;
+            let name = f.next()?.to_string();
+            // `origin/HEAD` is a pointer, not a branch.
+            if full.ends_with("/HEAD") {
+                return None;
+            }
+            Some(Branch {
+                remote: full.starts_with("refs/remotes/"),
+                name,
+                current: f.next()? == "*",
+                upstream: f.next().filter(|u| !u.is_empty()).map(str::to_string),
+                when: f.next().unwrap_or_default().to_string(),
+                subject: f.next().unwrap_or_default().to_string(),
+            })
+        })
+        .collect())
+}
+
+/// Switches to a branch: a local one as is; a remote one (`origin/feat`) as
+/// a new local branch tracking it. Git refuses when uncommitted changes
+/// would be overwritten, and says so.
+pub fn switch(repo: &Path, branch: &Branch) -> Result<(), String> {
+    if branch.remote {
+        git(repo, &["switch", "--track", &branch.name]).map(|_| ())
+    } else {
+        git(repo, &["switch", &branch.name]).map(|_| ())
+    }
+}
+
+/// The local name for a branch (`origin/feat` → `feat`).
+pub fn local_name(branch: &Branch) -> String {
+    if branch.remote {
+        branch
+            .name
+            .split_once('/')
+            .map_or(branch.name.clone(), |(_, rest)| rest.to_string())
+    } else {
+        branch.name.clone()
+    }
+}
+
+/// The repo root containing `path`./// The repo root containing `path`.
 pub fn toplevel(path: &Path) -> Option<std::path::PathBuf> {
     git(path, &["rev-parse", "--show-toplevel"])
         .ok()
@@ -299,6 +416,63 @@ mod tests {
         assert_eq!(head.trim(), "local", "nothing was merged or rebased");
         assert_eq!(push_known, "git push");
         assert_eq!(push_new, "git push -u origin 'feat'");
+    }
+
+    #[test]
+    fn log_branches_and_switching_in_a_real_repo() {
+        // Given: main with two commits, a feature branch, and a clone of it
+        let dir = tempfile::tempdir().unwrap();
+        let origin = dir.path().join("origin");
+        std::fs::create_dir_all(&origin).unwrap();
+        let run = |repo: &Path, args: &[&str]| git(repo, args).unwrap();
+        run(&origin, &["init", "-q", "-b", "main"]);
+        run(&origin, &["config", "user.email", "t@example.com"]);
+        run(&origin, &["config", "user.name", "Tess"]);
+        for n in ["one", "two"] {
+            std::fs::write(origin.join("a.txt"), n).unwrap();
+            run(&origin, &["add", "a.txt"]);
+            run(&origin, &["commit", "-qm", &format!("commit {n}")]);
+        }
+        run(&origin, &["branch", "feat"]);
+        run(
+            dir.path(),
+            &["clone", "-q", origin.to_str().unwrap(), "clone"],
+        );
+        let clone = dir.path().join("clone");
+
+        // When
+        let commits = log(&origin, 10).unwrap();
+        let listed = branches(&clone).unwrap();
+        let remote_feat = listed
+            .iter()
+            .find(|b| b.name == "origin/feat")
+            .unwrap()
+            .clone();
+        switch(&clone, &remote_feat).unwrap();
+        let after = branches(&clone).unwrap();
+
+        // Then
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].subject, "commit two");
+        assert_eq!(commits[0].author, "Tess");
+        assert!(
+            commits[0].refs.iter().any(|r| r.contains("main")),
+            "{:?}",
+            commits[0].refs
+        );
+        assert!(
+            listed
+                .iter()
+                .any(|b| b.name == "main" && b.current && !b.remote)
+        );
+        assert!(!listed.iter().any(|b| b.name.ends_with("/HEAD")));
+        assert_eq!(local_name(&remote_feat), "feat");
+        let feat = after
+            .iter()
+            .find(|b| b.name == "feat")
+            .expect("a local feat now");
+        assert!(feat.current);
+        assert_eq!(feat.upstream.as_deref(), Some("origin/feat"));
     }
 
     #[test]

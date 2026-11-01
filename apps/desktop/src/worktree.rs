@@ -257,6 +257,41 @@ pub fn create(repo: &Path, branch: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+/// A new worktree for an existing branch, next to the repo. A remote branch
+/// (`origin/feat`) gets a local branch tracking it.
+pub fn add_existing(repo: &Path, branch: &crate::git::Branch) -> Result<PathBuf, String> {
+    let local = crate::git::local_name(branch);
+    let repo_name = repo
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let path = repo
+        .parent()
+        .unwrap_or(repo)
+        .join(format!("{repo_name}-{}", local.replace('/', "-")));
+    if path.exists() {
+        return Err(format!("{} already exists", path.display()));
+    }
+    let path_arg = path.to_string_lossy().into_owned();
+    if branch.remote {
+        git(
+            repo,
+            &[
+                "worktree",
+                "add",
+                "--track",
+                "-b",
+                &local,
+                &path_arg,
+                &branch.name,
+            ],
+        )?;
+    } else {
+        git(repo, &["worktree", "add", &path_arg, &branch.name])?;
+    }
+    Ok(path)
+}
+
 /// `git worktree remove` without `--force`: git refuses a dirty worktree.
 pub fn remove(repo: &Path, path: &Path) -> Result<(), String> {
     let path_arg = path.to_string_lossy().into_owned();
