@@ -60,7 +60,8 @@ Starting the app is all fubbik needs. Docker, `fubbik serve` and `just dev` aren
 
 ## Home
 
-The app opens at Home (⌘0, or "Home" at the top of the sidebar): every registered repo as a card, and the computer beside them.
+The app opens at Home (⌘0, or "Home" at the top of the sidebar). Home has two tabs: **Projects**, every registered repo as
+a card with the computer beside them, and **All agents** (⇧⌘A), every repo's live agents and recent sessions.
 
 - **A card per repo:** status, branch, changes, ahead/behind and the last commit, processes up (one dot each), live and waiting
   agents, worktrees, how many things need you, overlapping worktrees, knowledge chunks and failing requirements. Click a card,
@@ -257,7 +258,15 @@ start = "…"                        # optional, overrides the compose default; 
   Logs; also in ⌘K), and run profiles from the services file — `[profile.dev] processes = ["api", "web"]` starts exactly
   those and stops the repo's others.
 - **Quick capture** (⇧⌘N): a note into the selected repo's fubbik space from anywhere.
-- **All agents** (⇧⌘A): every repo's live agents and recent sessions in one view.
+- **Changes** (⇧⌘G): the changed files of the repo or any of its worktrees, staged and not, with each file's colored diff;
+  stage and unstage files (or all), and commit what is staged. Beside the commit box: the fubbik chunks related to the
+  staged files (`fubbik --json check-files --staged`), so the knowledge for a change is in view before it is committed.
+- **Pull requests** (`gh`, repos with a GitHub remote, read every 3 min and on Refresh): each worktree's branch shows its
+  latest PR as a pill (checks, review, conflicts) with a "PR #n" button; the Changes tab shows it for the checkout picked.
+  An open PR with failing checks, changes requested or conflicts is a "Needs you" line on Today.
+- **Live tmux events:** global hooks on the app's tmux server (`alert-bell`, `pane-died`) append to
+  `~/.config/fubbik/tmux-events.log`, read every 300 ms. A bell (`\a`) in a terminal tab raises a toast and a "Needs you"
+  line until the tab is looked at; a pane that exits re-polls at once, so a run's exit shows straight away.
 - **Worktree review:** "Review" on a worktree shows its commits, diffstat and colored diff against main, with "Open PR"
   (`gh pr create --fill`) and "Merge into main" (`git merge --no-ff`), each run in a terminal tab.
 - **Codex waiting:** Codex has no live-session registry, so a Codex screen that changed and then stayed still for three
@@ -269,7 +278,7 @@ start = "…"                        # optional, overrides the compose default; 
   debounce); the 1 s tick only redraws for toasts and the live log; knowledge fetches back off while the fubbik API is
   down (60 s, doubling to 5 min).
 - **Keys:** ⌘/ shows every shortcut, and ⌘K lists each command's key beside it. Tabs: ⌘1 Today, ⌘2 Overview, ⌘3 Processes,
-  ⌘4 Logs, ⌘5 Worktrees, ⌘6 Sessions, ⌘7 Plans, ⌘8 Knowledge, ⌘9 Terminal, ⇧⌘D Databases, ⇧⌘I Insights, ⇧⌘A Agents, ⌘,
+  ⌘4 Logs, ⌘5 Worktrees, ⌘6 Sessions, ⌘7 Plans, ⌘8 Knowledge, ⌘9 Terminal, ⇧⌘D Databases, ⇧⌘I Insights, ⇧⌘G Changes, ⇧⌘A Agents, ⌘,
   Setup. ⌃1–⌃9 pick a repo, ⇧⌘J jumps to the next thing that needs you, ⇧⌘R replies to the agent that has waited longest,
   ⇧⌘S starts the next ready task in the background, ⇧⌘N captures a note. In a terminal: ⌘T new shell, ⌘W close, ⌘1–⌘9 and
   ⇧⌘[ / ⇧⌘] switch tabs, ⌘D split, ⇧⌘K clear. Rebind any of them in `~/.config/fubbik/keymap.toml` (Setup → Keyboard
@@ -302,7 +311,9 @@ src/main.rs        window, menus, key bindings, --probe; quitting stops child pr
 src/config.rs      AppConfig / RepoEntry: load, save, add, remove
 src/services.rs    fubbik.services.toml: ProcessSpec, DatabaseSpec
 src/detect.rs      starter services file from package.json and compose
-src/git.rs         porcelain v2 status, remote → web URL
+src/git.rs         porcelain v2 status, changed files, diffs, stage / unstage / commit, remote → web URL
+src/github.rs      pull requests and CI checks per branch (gh pr list)
+src/tmux_events.rs tmux hooks → events file (bells, pane exits), read incrementally
 src/probe.rs       port, owner PID, HTTP health, TCP, compose, ps
 src/supervisor.rs  child processes: process groups, log ring buffers
 src/fubbik.rs      fubbik API client (space, knowledge, quick note)
@@ -326,7 +337,7 @@ src/system.rs      the computer's stats for Home (CPU, memory, disk, battery, ne
 src/mcp.rs         the app's MCP server (HTTP on :3100, --mcp stdio bridge), answering from ui/mcp_publish.rs
 src/backend.rs     the built-in server: Postgres cluster, in-process API, import, backups, server.json, --serve
 src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,
-                   chrome, preferences, tasks, today, insights), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
+                                      chrome, preferences, tasks, today, insights, changes, prs, tmux_live), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
                    setup_view.rs; terminal_view.rs), actions.rs (fubbik calls and scans), palette, text field, widgets,
                    keymap.rs (bindings + keymap.toml), hotkeys.rs, lists.rs (keyboard lists)
 ```
