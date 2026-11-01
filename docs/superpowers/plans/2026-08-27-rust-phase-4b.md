@@ -15,6 +15,7 @@
 - `export DATABASE_URL="postgres://postgres:password@localhost:5434/fubbik_rs"` before any `cargo` command that touches sqlx macros.
 - The dev database runs in the repo's own image `fubbik-postgres:pg18-vector-age` (built by `docker/postgres/Dockerfile`, wired at `docker-compose.yml:68`). It is the only image that has **both** pgvector and AGE. Do not substitute a Docker Hub image.
 - Every `docker` command needs `--context orbstack`. Never run `docker context use`.
+  > **Superseded 2026-11-01:** Docker Desktop is gone and the global context is now `orbstack`, so plain `docker` works; `--context orbstack` is harmless but unneeded.
 - `cargo sqlx prepare --workspace` **alone drops test-target-only entries.** Always run `cargo sqlx prepare --workspace -- --tests`.
 - CI runs `pgvector/pgvector:pg18` (`.github/workflows/rust.yml:17`): **pgvector is present, AGE is not.** Vector assertions run in CI; AGE assertions must be gated with `fubbik_db::age::is_available(&pool)` and skipped when absent, exactly as in Phase 4a.
 - Commit with explicit pathspecs. Never `git add -A`.

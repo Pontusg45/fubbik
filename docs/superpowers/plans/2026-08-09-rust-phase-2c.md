@@ -15,6 +15,7 @@ Every task's requirements implicitly include this section.
 - **Run cargo in the main tree. Do NOT set `CARGO_TARGET_DIR`. Do NOT create a git worktree** unless explicitly told to — disk runs near capacity and each `target/` is the largest consumer.
 - **`export DATABASE_URL="postgres://postgres:password@localhost:5434/fubbik_rs"`** before running any test, or every sqlx test panics with `DATABASE_URL must be set: EnvVar(NotPresent)` — this looks like real breakage and is pure harness error.
 - **Every `docker` command needs `--context orbstack`.** The default `desktop-linux` context points at a Docker Desktop that is not running, and its error misleadingly reads as an API version mismatch. Never run `docker context use` — it rewrites the user's global config.
+  > **Superseded 2026-11-01:** Docker Desktop is gone and the global context is now `orbstack`, so plain `docker` works; `--context orbstack` is harmless but unneeded.
 - **axum 0.8 path syntax is `/{id}`, NOT `/:id`** — the colon form panics at router build.
 - **Every `#[sqlx::test]` in `fubbik-api` needs `migrations = "../fubbik-db/migrations"`**, else the DB is empty and everything 500s with a misleading routing-like error.
 - **Never edit an applied migration.** Checksums are recorded; no test catches the break. Every table in this slice already exists in `crates/fubbik-db/migrations/0001_init.sql`.

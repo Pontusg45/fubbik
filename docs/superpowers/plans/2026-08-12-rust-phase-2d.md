@@ -13,6 +13,7 @@
 - **Run cargo in the main tree. Do NOT set `CARGO_TARGET_DIR`. Do NOT create a git worktree** unless told to — disk runs near capacity.
 - **`export DATABASE_URL="postgres://postgres:password@localhost:5434/fubbik_rs"`** before running any Rust test, or every sqlx test panics with `DATABASE_URL must be set: EnvVar(NotPresent)` — this looks like real breakage and is pure harness error.
 - **Every `docker` command needs `--context orbstack`.** The default `desktop-linux` context points at a Docker Desktop that is not running, and its error misleadingly reads as an API version mismatch. Never run `docker context use` — it rewrites the user's global config.
+  > **Superseded 2026-11-01:** Docker Desktop is gone and the global context is now `orbstack`, so plain `docker` works; `--context orbstack` is harmless but unneeded.
 - **Run tests in the FOREGROUND.** Four agents in the previous slice stalled by backgrounding a run and idling.
 - **Commit each task as its tests pass.** Do not hold a large uncommitted draft; two agents in the previous slice lost in-flight work.
 - Never edit an applied migration. `crates/fubbik-db/migrations/` must end this slice byte-identical to base.

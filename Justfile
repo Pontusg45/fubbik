@@ -23,9 +23,16 @@ dev: kill-dev
     just start-web &
     wait
 
-# Stop processes on the default dev ports.
+# Stop processes on the default dev ports. Stops instead if the desktop app holds :3000 (its built-in server).
 [group('Development')]
 kill-dev:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    holder="$( (lsof -nP -iTCP:3000 -sTCP:LISTEN -Fc 2>/dev/null || true) | sed -n 's/^c//p' | head -1)"
+    if [[ "$holder" == fubbik-desktop* ]]; then
+        echo "The fubbik desktop app serves :3000 (its built-in server). Quit it first, or use its server as is." >&2
+        exit 1
+    fi
     cargo run -q -p kit -- port kill 3000 3001
 
 # Builds, then `exec`s the binary so this terminal's foreground process is the

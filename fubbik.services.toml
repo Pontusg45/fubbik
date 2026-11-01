@@ -1,5 +1,10 @@
 # What the fubbik desktop app (apps/desktop) watches and runs for this repo.
 # Commands run through your login shell from the repo root.
+#
+# The desktop app's built-in server already serves the API on :3000 (on its
+# own PostgreSQL), so "api" shows as running and needs no start. "api" and the
+# "postgres" database below are for `backend = "off"` in desktop.toml, or for
+# working on the server itself (quit the app first: both use :3000).
 
 [[process]]
 name = "api"

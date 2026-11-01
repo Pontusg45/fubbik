@@ -52,6 +52,10 @@ This file provides context about the project for AI assistants.
 - Drizzle: `packages/db` keeps a reference Drizzle schema for `pnpm db:studio` (Drizzle Studio); it does not own the schema
 - Extensions: pgvector 0.8.2 (embeddings), pg_trgm (fuzzy text search), Apache AGE (graph projection). The compose image is built from
   `docker/postgres/Dockerfile`
+- Where it runs locally: by default the desktop app's built-in server (its own PostgreSQL 18 cluster in
+  `~/Library/Application Support/fubbik`, Unix socket only, no AGE; see `apps/desktop/README.md`, "Built-in server"). For server work,
+  quit the app and use `DATABASE_URL` with `just dev` (Postgres.app or the compose service). The Rust tests use their own database
+  (`just rust-test-db-start`, port 5434, with AGE). Docker means OrbStack here: plain `docker` reaches it
 
 ### Authentication
 
@@ -664,7 +668,10 @@ Personal settings live in `.env` (see `docs/guide/getting-started/configuration/
 ## Common Commands
 
 - `pnpm install` (or `just install`) — install dependencies
-- `pnpm dev` (= `just dev`) — free ports 3000/3001, then start the Rust API (`fubbik serve --port 3000`, sourcing `.env`) and the web app
+- Start the fubbik desktop app (`~/Applications/fubbik.app`, from `just desktop-install`) and the API, its database and the web UI
+  (http://127.0.0.1:3000) run with it. Nothing else to start
+- `pnpm dev` (= `just dev`) — for working on the server or web app: quit the desktop app (it holds :3000; `kill-dev` refuses to kill it),
+  then this frees ports 3000/3001 and starts the Rust API (`fubbik serve --port 3000`, sourcing `.env`) and the web app
   (3001)
 - `just start-api` / `pnpm dev:server` — Rust API only (builds, then `exec`s the binary); `just start-web` / `pnpm dev:web` — web app only; `just start-desktop` — the desktop app. `just` with no arguments lists the recipe groups (`just --list` for every recipe)
 - `pnpm build` — build the TypeScript packages and web app (turbo)
