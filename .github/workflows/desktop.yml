@@ -41,9 +41,12 @@ jobs:
             - run: rustup show
             # libghostty-vt 0.2.2 runs `zig` from PATH and needs exactly 0.15.2;
             # tmux lets the tmux tests run instead of skipping.
-            - name: Install Zig 0.15 and tmux
+            # postgresql@18 + pgvector: the built-in server's real-cluster test
+            # (backend::tests::a_fresh_cluster_starts_migrates_and_stops) runs
+            # instead of skipping.
+            - name: Install Zig 0.15, tmux and PostgreSQL 18 with pgvector
               run: |
-                  brew install zig@0.15 tmux
+                  brew install zig@0.15 tmux postgresql@18 pgvector
                   echo "$(brew --prefix zig@0.15)/bin" >> "$GITHUB_PATH"
             - uses: Swatinem/rust-cache@v2
               with:

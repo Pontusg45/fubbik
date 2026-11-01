@@ -73,9 +73,32 @@ if [[ -x "$pg_src/bin/postgres" && -f "$pg_src/share/postgresql/extension/vector
       queue+=("$pg_src/lib/$name")
     done < <(otool -L "$file" | awk '/@loader_path\/(\.\.\/lib\/)?[^ ]+\.dylib/ {print $1}')
   done
-  cp -Rp "$pg_src/lib/postgresql" "$pg_dest/lib/"
-  mkdir -p "$pg_dest/share"
-  cp -Rp "$pg_src/share/postgresql" "$pg_dest/share/"
+  # Postgres's own modules, without PostGIS/pgRouting, the language
+  # handlers fubbik never loads, and Postgres.app's permission dialog.
+  rsync -a \
+    --exclude 'pgxs' --exclude 'postgis*' --exclude 'address_standardizer*' --exclude 'libpgrouting*' \
+    --exclude 'pljs*' --exclude '*plpython3*' --exclude 'plugin_debugger*' --exclude 'auth_permission_dialog*' \
+    "$pg_src/lib/postgresql" "$pg_dest/lib/"
+  # share/: everything initdb needs, but only the extensions fubbik uses.
+  mkdir -p "$pg_dest/share/postgresql/extension"
+  rsync -a --exclude 'extension' --exclude 'contrib' "$pg_src/share/postgresql/" "$pg_dest/share/postgresql/"
+  for ext in vector pg_trgm plpgsql; do
+    cp -p "$pg_src/share/postgresql/extension/${ext}".control "$pg_src/share/postgresql/extension/${ext}"--*.sql \
+      "$pg_dest/share/postgresql/extension/"
+  done
+  # Apache AGE (graph projection), built once by build-age.sh and cached.
+  # FUBBIK_SKIP_AGE=1 leaves it out (no clone or build).
+  if [[ "${FUBBIK_SKIP_AGE:-}" == 1 ]]; then
+    echo "  without Apache AGE (FUBBIK_SKIP_AGE=1)"
+  elif age_stage="$(FUBBIK_POSTGRES_SRC="$pg_src" "$app_root/scripts/build-age.sh")"; then
+    cp -p "${age_stage}/lib/age.dylib" "$pg_dest/lib/postgresql/"
+    cp -p "${age_stage}"/extension/age* "$pg_dest/share/postgresql/extension/"
+    outside="$(otool -L "$pg_dest/lib/postgresql/age.dylib" | tail -n +2 | awk '{print $1}' | grep -vE '^(/usr/lib/|/System/|@loader_path|@rpath)' || true)"
+    [[ -z "$outside" ]] || echo "  warning: age.dylib links outside the bundle: ${outside}"
+    echo "  with Apache AGE"
+  else
+    echo "  without Apache AGE (build-age.sh failed; graph projection stays off)"
+  fi
   "$pg_dest/bin/postgres" --version >/dev/null
   echo "  $(du -sh "$pg_dest" | cut -f1) — $("$pg_dest/bin/postgres" --version)"
 else
