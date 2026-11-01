@@ -85,11 +85,24 @@ impl Client {
         title: &str,
         description: Option<&str>,
         space_id: Option<&str>,
+        priority: &str,
     ) -> Result<Plan> {
-        let created = self
-            .create_plan(title, description, space_id, &[title])
-            .await?;
-        self.update_plan_status(&created.id, "in_progress").await
+        self.send_json(
+            reqwest::Method::POST,
+            "/api/tasks",
+            serde_json::json!({
+                "title": title,
+                "description": description,
+                "spaceId": space_id,
+                "priority": priority,
+            }),
+        )
+        .await
+    }
+
+    pub async fn list_quick_tasks(&self, status: &str) -> Result<Vec<Plan>> {
+        self.get_json("/api/tasks", &[("status", status.to_owned())])
+            .await
     }
 
     pub async fn update_task_status(
@@ -106,39 +119,21 @@ impl Client {
         .await
     }
 
-    pub async fn set_quick_task_status(&self, plan_id: &str, status: &str) -> Result<PlanTask> {
-        let detail = self.get_plan(plan_id).await?;
-        let first = detail
-            .tasks
-            .first()
-            .ok_or_else(|| anyhow::anyhow!("plan {plan_id} has no task"))?;
-        self.update_task_status(plan_id, &first.id, status).await
+    pub async fn claim_quick_task(&self, plan_id: &str) -> Result<PlanDetail> {
+        self.send_json(
+            reqwest::Method::POST,
+            &format!("/api/tasks/{plan_id}/claim"),
+            serde_json::Value::Null,
+        )
+        .await
     }
 
-    pub async fn complete_quick_task(
-        &self,
-        plan_id: &str,
-        note: Option<&str>,
-    ) -> Result<(PlanTask, Plan)> {
-        let detail = self.get_plan(plan_id).await?;
-        let task = detail
-            .tasks
-            .into_iter()
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("plan {plan_id} has no task"))?;
-        let plan = self
-            .send_json(
-                reqwest::Method::POST,
-                &format!("/api/tasks/{plan_id}/complete"),
-                serde_json::json!({ "note": note }),
-            )
-            .await?;
-        Ok((
-            PlanTask {
-                status: "done".into(),
-                ..task
-            },
-            plan,
-        ))
+    pub async fn complete_quick_task(&self, plan_id: &str, note: Option<&str>) -> Result<Plan> {
+        self.send_json(
+            reqwest::Method::POST,
+            &format!("/api/tasks/{plan_id}/complete"),
+            serde_json::json!({ "note": note }),
+        )
+        .await
     }
 }

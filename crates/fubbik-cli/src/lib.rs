@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod capabilities;
 pub mod client;
 pub mod commands;
@@ -88,20 +89,37 @@ pub enum TaskCommand {
         description: Option<String>,
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
+        #[arg(long, default_value = "normal", value_parser = ["low", "normal", "high", "urgent"])]
+        priority: String,
     },
     /// List quick tasks
     List {
-        #[arg(short, long, default_value = "in_progress")]
+        #[arg(short, long, default_value = "in_progress", value_parser = ["in_progress", "completed"])]
         status: String,
     },
-    /// Mark a quick task in progress (the id is its plan id)
+    /// Claim a queued task (the id is its plan id)
     Claim { id: String },
-    /// Complete a quick task and its plan (the id is its plan id)
+    /// Complete a queued task (the id is its plan id)
     Done {
         id: String,
         #[arg(short, long)]
         note: Option<String>,
     },
+}
+
+#[derive(Subcommand)]
+pub enum AuthCommand {
+    /// Sign in and save a session for this server
+    Login {
+        email: String,
+        /// Read the password from stdin instead of prompting
+        #[arg(long)]
+        password_stdin: bool,
+    },
+    /// Revoke and remove the saved session
+    Logout,
+    /// Show the current signed-in user
+    Whoami,
 }
 
 #[derive(Subcommand)]
@@ -559,14 +577,26 @@ pub enum ChunkCommand {
     List {
         #[arg(short = 't', long)]
         r#type: Option<String>,
-        #[arg(short, long, default_value = "50")]
+        #[arg(short, long, default_value = "50", value_parser = clap::value_parser!(u32).range(1..=100))]
         limit: u32,
+        #[arg(long, default_value = "0")]
+        offset: u32,
+        #[arg(long)]
+        all: bool,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
     },
     /// Search chunks
     Search {
         query: String,
-        #[arg(short, long, default_value = "50")]
+        #[arg(short, long, default_value = "50", value_parser = clap::value_parser!(u32).range(1..=100))]
         limit: u32,
+        #[arg(long, default_value = "0")]
+        offset: u32,
+        #[arg(long)]
+        all: bool,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
     },
     /// Create a connection between two chunks
     Link {
@@ -581,6 +611,11 @@ pub enum ChunkCommand {
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Manage CLI authentication
+    Auth {
+        #[command(subcommand)]
+        command: AuthCommand,
+    },
     /// Create a chunk
     Add {
         title: String,
@@ -647,14 +682,26 @@ pub enum Command {
     List {
         #[arg(short = 't', long)]
         r#type: Option<String>,
-        #[arg(short, long, default_value = "50")]
+        #[arg(short, long, default_value = "50", value_parser = clap::value_parser!(u32).range(1..=100))]
         limit: u32,
+        #[arg(long, default_value = "0")]
+        offset: u32,
+        #[arg(long)]
+        all: bool,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
     },
     /// Search chunks by text
     Search {
         query: String,
-        #[arg(short, long, default_value = "50")]
+        #[arg(short, long, default_value = "50", value_parser = clap::value_parser!(u32).range(1..=100))]
         limit: u32,
+        #[arg(long, default_value = "0")]
+        offset: u32,
+        #[arg(long)]
+        all: bool,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
     },
     /// Check server health
     Health,
@@ -748,6 +795,14 @@ pub enum Command {
     BulkAdd {
         #[arg(long, value_name = "PATH")]
         file: PathBuf,
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long, conflicts_with_all = ["resume", "dry_run"], value_name = "PATH")]
+        report: Option<PathBuf>,
+        #[arg(long, conflicts_with = "report", value_name = "PATH")]
+        resume: Option<PathBuf>,
+        #[arg(short, long, visible_alias = "codebase")]
+        space: Option<String>,
     },
     /// Extract conventions from an instruction file and create chunks
     SeedConventions {
@@ -759,6 +814,8 @@ pub enum Command {
     /// Import chunks from JSON or Markdown
     Import {
         path: PathBuf,
+        #[arg(long)]
+        dry_run: bool,
         #[arg(short, long, visible_alias = "codebase")]
         space: Option<String>,
         #[arg(long = "type", default_value = "document")]
@@ -920,8 +977,12 @@ pub enum Command {
 }
 
 pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()> {
-    let client = client::Client::new(base_url);
+    if let Command::Auth { command } = cmd {
+        return auth::run(base_url, command, output).await;
+    }
+    let client = client::Client::authenticated(base_url)?;
     match cmd {
+        Command::Auth { .. } => unreachable!(),
         Command::Add {
             title,
             content,
@@ -1014,11 +1075,41 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
             .await
         }
         Command::Delete { id, yes } => commands::delete::run(&client, &id, yes, output).await,
-        Command::List { r#type, limit } => {
-            commands::list::run(&client, r#type.as_deref(), limit, output).await
+        Command::List {
+            r#type,
+            limit,
+            offset,
+            all,
+            space,
+        } => {
+            commands::list::run(
+                &client,
+                r#type.as_deref(),
+                limit,
+                offset,
+                all,
+                space.as_deref(),
+                output,
+            )
+            .await
         }
-        Command::Search { query, limit } => {
-            commands::search::run(&client, &query, limit, output).await
+        Command::Search {
+            query,
+            limit,
+            offset,
+            all,
+            space,
+        } => {
+            commands::search::run(
+                &client,
+                &query,
+                limit,
+                offset,
+                all,
+                space.as_deref(),
+                output,
+            )
+            .await
         }
         Command::Health => commands::health::run(&client, output).await,
         Command::Init { server, force } => commands::config::init(server.as_deref(), force, output),
@@ -1028,10 +1119,8 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
             yes,
             force,
         } => {
-            let setup_client = server
-                .as_deref()
-                .map(client::Client::new)
-                .unwrap_or_else(|| client::Client::new(base_url));
+            let setup_client =
+                client::Client::authenticated(server.as_deref().unwrap_or(base_url))?;
             commands::setup::run(&setup_client, dry_run, yes, force, output).await
         }
         Command::Doctor => commands::config::doctor(&client, output).await,
@@ -1065,12 +1154,30 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
         Command::CheckFiles { files, staged } => {
             commands::check_files::run(&client, files, staged, output).await
         }
-        Command::BulkAdd { file } => commands::bulk_add::run(&client, &file, output).await,
+        Command::BulkAdd {
+            file,
+            dry_run,
+            report,
+            resume,
+            space,
+        } => {
+            commands::bulk_add::run(
+                &client,
+                &file,
+                dry_run,
+                report.as_deref(),
+                resume.as_deref(),
+                space.as_deref(),
+                output,
+            )
+            .await
+        }
         Command::SeedConventions { file, dry_run } => {
             commands::seed_conventions::run(&client, &file, dry_run, output).await
         }
         Command::Import {
             path,
+            dry_run,
             space,
             default_type,
             recursive,
@@ -1078,6 +1185,7 @@ pub async fn run(cmd: Command, base_url: &str, output: OutputMode) -> Result<()>
             commands::import::run(
                 &client,
                 &path,
+                dry_run,
                 space.as_deref(),
                 &default_type,
                 recursive,
@@ -1228,11 +1336,33 @@ async fn run_chunk(
             .await
         }
         ChunkCommand::Remove { id, yes } => commands::delete::run(client, &id, yes, output).await,
-        ChunkCommand::List { r#type, limit } => {
-            commands::list::run(client, r#type.as_deref(), limit, output).await
+        ChunkCommand::List {
+            r#type,
+            limit,
+            offset,
+            all,
+            space,
+        } => {
+            commands::list::run(
+                client,
+                r#type.as_deref(),
+                limit,
+                offset,
+                all,
+                space.as_deref(),
+                output,
+            )
+            .await
         }
-        ChunkCommand::Search { query, limit } => {
-            commands::search::run(client, &query, limit, output).await
+        ChunkCommand::Search {
+            query,
+            limit,
+            offset,
+            all,
+            space,
+        } => {
+            commands::search::run(client, &query, limit, offset, all, space.as_deref(), output)
+                .await
         }
         ChunkCommand::Link {
             source_id,

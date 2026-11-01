@@ -85,6 +85,10 @@ pub struct Plan {
     pub task_done: i64,
     #[serde(default)]
     pub next_action: Option<String>,
+    #[serde(default)]
+    pub completed_at: Option<String>,
+    #[serde(default)]
+    pub metadata: serde_json::Value,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -188,6 +192,12 @@ pub struct RecentChunks {
 pub struct Client {
     base: String,
     http: reqwest::Client,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct SignInResponse {
+    pub token: String,
+    pub user: serde_json::Value,
 }
 
 mod chunks;

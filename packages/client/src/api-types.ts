@@ -15028,7 +15028,10 @@ export interface operations {
     };
     list_tasks: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description `in_progress` (default) or `completed`. */
+                status?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -15042,6 +15045,12 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlanListRow"][];
                 };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

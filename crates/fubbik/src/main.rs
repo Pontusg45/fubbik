@@ -158,222 +158,239 @@ async fn main() -> anyhow::Result<()> {
         fubbik_cli::OutputMode::Human
     };
 
-    match cli.command {
-        Commands::Serve { port, host } => {
-            // Read first so a bad `fubbik.toml` fails startup before any
-            // connection is made. Only the message is shown: the toml/io
-            // cause is already part of it.
-            let config = fubbik_config::Config::load().map_err(|e| anyhow::anyhow!("{e}"))?;
-            let database_url = std::env::var("DATABASE_URL")
-                .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
-            let better_auth_secret = std::env::var("BETTER_AUTH_SECRET")
-                .map_err(|_| anyhow::anyhow!("BETTER_AUTH_SECRET is required"))?;
-            let node_env = std::env::var("NODE_ENV").ok();
-            let explicit_flag =
-                std::env::var("FUBBIK_IMPLICIT_DEV_SESSION").as_deref() == Ok("true");
-            let implicit_dev_session =
-                resolve_implicit_dev_session(node_env.as_deref(), explicit_flag)
-                    .map_err(|e| anyhow::anyhow!(e))?;
-            if implicit_dev_session {
-                let reason = if explicit_flag {
-                    "FUBBIK_IMPLICIT_DEV_SESSION=true is set"
-                } else {
-                    "NODE_ENV is not \"production\""
-                };
-                tracing::warn!(
-                    reason,
-                    "AUTHENTICATION IS NOT ENFORCED: every request to this server — \
+    let result: anyhow::Result<()> = async {
+        match cli.command {
+            Commands::Serve { port, host } => {
+                // Read first so a bad `fubbik.toml` fails startup before any
+                // connection is made. Only the message is shown: the toml/io
+                // cause is already part of it.
+                let config = fubbik_config::Config::load().map_err(|e| anyhow::anyhow!("{e}"))?;
+                let database_url = std::env::var("DATABASE_URL")
+                    .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
+                let better_auth_secret = std::env::var("BETTER_AUTH_SECRET")
+                    .map_err(|_| anyhow::anyhow!("BETTER_AUTH_SECRET is required"))?;
+                let node_env = std::env::var("NODE_ENV").ok();
+                let explicit_flag =
+                    std::env::var("FUBBIK_IMPLICIT_DEV_SESSION").as_deref() == Ok("true");
+                let implicit_dev_session =
+                    resolve_implicit_dev_session(node_env.as_deref(), explicit_flag)
+                        .map_err(|e| anyhow::anyhow!(e))?;
+                if implicit_dev_session {
+                    let reason = if explicit_flag {
+                        "FUBBIK_IMPLICIT_DEV_SESSION=true is set"
+                    } else {
+                        "NODE_ENV is not \"production\""
+                    };
+                    tracing::warn!(
+                        reason,
+                        "AUTHENTICATION IS NOT ENFORCED: every request to this server — \
                      including one with a missing, expired, or outright garbage session \
                      cookie — is served as the dev user ({dev_email}), because {reason}. \
                      This is expected and required for local development and the CLI, but \
                      it must never be silently true in a deployment you believe is secured. \
                      To require real sessions, ensure NODE_ENV=production and do not set \
                      FUBBIK_IMPLICIT_DEV_SESSION=true.",
-                    dev_email = fubbik_api::auth::session::DEV_EMAIL,
+                        dev_email = fubbik_api::auth::session::DEV_EMAIL,
+                    );
+                }
+
+                let pool = fubbik_db::connect(&database_url).await?;
+                fubbik_db::warn_if_not_icu_collation(&pool).await;
+                let background = fubbik_api::background::BackgroundRuntime::new();
+                fubbik_api::staleness::service::spawn_background_scan(
+                    pool.clone(),
+                    background.clone(),
                 );
-            }
-
-            let pool = fubbik_db::connect(&database_url).await?;
-            fubbik_db::warn_if_not_icu_collation(&pool).await;
-            let background = fubbik_api::background::BackgroundRuntime::new();
-            fubbik_api::staleness::service::spawn_background_scan(pool.clone(), background.clone());
-            // Behavior rules only exist to the user through the matrix routes;
-            // with `matrices` off there is nothing to project.
-            if config.features.enabled(fubbik_config::Feature::Matrices) {
-                fubbik_api::graph::sync::spawn_behavior_sync(pool.clone(), background.clone());
-            }
-            fubbik_api::graph::projection::spawn_projection_worker(
-                pool.clone(),
-                background.clone(),
-            );
-            let shutdown_pool = pool.clone();
-            let state = fubbik_api::AppState {
-                pool,
-                implicit_dev_session,
-                better_auth_secret,
-                ai: fubbik_ai::OllamaClient::from_env(),
-                rate_limiter: Default::default(),
-                background: background.clone(),
-                features: config.features,
-            };
-
-            let cors_origin_env =
-                std::env::var("CORS_ORIGIN").unwrap_or_else(|_| "http://localhost:3001".into());
-            let cors = tower_http::cors::CorsLayer::new()
-                .allow_origin(tower_http::cors::AllowOrigin::list(parse_cors_origins(
-                    &cors_origin_env,
-                )))
-                .allow_credentials(true)
-                // `Any` panics when combined with `allow_credentials(true)`
-                // (browsers reject the combination outright); mirroring the
-                // request's own Access-Control-Request-Method/Headers is the
-                // credentials-compatible equivalent of "allow everything".
-                .allow_methods(tower_http::cors::AllowMethods::mirror_request())
-                .allow_headers(tower_http::cors::AllowHeaders::mirror_request());
-
-            let mut app = fubbik_api::router(state);
-            let asset_dir = std::env::var_os("FUBBIK_WEB_ASSETS_DIR")
-                .map(std::path::PathBuf::from)
-                .or_else(|| {
-                    let local = std::path::PathBuf::from("apps/web/dist");
-                    local.join("index.html").is_file().then_some(local)
-                });
-            if let Some(asset_dir) = asset_dir {
-                if !asset_dir.join("index.html").is_file() {
-                    anyhow::bail!(
-                        "web asset directory has no index.html: {}",
-                        asset_dir.display()
-                    );
+                // Behavior rules only exist to the user through the matrix routes;
+                // with `matrices` off there is nothing to project.
+                if config.features.enabled(fubbik_config::Feature::Matrices) {
+                    fubbik_api::graph::sync::spawn_behavior_sync(pool.clone(), background.clone());
                 }
-                app = app.merge(fubbik_api::assets::router(asset_dir));
-            }
-            let app = app
-                .layer(cors)
-                .layer(tower_http::catch_panic::CatchPanicLayer::new())
-                .layer(tower_http::trace::TraceLayer::new_for_http())
-                .layer(tower_http::request_id::PropagateRequestIdLayer::x_request_id())
-                .layer(tower_http::request_id::SetRequestIdLayer::x_request_id(
-                    tower_http::request_id::MakeRequestUuid,
-                ));
-            let listener = tokio::net::TcpListener::bind((host, port)).await?;
-            tracing::info!("fubbik listening on http://{host}:{port}");
-            axum::serve(listener, app)
-                .with_graceful_shutdown(shutdown_signal())
-                .await?;
-            background.shutdown(Duration::from_secs(10)).await;
-            if tokio::time::timeout(Duration::from_secs(5), shutdown_pool.close())
-                .await
-                .is_err()
-            {
-                tracing::warn!("database pool did not close before shutdown deadline");
-            }
-            Ok(())
-        }
-        Commands::Mcp => {
-            let base = explicit_url
-                .or_else(|| std::env::var("FUBBIK_SERVER_URL").ok())
-                .map(Ok)
-                .unwrap_or_else(|| fubbik_cli::config::resolve_base_url(None))
-                .unwrap_or_else(|_| "http://localhost:3000".into());
-            fubbik_mcp::run(&base).await
-        }
-        Commands::McpTools => {
-            let tools = fubbik_mcp::tools();
-            if output == fubbik_cli::OutputMode::Json {
-                println!("{}", serde_json::to_string_pretty(&tools)?);
-            } else {
-                println!("MCP Server Tools:\n");
-                for tool in &tools {
-                    println!(
-                        "  {:<32} {}",
-                        tool["name"].as_str().unwrap_or("?"),
-                        tool["description"].as_str().unwrap_or("")
-                    );
-                }
-                println!("\n{} tools", tools.len());
-            }
-            Ok(())
-        }
-        Commands::Openapi => {
-            use utoipa::OpenApi;
-            let doc = fubbik_api::openapi::ApiDoc::openapi();
-            println!("{}", serde_json::to_string_pretty(&doc)?);
-            Ok(())
-        }
-        Commands::BackfillConnections => {
-            let database_url = std::env::var("DATABASE_URL")
-                .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
-            let pool = fubbik_db::connect(&database_url).await?;
-            let count = fubbik_db::age::backfill_connections(&pool).await?;
-            println!("projected {count} chunk_connection row(s) into the AGE graph");
-            Ok(())
-        }
-        Commands::Seed {
-            scenario,
-            only,
-            skip,
-            reset,
-        } => {
-            use fubbik_db::seed::{ResetPolicy, SeedOptions, SeedScenario};
+                fubbik_api::graph::projection::spawn_projection_worker(
+                    pool.clone(),
+                    background.clone(),
+                );
+                let shutdown_pool = pool.clone();
+                let state = fubbik_api::AppState {
+                    pool,
+                    implicit_dev_session,
+                    better_auth_secret,
+                    ai: fubbik_ai::OllamaClient::from_env(),
+                    rate_limiter: Default::default(),
+                    background: background.clone(),
+                    features: config.features,
+                };
 
-            let database_url = std::env::var("DATABASE_URL")
-                .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
-            let options = SeedOptions {
-                scenario: match scenario.as_str() {
-                    "minimal" => SeedScenario::Minimal,
-                    "demo" => SeedScenario::Demo,
-                    "extended" => SeedScenario::Extended,
-                    _ => unreachable!("clap validates seed scenario"),
-                },
-                only: (!only.is_empty()).then(|| only.into_iter().collect()),
-                skip: skip.into_iter().collect(),
-                reset: match reset.as_str() {
-                    "auto" => ResetPolicy::Auto,
-                    "none" => ResetPolicy::None,
-                    _ => unreachable!("clap validates reset policy"),
-                },
-            };
-            let pool = fubbik_db::connect(&database_url).await?;
-            let report = fubbik_db::seed::seed(&pool, &options).await?;
-            if output == fubbik_cli::OutputMode::Json {
-                println!("{}", serde_json::to_string_pretty(&report)?);
-            } else if output == fubbik_cli::OutputMode::Human {
-                println!("Seeded modules: {}", report.modules.join(", "));
-            }
-            Ok(())
-        }
-        Commands::Completions { shell } => {
-            let mut command = Cli::command();
-            let name = command.get_name().to_string();
-            clap_complete::generate(shell, &mut command, name, &mut std::io::stdout());
-            Ok(())
-        }
-        Commands::Cli(cmd) => {
-            let base = match fubbik_cli::config::resolve_base_url(explicit_url.as_deref()) {
-                Ok(base) => base,
-                Err(_)
-                    if matches!(
-                        cmd,
-                        fubbik_cli::Command::Doctor
-                            | fubbik_cli::Command::Init { .. }
-                            | fubbik_cli::Command::Setup { .. }
-                            | fubbik_cli::Command::Open { .. }
-                    ) =>
+                let cors_origin_env =
+                    std::env::var("CORS_ORIGIN").unwrap_or_else(|_| "http://localhost:3001".into());
+                let cors = tower_http::cors::CorsLayer::new()
+                    .allow_origin(tower_http::cors::AllowOrigin::list(parse_cors_origins(
+                        &cors_origin_env,
+                    )))
+                    .allow_credentials(true)
+                    // `Any` panics when combined with `allow_credentials(true)`
+                    // (browsers reject the combination outright); mirroring the
+                    // request's own Access-Control-Request-Method/Headers is the
+                    // credentials-compatible equivalent of "allow everything".
+                    .allow_methods(tower_http::cors::AllowMethods::mirror_request())
+                    .allow_headers(tower_http::cors::AllowHeaders::mirror_request());
+
+                let mut app = fubbik_api::router(state);
+                let asset_dir = std::env::var_os("FUBBIK_WEB_ASSETS_DIR")
+                    .map(std::path::PathBuf::from)
+                    .or_else(|| {
+                        let local = std::path::PathBuf::from("apps/web/dist");
+                        local.join("index.html").is_file().then_some(local)
+                    });
+                if let Some(asset_dir) = asset_dir {
+                    if !asset_dir.join("index.html").is_file() {
+                        anyhow::bail!(
+                            "web asset directory has no index.html: {}",
+                            asset_dir.display()
+                        );
+                    }
+                    app = app.merge(fubbik_api::assets::router(asset_dir));
+                }
+                let app = app
+                    .layer(cors)
+                    .layer(tower_http::catch_panic::CatchPanicLayer::new())
+                    .layer(tower_http::trace::TraceLayer::new_for_http())
+                    .layer(tower_http::request_id::PropagateRequestIdLayer::x_request_id())
+                    .layer(tower_http::request_id::SetRequestIdLayer::x_request_id(
+                        tower_http::request_id::MakeRequestUuid,
+                    ));
+                let listener = tokio::net::TcpListener::bind((host, port)).await?;
+                tracing::info!("fubbik listening on http://{host}:{port}");
+                axum::serve(listener, app)
+                    .with_graceful_shutdown(shutdown_signal())
+                    .await?;
+                background.shutdown(Duration::from_secs(10)).await;
+                if tokio::time::timeout(Duration::from_secs(5), shutdown_pool.close())
+                    .await
+                    .is_err()
                 {
-                    explicit_url
-                        .clone()
-                        .or_else(|| std::env::var("FUBBIK_URL").ok())
-                        .unwrap_or_else(|| "http://localhost:3000".into())
+                    tracing::warn!("database pool did not close before shutdown deadline");
                 }
-                Err(error) => return Err(error),
-            };
-            fubbik_cli::run(cmd, &base, output).await
-        }
-        Commands::External(args) => {
-            let base = fubbik_cli::config::resolve_base_url(explicit_url.as_deref())?;
-            fubbik_cli::plugin::execute(args, &base, output).await
+                Ok(())
+            }
+            Commands::Mcp => {
+                let base = explicit_url
+                    .or_else(|| std::env::var("FUBBIK_SERVER_URL").ok())
+                    .map(Ok)
+                    .unwrap_or_else(|| fubbik_cli::config::resolve_base_url(None))
+                    .unwrap_or_else(|_| "http://localhost:3000".into());
+                fubbik_mcp::run(&base).await
+            }
+            Commands::McpTools => {
+                let tools = fubbik_mcp::tools();
+                if output == fubbik_cli::OutputMode::Json {
+                    println!("{}", serde_json::to_string_pretty(&tools)?);
+                } else {
+                    println!("MCP Server Tools:\n");
+                    for tool in &tools {
+                        println!(
+                            "  {:<32} {}",
+                            tool["name"].as_str().unwrap_or("?"),
+                            tool["description"].as_str().unwrap_or("")
+                        );
+                    }
+                    println!("\n{} tools", tools.len());
+                }
+                Ok(())
+            }
+            Commands::Openapi => {
+                use utoipa::OpenApi;
+                let doc = fubbik_api::openapi::ApiDoc::openapi();
+                println!("{}", serde_json::to_string_pretty(&doc)?);
+                Ok(())
+            }
+            Commands::BackfillConnections => {
+                let database_url = std::env::var("DATABASE_URL")
+                    .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
+                let pool = fubbik_db::connect(&database_url).await?;
+                let count = fubbik_db::age::backfill_connections(&pool).await?;
+                println!("projected {count} chunk_connection row(s) into the AGE graph");
+                Ok(())
+            }
+            Commands::Seed {
+                scenario,
+                only,
+                skip,
+                reset,
+            } => {
+                use fubbik_db::seed::{ResetPolicy, SeedOptions, SeedScenario};
+
+                let database_url = std::env::var("DATABASE_URL")
+                    .map_err(|_| anyhow::anyhow!("DATABASE_URL is required"))?;
+                let options = SeedOptions {
+                    scenario: match scenario.as_str() {
+                        "minimal" => SeedScenario::Minimal,
+                        "demo" => SeedScenario::Demo,
+                        "extended" => SeedScenario::Extended,
+                        _ => unreachable!("clap validates seed scenario"),
+                    },
+                    only: (!only.is_empty()).then(|| only.into_iter().collect()),
+                    skip: skip.into_iter().collect(),
+                    reset: match reset.as_str() {
+                        "auto" => ResetPolicy::Auto,
+                        "none" => ResetPolicy::None,
+                        _ => unreachable!("clap validates reset policy"),
+                    },
+                };
+                let pool = fubbik_db::connect(&database_url).await?;
+                let report = fubbik_db::seed::seed(&pool, &options).await?;
+                if output == fubbik_cli::OutputMode::Json {
+                    println!("{}", serde_json::to_string_pretty(&report)?);
+                } else if output == fubbik_cli::OutputMode::Human {
+                    println!("Seeded modules: {}", report.modules.join(", "));
+                }
+                Ok(())
+            }
+            Commands::Completions { shell } => {
+                let mut command = Cli::command();
+                let name = command.get_name().to_string();
+                clap_complete::generate(shell, &mut command, name, &mut std::io::stdout());
+                Ok(())
+            }
+            Commands::Cli(cmd) => {
+                let base = match fubbik_cli::config::resolve_base_url(explicit_url.as_deref()) {
+                    Ok(base) => base,
+                    Err(_)
+                        if matches!(
+                            cmd,
+                            fubbik_cli::Command::Doctor
+                                | fubbik_cli::Command::Init { .. }
+                                | fubbik_cli::Command::Setup { .. }
+                                | fubbik_cli::Command::Open { .. }
+                        ) =>
+                    {
+                        explicit_url
+                            .clone()
+                            .or_else(|| std::env::var("FUBBIK_URL").ok())
+                            .unwrap_or_else(|| "http://localhost:3000".into())
+                    }
+                    Err(error) => return Err(error),
+                };
+                fubbik_cli::run(cmd, &base, output).await
+            }
+            Commands::External(args) => {
+                let base = fubbik_cli::config::resolve_base_url(explicit_url.as_deref())?;
+                fubbik_cli::plugin::execute(args, &base, output).await
+            }
         }
     }
+    .await;
+    if let Err(error) = result {
+        if output == fubbik_cli::OutputMode::Json {
+            eprintln!(
+                "{}",
+                serde_json::json!({"error": {"message": error.to_string()}})
+            );
+            std::process::exit(1);
+        }
+        return Err(error);
+    }
+    Ok(())
 }
 
 async fn shutdown_signal() {
@@ -405,9 +422,9 @@ async fn shutdown_signal() {
 
 #[cfg(test)]
 mod tests {
-    use clap::CommandFactory;
+    use clap::{CommandFactory, Parser};
 
-    use super::{Cli, parse_cors_origins, resolve_implicit_dev_session};
+    use super::{Cli, Commands, parse_cors_origins, resolve_implicit_dev_session};
 
     #[test]
     fn rust_cli_exposes_the_server_backed_parity_commands() {
@@ -424,6 +441,47 @@ mod tests {
         ] {
             // Then
             assert!(names.contains(&expected), "missing `{expected}` command");
+        }
+    }
+
+    #[test]
+    fn cli_accepts_auth_queue_pagination_and_import_safety_options() {
+        // Given representative CLI invocations
+        let examples = [
+            vec![
+                "fubbik",
+                "auth",
+                "login",
+                "user@example.com",
+                "--password-stdin",
+            ],
+            vec!["fubbik", "task", "add", "Ship", "--priority", "urgent"],
+            vec![
+                "fubbik", "list", "--space", "project", "--all", "--limit", "100",
+            ],
+            vec!["fubbik", "chunk", "search", "rust", "--offset", "10"],
+            vec![
+                "fubbik",
+                "bulk-add",
+                "--file",
+                "chunks.jsonl",
+                "--resume",
+                "report.jsonl",
+            ],
+            vec![
+                "fubbik",
+                "import",
+                "docs",
+                "--dry-run",
+                "--space",
+                "project",
+            ],
+        ];
+        // When clap parses each invocation
+        for args in examples {
+            let parsed = Cli::try_parse_from(args);
+            // Then every new workflow has a valid command shape
+            assert!(matches!(parsed.unwrap().command, Commands::Cli(_)));
         }
     }
 

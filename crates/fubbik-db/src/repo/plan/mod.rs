@@ -143,6 +143,8 @@ pub async fn find_by_id(pool: &PgPool, user_id: &str, id: &str) -> AppResult<Opt
 pub struct ListFilter {
     pub space_id: Option<String>,
     pub status: Option<String>,
+    /// Restrict results to plans created through the standalone task queue.
+    pub task_queue_only: bool,
     /// Only plans linked (via `plan_requirement`) to this requirement id.
     pub requirement_id: Option<String>,
     /// When `false` (the default) and `status` is unset, plans with
@@ -173,6 +175,9 @@ pub async fn list(pool: &PgPool, user_id: &str, filter: ListFilter) -> AppResult
         qb.push(" AND status = ").push_bind(status.clone());
     } else if !filter.include_archived {
         qb.push(" AND status <> 'archived'");
+    }
+    if filter.task_queue_only {
+        qb.push(" AND metadata @> '{\"taskQueue\":true}'::jsonb");
     }
     if let Some(requirement_id) = &filter.requirement_id {
         qb.push(" AND id IN (SELECT plan_id FROM plan_requirement WHERE requirement_id = ")
@@ -578,6 +583,9 @@ pub async fn list_with_rollups(
         qb.push(" AND p.status = ").push_bind(status.clone());
     } else if !filter.include_archived {
         qb.push(" AND p.status <> 'archived'");
+    }
+    if filter.task_queue_only {
+        qb.push(" AND p.metadata @> '{\"taskQueue\":true}'::jsonb");
     }
     if let Some(requirement_id) = &filter.requirement_id {
         qb.push(" AND p.id IN (SELECT plan_id FROM plan_requirement WHERE requirement_id = ")

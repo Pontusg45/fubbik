@@ -20,6 +20,7 @@ impl ListPlansQuery {
         fubbik_db::repo::plan::ListFilter {
             space_id: self.space_id,
             status: self.status,
+            task_queue_only: false,
             requirement_id: self.requirement_id,
             include_archived: self.include_archived.as_deref() == Some("true"),
         }

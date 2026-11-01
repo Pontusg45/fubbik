@@ -241,6 +241,7 @@ pub async fn generate_claude_md(
         plan::ListFilter {
             space_id: params.space_id.map(str::to_string),
             status: Some("in_progress".to_string()),
+            task_queue_only: false,
             requirement_id: None,
             include_archived: false,
         },
