@@ -14,6 +14,8 @@ pub struct Node {
     pub y: f32,
     /// Connections in or out.
     pub degree: usize,
+    /// The 3D position, centred on the origin inside the unit ball.
+    pub p3: [f32; 3],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,6 +48,7 @@ impl Graph {
                     x: 0.5,
                     y: 0.5,
                     degree: 0,
+                    p3: [0.0; 3],
                 })
             })
             .collect();
@@ -76,6 +79,7 @@ impl Graph {
         }
         let mut graph = Graph { nodes, edges };
         graph.layout();
+        graph.layout_3d();
         graph
     }
 
@@ -204,6 +208,97 @@ impl Graph {
         }
     }
 
+    /// The 3D layout: Fruchterman–Reingold in three dimensions for the
+    /// connected chunks, centred and scaled into the unit ball; orphans on a
+    /// shell around them (a Fibonacci sphere), out of the way but visible.
+    pub fn layout_3d(&mut self) {
+        let connected: Vec<usize> = (0..self.nodes.len())
+            .filter(|&i| self.nodes[i].degree > 0)
+            .collect();
+        let orphans: Vec<usize> = (0..self.nodes.len())
+            .filter(|&i| self.nodes[i].degree == 0)
+            .collect();
+        let n = connected.len();
+        let local: std::collections::HashMap<usize, usize> =
+            connected.iter().enumerate().map(|(k, &i)| (i, k)).collect();
+        let edges: Vec<(usize, usize)> = self
+            .edges
+            .iter()
+            .filter_map(|e| Some((*local.get(&e.source)?, *local.get(&e.target)?)))
+            .collect();
+        // Start on a Fibonacci sphere (deterministic, evenly spread).
+        let mut p: Vec<[f32; 3]> = (0..n).map(|k| fibonacci_point(k, n, 0.6)).collect();
+        if n > 1 {
+            let kk = (1.0 / n as f32).cbrt() * 0.9;
+            let iterations = if n > 400 { 80 } else { 300 };
+            let mut d = vec![[0f32; 3]; n];
+            for step in 0..iterations {
+                let temperature = 0.12 * (1.0 - step as f32 / iterations as f32) + 0.002;
+                d.iter_mut().for_each(|v| *v = [0.0; 3]);
+                for a in 0..n {
+                    for b in (a + 1)..n {
+                        let delta = sub(p[a], p[b]);
+                        let dist = len(delta).max(0.001);
+                        let force = kk * kk / dist;
+                        for c in 0..3 {
+                            let f = delta[c] / dist * force;
+                            d[a][c] += f;
+                            d[b][c] -= f;
+                        }
+                    }
+                }
+                for &(a, b) in &edges {
+                    let delta = sub(p[a], p[b]);
+                    let dist = len(delta).max(0.001);
+                    let force = dist * dist / kk;
+                    for c in 0..3 {
+                        let f = delta[c] / dist * force;
+                        d[a][c] -= f;
+                        d[b][c] += f;
+                    }
+                }
+                for k in 0..n {
+                    for c in 0..3 {
+                        d[k][c] -= p[k][c] * kk * 0.3;
+                    }
+                    let l = len(d[k]).max(0.0001);
+                    let step = l.min(temperature);
+                    for c in 0..3 {
+                        p[k][c] += d[k][c] / l * step;
+                    }
+                }
+            }
+        }
+        // Centre, then scale by the 90th-percentile distance (one far chunk
+        // must not shrink everything else), keeping outliers inside the
+        // orphans' shell.
+        if n > 0 {
+            let mut centre = [0f32; 3];
+            for q in &p {
+                for c in 0..3 {
+                    centre[c] += q[c] / n as f32;
+                }
+            }
+            let mut radii: Vec<f32> = p.iter().map(|q| len(sub(*q, centre))).collect();
+            radii.sort_by(f32::total_cmp);
+            let typical = radii[((n as f32 * 0.9) as usize).min(n - 1)].max(0.0001);
+            let scale = if n == 1 { 0.0 } else { 0.8 / typical };
+            for (k, &i) in connected.iter().enumerate() {
+                let q = sub(p[k], centre);
+                let mut v = [q[0] * scale, q[1] * scale, q[2] * scale];
+                let r = len(v);
+                if r > 0.95 {
+                    v = [v[0] / r * 0.95, v[1] / r * 0.95, v[2] / r * 0.95];
+                }
+                self.nodes[i].p3 = v;
+            }
+        }
+        let shell = if n == 0 { 0.8 } else { 1.0 };
+        for (k, &i) in orphans.iter().enumerate() {
+            self.nodes[i].p3 = fibonacci_point(k, orphans.len(), shell);
+        }
+    }
+
     /// Indexes of the nodes connected to `node`.
     pub fn neighbours(&self, node: usize) -> Vec<usize> {
         self.edges
@@ -218,6 +313,73 @@ impl Graph {
                 }
             })
             .collect()
+    }
+}
+
+fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn len(a: [f32; 3]) -> f32 {
+    (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt()
+}
+
+/// The `k`th of `n` points spread evenly over a sphere of `radius`.
+fn fibonacci_point(k: usize, n: usize, radius: f32) -> [f32; 3] {
+    if n == 0 {
+        return [0.0; 3];
+    }
+    let golden = std::f32::consts::PI * (3.0 - 5f32.sqrt());
+    let y = 1.0 - 2.0 * (k as f32 + 0.5) / n as f32;
+    let r = (1.0 - y * y).max(0.0).sqrt();
+    let theta = golden * k as f32;
+    [
+        r * theta.cos() * radius,
+        y * radius,
+        r * theta.sin() * radius,
+    ]
+}
+
+/// A point of the 3D layout on screen: where (as fractions of the area,
+/// centred at 0.5), how near (depth: +1 nearest, −1 farthest), and how much
+/// perspective enlarges it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Projected {
+    pub fx: f32,
+    pub fy: f32,
+    pub depth: f32,
+    pub scale: f32,
+}
+
+/// The camera: `yaw` turns around the vertical axis, `pitch` tilts, `zoom`
+/// scales; `aspect` is the area's width / height (the picture stays round).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Camera {
+    pub yaw: f32,
+    pub pitch: f32,
+    pub zoom: f32,
+    pub aspect: f32,
+}
+
+/// How far the camera sits from the origin (the layout fits in radius 1).
+const CAMERA_DISTANCE: f32 = 3.0;
+
+pub fn project(p: [f32; 3], camera: Camera) -> Projected {
+    let (sy, cy) = camera.yaw.sin_cos();
+    let (sp, cp) = camera.pitch.sin_cos();
+    // Yaw around y, then pitch around x.
+    let x = p[0] * cy + p[2] * sy;
+    let z = -p[0] * sy + p[2] * cy;
+    let y = p[1] * cp - z * sp;
+    let z = p[1] * sp + z * cp;
+    let scale = CAMERA_DISTANCE / (CAMERA_DISTANCE - z).max(0.5);
+    // Half the area's height is the unit radius at zoom 1 (with margin).
+    let r = 0.42 * camera.zoom * scale;
+    Projected {
+        fx: 0.5 + x * r / camera.aspect.max(0.1),
+        fy: 0.5 + y * r,
+        depth: z,
+        scale,
     }
 }
 
@@ -309,5 +471,55 @@ mod tests {
         // Then
         assert!(empty.nodes.is_empty());
         assert!((one.nodes[0].x - 0.5).abs() < 1e-6 && (one.nodes[0].y - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn the_3d_layout_is_centred_bounded_and_keeps_neighbours_close() {
+        // Given / When
+        let graph = Graph::from_api(&sample());
+        let again = Graph::from_api(&sample());
+
+        // Then
+        assert_eq!(graph, again, "deterministic");
+        let d = |a: usize, b: usize| len(sub(graph.nodes[a].p3, graph.nodes[b].p3));
+        for node in &graph.nodes {
+            assert!(node.p3.iter().all(|c| c.is_finite()));
+            assert!(len(node.p3) <= 1.0 + 1e-4, "{:?}", node.p3);
+        }
+        assert!(d(0, 1) < d(0, 4), "a–b connected, a–e not");
+        // The orphan f is out on the shell.
+        assert!((len(graph.nodes[5].p3) - 1.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn projection_turns_and_puts_near_points_in_front() {
+        // Given
+        let still = Camera {
+            yaw: 0.0,
+            pitch: 0.0,
+            zoom: 1.0,
+            aspect: 2.0,
+        };
+        let quarter = Camera {
+            yaw: std::f32::consts::FRAC_PI_2,
+            ..still
+        };
+
+        // When
+        let centre = project([0.0, 0.0, 0.0], still);
+        let near = project([0.0, 0.0, 0.5], still);
+        let far = project([0.0, 0.0, -0.5], still);
+        let right = project([0.5, 0.0, 0.0], still);
+        let turned = project([0.5, 0.0, 0.0], quarter);
+
+        // Then
+        assert_eq!((centre.fx, centre.fy), (0.5, 0.5));
+        assert!(near.depth > far.depth && near.scale > far.scale);
+        assert!(right.fx > 0.5, "+x is to the right");
+        assert!(
+            (turned.fx - 0.5).abs() < 1e-5,
+            "a quarter turn puts +x straight behind or ahead"
+        );
+        assert!(turned.depth.abs() > 0.49);
     }
 }

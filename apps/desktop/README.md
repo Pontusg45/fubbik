@@ -294,7 +294,9 @@ start = "…"                        # optional, overrides the compose default; 
 - **Knowledge graph** (Knowledge tab): the repo's space as a graph (`GET /api/graph`, laid out in `src/graph_layout.rs`):
   chunks as nodes colored by type and sized by how connected they are, connections as edges; orphan chunks line up in a
   strip along the bottom. Hover lights up a chunk's neighbours, click selects it and lists its connections (each a click
-  to that chunk) with "Open" for the web app. Type chips hide or show a type; "Labels" labels every node.
+  to that chunk) with "Open" for the web app. Type chips hide or show a type; "Labels" labels every node. **3D** lays the same graph out in three
+  dimensions (orphans on a shell around it) and projects it with perspective: drag to turn, scroll to zoom, "Reset view";
+  it turns slowly on its own ("Auto-rotate") while nothing is hovered. Nearer chunks are bigger, brighter and on top.
 - **Insights** (⇧⌘I): a standup (1 day) or weekly summary built from git, plan tasks, agent sessions and requirements —
   copy it as Markdown or save it as a chunk; a health score (0–100) with the reasons it lost points (failing processes or
   requirements, violated cells, vulnerabilities from `cargo audit` / `pnpm audit` when "Run audit" was used, stale

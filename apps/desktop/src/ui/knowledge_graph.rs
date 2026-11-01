@@ -2,22 +2,36 @@
 //! type, sized by how connected they are) and connections (edges), laid out
 //! by `graph_layout.rs`. Hover a node to light up its neighbours; click to
 //! select it and see its connections below, with "Open" for the chunk.
+//!
+//! "3D" lays the same graph out in three dimensions and projects it with
+//! perspective: drag to turn it, scroll to zoom; it turns slowly on its own
+//! (Auto-rotate) while nothing is hovered. Nearer chunks are bigger, brighter
+//! and drawn on top.
 
+use std::cell::Cell;
 use std::collections::HashSet;
+use std::rc::Rc;
+use std::time::Duration;
 
-use gpui::{AnyElement, FontWeight, PathBuilder, SharedString, canvas, point, relative};
+use gpui::{
+    AnyElement, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent, PathBuilder,
+    ScrollWheelEvent, SharedString, Task, canvas, point, relative,
+};
 
 use super::widgets::{button, loading, muted, segment, switch};
 use super::*;
-use crate::graph_layout::Graph;
+use crate::graph_layout::{Camera, Graph, project};
 use crate::theme::Hue;
 
 const GRAPH_HEIGHT: f32 = 520.;
 /// Above this many nodes, only well-connected ones get a label by default.
 const LABEL_ALL_UNDER: usize = 40;
 
+/// One frame of auto-rotation.
+const SPIN_EVERY: Duration = Duration::from_millis(33);
+const SPIN_STEP: f32 = 0.006;
+
 /// The graph's view state (one repo at a time).
-#[derive(Default)]
 pub struct GraphState {
     /// The space it was loaded for, and the graph.
     pub loaded: Option<(String, Loadable<Graph>)>,
@@ -25,6 +39,47 @@ pub struct GraphState {
     pub selected: Option<usize>,
     pub hidden: HashSet<String>,
     pub labels: bool,
+    pub three_d: bool,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub zoom: f32,
+    pub auto_rotate: bool,
+    /// Where a drag that turns the 3D graph was last.
+    pub drag: Option<gpui::Point<gpui::Pixels>>,
+    /// The area's size at the last paint (width, height), for the aspect.
+    pub area: Rc<Cell<(f32, f32)>>,
+    pub spin: Option<Task<()>>,
+}
+
+impl Default for GraphState {
+    fn default() -> Self {
+        Self {
+            loaded: None,
+            hover: None,
+            selected: None,
+            hidden: HashSet::new(),
+            labels: false,
+            three_d: false,
+            yaw: 0.6,
+            pitch: -0.35,
+            zoom: 1.0,
+            auto_rotate: true,
+            drag: None,
+            area: Rc::new(Cell::new((1000., GRAPH_HEIGHT))),
+            spin: None,
+        }
+    }
+}
+
+/// Where a node is drawn: as fractions of the area, its diameter, how
+/// opaque, and its depth (for drawing order; 0 in 2D).
+#[derive(Clone, Copy)]
+struct Place {
+    fx: f32,
+    fy: f32,
+    size: f32,
+    alpha: f32,
+    depth: f32,
 }
 
 fn kind_color(kind: &str) -> gpui::Hsla {
@@ -63,10 +118,16 @@ impl Workspace {
             return;
         }
         if !current {
+            let previous = std::mem::take(&mut self.graph);
             self.graph = GraphState {
-                labels: self.graph.labels,
+                labels: previous.labels,
+                three_d: previous.three_d,
+                auto_rotate: previous.auto_rotate,
                 ..Default::default()
             };
+            if self.graph.three_d {
+                self.start_spin(cx);
+            }
         }
         self.graph.loaded = Some((space.clone(), Loadable::Loading));
         let client = self.client.clone();
@@ -86,6 +147,79 @@ impl Workspace {
             .ok();
         })
         .detach();
+    }
+
+    /// Turns the 3D graph a little every frame while it is on screen,
+    /// auto-rotate is on, and nothing is hovered or dragged.
+    fn start_spin(&mut self, cx: &mut Context<Self>) {
+        self.graph.spin = Some(cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(SPIN_EVERY).await;
+                let keep = this
+                    .update(cx, |this, cx| {
+                        let g = &mut this.graph;
+                        let showing = !this.home && this.tab == Tab::Knowledge;
+                        if showing && g.auto_rotate && g.drag.is_none() && g.hover.is_none() {
+                            g.yaw += SPIN_STEP;
+                            cx.notify();
+                        }
+                        g.three_d
+                    })
+                    .unwrap_or(false);
+                if !keep {
+                    break;
+                }
+            }
+        }));
+    }
+
+    fn set_three_d(&mut self, on: bool, cx: &mut Context<Self>) {
+        self.graph.three_d = on;
+        if on {
+            self.start_spin(cx);
+        } else {
+            self.graph.spin = None;
+        }
+        cx.notify();
+    }
+
+    /// Each node's place on screen, by the current mode and camera.
+    fn graph_places(&self, graph: &Graph) -> Vec<Place> {
+        if !self.graph.three_d {
+            return graph
+                .nodes
+                .iter()
+                .map(|n| Place {
+                    fx: n.x,
+                    fy: n.y,
+                    size: node_size(n.degree),
+                    alpha: 1.0,
+                    depth: 0.0,
+                })
+                .collect();
+        }
+        let (w, h) = self.graph.area.get();
+        let camera = Camera {
+            yaw: self.graph.yaw,
+            pitch: self.graph.pitch,
+            zoom: self.graph.zoom,
+            aspect: (w / h.max(1.0)).max(0.1),
+        };
+        graph
+            .nodes
+            .iter()
+            .map(|n| {
+                let p = project(n.p3, camera);
+                Place {
+                    fx: p.fx,
+                    fy: p.fy,
+                    size: node_size(n.degree) * p.scale * self.graph.zoom.sqrt(),
+                    // Far chunks fade into the background.
+                    alpha: (0.3 + 0.7 * (p.depth + 1.0) / 2.0).clamp(0.2, 1.0),
+                    depth: p.depth,
+                }
+            })
+            .collect()
     }
 
     pub(super) fn render_knowledge_graph(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -138,67 +272,104 @@ impl Workspace {
                     cx.notify();
                 }))
         });
-        let toolbar = div()
-            .flex()
-            .flex_wrap()
-            .items_center()
-            .gap_2()
-            .child(
-                div()
-                    .text_xs()
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .text_color(theme::text_muted())
-                    .child(format!(
-                        "KNOWLEDGE GRAPH · {} CHUNKS · {} CONNECTIONS",
-                        graph.nodes.len(),
-                        graph.edges.len()
-                    )),
-            )
-            .child(div().flex_1())
-            .children(chips)
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap_1()
-                    .child(muted("Labels"))
-                    .child(
-                        switch("graph-labels", self.graph.labels).on_click(cx.listener(
-                            |this, _, _, cx| {
-                                this.graph.labels = !this.graph.labels;
-                                cx.notify();
-                            },
+        let toolbar =
+            div()
+                .flex()
+                .flex_wrap()
+                .items_center()
+                .gap_2()
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(theme::text_muted())
+                        .child(format!(
+                            "KNOWLEDGE GRAPH · {} CHUNKS · {} CONNECTIONS",
+                            graph.nodes.len(),
+                            graph.edges.len()
                         )),
-                    ),
-            )
-            .child(
-                button("graph-refresh", "Refresh").on_click(cx.listener(|this, _, _, cx| {
-                    this.ensure_graph(this.selected, true, cx);
-                    cx.notify();
-                })),
-            )
-            .child(button("graph-web", "Open in web").on_click(
-                cx.listener(|this, _, _, cx| this.run(Command::OpenWeb("/graph".into()), cx)),
-            ));
+                )
+                .child(div().flex_1())
+                .child(
+                    segment("graph-2d", "2D", !self.graph.three_d)
+                        .on_click(cx.listener(|this, _, _, cx| this.set_three_d(false, cx))),
+                )
+                .child(
+                    segment("graph-3d", "3D", self.graph.three_d)
+                        .on_click(cx.listener(|this, _, _, cx| this.set_three_d(true, cx))),
+                )
+                .when(self.graph.three_d, |d| {
+                    d.child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_1()
+                            .child(muted("Auto-rotate"))
+                            .child(switch("graph-spin", self.graph.auto_rotate).on_click(
+                                cx.listener(|this, _, _, cx| {
+                                    this.graph.auto_rotate = !this.graph.auto_rotate;
+                                    cx.notify();
+                                }),
+                            )),
+                    )
+                    .child(button("graph-reset", "Reset view").on_click(cx.listener(
+                        |this, _, _, cx| {
+                            let fresh = GraphState::default();
+                            (this.graph.yaw, this.graph.pitch, this.graph.zoom) =
+                                (fresh.yaw, fresh.pitch, fresh.zoom);
+                            cx.notify();
+                        },
+                    )))
+                })
+                .children(chips)
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_1()
+                        .child(muted("Labels"))
+                        .child(
+                            switch("graph-labels", self.graph.labels).on_click(cx.listener(
+                                |this, _, _, cx| {
+                                    this.graph.labels = !this.graph.labels;
+                                    cx.notify();
+                                },
+                            )),
+                        ),
+                )
+                .child(button("graph-refresh", "Refresh").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.ensure_graph(this.selected, true, cx);
+                        cx.notify();
+                    },
+                )))
+                .child(button("graph-web", "Open in web").on_click(
+                    cx.listener(|this, _, _, cx| this.run(Command::OpenWeb("/graph".into()), cx)),
+                ));
 
-        // Edges, drawn on a canvas behind the nodes.
-        let edges: Vec<(f32, f32, f32, f32, bool)> = graph
+        // Edges, drawn on a canvas behind the nodes; in 3D, far ones fainter.
+        let places = self.graph_places(&graph);
+        let edges: Vec<(f32, f32, f32, f32, bool, f32)> = graph
             .edges
             .iter()
             .filter(|e| visible[e.source] && visible[e.target])
             .map(|e| {
-                let (a, b) = (&graph.nodes[e.source], &graph.nodes[e.target]);
+                let (a, b) = (places[e.source], places[e.target]);
                 let on = focus.is_some_and(|f| e.source == f || e.target == f);
-                (a.x, a.y, b.x, b.y, on)
+                (a.fx, a.fy, b.fx, b.fy, on, (a.alpha + b.alpha) / 2.0)
             })
             .collect();
+        let area_size = self.graph.area.clone();
         let (dim, bright) = (
             theme::text_muted().opacity(0.25),
             theme::accent().opacity(0.9),
         );
         let dimmed = focus.is_some();
         let lines = canvas(
-            move |_, _, _| (),
+            // Remember the size: the 3D projection keeps its aspect from it.
+            move |bounds, _, _| {
+                area_size.set((bounds.size.width / px(1.), bounds.size.height / px(1.)));
+            },
             move |bounds, (), window, _| {
                 let at = |x: f32, y: f32| {
                     point(
@@ -208,7 +379,7 @@ impl Workspace {
                 };
                 // Faint ones first, the lit ones on top.
                 for pass in [false, true] {
-                    for (x1, y1, x2, y2, on) in &edges {
+                    for (x1, y1, x2, y2, on, alpha) in &edges {
                         if *on != pass {
                             continue;
                         }
@@ -221,7 +392,7 @@ impl Workspace {
                             } else if dimmed {
                                 dim.opacity(0.12)
                             } else {
-                                dim
+                                dim.opacity(0.25 * alpha)
                             };
                             window.paint_path(path, color);
                         }
@@ -233,22 +404,28 @@ impl Workspace {
         .inset_0();
 
         let label_all = self.graph.labels || graph.nodes.len() < LABEL_ALL_UNDER;
-        let nodes = graph
-            .nodes
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| visible[*i])
+        let three_d = self.graph.three_d;
+        // Far to near, so nearer chunks are drawn over farther ones.
+        let mut order: Vec<usize> = (0..graph.nodes.len()).filter(|&i| visible[i]).collect();
+        order.sort_by(|a, b| places[*a].depth.total_cmp(&places[*b].depth));
+        let nodes = order
+            .into_iter()
+            .map(|i| (i, &graph.nodes[i]))
             .map(|(i, node)| {
-                let size = node_size(node.degree);
+                let place = places[i];
+                let size = place.size;
                 let color = kind_color(&node.kind);
                 let faded = dimmed && !lit.contains(&i);
-                let show_label = lit.contains(&i) || (!dimmed && (label_all || node.degree >= 4));
+                // In 3D, only the near half gets labels (the rest would pile up).
+                let near = !three_d || place.depth > 0.0;
+                let show_label =
+                    lit.contains(&i) || (!dimmed && near && (label_all || node.degree >= 4));
                 let selected = self.graph.selected == Some(i);
                 div()
                     .id(("graph-node", i))
                     .absolute()
-                    .left(relative(node.x))
-                    .top(relative(node.y))
+                    .left(relative(place.fx))
+                    .top(relative(place.fy))
                     .ml(px(-size / 2.))
                     .mt(px(-size / 2.))
                     .flex()
@@ -275,7 +452,7 @@ impl Workspace {
                             .size(px(size))
                             .flex_none()
                             .rounded_full()
-                            .bg(color.opacity(if faded { 0.2 } else { 0.9 }))
+                            .bg(color.opacity(if faded { 0.2 } else { 0.9 * place.alpha }))
                             .border_2()
                             .border_color(if selected {
                                 theme::text()
@@ -305,6 +482,44 @@ impl Workspace {
         let area = div()
             .id("knowledge-graph")
             .relative()
+            .when(three_d, |d| {
+                d.cursor_grab()
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, e: &MouseDownEvent, _, _| {
+                            this.graph.drag = Some(e.position)
+                        }),
+                    )
+                    .on_mouse_move(cx.listener(|this, e: &MouseMoveEvent, _, cx| {
+                        let Some(last) = this.graph.drag else { return };
+                        if e.pressed_button != Some(MouseButton::Left) {
+                            this.graph.drag = None;
+                            return;
+                        }
+                        let (dx, dy) = (
+                            (e.position.x - last.x) / px(1.),
+                            (e.position.y - last.y) / px(1.),
+                        );
+                        this.graph.yaw += dx * 0.008;
+                        this.graph.pitch = (this.graph.pitch + dy * 0.008).clamp(-1.45, 1.45);
+                        this.graph.drag = Some(e.position);
+                        cx.notify();
+                    }))
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            this.graph.drag = None;
+                            cx.notify();
+                        }),
+                    )
+                    .on_scroll_wheel(cx.listener(|this, e: &ScrollWheelEvent, window, cx| {
+                        let dy = e.delta.pixel_delta(window.line_height()).y / px(1.);
+                        this.graph.zoom = (this.graph.zoom * (1.0 - dy * 0.002)).clamp(0.4, 3.0);
+                        // The page under it does not scroll while zooming.
+                        cx.stop_propagation();
+                        cx.notify();
+                    }))
+            })
             .w_full()
             .h(px(GRAPH_HEIGHT))
             .rounded_lg()
@@ -321,6 +536,11 @@ impl Workspace {
             .gap_2()
             .child(toolbar)
             .child(area)
+            .when(three_d, |d| {
+                d.child(muted(
+                    "Drag to turn · scroll to zoom · click a chunk to select it",
+                ))
+            })
             .children(
                 self.graph
                     .selected
