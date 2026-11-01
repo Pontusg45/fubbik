@@ -6,7 +6,7 @@
 use gpui::{AnyElement, Context, FontWeight, Hsla, IntoElement, SharedString, div, prelude::*, px};
 
 use super::palette::Command;
-use super::widgets::{button, muted, pill, progress};
+use super::widgets::{button, disabled_button, muted, pill, progress};
 use super::{Tab, Workspace};
 use crate::activity;
 use crate::fubbik::{PlanDetail, Task};
@@ -24,7 +24,7 @@ pub fn task_color(status: &str) -> Hsla {
 }
 
 /// Columns, left to right, and the statuses each one shows.
-const COLUMNS: [(&str, &[&str]); 4] = [
+pub(super) const COLUMNS: [(&str, &[&str]); 4] = [
     ("Pending", &["pending"]),
     ("In progress", &["in_progress"]),
     ("Blocked", &["blocked"]),
@@ -39,6 +39,15 @@ pub fn neighbours(status: &str) -> (Option<&'static str>, Option<&'static str>) 
         "blocked" => (Some("pending"), Some("in_progress")),
         "done" | "skipped" => (Some("in_progress"), None),
         _ => (None, None),
+    }
+}
+
+/// A move button's label: where the task goes, in plain words.
+fn move_label(from: &str, to: &str, back: bool) -> String {
+    match (from, to) {
+        ("blocked", "pending") => "Unblock".into(),
+        ("done" | "skipped", "in_progress") => "Reopen".into(),
+        (_, to) => format!("{} {}", if back { "◀" } else { "▶" }, to.replace('_', " ")),
     }
 }
 
@@ -122,10 +131,20 @@ impl Workspace {
                 .enumerate()
                 .map(|(i, p)| {
                     let id = p.id.clone();
-                    let done = p.tasks.iter().filter(|t| t.status == "done").count();
+                    // Skipped counts as finished, as the Done column shows it.
+                    let done = p
+                        .tasks
+                        .iter()
+                        .filter(|t| matches!(t.status.as_str(), "done" | "skipped"))
+                        .count();
+                    let title: String = if p.title.chars().count() > 26 {
+                        format!("{}…", p.title.chars().take(25).collect::<String>())
+                    } else {
+                        p.title.clone()
+                    };
                     button(
                         ("plan-chip", i),
-                        format!("{} {done}/{}", p.title, p.tasks.len()),
+                        format!("{title} {done}/{}", p.tasks.len()),
                     )
                     .when(p.id == plan.id, |b| {
                         b.border_color(theme::accent()).bg(theme::surface_hover())
@@ -144,6 +163,21 @@ impl Workspace {
             .children(chips)
             .child(div().flex_1())
             .child(
+                button(
+                    "plan-start-next",
+                    format!(
+                        "Start next ready task ({})",
+                        super::keymap::keys_for("start_next_task")
+                            .map(|k| super::keymap::pretty(&k))
+                            .unwrap_or_default()
+                    ),
+                )
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.start_next_task(cx);
+                    cx.notify();
+                })),
+            )
+            .child(
                 button("plan-open-web", "Open in fubbik").on_click(cx.listener(
                     move |this, _, _, cx| {
                         this.run(Command::OpenWeb(format!("/plans/{plan_id}")), cx)
@@ -158,9 +192,12 @@ impl Workspace {
                 .iter()
                 .filter(|t| statuses.contains(&t.status.as_str()))
                 .collect();
-            let cards: Vec<AnyElement> = tasks
+            // Done folds to a count until opened.
+            let folded = statuses.contains(&"done") && !self.board_done_open && !tasks.is_empty();
+            let mut cards: Vec<AnyElement> = tasks
                 .iter()
                 .enumerate()
+                .filter(|_| !folded)
                 .map(|(row, task)| {
                     self.task_card(
                         repo,
@@ -171,12 +208,39 @@ impl Workspace {
                     )
                 })
                 .collect();
+            if tasks.is_empty() {
+                cards.push(div().px_1().child(muted("No tasks")).into_any_element());
+            }
+            if statuses.contains(&"done") && !tasks.is_empty() {
+                cards.push(
+                    div()
+                        .id("board-done-toggle")
+                        .px_1()
+                        .text_xs()
+                        .text_color(theme::accent())
+                        .cursor_pointer()
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.board_done_open = !this.board_done_open;
+                            cx.notify();
+                        }))
+                        .child(if folded {
+                            format!("Show {} finished", tasks.len())
+                        } else {
+                            "Hide finished".to_string()
+                        })
+                        .into_any_element(),
+                );
+            }
             columns.push(
                 div()
+                    .id(("board-col", col))
                     .flex()
                     .flex_col()
                     .flex_1()
-                    .min_w(px(200.))
+                    .min_w(px(220.))
+                    // Long columns scroll on their own.
+                    .max_h(px(620.))
+                    .overflow_y_scroll()
                     .gap_2()
                     .p_2()
                     .rounded_lg()
@@ -227,7 +291,31 @@ impl Workspace {
                     ))
                     .child(progress(done, plan.tasks.len() as i64)),
             )
-            .child(div().flex().gap_3().items_start().children(columns))
+            .when(plan.tasks.is_empty(), |d| {
+                let id = plan.id.clone();
+                d.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .child(muted("This plan has no tasks yet."))
+                        .child(button("plan-add-task", "Add tasks in fubbik").on_click(
+                            cx.listener(move |this, _, _, cx| {
+                                this.run(Command::OpenWeb(format!("/plans/{id}")), cx)
+                            }),
+                        )),
+                )
+            })
+            // Narrow windows scroll the board sideways.
+            .child(
+                div()
+                    .id("board")
+                    .flex()
+                    .gap_3()
+                    .items_start()
+                    .overflow_x_scroll()
+                    .children(columns),
+            )
             .into_any_element()
     }
 
@@ -252,8 +340,10 @@ impl Workspace {
 
         let mut lines: Vec<String> = Vec::new();
         if !blockers.is_empty() {
-            let names: Vec<&str> = blockers.iter().map(|t| t.title.as_str()).collect();
-            lines.push(format!("waits on {}", names.join(", ")));
+            lines.push(match blockers.as_slice() {
+                [one] => format!("waits on {}", one.title),
+                many => format!("waits on {} tasks", many.len()),
+            });
         }
         if unblocks > 0 {
             lines.push(format!("unblocks {unblocks}"));
@@ -282,33 +372,37 @@ impl Workspace {
         let mut actions = div().flex().flex_wrap().gap_1();
         if let Some(to) = back {
             let (p, t) = (plan.id.clone(), task.id.clone());
-            actions = actions.child(button(key("back"), "◀").on_click(cx.listener(
-                move |this, _, _, cx| {
-                    this.run(
-                        Command::SetTaskStatus {
-                            plan: p.clone(),
-                            task: t.clone(),
-                            status: to,
-                        },
-                        cx,
-                    )
-                },
-            )));
+            actions = actions.child(
+                button(key("back"), move_label(&task.status, to, true)).on_click(cx.listener(
+                    move |this, _, _, cx| {
+                        this.run(
+                            Command::SetTaskStatus {
+                                plan: p.clone(),
+                                task: t.clone(),
+                                status: to,
+                            },
+                            cx,
+                        )
+                    },
+                )),
+            );
         }
         if let Some(to) = forward {
             let (p, t) = (plan.id.clone(), task.id.clone());
-            actions = actions.child(button(key("forward"), "▶").on_click(cx.listener(
-                move |this, _, _, cx| {
-                    this.run(
-                        Command::SetTaskStatus {
-                            plan: p.clone(),
-                            task: t.clone(),
-                            status: to,
-                        },
-                        cx,
-                    )
-                },
-            )));
+            actions = actions.child(
+                button(key("forward"), move_label(&task.status, to, false)).on_click(cx.listener(
+                    move |this, _, _, cx| {
+                        this.run(
+                            Command::SetTaskStatus {
+                                plan: p.clone(),
+                                task: t.clone(),
+                                status: to,
+                            },
+                            cx,
+                        )
+                    },
+                )),
+            );
         }
         if matches!(task.status.as_str(), "pending" | "in_progress") {
             let (p, t) = (plan.id.clone(), task.id.clone());
@@ -324,6 +418,10 @@ impl Workspace {
                     )
                 },
             )));
+        }
+        if task.status == "pending" && (holder.is_some() || !blockers.is_empty()) {
+            // Not startable now; the line above says why.
+            actions = actions.child(disabled_button(key("start"), "Start"));
         }
         if task.status == "pending" && holder.is_none() && blockers.is_empty() {
             let (p, t) = (plan.id.clone(), task.id.clone());
@@ -446,8 +544,8 @@ impl Workspace {
             .pl_3()
             .shadow(theme::card_shadow())
             .when(task.status == "done", |d| d.opacity(0.6))
-            .child(div().text_sm().child(task.title.clone()))
-            .children(lines.into_iter().map(muted))
+            .child(div().text_sm().line_clamp(2).child(task.title.clone()))
+            .children(lines.into_iter().map(super::widgets::muted_line))
             .children(checklist)
             .when(all_met, |d| {
                 d.child(

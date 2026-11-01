@@ -56,6 +56,52 @@ pub fn disabled_button(id: impl Into<ElementId>, label: impl Into<SharedString>)
         .child(label.into())
 }
 
+/// An on/off switch: the state is the label, a click flips it.
+pub fn switch(id: impl Into<ElementId>, on: bool) -> Stateful<Div> {
+    div()
+        .id(id.into())
+        .flex()
+        .flex_none()
+        .items_center()
+        .gap_1p5()
+        .px_2()
+        .py_1()
+        .rounded_full()
+        .border_1()
+        .border_color(if on { theme::accent() } else { theme::border() })
+        .bg(if on {
+            theme::accent().opacity(0.15)
+        } else {
+            gpui::transparent_black()
+        })
+        .text_xs()
+        .text_color(if on {
+            theme::text()
+        } else {
+            theme::text_muted()
+        })
+        .cursor_pointer()
+        .hover(|b| b.bg(theme::surface_hover()))
+        .child(div().size(px(8.)).rounded_full().bg(if on {
+            theme::accent()
+        } else {
+            theme::text_muted()
+        }))
+        .child(if on { "On" } else { "Off" })
+}
+
+/// One option of a segmented choice: the current one is outlined.
+pub fn segment(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    active: bool,
+) -> Stateful<Div> {
+    button(id, label).when(active, |b| {
+        b.border_color(theme::accent())
+            .bg(theme::accent().opacity(0.15))
+    })
+}
+
 /// One line of muted metadata, cut with an ellipsis instead of wrapping.
 pub fn muted_line(text: impl Into<SharedString>) -> Div {
     div()

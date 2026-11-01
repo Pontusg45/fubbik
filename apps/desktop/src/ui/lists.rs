@@ -178,9 +178,12 @@ impl Workspace {
                 let Some(Ok(knowledge)) = &self.repos[repo].knowledge else {
                     return false;
                 };
-                let flags = knowledge.stale_flags.len();
-                if cursor < flags {
-                    let flag = knowledge.stale_flags[cursor].clone();
+                // Proposals first, then the stale flags shown.
+                let proposals = knowledge.proposals.len();
+                if cursor >= proposals {
+                    let Some(flag) = knowledge.stale_flags.get(cursor - proposals).cloned() else {
+                        return false;
+                    };
                     match key {
                         "d" => self.dismiss_stale(flag.id, cx),
                         "enter" | "o" => {
@@ -189,7 +192,7 @@ impl Workspace {
                         _ => return false,
                     }
                 } else {
-                    let Some(proposal) = knowledge.proposals.get(cursor - flags).cloned() else {
+                    let Some(proposal) = knowledge.proposals.get(cursor).cloned() else {
                         return false;
                     };
                     match key {
@@ -239,7 +242,7 @@ impl Workspace {
                 .get(self.selected)
                 .and_then(|r| r.knowledge.as_ref())
             {
-                Some(Ok(k)) => k.stale_flags.len() + k.proposals.len(),
+                Some(Ok(k)) => self.inbox_flags_shown(k) + k.proposals.len(),
                 _ => 0,
             },
             _ => 0,
@@ -341,6 +344,10 @@ impl Workspace {
                     _ => return false,
                 }
             }
+        }
+        // Moving into the folded Done column opens it.
+        if plans::COLUMNS[col].1.contains(&"done") {
+            self.board_done_open = true;
         }
         self.board_cursor = Some((col, row));
         true

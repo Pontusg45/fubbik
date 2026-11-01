@@ -4,11 +4,13 @@ use super::command_palette::PALETTE_ROWS;
 use super::*;
 
 impl Workspace {
-    pub(super) fn submit_note(&mut self, cx: &mut Context<Self>) {
+    /// Saves the capture note; false when it could not start (no title, no
+    /// space), so the capture box stays open.
+    pub(super) fn submit_note(&mut self, cx: &mut Context<Self>) -> bool {
         let title = self.note_title.text.trim().to_string();
         if title.is_empty() {
             self.show_error("A note needs a title");
-            return;
+            return false;
         }
         let Some(space_id) = self
             .repos
@@ -19,7 +21,7 @@ impl Workspace {
             .map(|s| s.id.clone())
         else {
             self.show_error("This repo has no fubbik space");
-            return;
+            return false;
         };
         let content = self.note_body.text.clone();
         let client = self.client.clone();
@@ -43,6 +45,7 @@ impl Workspace {
             .ok();
         })
         .detach();
+        true
     }
 
     pub(super) fn submit_group(&mut self) {
@@ -131,14 +134,15 @@ impl Workspace {
                     .cloned();
                 self.toggle_palette(window);
                 if let Some(entry) = chosen {
-                    self.run_from_palette(entry.command, cx);
+                    self.choose_from_palette(entry.command, window, cx);
                 }
             }
             (Field::NoteTitle, KeyOutcome::Submit) => self.note_body.focus.focus(window),
             (Field::NoteBody, KeyOutcome::Submit) => {
-                self.submit_note(cx);
-                self.capture_open = false;
-                self.focus.focus(window);
+                if self.submit_note(cx) {
+                    self.capture_open = false;
+                    self.focus.focus(window);
+                }
             }
             (Field::Reply, KeyOutcome::Submit) => self.send_reply(cx),
             (Field::FubbikUrl | Field::WebUrl | Field::FubbikBin, KeyOutcome::Submit) => {

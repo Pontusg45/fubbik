@@ -4,7 +4,7 @@
 use super::*;
 use gpui::AnyElement;
 
-use super::widgets::{button, label, muted, pill, row, section};
+use super::widgets::{button, label, muted, pill, row, section, segment};
 
 impl Workspace {
     pub(super) fn render_preferences(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
@@ -22,16 +22,10 @@ impl Workspace {
             "tmux is not installed: terminal tabs end with the app"
         };
 
+        // A switch: the label is the state, a click flips it.
         let toggle = |id: &'static str, on: bool, command: Command, cx: &mut Context<Self>| {
-            button(
-                id,
-                if on {
-                    "On — turn off"
-                } else {
-                    "Off — turn on"
-                },
-            )
-            .on_click(cx.listener(move |this, _, _, cx| this.run(command.clone(), cx)))
+            super::widgets::switch(id, on)
+                .on_click(cx.listener(move |this, _, _, cx| this.run(command.clone(), cx)))
         };
         let choice_row = |title: &str, detail: String, control: AnyElement| {
             row()
@@ -57,6 +51,14 @@ impl Workspace {
                     div()
                         .flex_1()
                         .child(self.field(field, placeholder, window, cx)),
+                )
+                .child(
+                    button(SharedString::from(format!("pref-save-{title}")), "Save").on_click(
+                        cx.listener(move |this, _, _, cx| {
+                            this.submit_preference(field, cx);
+                            cx.notify();
+                        }),
+                    ),
                 )
                 .into_any_element()
         };
@@ -89,6 +91,7 @@ impl Workspace {
                 },
                 div()
                     .flex()
+                    .items_center()
                     .gap_1()
                     .child(button("pref-agents-less", "−").on_click(cx.listener(
                         |this, _, _, cx| {
@@ -100,15 +103,29 @@ impl Workspace {
                             this.run(Command::SetMaxAgents(next), cx)
                         },
                     )))
+                    .child(
+                        div().w(px(64.)).text_center().text_sm().child(
+                            self.config
+                                .max_agents
+                                .map_or("no limit".to_string(), |n| n.to_string()),
+                        ),
+                    )
                     .child(button("pref-agents-more", "+").on_click(cx.listener(
                         |this, _, _, cx| {
                             let next = this.config.max_agents.map(|n| n + 1).or(Some(4));
                             this.run(Command::SetMaxAgents(next), cx)
                         },
                     )))
-                    .child(button("pref-agents-none", "No limit").on_click(
-                        cx.listener(|this, _, _, cx| this.run(Command::SetMaxAgents(None), cx)),
-                    ))
+                    .child(
+                        segment(
+                            "pref-agents-none",
+                            "No limit",
+                            self.config.max_agents.is_none(),
+                        )
+                        .on_click(
+                            cx.listener(|this, _, _, cx| this.run(Command::SetMaxAgents(None), cx)),
+                        ),
+                    )
                     .into_any_element(),
             ),
             choice_row(
@@ -129,18 +146,24 @@ impl Workspace {
                 } else {
                     "the Terminal tab".to_string()
                 },
-                button(
-                    "pref-external",
-                    if external {
-                        "Use the Terminal tab"
-                    } else {
-                        "Use Terminal.app"
-                    },
-                )
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.run(Command::SetExternalTerminal(!external), cx)
-                }))
-                .into_any_element(),
+                div()
+                    .flex()
+                    .gap_1()
+                    .child(
+                        segment("pref-external-tab", "Terminal tab", !external).on_click(
+                            cx.listener(|this, _, _, cx| {
+                                this.run(Command::SetExternalTerminal(false), cx)
+                            }),
+                        ),
+                    )
+                    .child(
+                        segment("pref-external-app", "Terminal.app", external).on_click(
+                            cx.listener(|this, _, _, cx| {
+                                this.run(Command::SetExternalTerminal(true), cx)
+                            }),
+                        ),
+                    )
+                    .into_any_element(),
             ),
             choice_row(
                 "Start processes and scripts",
@@ -151,9 +174,11 @@ impl Workspace {
                 div()
                     .flex()
                     .gap_1()
-                    .child(button("pref-run-ask", "Ask").on_click(
-                        cx.listener(|this, _, _, cx| this.run(Command::SetRunIn(None), cx)),
-                    ))
+                    .child(
+                        segment("pref-run-ask", "Ask", self.config.run_in.is_none()).on_click(
+                            cx.listener(|this, _, _, cx| this.run(Command::SetRunIn(None), cx)),
+                        ),
+                    )
                     .children(RunTarget::ALL.into_iter().map(|target| {
                         let label = match target {
                             RunTarget::Background => "Background",
@@ -161,9 +186,11 @@ impl Workspace {
                             RunTarget::Tab => "Tab",
                             RunTarget::TerminalApp => "Terminal.app",
                         };
-                        button(
+                        let active = self.config.run_in.as_deref() == Some(target.key());
+                        segment(
                             SharedString::from(format!("pref-run-{}", target.key())),
                             label,
+                            active,
                         )
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.run(Command::SetRunIn(Some(target)), cx)
@@ -173,14 +200,41 @@ impl Workspace {
             ),
             choice_row(
                 "Built-in server (API + PostgreSQL)",
-                crate::backend::status().label(),
-                toggle(
-                    "pref-backend",
-                    self.config.embedded_backend(),
-                    Command::SetEmbeddedBackend(!self.config.embedded_backend()),
-                    cx,
-                )
-                .into_any_element(),
+                {
+                    // The switch shows what you chose; until a restart the
+                    // server keeps its current state.
+                    let running = !matches!(crate::backend::status(), crate::backend::Status::Off);
+                    let chosen = self.config.embedded_backend();
+                    if chosen != running {
+                        format!(
+                            "{} — {} after restart",
+                            crate::backend::status().label(),
+                            if chosen { "on" } else { "off" }
+                        )
+                    } else {
+                        crate::backend::status().label()
+                    }
+                },
+                {
+                    let running = !matches!(crate::backend::status(), crate::backend::Status::Off);
+                    let chosen = self.config.embedded_backend();
+                    div()
+                        .flex()
+                        .gap_1()
+                        .child(toggle(
+                            "pref-backend",
+                            chosen,
+                            Command::SetEmbeddedBackend(!chosen),
+                            cx,
+                        ))
+                        .when(chosen != running, |d| {
+                            d.child(
+                                button("pref-restart", "Restart now")
+                                    .on_click(cx.listener(|_, _, _, cx| cx.restart())),
+                            )
+                        })
+                        .into_any_element()
+                },
             ),
             choice_row(
                 "Import existing data",
@@ -194,8 +248,14 @@ impl Workspace {
                             .into_iter()
                             .enumerate()
                             .map(|(i, source)| {
-                                let label =
-                                    source.split('@').next_back().unwrap_or(&source).to_string();
+                                // Host and database in full; never a password.
+                                let label = source
+                                    .split_once("://")
+                                    .map(|(_, rest)| {
+                                        rest.rsplit_once('@').map_or(rest, |(_, host)| host)
+                                    })
+                                    .unwrap_or(&source)
+                                    .to_string();
                                 button(("pref-import", i), label).on_click(cx.listener(
                                     move |this, _, _, cx| {
                                         this.run(Command::ImportDatabase(source.clone()), cx)
@@ -245,9 +305,18 @@ impl Workspace {
                             },
                         )),
                     )
-                    .child(button("pref-stop-bg", "Stop background server").on_click(
-                        cx.listener(|this, _, _, cx| this.run(Command::StopBackgroundServer, cx)),
-                    ))
+                    // Only when a background server (not this app) holds the port.
+                    .when(
+                        crate::backend::discovery::owner_pid()
+                            .is_some_and(|pid| pid != std::process::id()),
+                        |d| {
+                            d.child(button("pref-stop-bg", "Stop background server").on_click(
+                                cx.listener(|this, _, _, cx| {
+                                    this.run(Command::StopBackgroundServer, cx)
+                                }),
+                            ))
+                        },
+                    )
                     .into_any_element(),
             ),
             field_row(
@@ -323,6 +392,13 @@ impl Workspace {
     pub(super) fn submit_preference(&mut self, field: Field, cx: &mut Context<Self>) {
         let value = |text: &str| Some(text.trim().to_string()).filter(|t| !t.is_empty());
         match field {
+            Field::FubbikUrl | Field::WebUrl
+                if value(&self.field_mut(field).text)
+                    .is_some_and(|v| !v.starts_with("http://") && !v.starts_with("https://")) =>
+            {
+                self.show_error("A URL starts with http:// or https://");
+                return;
+            }
             Field::FubbikUrl => {
                 self.config.fubbik_url = value(&self.fubbik_url_field.text);
                 self.client = FubbikClient::new(self.config.fubbik_url());
@@ -367,7 +443,7 @@ impl Workspace {
                 step(Some(false), "Register a repo", "⌘O, or the button below")
                     .child(button("check-register", "Register repo…").on_click(cx.listener(|this, _, _, cx| this.run(Command::RegisterRepo, cx))))
                     .into_any_element(),
-                step(api, "Run the fubbik server", "`just dev` in the fubbik repo — knowledge, plans and agents boards come from it").into_any_element(),
+                                step(api, "The fubbik server", "The app's built-in server starts on its own (Setup → Built-in server); knowledge, plans and boards come from it").into_any_element(),
                 step(bin, "Build the Rust fubbik binary", "Register the fubbik repo, then Setup → Build fubbik (needed for the MCP server)").into_any_element(),
             ],
         )

@@ -260,6 +260,14 @@ pub enum Command {
         /// Start without switching to it (a detached tmux session).
         background: bool,
     },
+    /// The reply box for the agent that has waited longest (needs a window:
+    /// the palette handles it).
+    ReplyWaiting,
+    /// The first ready task under Today's "Next up", in the background.
+    StartNextTask,
+    /// The next "Needs you" line on Today.
+    NextNeedsYou,
+    ShowHome,
 }
 
 #[derive(Debug, Clone)]
@@ -314,10 +322,17 @@ pub fn recent_first(entries: &mut Vec<Entry>, recent: &[Command]) {
     });
 }
 
+#[cfg(test)]
 pub fn filter(entries: &[Entry], query: &str) -> Vec<Entry> {
+    filter_with(entries, query, |_| 0)
+}
+
+/// [`filter`], with `bonus` added to each match's score (the selected
+/// repo's entries rank first).
+pub fn filter_with(entries: &[Entry], query: &str, bonus: impl Fn(&Entry) -> i32) -> Vec<Entry> {
     let mut scored: Vec<(i32, &Entry)> = entries
         .iter()
-        .filter_map(|entry| score(&entry.label, query).map(|s| (s, entry)))
+        .filter_map(|entry| score(&entry.label, query).map(|s| (s + bonus(entry), entry)))
         .collect();
     scored.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
     scored.into_iter().map(|(_, entry)| entry.clone()).collect()
@@ -387,6 +402,20 @@ mod tests {
             entries.iter().map(|e| e.label.as_str()).collect::<Vec<_>>(),
             ["c", "b", "a"]
         );
+    }
+
+    #[test]
+    fn a_bonus_lifts_an_entry_above_a_better_match() {
+        // Given
+        let entries = [entry("Start api — other"), entry("Start api — mine")];
+
+        // When
+        let ranked = filter_with(&entries, "start", |e| {
+            if e.label.ends_with("— mine") { 10 } else { 0 }
+        });
+
+        // Then
+        assert_eq!(ranked[0].label, "Start api — mine");
     }
 
     #[test]

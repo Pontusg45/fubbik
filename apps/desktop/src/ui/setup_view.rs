@@ -4,7 +4,7 @@
 
 use gpui::{AnyElement, Context, Hsla, IntoElement, SharedString, div, prelude::*, px};
 
-use super::widgets::{button, muted, pill, row, section};
+use super::widgets::{button, muted, pill, row, section, section_or};
 use super::{Workspace, display_path};
 use crate::claude_md::MdState;
 use crate::model::Status;
@@ -84,9 +84,33 @@ impl Workspace {
             ));
         }
         let mut server_row = check("fubbik server", server_ok, server_detail);
-        server_row = server_row.child(button("open-web", "Open web app").on_click(cx.listener(
-            |this, _, _, cx| this.run(super::palette::Command::OpenWeb("/dashboard".into()), cx),
-        )));
+        if server_ok {
+            server_row = server_row.child(button("open-web", "Open web app").on_click(
+                cx.listener(|this, _, _, cx| {
+                    this.run(super::palette::Command::OpenWeb("/dashboard".into()), cx)
+                }),
+            ));
+        } else {
+            // Something to do about it, not just a link.
+            server_row = server_row
+                .child(button("server-retry", "Retry").on_click(
+                    cx.listener(|this, _, _, cx| this.run(super::palette::Command::Refresh, cx)),
+                ))
+                .child(button("server-logs", "Show logs").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.log_key = Some("builtin::server".into());
+                        this.log_paused = None;
+                        this.run(super::palette::Command::ShowTab(super::Tab::Logs), cx)
+                    },
+                )))
+                .when(!self.config.embedded_backend(), |r| {
+                    r.child(button("server-on", "Turn on the built-in server").on_click(
+                        cx.listener(|this, _, _, cx| {
+                            this.run(super::palette::Command::SetEmbeddedBackend(true), cx)
+                        }),
+                    ))
+                });
+        }
 
         let setup_state = view.setup.as_ref();
         let mcp = setup_state.map(|s| s.mcp.clone());
@@ -108,7 +132,6 @@ impl Workspace {
                     .on_click(cx.listener(move |this, _, _, cx| this.install_mcp(repo, cx))),
             );
         }
-        let config_row = check("Desktop config", true, display_path(&self.config_path));
 
         // ── per worktree ──
         let mut worktree_rows: Vec<AnyElement> = Vec::new();
@@ -178,18 +201,26 @@ impl Workspace {
             .flex()
             .flex_col()
             .gap_6()
-            .child(self.render_preferences(window, cx))
+            // What is broken first; preferences after.
             .child(section(
                 "Doctor",
                 vec![
                     server_row.into_any_element(),
                     bin_row.into_any_element(),
                     mcp_row.into_any_element(),
-                    config_row.into_any_element(),
                 ],
             ))
-            .child(section("Worktrees: hooks and CLAUDE.md", worktree_rows))
+            .child(section_or(
+                "Worktrees: hooks and CLAUDE.md",
+                worktree_rows,
+                if setup_state.is_none() {
+                    "Checking…"
+                } else {
+                    "No worktrees"
+                },
+            ))
             .child(muted(claude_md_note))
+            .child(self.render_preferences(window, cx))
             .child(self.render_keyboard_setup(cx))
     }
 

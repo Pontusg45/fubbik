@@ -263,6 +263,16 @@ pub fn remove(repo: &Path, path: &Path) -> Result<(), String> {
     git(repo, &["worktree", "remove", &path_arg]).map(|_| ())
 }
 
+/// The default branch: origin/HEAD's target (`main`, `master`…), if set.
+pub fn default_branch(repo: &Path) -> Option<String> {
+    let out = git(
+        repo,
+        &["symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
+    )
+    .ok()?;
+    out.trim().strip_prefix("origin/").map(str::to_string)
+}
+
 /// `git branch -d`: only a merged branch (git refuses otherwise).
 pub fn delete_merged_branch(repo: &Path, name: &str) -> Result<(), String> {
     git(repo, &["branch", "-d", name]).map(|_| ())

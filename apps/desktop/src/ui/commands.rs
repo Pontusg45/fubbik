@@ -930,7 +930,12 @@ impl Workspace {
                 self.save_config();
                 self.drain_launch_queue(cx);
             }
-            Command::CaptureNote => self.capture_open = true,
+                        Command::CaptureNote => self.capture_open = true,
+            // The palette opens the reply box itself (it has the window).
+            Command::ReplyWaiting => self.show_info("Press ⇧⌘R to reply to the waiting agent"),
+            Command::StartNextTask => self.start_next_task(cx),
+            Command::NextNeedsYou => self.next_needs_you(cx),
+            Command::ShowHome => self.go_home(),
             Command::OpenPane { pane, cwd } => self.open_pane(pane, cwd, cx),
             Command::Focus { repo, tab } => {
                 self.select(repo);

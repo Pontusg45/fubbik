@@ -12,6 +12,10 @@ fn command_keys(command: &Command) -> Option<String> {
         Command::CaptureNote => "capture_note".into(),
         Command::ToggleSplit => "split_terminal".into(),
         Command::SelectRepo(i) if *i < 9 => format!("select_repo_{}", i + 1),
+        Command::ReplyWaiting => "reply_latest".into(),
+        Command::StartNextTask => "start_next_task".into(),
+        Command::NextNeedsYou => "next_needs_you".into(),
+        Command::ShowHome => "show_home".into(),
         _ => return None,
     };
     keymap::keys_for(&action)
@@ -83,11 +87,59 @@ impl Workspace {
             }
         };
         let query = query.trim_start();
-        let mut matches = palette::filter(&entries, query);
+        let mut entries = entries;
+        // Dozens of Ghostty themes would bury everything else: only when asked.
+        if !query.to_lowercase().contains("theme") {
+            entries.retain(
+                |e| !matches!(&e.command, Command::SetColors(Some(name)) if name != "follow"),
+            );
+        }
+        // The selected repo's entries first.
+        let mine = self
+            .repos
+            .get(self.selected)
+            .map(|r| format!("— {}", r.entry.name()));
+        let mut matches = palette::filter_with(&entries, query, |e| {
+            if mine.as_ref().is_some_and(|m| e.label.ends_with(m.as_str())) {
+                8
+            } else {
+                0
+            }
+        });
         if query.is_empty() {
             palette::recent_first(&mut matches, &self.palette_recent);
         }
         matches
+    }
+
+    /// Runs the chosen entry; the reply box needs the window.
+    pub(super) fn choose_from_palette(
+        &mut self,
+        command: Command,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if command == Command::ReplyWaiting {
+            self.reply_latest(window, cx);
+        } else {
+            self.run_from_palette(command, cx);
+        }
+    }
+
+    /// What the palette says when it lists nothing.
+    fn palette_empty_text(&self) -> String {
+        let text = self.palette_field.text.as_str();
+        match text.strip_prefix('?').map(str::trim) {
+            Some(terms) if terms.chars().count() < 2 => {
+                "Type 2 or more characters to search chunks".into()
+            }
+            Some(_) if self.palette_searching => "Searching…".into(),
+            Some(_) => match &self.palette_search_error {
+                Some(error) => format!("Search failed: {error}"),
+                None => "No chunks match".into(),
+            },
+            None => "No matching commands".into(),
+        }
     }
 
     /// Runs a palette entry and remembers it as recent.
@@ -215,6 +267,22 @@ impl Workspace {
             Entry {
                 label: "Capture note…".into(),
                 command: Command::CaptureNote,
+            },
+            Entry {
+                label: "Home".into(),
+                command: Command::ShowHome,
+            },
+            Entry {
+                label: "Reply to the waiting agent".into(),
+                command: Command::ReplyWaiting,
+            },
+            Entry {
+                label: "Start the next ready task".into(),
+                command: Command::StartNextTask,
+            },
+            Entry {
+                label: "Next thing that needs you".into(),
+                command: Command::NextNeedsYou,
             },
             Entry {
                 label: "Theme: Built-in".into(),
@@ -345,7 +413,13 @@ impl Workspace {
                     }
                 }
             }
-            for session in snapshot.iter().flat_map(|s| s.sessions.iter()).take(10) {
+            // A live session needs no resuming.
+            for session in snapshot
+                .iter()
+                .flat_map(|s| s.sessions.iter())
+                .filter(|s| !s.state.is_live())
+                .take(10)
+            {
                 entries.push(Entry {
                     label: format!(
                         "Resume “{}” ({}) — {name}",
@@ -365,19 +439,24 @@ impl Workspace {
                 .flat_map(|s| s.processes.iter())
                 .enumerate()
             {
+                // Only what applies: Start when stopped, else Stop and Restart.
+                let stopped = process.status == crate::model::Status::Stopped;
                 let process = &process.spec.name;
-                entries.push(Entry {
-                    label: format!("Start {process} — {name}"),
-                    command: Command::StartProcess(r, p),
-                });
-                entries.push(Entry {
-                    label: format!("Stop {process} — {name}"),
-                    command: Command::StopProcess(r, p),
-                });
-                entries.push(Entry {
-                    label: format!("Restart {process} — {name}"),
-                    command: Command::RestartProcess(r, p),
-                });
+                if stopped {
+                    entries.push(Entry {
+                        label: format!("Start {process} — {name}"),
+                        command: Command::StartProcess(r, p),
+                    });
+                } else {
+                    entries.push(Entry {
+                        label: format!("Stop {process} — {name}"),
+                        command: Command::StopProcess(r, p),
+                    });
+                    entries.push(Entry {
+                        label: format!("Restart {process} — {name}"),
+                        command: Command::RestartProcess(r, p),
+                    });
+                }
             }
         }
         entries
@@ -400,6 +479,11 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let matches = self.palette_matches();
+        let empty = matches.is_empty().then(|| self.palette_empty_text());
+        // Sized to the window, within bounds.
+        let viewport = window.viewport_size();
+        let width = (viewport.width * 0.8).min(px(640.)).max(px(320.));
+        let height = (viewport.height * 0.7).min(px(460.)).max(px(220.));
         let selected = self
             .palette_selected
             .min(matches.len().min(PALETTE_ROWS).saturating_sub(1));
@@ -421,7 +505,7 @@ impl Workspace {
                         .hover(|row| row.bg(theme::surface_hover()))
                         .on_click(cx.listener(move |this, _, window, cx| {
                             this.toggle_palette(window);
-                            this.run_from_palette(command.clone(), cx);
+                            this.choose_from_palette(command.clone(), window, cx);
                         }))
                         .flex()
                         .items_center()
@@ -433,7 +517,7 @@ impl Workspace {
                                 .rounded_full()
                                 .bg(command_color(&entry.command)),
                         )
-                        .child(div().flex_1().child(entry.label))
+                        .child(div().flex_1().min_w_0().truncate().child(entry.label))
                         .children(command_keys(&entry.command).map(|keys| {
                             div().text_xs().text_color(theme::text_muted()).child(keys)
                         }))
@@ -449,8 +533,8 @@ impl Workspace {
             .child(
                 div()
                     .id("palette")
-                    .w(px(520.))
-                    .h(px(420.))
+                    .w(width)
+                    .h(height)
                     .flex()
                     .flex_col()
                     .gap_2()
@@ -470,7 +554,15 @@ impl Workspace {
                         window,
                         cx,
                     ))
-                    .child(div().flex().flex_col().children(rows)),
+                    .child(div().flex().flex_col().children(rows))
+                    .children(empty.map(|text| {
+                        div()
+                            .px_3()
+                            .py_2()
+                            .text_sm()
+                            .text_color(theme::text_muted())
+                            .child(text)
+                    })),
             )
     }
 }

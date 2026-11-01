@@ -17,6 +17,9 @@ pub struct Effort {
     pub since: Option<i64>,
 }
 
+/// Task statuses the API knows.
+const TASK_STATUSES: [&str; 5] = ["pending", "in_progress", "blocked", "done", "skipped"];
+
 impl Workspace {
     pub(super) fn find_task(
         &self,
@@ -101,11 +104,44 @@ impl Workspace {
         status: &'static str,
         cx: &mut Context<Self>,
     ) {
-        self.api_action(
-            format!("Moved to {}", status.replace('_', " ")),
-            move |c| c.set_task_status(&plan, &task, status),
-            cx,
-        );
+        // Where it was, so the toast can undo the move.
+        let previous: Option<&'static str> = self
+            .repos
+            .iter()
+            .filter_map(|r| r.knowledge.as_ref()?.as_ref().ok())
+            .flat_map(|k| k.plan_details.iter())
+            .find(|p| p.id == plan)
+            .and_then(|p| p.tasks.iter().find(|t| t.id == task))
+            .and_then(|t| TASK_STATUSES.iter().copied().find(|s| *s == t.status))
+            .filter(|s| *s != status);
+        let client = self.client.clone();
+        let (undo_plan, undo_task) = (plan.clone(), task.clone());
+        let work = cx
+            .background_executor()
+            .spawn(async move { client.set_task_status(&plan, &task, status) });
+        cx.spawn(async move |this, cx| {
+            let result = work.await;
+            this.update(cx, |this, cx| {
+                match (result, previous) {
+                    (Ok(()), Some(previous)) => this.show_alert(Alert {
+                        message: format!("Moved to {} — click to undo", status.replace('_', " ")),
+                        target: Command::SetTaskStatus {
+                            plan: undo_plan.clone(),
+                            task: undo_task.clone(),
+                            status: previous,
+                        },
+                    }),
+                    (Ok(()), None) => {
+                        this.show_info(format!("Moved to {}", status.replace('_', " ")))
+                    }
+                    (Err(error), _) => this.show_error(error),
+                }
+                this.poll_now(true, cx);
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
     }
 
     pub(super) fn toggle_criterion(
@@ -167,15 +203,46 @@ impl Workspace {
             return;
         };
         let repo_path = view.entry.path.clone();
-        let main = view
-            .snapshot
-            .as_ref()
-            .and_then(|s| s.worktrees.as_ref()?.as_ref().ok()?.first()?.branch.clone())
+        // The repo's default branch (origin/HEAD), not whatever the main
+        // checkout happens to be on.
+        let main = worktree::default_branch(&repo_path)
+            .or_else(|| {
+                view.snapshot
+                    .as_ref()
+                    .and_then(|s| s.worktrees.as_ref()?.as_ref().ok()?.first()?.branch.clone())
+            })
             .unwrap_or_else(|| "main".into());
+        let mut actions = vec![(
+            "Open in fubbik".to_string(),
+            Command::OpenWeb(format!("/plans/{plan_id}")),
+        )];
+        if let Some(path) = view.snapshot.as_ref().and_then(|s| {
+            s.worktrees
+                .as_ref()?
+                .as_ref()
+                .ok()?
+                .iter()
+                .find(|w| task.link.branch.is_some() && w.branch == task.link.branch)
+                .map(|w| w.path.clone())
+        }) {
+            actions.push(("Shell in its worktree".to_string(), Command::ShellAt(path)));
+        }
+        if task.status == "pending" {
+            actions.push((
+                "Start".to_string(),
+                Command::StartTask {
+                    repo,
+                    plan: plan_id.clone(),
+                    task: task_id.clone(),
+                    new_worktree: true,
+                    background: false,
+                },
+            ));
+        }
         self.panel = Some(Panel {
             title: format!("{} — {}", task.title, plan.title),
             body: Loadable::Loading,
-            actions: Vec::new(),
+            actions,
         });
         let client = self.client.clone();
         let work = cx.background_executor().spawn(async move {
@@ -186,7 +253,16 @@ impl Workspace {
                 }
             };
             at(&mut events, task.created_at.as_deref(), "created".into());
-            if let Some(board) = client.board(&plan_id)? {
+            // Each source on its own: a missing board still shows the commits.
+            let mut notes = Vec::new();
+            let board = match client.board(&plan_id) {
+                Ok(board) => board,
+                Err(error) => {
+                    notes.push(format!("(board unavailable: {error})"));
+                    None
+                }
+            };
+            if let Some(board) = board {
                 for claim in board.claims.iter().filter(|c| c.task_id == task_id) {
                     let handle = board
                         .runs
@@ -231,9 +307,24 @@ impl Workspace {
                         "--format=%h%x09%at%x09%s",
                         &format!("{main}..{branch}"),
                     ])
-                    .output()
-                    .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
-                    .unwrap_or_default();
+                    .output();
+                let log = match log {
+                    Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).into_owned(),
+                    Ok(o) => {
+                        notes.push(format!(
+                            "(git log {main}..{branch} failed: {})",
+                            String::from_utf8_lossy(&o.stderr)
+                                .lines()
+                                .next()
+                                .unwrap_or_default()
+                        ));
+                        String::new()
+                    }
+                    Err(error) => {
+                        notes.push(format!("(git log failed: {error})"));
+                        String::new()
+                    }
+                };
                 for commit in activity::parse_log(&log) {
                     events.push((
                         commit.time,
@@ -262,7 +353,10 @@ impl Workspace {
             if text.is_empty() {
                 text.push_str("Nothing recorded for this task yet.");
             }
-            Ok(text)
+            for note in notes {
+                text.push_str(&format!("\n{note}"));
+            }
+            Ok::<String, String>(text)
         });
         cx.spawn(async move |this, cx| {
             let result = work.await;

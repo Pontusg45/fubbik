@@ -418,6 +418,9 @@ pub struct Workspace {
     palette_selected: usize,
     /// Chunk search results for a palette query starting with `?`.
     palette_search: Vec<ChunkRef>,
+    /// A `?` search is in flight.
+    palette_searching: bool,
+    palette_search_error: Option<String>,
     /// Commands run from the palette, newest first; listed first when the
     /// query is empty.
     palette_recent: Vec<Command>,
@@ -501,6 +504,12 @@ pub struct Workspace {
     launched_in: HashMap<String, RunTarget>,
     /// Starts and stops the next poll has not confirmed yet ("Starting…").
     pending: HashMap<String, (Instant, &'static str)>,
+    /// Knowledge lists every stale flag, not just the first few.
+    knowledge_all: bool,
+    /// "Enrich all" is running (since).
+    enriching: Option<Instant>,
+    /// The board shows its finished tasks (folded by default).
+    board_done_open: bool,
     /// AI Sessions lists every ended session, not just the last few.
     sessions_all: bool,
     /// Today shows only this repo's lines (None: every repo).
@@ -561,6 +570,8 @@ impl Workspace {
             palette_open: false,
             palette_selected: 0,
             palette_search: Vec::new(),
+            palette_searching: false,
+            palette_search_error: None,
             palette_recent: Vec::new(),
             backend_seen: crate::backend::status(),
             scripts_expanded: Default::default(),
@@ -607,6 +618,9 @@ impl Workspace {
             ports_all: false,
             today_filter: None,
             sessions_all: false,
+            board_done_open: false,
+            knowledge_all: false,
+            enriching: None,
             last_exit: HashMap::new(),
             launched_in: HashMap::new(),
             pending: HashMap::new(),

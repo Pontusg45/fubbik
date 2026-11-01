@@ -51,14 +51,18 @@ impl Workspace {
 
     pub(super) fn search_chunks(&mut self, cx: &mut Context<Self>) {
         let query = self.palette_field.text.clone();
+        self.palette_search_error = None;
         let Some(terms) = query.strip_prefix('?').map(str::trim) else {
             self.palette_search.clear();
+            self.palette_searching = false;
             return;
         };
-        if terms.len() < 2 {
+        if terms.chars().count() < 2 {
             self.palette_search.clear();
+            self.palette_searching = false;
             return;
         }
+        self.palette_searching = true;
         let client = self.client.clone();
         let space = self.selected_space();
         let terms = terms.to_string();
@@ -70,7 +74,14 @@ impl Workspace {
             this.update(cx, |this, cx| {
                 // Drop results for a query the user has typed past.
                 if this.palette_field.text == query {
-                    this.palette_search = result.unwrap_or_default();
+                    this.palette_searching = false;
+                    match result {
+                        Ok(found) => this.palette_search = found,
+                        Err(error) => {
+                            this.palette_search.clear();
+                            this.palette_search_error = Some(error.to_string());
+                        }
+                    }
                     cx.notify();
                 }
             })
@@ -157,6 +168,10 @@ impl Workspace {
     }
 
     pub(super) fn enrich_all(&mut self, cx: &mut Context<Self>) {
+        if self.enriching.is_some() {
+            return;
+        }
+        self.enriching = Some(std::time::Instant::now());
         self.show_info("Enriching… this can take minutes");
         let client = self.client.clone();
         let task = cx
@@ -165,6 +180,7 @@ impl Workspace {
         cx.spawn(async move |this, cx| {
             let result = task.await;
             this.update(cx, |this, cx| {
+                this.enriching = None;
                 match result {
                     Ok(n) => this.show_info(format!("Enriched {n} chunks")),
                     Err(error) => {

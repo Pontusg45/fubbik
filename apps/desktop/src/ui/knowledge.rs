@@ -7,13 +7,27 @@ use gpui::{
 };
 
 use super::palette::Command;
-use super::widgets::{button, label, muted, pill, row, section, stat_card};
-use super::{Field, Loadable, Workspace};
+use super::widgets::{
+    button, disabled_button, label, muted, pill, row, section, section_or, stat_card,
+};
+use super::{Loadable, Workspace};
 use crate::fubbik::Knowledge;
 use crate::model::Status;
 use crate::theme;
 
+/// Stale flags shown before "Show all".
+const INBOX_FLAGS: usize = 10;
+
 impl Workspace {
+    /// Stale flags listed in the inbox (the rest behind "Show all").
+    pub(super) fn inbox_flags_shown(&self, k: &Knowledge) -> usize {
+        if self.knowledge_all {
+            k.stale_flags.len()
+        } else {
+            k.stale_flags.len().min(INBOX_FLAGS)
+        }
+    }
+
     /// The repo's knowledge, or a notice saying why there is none.
     pub(super) fn knowledge_or_notice(&self, repo: usize) -> Result<&Knowledge, AnyElement> {
         let notice = |title: String, detail: String| {
@@ -26,17 +40,27 @@ impl Workspace {
                 .into_any_element()
         };
         match &self.repos[repo].knowledge {
-            None => Err(muted("Asking fubbik…").into_any_element()),
-            Some(Err(error)) => Err(notice(
-                format!("fubbik isn't reachable at {}", self.config.fubbik_url()),
-                format!(
-                    "Start it with `just dev`, or set fubbik_url in {}. ({error})",
-                    self.config_path.display()
-                ),
-            )),
+            None => Err(super::widgets::loading("Asking fubbik…").into_any_element()),
+            Some(Err(error)) => {
+                // Say what to do from where the server actually stands.
+                use crate::backend::Status as Server;
+                let advice = match crate::backend::status() {
+                    Server::Starting(step) => format!("The app's built-in server is starting ({step}); this retries on its own."),
+                    Server::Failed(why) => format!("The app's built-in server failed: {why}. Setup → Built-in server, and Logs → built-in server."),
+                    Server::Running { .. } => "The built-in server runs but did not answer; see Logs → built-in server. ⌘R retries.".into(),
+                    Server::Off | Server::External => format!(
+                        "Turn on the app's built-in server (Setup), run `fubbik serve`, or set fubbik_url in {}. ⌘R retries.",
+                        self.config_path.display()
+                    ),
+                };
+                Err(notice(
+                    format!("fubbik isn't reachable at {}", self.config.fubbik_url()),
+                    format!("{advice} ({error})"),
+                ))
+            }
             Some(Ok(Knowledge { space: None, .. })) => Err(notice(
                 "No fubbik space matches this repo".into(),
-                "Create one from the repo folder with `fubbik space add`.".into(),
+                "Create one from the repo folder with `fubbik space add`, or from the web app's Spaces page.".into(),
             )),
             Some(Ok(knowledge)) => Ok(knowledge),
         }
@@ -45,7 +69,7 @@ impl Workspace {
     pub(super) fn render_knowledge(
         &self,
         repo: usize,
-        window: &Window,
+        _window: &Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let k = match self.knowledge_or_notice(repo) {
@@ -78,6 +102,7 @@ impl Workspace {
 
         let cards = div()
             .flex()
+            .flex_wrap()
             .gap_4()
             .child(stat_card("Chunks", k.chunks.to_string()))
             .child(stat_card("Stale", k.stale.to_string()))
@@ -97,18 +122,21 @@ impl Workspace {
             .child(self.render_gaps(repo, cx))
             .child(self.render_quality(k, cx))
             .child(self.render_features(repo, k, cx))
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_2()
-                    .child(label("QUICK NOTE"))
-                    .child(self.field(Field::NoteTitle, "Title", window, cx))
-                    .child(self.field(Field::NoteBody, "Content — enter saves", window, cx))
-                    .child(div().flex().child(button("note-save", "Save note").on_click(cx.listener(|this, _, _, cx| {
-                        this.submit_note(cx);
+                        .child(
+                div().flex().child(
+                    button(
+                        "note-capture",
+                        format!(
+                            "Capture a note ({})",
+                            super::keymap::keys_for("capture_note").map(|k| super::keymap::pretty(&k)).unwrap_or_default()
+                        ),
+                    )
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.capture_open = true;
+                        this.note_title.focus.focus(window);
                         cx.notify();
-                    })))),
+                    })),
+                ),
             )
             .into_any_element()
     }
@@ -120,43 +148,6 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let mut rows: Vec<AnyElement> = Vec::new();
-        for (i, flag) in k.stale_flags.iter().enumerate() {
-            let id = |n: &str| SharedString::from(format!("stale-{n}-{i}"));
-            let (chunk, flag_id) = (flag.chunk_id.clone(), flag.id.clone());
-            rows.push(
-                row()
-                    .when(
-                        self.tab == super::Tab::Knowledge && self.list_cursor == Some(i),
-                        |r| r.bg(theme::surface_hover()),
-                    )
-                    .child(pill("stale", theme::status(Status::Degraded)))
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .flex_1()
-                            .overflow_hidden()
-                            .child(div().text_sm().child(flag.chunk_title.clone()))
-                            .child(muted(format!(
-                                "{}{}",
-                                flag.reason.replace('_', " "),
-                                flag.detail
-                                    .as_ref()
-                                    .map(|d| format!(" — {d}"))
-                                    .unwrap_or_default()
-                            ))),
-                    )
-                    .child(button(id("open"), "Open").on_click(cx.listener(
-                        move |this, _, _, cx| {
-                            this.run(Command::OpenWeb(format!("/chunks/{chunk}")), cx)
-                        },
-                    )))
-                    .child(button(id("dismiss"), "Dismiss").on_click(
-                        cx.listener(move |this, _, _, cx| this.dismiss_stale(flag_id.clone(), cx)),
-                    ))
-                    .into_any_element(),
-            );
-        }
         for (i, proposal) in k.proposals.iter().enumerate() {
             let id = |n: &str| SharedString::from(format!("proposal-{n}-{i}"));
             let chunk = proposal.chunk_id.clone();
@@ -165,7 +156,7 @@ impl Workspace {
             if let Some(reason) = &proposal.reason {
                 detail.push_str(&format!(" — {reason}"));
             }
-            let at = k.stale_flags.len() + i;
+            let at = i;
             rows.push(
                 row()
                     .when(
@@ -214,12 +205,74 @@ impl Workspace {
                     .into_any_element(),
             );
         }
+        let shown_flags = self.inbox_flags_shown(k);
+        for (i, flag) in k.stale_flags.iter().take(shown_flags).enumerate() {
+            let id = |n: &str| SharedString::from(format!("stale-{n}-{i}"));
+            let (chunk, flag_id) = (flag.chunk_id.clone(), flag.id.clone());
+            rows.push(
+                row()
+                    .when(
+                        self.tab == super::Tab::Knowledge
+                            && self.list_cursor == Some(k.proposals.len() + i),
+                        |r| r.bg(theme::surface_hover()),
+                    )
+                    .child(pill("stale", theme::status(Status::Degraded)))
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .flex_1()
+                            .overflow_hidden()
+                            .child(div().text_sm().child(flag.chunk_title.clone()))
+                            .child(muted(format!(
+                                "{}{}",
+                                flag.reason.replace('_', " "),
+                                flag.detail
+                                    .as_ref()
+                                    .map(|d| format!(" — {d}"))
+                                    .unwrap_or_default()
+                            ))),
+                    )
+                    .child(button(id("open"), "Open").on_click(cx.listener(
+                        move |this, _, _, cx| {
+                            this.run(Command::OpenWeb(format!("/chunks/{chunk}")), cx)
+                        },
+                    )))
+                    .child(button(id("dismiss"), "Dismiss").on_click(
+                        cx.listener(move |this, _, _, cx| this.dismiss_stale(flag_id.clone(), cx)),
+                    ))
+                    .into_any_element(),
+            );
+        }
+        let hidden = k.stale_flags.len() - shown_flags;
+        if hidden > 0 || (self.knowledge_all && k.stale_flags.len() > INBOX_FLAGS) {
+            rows.push(
+                div()
+                    .id("inbox-all")
+                    .px_4()
+                    .py_2()
+                    .text_xs()
+                    .text_color(theme::accent())
+                    .cursor_pointer()
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.knowledge_all = !this.knowledge_all;
+                        cx.notify();
+                    }))
+                    .child(if hidden > 0 {
+                        format!("Show all {} stale flags", k.stale_flags.len())
+                    } else {
+                        "Show fewer".to_string()
+                    })
+                    .into_any_element(),
+            );
+        }
+        let here = k.proposals.len();
         let title = format!(
-            "Needs attention ({} stale · {} proposals pending, all spaces)",
-            k.stale_flags.len(),
-            k.proposals_pending
+            "Needs attention ({here} proposal(s) here · {} pending across all spaces · {} stale)",
+            k.proposals_pending,
+            k.stale_flags.len()
         );
-        section(title, rows)
+        section_or(title, rows, "Inbox zero: nothing to review")
     }
 
     fn render_enrichment(
@@ -233,13 +286,21 @@ impl Workspace {
             .as_ref()
             .and_then(|s| s.processes.iter().find(|p| p.spec.name == "ollama"))
             .map(|p| p.status);
+        let ollama_index = self.repos[repo]
+            .snapshot
+            .as_ref()
+            .and_then(|s| s.processes.iter().position(|p| p.spec.name == "ollama"));
         let ollama_text = match ollama {
             Some(status) if status.is_up() => "Ollama is up".to_string(),
-            Some(_) => "Ollama is stopped — start it in Processes first".to_string(),
+            Some(_) => "Ollama is stopped — start it to enrich".to_string(),
             None => {
                 "Ollama is not in fubbik.services.toml; enrichment needs it running".to_string()
             }
         };
+        let enriching = self
+            .enriching
+            .map(|at| crate::activity::short_age(at.elapsed().as_secs() as i64));
+        let stopped = ollama.is_some_and(|s| !s.is_up());
         section(
             "Enrichment",
             vec![
@@ -255,18 +316,31 @@ impl Workspace {
                             )))
                             .child(muted(ollama_text)),
                     )
-                    .child(
-                        button("enrich-all", "Enrich all")
-                            .on_click(cx.listener(|this, _, _, cx| this.enrich_all(cx))),
-                    )
+                                        .child(match (&enriching, stopped, ollama_index) {
+                        (Some(age), _, _) => disabled_button("enrich-all", format!("Enriching… {age}")).into_any_element(),
+                        (None, true, Some(p)) => button("ollama-start", "Start Ollama")
+                            .on_click(cx.listener(move |this, _, _, cx| this.run(Command::StartProcess(repo, p), cx)))
+                            .into_any_element(),
+                        (None, true, None) => disabled_button("enrich-all", "Enrich all").into_any_element(),
+                        (None, false, _) => button("enrich-all", "Enrich all")
+                            .on_click(cx.listener(|this, _, _, cx| this.enrich_all(cx)))
+                            .into_any_element(),
+                    })
                     .into_any_element(),
             ],
         )
     }
 
     fn render_gaps(&self, repo: usize, cx: &mut Context<Self>) -> impl IntoElement {
-        let scan = button("gaps-scan", "Scan for gaps")
-            .on_click(cx.listener(move |this, _, _, cx| this.scan_gaps(repo, cx)));
+        let scanning = matches!(self.repos[repo].gaps, Some(Loadable::Loading));
+        let scan = if scanning {
+            disabled_button("gaps-scan", "Scanning…").into_any_element()
+        } else {
+            button("gaps-scan", "Scan for gaps")
+                .on_click(cx.listener(move |this, _, _, cx| this.scan_gaps(repo, cx)))
+                .into_any_element()
+        };
+        let repo_path = self.repos[repo].entry.path.clone();
         let mut rows: Vec<AnyElement> = Vec::new();
         let summary = match &self.repos[repo].gaps {
             None => "Source files no chunk covers (like `fubbik gaps`). One request per file, up to 400.".to_string(),
@@ -274,7 +348,8 @@ impl Workspace {
             Some(Loadable::Done(Err(error))) => format!("Scan failed: {error}"),
             Some(Loadable::Done(Ok(report))) => {
                 for (dir, files) in report.by_directory.iter().take(10) {
-                    let sample: Vec<&str> = files.iter().take(3).map(String::as_str).collect();
+                                        let sample: Vec<&str> = files.iter().take(3).map(String::as_str).collect();
+                    let folder = repo_path.join(dir);
                     rows.push(
                         row()
                             .child(div().w(px(56.)).child(div().text_sm().font_weight(FontWeight::MEDIUM).child(files.len().to_string())))
@@ -284,9 +359,12 @@ impl Workspace {
                                     .flex_col()
                                     .flex_1()
                                     .overflow_hidden()
-                                    .child(div().text_sm().child(dir.clone()))
+                                                                        .child(div().text_sm().child(dir.clone()))
                                     .child(muted(sample.join(", "))),
                             )
+                            .child(button(SharedString::from(format!("gap-open-{dir}")), "Open").on_click(
+                                cx.listener(move |this, _, _, cx| this.run(Command::OpenEditorAt(folder.clone()), cx)),
+                            ))
                             .into_any_element(),
                     );
                 }
@@ -341,12 +419,16 @@ impl Workspace {
                             .child(r.title.clone()),
                     )
                     .child(muted(r.priority.clone().unwrap_or_default()))
-                    .child(button(id("pass"), "Mark passing").on_click(cx.listener(
-                        move |this, _, _, cx| this.set_requirement(pass.clone(), "passing", cx),
-                    )))
-                    .child(button(id("fail"), "Mark failing").on_click(cx.listener(
-                        move |this, _, _, cx| this.set_requirement(fail.clone(), "failing", cx),
-                    )))
+                    .when(r.status != "passing", |row| {
+                        row.child(button(id("pass"), "Mark passing").on_click(cx.listener(
+                            move |this, _, _, cx| this.set_requirement(pass.clone(), "passing", cx),
+                        )))
+                    })
+                    .when(r.status != "failing", |row| {
+                        row.child(button(id("fail"), "Mark failing").on_click(cx.listener(
+                            move |this, _, _, cx| this.set_requirement(fail.clone(), "failing", cx),
+                        )))
+                    })
                     .into_any_element()
             })
             .collect();
@@ -420,22 +502,11 @@ impl Workspace {
                             .child(div().text_sm().child(f.name.clone()))
                             .child(muted(format!("{} changed chunks", f.delta_count))),
                     )
-                    .child(pill(
-                        if on { "on" } else { "off" },
-                        if on {
-                            theme::accent()
-                        } else {
-                            theme::text_muted()
-                        },
-                    ))
                     .child(
-                        button(
-                            SharedString::from(format!("feature-{i}")),
-                            if on { "Turn off" } else { "Turn on" },
-                        )
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            this.toggle_feature(repo, feature.clone(), cx)
-                        })),
+                        super::widgets::switch(SharedString::from(format!("feature-{i}")), on)
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.toggle_feature(repo, feature.clone(), cx)
+                            })),
                     )
                     .into_any_element()
             })

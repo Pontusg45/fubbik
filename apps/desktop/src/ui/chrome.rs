@@ -206,11 +206,13 @@ impl Workspace {
 impl Workspace {
     /// ⇧⌘N: a note into the selected repo's fubbik space, from anywhere.
     fn render_capture(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let repo = self
-            .repos
-            .get(self.selected)
-            .map(|r| r.entry.name())
-            .unwrap_or_default();
+        let view = self.repos.get(self.selected);
+        let repo = view.map(|r| r.entry.name()).unwrap_or_default();
+        let space = view
+            .and_then(|v| v.knowledge.as_ref())
+            .and_then(|k| k.as_ref().ok())
+            .and_then(|k| k.space.as_ref())
+            .map(|s| s.name.clone());
         div()
             .absolute()
             .inset_0()
@@ -235,11 +237,10 @@ impl Workspace {
                         this.capture_open = false;
                         cx.notify();
                     }))
-                    .child(
-                        div()
-                            .text_sm()
-                            .child(format!("Note to {repo}'s fubbik space")),
-                    )
+                    .child(div().text_sm().child(match &space {
+                        Some(space) => format!("Note to “{space}” (the fubbik space of {repo})"),
+                        None => format!("{repo} has no fubbik space: add one in Knowledge first"),
+                    }))
                     .child(self.field(
                         Field::NoteTitle,
                         "Title — enter goes to the text",
@@ -251,7 +252,31 @@ impl Workspace {
                         "Text — enter saves, esc cancels",
                         window,
                         cx,
-                    )),
+                    ))
+                    .child(
+                        div()
+                            .flex()
+                            .justify_end()
+                            .gap_2()
+                            .child(
+                                button("capture-cancel", "Cancel (esc)").on_click(cx.listener(
+                                    |this, _, window, cx| {
+                                        this.capture_open = false;
+                                        this.focus.focus(window);
+                                        cx.notify();
+                                    },
+                                )),
+                            )
+                            .child(button("capture-save", "Save").on_click(cx.listener(
+                                |this, _, window, cx| {
+                                    if this.submit_note(cx) {
+                                        this.capture_open = false;
+                                        this.focus.focus(window);
+                                    }
+                                    cx.notify();
+                                },
+                            ))),
+                    ),
             )
     }
 }
@@ -321,28 +346,40 @@ impl Workspace {
                 group_block(group.to_string(), rows)
             })
             .collect();
+        // One block per page for the list keys.
         let mut list_groups: Vec<&str> = Vec::new();
         for (group, _, _) in keymap::LIST_KEYS {
             if !list_groups.contains(group) {
                 list_groups.push(group);
             }
         }
-        blocks.push(group_block(
-            "In lists (when no text field or terminal has focus)".into(),
-            keymap::LIST_KEYS
-                .iter()
-                .map(|(group, keys, what)| entry(keys.to_string(), format!("{group}: {what}")))
-                .collect(),
-        ));
+        for group in list_groups {
+            blocks.push(group_block(
+                format!("{group} (keys in lists)"),
+                keymap::LIST_KEYS
+                    .iter()
+                    .filter(|(g, _, _)| *g == group)
+                    .map(|(_, keys, what)| entry(keys.to_string(), what.to_string()))
+                    .collect(),
+            ));
+        }
+        // The palette's prefixes, under whatever opens it.
+        let palette = keymap::keys_for("toggle_palette").unwrap_or_else(|| "palette".into());
         let mut anywhere = vec![
-            entry("⌘K @".into(), "Palette: repos and their tabs".into()),
-            entry("⌘K #".into(), "Palette: open tasks on every plan".into()),
             entry(
-                "⌘K !".into(),
+                format!("{palette} @"),
+                "Palette: repos and their tabs".into(),
+            ),
+            entry(
+                format!("{palette} #"),
+                "Palette: open tasks on every plan".into(),
+            ),
+            entry(
+                format!("{palette} !"),
                 "Palette: running processes and live agents".into(),
             ),
-            entry("⌘K >".into(), "Palette: commands only".into()),
-            entry("⌘K ?".into(), "Palette: search chunks".into()),
+            entry(format!("{palette} >"), "Palette: commands only".into()),
+            entry(format!("{palette} ?"), "Palette: search chunks".into()),
         ];
         if let Some(keys) = self.config.global_hotkey() {
             anywhere.insert(
@@ -354,6 +391,14 @@ impl Workspace {
             );
         }
         blocks.insert(0, group_block("Anywhere".into(), anywhere));
+        // Two columns when the window is wide enough, else one.
+        let width = (window.viewport_size().width * 0.9).min(px(900.));
+        let block_width = if width >= px(860.) {
+            px(410.)
+        } else {
+            width - px(32.)
+        };
+        let height = (window.viewport_size().height - px(100.)).max(px(240.));
         div()
             .absolute()
             .inset_0()
@@ -364,8 +409,8 @@ impl Workspace {
             .child(
                 div()
                     .id("cheat-sheet")
-                    .w(px(900.))
-                    .max_h(px(640.))
+                    .w(width)
+                    .max_h(height)
                     .overflow_y_scroll()
                     .flex()
                     .flex_col()
@@ -402,7 +447,7 @@ impl Workspace {
                             .flex()
                             .flex_wrap()
                             .gap_6()
-                            .children(blocks.into_iter().map(|b| b.w(px(410.)))),
+                            .children(blocks.into_iter().map(|b| b.w(block_width))),
                     ),
             )
     }
@@ -611,11 +656,15 @@ impl Render for Workspace {
                     cx.notify();
                     return;
                 }
-                if event.keystroke.key == "escape"
-                    && (this.panel.is_some() || this.cheat_sheet_open)
-                {
-                    this.panel = None;
+                // Escape closes the topmost overlay only: the cheat sheet
+                // is drawn above the panel.
+                if event.keystroke.key == "escape" && this.cheat_sheet_open {
                     this.cheat_sheet_open = false;
+                    cx.notify();
+                    return;
+                }
+                if event.keystroke.key == "escape" && this.panel.is_some() {
+                    this.panel = None;
                     cx.notify();
                     return;
                 }
