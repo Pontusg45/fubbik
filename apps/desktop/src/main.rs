@@ -45,6 +45,7 @@ use ui::{
 
 fn main() {
     launch::adopt_login_path();
+    launch::adopt_utf8_locale();
     let config = config::AppConfig::load_from(&config::path()).ok();
     let summon = config
         .as_ref()

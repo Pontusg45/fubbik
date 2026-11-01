@@ -161,6 +161,8 @@ pub fn create(
         dir_arg.as_str(),
     ];
     args.extend(["-x", "120", "-y", "32"]);
+    let locale = locale_args();
+    args.extend(locale.iter().map(String::as_str));
     tmux(server, &args)?;
     tmux(server, &["set-option", "-t", name, LABEL_OPTION, label])?;
     if let Some(command) = command {
@@ -170,9 +172,19 @@ pub fn create(
     Ok(())
 }
 
+/// `-e LANG=…` for new-session: a server started without a UTF-8 locale
+/// (from the Dock) keeps that environment, and its shells would draw `_`.
+pub fn locale_args() -> Vec<String> {
+    match std::env::var("LANG") {
+        Ok(lang) if !lang.is_empty() => vec!["-e".into(), format!("LANG={lang}")],
+        _ => Vec::new(),
+    }
+}
+
 /// The argv that attaches to a session, for the embedded terminal's PTY.
 pub fn attach_argv(server: &Server, name: &str) -> Vec<String> {
-    let mut argv = vec!["tmux".to_string()];
+    // -u: the client draws UTF-8 whatever the locale says (else `_`).
+    let mut argv = vec!["tmux".to_string(), "-u".to_string()];
     argv.extend(server.args());
     argv.extend(["attach-session".into(), "-t".into(), name.to_string()]);
     argv

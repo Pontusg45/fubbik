@@ -47,7 +47,7 @@ pub fn session_name(key: &str) -> String {
 
 /// The attach command for a run's session, to paste into any terminal.
 pub fn attach_command(session: &str) -> String {
-    format!("tmux -L {} attach -t {session}", tmux::SERVER)
+    format!("tmux -u -L {} attach -t {session}", tmux::SERVER)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,26 +134,24 @@ impl Runs {
         let shell = crate::supervisor::shell();
         // A moment's pause so pipe-pane is attached before the first output.
         let script = format!("sleep 0.2; {command}");
-        tmux::command(
-            &self.server,
-            &[
-                "-f",
-                &config,
-                "new-session",
-                "-d",
-                "-s",
-                &name,
-                "-c",
-                &cwd_arg,
-                "-x",
-                "200",
-                "-y",
-                "50",
-                &shell,
-                "-lc",
-                &script,
-            ],
-        )?;
+        let locale = tmux::locale_args();
+        let mut args = vec![
+            "-f",
+            &config,
+            "new-session",
+            "-d",
+            "-s",
+            &name,
+            "-c",
+            &cwd_arg,
+            "-x",
+            "200",
+            "-y",
+            "50",
+        ];
+        args.extend(locale.iter().map(String::as_str));
+        args.extend([shell.as_str(), "-lc", &script]);
+        tmux::command(&self.server, &args)?;
         tmux::command(&self.server, &["set-option", "-t", &name, KEY_OPTION, key])?;
         tmux::command(
             &self.server,
