@@ -153,19 +153,57 @@ fn stat_header(title: &str, value: String) -> gpui::Div {
 
 impl Workspace {
     /// Home: the projects and the computer, filling the content area.
+    /// Home's own tabs: the project cards, and every agent in every repo.
+    fn render_home_tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let on_agents = !self.home && self.tab == Tab::Agents;
+        let projects = super::views::tab_item(
+            "home-projects",
+            "Projects",
+            Tab::Overview.color(),
+            Tab::Overview.color(),
+            !on_agents,
+            0,
+            keymap::keys_for("show_home")
+                .map(|k| keymap::pretty(&k))
+                .unwrap_or_default(),
+        )
+        .on_click(cx.listener(|this, _, _, cx| {
+            this.go_home();
+            cx.notify();
+        }));
+        let agents = super::views::tab_item(
+            "home-agents",
+            "All agents",
+            Tab::Agents.color(),
+            Tab::Agents.color(),
+            on_agents,
+            self.live_agents(),
+            Tab::Agents.shortcut(),
+        )
+        .on_click(cx.listener(|this, _, _, cx| this.run(Command::ShowTab(Tab::Agents), cx)));
+        div().pt(px(32.)).child(super::views::tab_strip(
+            "home-tabs",
+            &self.home_tabs_scroll,
+            vec![projects, agents],
+            cx,
+        ))
+    }
+
     pub(super) fn render_home(&self, cx: &mut Context<Self>) -> AnyElement {
         div()
             .flex()
             .flex_col()
             .flex_1()
             .h_full()
+            .overflow_hidden()
+            .child(self.render_home_tabs(cx))
             .child(
                 div()
                     .id("home")
                     .flex_1()
                     .overflow_y_scroll()
                     .px_6()
-                    .pt(px(44.))
+                    .pt_6()
                     .pb_6()
                     .child(self.render_projects(cx)),
             )
@@ -193,7 +231,10 @@ impl Workspace {
             .py_2()
             .rounded_md()
             .cursor_pointer()
-            .when(self.home, |d| d.bg(theme::surface_hover()))
+            // Home holds All agents too.
+            .when(self.home || self.tab == Tab::Agents, |d| {
+                d.bg(theme::surface_hover())
+            })
             .hover(|d| d.bg(theme::surface_hover()))
             .on_click(cx.listener(|this, _, _, cx| {
                 this.go_home();
@@ -261,22 +302,27 @@ impl Workspace {
 
     /// Today or All agents: outside any repo, like Home.
     pub(super) fn render_global(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
-        let body = match self.tab {
-            Tab::Agents => self.render_all_agents(window, cx),
-            _ => self.render_today(cx),
+        let agents = self.tab == Tab::Agents;
+        let body = if agents {
+            self.render_all_agents(window, cx)
+        } else {
+            self.render_today(cx)
         };
         div()
             .flex()
             .flex_col()
             .flex_1()
             .h_full()
+            .overflow_hidden()
+            // All agents is a Home tab.
+            .when(agents, |d| d.child(self.render_home_tabs(cx)))
             .child(
                 div()
                     .id("global")
                     .flex_1()
                     .overflow_y_scroll()
                     .px_6()
-                    .pt(px(44.))
+                    .pt(if agents { px(16.) } else { px(44.) })
                     .pb_6()
                     .child(body),
             )

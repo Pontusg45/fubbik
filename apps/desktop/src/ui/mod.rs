@@ -492,6 +492,10 @@ pub struct Workspace {
     /// A frozen copy of the log while paused.
     log_paused: Option<Vec<String>>,
     log_scroll: ScrollHandle,
+    /// The repo tab strip's sideways scroll, and the tab last scrolled into view.
+    tabs_scroll: ScrollHandle,
+    tabs_scrolled_to: std::cell::Cell<Option<usize>>,
+    home_tabs_scroll: ScrollHandle,
     /// The log follows new output only while it was at the bottom.
     log_follow: bool,
     /// Processes the user stopped, so their exit is not reported as a crash.
@@ -612,6 +616,9 @@ impl Workspace {
             log_key: None,
             log_paused: None,
             log_scroll: ScrollHandle::new(),
+            tabs_scroll: ScrollHandle::new(),
+            tabs_scrolled_to: std::cell::Cell::new(None),
+            home_tabs_scroll: ScrollHandle::new(),
             log_follow: true,
             user_stopped: HashSet::new(),
             toasts: Vec::new(),

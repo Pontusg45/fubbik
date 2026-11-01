@@ -580,75 +580,44 @@ impl Workspace {
     }
 
     fn render_tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        // Today and All agents are global views (sidebar); the strip is this repo's.
-        let tabs = Tab::ALL.into_iter().filter(|t| !t.is_global()).map(|tab| {
-            let active = tab == self.tab;
-            let count = self.tab_count(tab);
-            let underline = if tab == Tab::Setup {
-                theme::accent()
-            } else {
-                tab.color()
-            };
-            div()
-                .id(tab.label())
-                .flex()
-                .items_center()
-                .gap_1p5()
-                .px_3()
-                .py_2()
-                .text_sm()
-                .cursor_pointer()
-                .border_b_2()
-                .flex_none()
-                .border_color(if active {
-                    underline
+        // Today and All agents are global views (Home); the strip is this repo's.
+        let tabs: Vec<Tab> = Tab::ALL.into_iter().filter(|t| !t.is_global()).collect();
+        let active_index = tabs.iter().position(|t| *t == self.tab);
+        let items = tabs
+            .into_iter()
+            .map(|tab| {
+                let underline = if tab == Tab::Setup {
+                    theme::accent()
                 } else {
-                    gpui::transparent_black()
-                })
-                .text_color(if active {
-                    theme::text()
-                } else {
-                    theme::text_muted()
-                })
-                .hover(|this| this.text_color(theme::text()))
-                .on_click(cx.listener(move |this, _, _, cx| this.run(Command::ShowTab(tab), cx)))
-                .child(
-                    div()
-                        .size(px(6.))
-                        .rounded_full()
-                        .bg(tab.color().opacity(if active { 1.0 } else { 0.5 })),
+                    tab.color()
+                };
+                tab_item(
+                    tab.label(),
+                    tab.label(),
+                    tab.color(),
+                    underline,
+                    tab == self.tab,
+                    self.tab_count(tab),
+                    tab.shortcut(),
                 )
-                .child(tab.label())
-                .when(count > 0, |d| {
-                    d.child(
-                        div()
-                            .px_1p5()
-                            .rounded_full()
-                            .text_xs()
-                            .bg(theme::status(Status::Degraded).opacity(0.2))
-                            .text_color(theme::status(Status::Degraded))
-                            .child(count.to_string()),
-                    )
-                })
-                // The key only on the active tab (⌘/ lists them all).
-                .when(active, |d| {
-                    d.child(
-                        div()
-                            .text_xs()
-                            .text_color(theme::text_muted())
-                            .child(tab.shortcut()),
-                    )
-                })
-        });
-        div()
-            .id("tabs")
-            .flex()
-            .gap_1()
-            .px_6()
-            .overflow_x_scroll()
-            .border_b_1()
-            .border_color(theme::border())
-            .children(tabs)
+                .on_click(cx.listener(move |this, _, _, cx| this.run(Command::ShowTab(tab), cx)))
+            })
+            .collect();
+        // Keep the active tab in view when it changes (a key, the palette).
+        // GPUI drops the request on a frame before the strip has its layout,
+        // so ask again (and for another frame) until it has one.
+        if active_index != self.tabs_scrolled_to.get() {
+            if let Some(i) = active_index {
+                self.tabs_scroll.scroll_to_item(i);
+            }
+            if self.tabs_scroll.bounds().size.width > px(0.) {
+                self.tabs_scrolled_to.set(active_index);
+            } else {
+                let this = cx.entity();
+                cx.defer(move |cx| this.update(cx, |_, cx| cx.notify()));
+            }
+        }
+        tab_strip("tabs", &self.tabs_scroll, items, cx)
     }
 
     fn render_overview(
@@ -1612,6 +1581,151 @@ impl Workspace {
             .child(toolbar)
             .child(body)
     }
+}
+
+/// One tab in a tab strip: a colored dot, the label, a count badge, and the
+/// key on the active tab.
+pub(super) fn tab_item(
+    id: &'static str,
+    label: &'static str,
+    color: gpui::Hsla,
+    underline: gpui::Hsla,
+    active: bool,
+    count: usize,
+    shortcut: String,
+) -> gpui::Stateful<gpui::Div> {
+    div()
+        .id(id)
+        .flex()
+        .items_center()
+        .gap_1p5()
+        .px_3()
+        .py_2()
+        .text_sm()
+        .cursor_pointer()
+        .border_b_2()
+        .flex_none()
+        .border_color(if active {
+            underline
+        } else {
+            gpui::transparent_black()
+        })
+        .text_color(if active {
+            theme::text()
+        } else {
+            theme::text_muted()
+        })
+        .hover(|this| this.text_color(theme::text()))
+        .child(
+            div()
+                .size(px(6.))
+                .rounded_full()
+                .bg(color.opacity(if active { 1.0 } else { 0.5 })),
+        )
+        .child(label)
+        .when(count > 0, |d| {
+            d.child(
+                div()
+                    .px_1p5()
+                    .rounded_full()
+                    .text_xs()
+                    .bg(theme::status(Status::Degraded).opacity(0.2))
+                    .text_color(theme::status(Status::Degraded))
+                    .child(count.to_string()),
+            )
+        })
+        // The key only on the active tab (⌘/ lists them all).
+        .when(active && !shortcut.is_empty(), |d| {
+            d.child(
+                div()
+                    .text_xs()
+                    .text_color(theme::text_muted())
+                    .child(shortcut),
+            )
+        })
+}
+
+/// A row of tabs that scrolls sideways when it does not fit: with the wheel
+/// or trackpad in either direction, or the ‹ › buttons at its ends.
+pub(super) fn tab_strip(
+    id: &'static str,
+    scroll: &gpui::ScrollHandle,
+    items: Vec<gpui::Stateful<gpui::Div>>,
+    cx: &mut Context<Workspace>,
+) -> gpui::Div {
+    let offset = scroll.offset().x;
+    let max = scroll.max_offset().width;
+    let can_left = offset < px(0.);
+    let can_right = max > px(0.) && -offset < max - px(1.);
+    let nudge = |id: &'static str,
+                 label: &'static str,
+                 by: f32,
+                 enabled: bool,
+                 cx: &mut Context<Workspace>| {
+        let scroll = scroll.clone();
+        div()
+            .id(id)
+            .flex_none()
+            .px_2()
+            .py_2()
+            .text_sm()
+            .text_color(if enabled {
+                theme::text()
+            } else {
+                theme::text_muted().opacity(0.4)
+            })
+            .when(enabled, |d| {
+                d.cursor_pointer().hover(|d| d.bg(theme::surface_hover()))
+            })
+            .on_click(cx.listener(move |_, _, _, cx| {
+                let mut point = scroll.offset();
+                let max = scroll.max_offset().width;
+                point.x = (point.x + px(by)).min(px(0.)).max(-max);
+                scroll.set_offset(point);
+                cx.notify();
+            }))
+            .child(label)
+    };
+    let wheel = scroll.clone();
+    div()
+        .flex()
+        .items_center()
+        .w_full()
+        .min_w_0()
+        .border_b_1()
+        .border_color(theme::border())
+        .px_3()
+        .when(max > px(0.), |d| {
+            d.child(nudge("tabs-left", "‹", 240., can_left, cx))
+        })
+        .child(
+            div()
+                .id(id)
+                .flex()
+                .flex_1()
+                .min_w_0()
+                .gap_1()
+                .overflow_x_scroll()
+                .track_scroll(scroll)
+                // A vertical swipe or a plain wheel scrolls the strip too:
+                // GPUI only does that when the sideways delta is exactly zero.
+                .on_scroll_wheel(cx.listener(
+                    move |_, event: &gpui::ScrollWheelEvent, window, cx| {
+                        let delta = event.delta.pixel_delta(window.line_height());
+                        if delta.y.abs() > delta.x.abs() && delta.x != px(0.) {
+                            let mut point = wheel.offset();
+                            let max = wheel.max_offset().width;
+                            point.x = (point.x + delta.y).min(px(0.)).max(-max);
+                            wheel.set_offset(point);
+                            cx.notify();
+                        }
+                    },
+                ))
+                .children(items),
+        )
+        .when(max > px(0.), |d| {
+            d.child(nudge("tabs-right", "›", -240., can_right, cx))
+        })
 }
 
 #[cfg(test)]

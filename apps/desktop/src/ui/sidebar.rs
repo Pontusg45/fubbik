@@ -61,7 +61,6 @@ impl Workspace {
                     .pb_2()
                     .child(self.home_row(cx))
                     .child(self.global_row("Today", Tab::Today, cx))
-                    .child(self.global_row("All agents", Tab::Agents, cx))
                     .children(sections),
             )
             .child(
