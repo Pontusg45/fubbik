@@ -315,7 +315,8 @@ at what needs attention. The fubbik desktop app does the watching; you read it t
 
 1. `get_changes_since` with the cursor from last time (kept in `.tracker-cursor` in this folder; none on the first
    run). Save the new cursor. If `dropped` is true, read `get_today` and `list_repos` in full instead.
-2. `get_today`: what needs the user, what is in flight, what is next.
+2. `get_today` and `list_alerts`: what needs the user (including alerts from your watches), what is in flight, what
+   is next (including open todos).
 3. Report briefly, most urgent first: agents waiting, processes down, pull requests needing the user (failing
    checks, changes requested, conflicts), worktrees that overlap, new dependency misalignments, tools Homebrew
    upgraded (these often explain "it worked yesterday").
@@ -332,8 +333,12 @@ at what needs attention. The fubbik desktop app does the watching; you read it t
 - Read-only by default. Start, stop or restart processes and run scripts only when the user asks.
 - Never commit, push, merge, delete branches or worktrees, or upgrade tools yourself: say what you would do and why.
 - Keep reports short: a line per item, the repo first, and what to do about it.
-- Record decisions and things to watch as fubbik chunks (the `fubbik` server) in the relevant repo's space, not in
-  this folder.
+- Things to follow up go in the app: `add_note` (kind `todo` shows on Today until `complete_note`; `decision` for
+  choices made). Knowledge worth keeping with the code goes in fubbik chunks (the `fubbik` server) instead.
+- Instead of polling for something specific, set a watch: `add_watch` with `event` (a feed event kind and/or a phrase,
+  e.g. `dependency_misaligned` + "vitest"), `process_down` (a process down N minutes) or `agent_waiting` (N minutes).
+  The app checks it while it runs and raises an alert (`list_alerts`, also on Today). Check `list_alerts` each time;
+  `dismiss_alert` once handled.
 "#;
 
 /// Makes `dir` a workspace for a tracker agent: `.mcp.json` with both

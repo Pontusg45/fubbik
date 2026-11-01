@@ -521,6 +521,9 @@ pub struct Workspace {
     _events_task: Task<()>,
     /// Terminal tabs that rang the bell and have not been looked at since.
     bells: Vec<(usize, Instant)>,
+    /// Watch alerts already toasted.
+    alerts_seen: HashSet<String>,
+    alerts_announced: bool,
     knowledge_paused_until: Option<Instant>,
     /// Ghostty theme names, read once at startup.
     ghostty_themes: Vec<String>,
@@ -663,6 +666,8 @@ impl Workspace {
             _watch_task: Task::ready(()),
             _events_task: Task::ready(()),
             bells: Vec::new(),
+            alerts_seen: HashSet::new(),
+            alerts_announced: false,
             knowledge_paused_until: None,
             ghostty_themes: crate::ghostty::list_themes(&crate::ghostty::theme_dirs()),
             reply_target: None,

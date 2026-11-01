@@ -33,6 +33,7 @@ mod tmux;
 mod tmux_events;
 mod tmux_runs;
 mod tools;
+mod tracker;
 mod ui;
 mod worktree;
 

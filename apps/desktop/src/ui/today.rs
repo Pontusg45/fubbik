@@ -61,6 +61,44 @@ impl Workspace {
             primary_label: label,
             secondary: Vec::new(),
         };
+        // The tracker: alerts from watches need you; open todos are next.
+        let tracker = crate::tracker::snapshot();
+        for alert in tracker.alerts.iter().filter(|a| !a.dismissed) {
+            let mut row = need(
+                alert.repo.as_deref().unwrap_or(""),
+                "watch".into(),
+                theme::hue(crate::theme::Hue::Violet),
+                alert.text.clone(),
+                "Dismiss",
+                Command::DismissAlert(alert.id.clone()),
+            );
+            if let Some(repo) = self
+                .repos
+                .iter()
+                .position(|r| alert.repo.as_deref() == Some(r.entry.name().as_str()))
+            {
+                row.secondary = vec![(
+                    "Open repo".into(),
+                    Command::Focus {
+                        repo,
+                        tab: Tab::Overview,
+                    },
+                )];
+            }
+            rows.push(row);
+        }
+        for note in tracker.notes.iter().filter(|n| n.kind == "todo" && !n.done) {
+            rows.push(TodayRow {
+                section: Section::Next,
+                repo: note.repo.clone().unwrap_or_default(),
+                tag: Some(("todo".into(), theme::hue(crate::theme::Hue::Violet))),
+                title: note.text.clone(),
+                detail: None,
+                primary: Some(Command::CompleteNote(note.id.clone())),
+                primary_label: "Done",
+                secondary: Vec::new(),
+            });
+        }
         // Terminal tabs that rang the bell (a program wants you).
         for (id, _) in &self.bells {
             let Some(tab) = self.terminals.iter().find(|t| t.id == *id) else {
@@ -274,7 +312,7 @@ impl Workspace {
                 Some("repo") => 0,
                 Some("Error") => 1,
                 Some("Degraded") => 2,
-                Some("failing") | Some("PR") => 3,
+                Some("failing") | Some("PR") | Some("watch") => 3,
                 Some("overlap") => 5,
                 Some("stale") => 6,
                 _ => 4, // an agent waiting

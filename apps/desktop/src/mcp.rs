@@ -224,12 +224,15 @@ fn call_tool(name: &str, args: &Value) -> Result<Value, String> {
 
 /// A tool call against a published view.
 fn call_tool_in(state: Published, name: &str, args: &Value) -> Result<Value, String> {
-    if state.at.is_none()
-        && !matches!(
-            name,
-            "get_builtin_server" | "get_system_stats" | "get_changes_since" | "get_toolchain"
-        )
-    {
+    // The repo views come with the first poll; the feed, the toolchain,
+    // notes and watches do not need them.
+    let independent = matches!(
+        name,
+        "get_builtin_server" | "get_system_stats" | "get_changes_since" | "get_toolchain"
+    ) || crate::tracker::mcp_definitions()
+        .iter()
+        .any(|t| t["name"] == name);
+    if state.at.is_none() && !independent {
         return Err("the app has not finished its first poll yet; try again in a moment".into());
     }
     let arg = |key: &str| args.get(key).and_then(Value::as_str);

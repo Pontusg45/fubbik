@@ -943,6 +943,16 @@ impl Workspace {
                         Command::OpenUrl(url) => cx.open_url(&url),
             Command::FocusTerminal(id) => self.focus_terminal_tab(id),
             Command::SetupTracker => self.setup_tracker(),
+            Command::DismissAlert(id) => {
+                if let Err(error) = crate::tracker::dismiss(&id) {
+                    self.show_error(error);
+                }
+            }
+            Command::CompleteNote(id) => {
+                if let Err(error) = crate::tracker::complete_note(&id) {
+                    self.show_error(error);
+                }
+            }
             Command::OpenPane { pane, cwd } => self.open_pane(pane, cwd, cx),
             Command::Focus { repo, tab } => {
                 self.select(repo);

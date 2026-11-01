@@ -274,6 +274,10 @@ pub enum Command {
     FocusTerminal(usize),
     /// `.mcp.json` and CLAUDE.md for a tracker agent in the repos' folder.
     SetupTracker,
+    /// A watch's alert leaves Today.
+    DismissAlert(String),
+    /// A tracker todo is done.
+    CompleteNote(String),
 }
 
 #[derive(Debug, Clone)]

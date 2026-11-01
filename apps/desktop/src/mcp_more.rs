@@ -14,6 +14,12 @@ const TOOLCHAIN_FRESH: Duration = Duration::from_secs(120);
 const DIFF_LINES: usize = 3000;
 
 pub fn definitions() -> Vec<Value> {
+    let mut all = base_definitions();
+    all.extend(crate::tracker::mcp_definitions());
+    all
+}
+
+fn base_definitions() -> Vec<Value> {
     let repo =
         json!({ "type": "string", "description": "Repo name (as list_repos shows) or its path" });
     let worktree = json!({ "type": "string", "description": "A worktree's path or branch (see list_worktrees); default: the repo's main checkout" });
@@ -311,7 +317,7 @@ pub fn call(repos: &[Value], name: &str, args: &Value) -> Option<Result<Value, S
                 "truncated": lines.len() > DIFF_LINES,
             }))
         })(),
-        _ => return None,
+        _ => return crate::tracker::mcp_call(name, args),
     };
     Some(result)
 }

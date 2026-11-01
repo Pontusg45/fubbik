@@ -237,6 +237,30 @@ impl Workspace {
         self.report_test_exits(cx);
         self.publish_for_mcp();
         self.refresh_prs(false, cx);
+        self.announce_alerts();
+    }
+
+    /// A toast for each watch alert not seen before (watches fire from the
+    /// MCP side and the publish just made).
+    fn announce_alerts(&mut self) {
+        let alerts = crate::tracker::snapshot().alerts;
+        let new: Vec<_> = alerts
+            .iter()
+            .filter(|a| !a.dismissed && !self.alerts_seen.contains(&a.id))
+            .cloned()
+            .collect();
+        // At start, everything open counts as seen (it is on Today).
+        let first = self.alerts_seen.is_empty() && !self.alerts_announced;
+        self.alerts_announced = true;
+        for alert in new {
+            self.alerts_seen.insert(alert.id.clone());
+            if !first {
+                self.show_alert(Alert {
+                    message: format!("👁 {}", alert.text),
+                    target: Command::ShowTab(Tab::Today),
+                });
+            }
+        }
     }
 }
 

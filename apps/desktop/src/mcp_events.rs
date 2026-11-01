@@ -146,6 +146,10 @@ pub fn record(repo: Option<&str>, kind: &str, text: impl Into<String>) {
     if let Some(path) = events_file() {
         append(&path, &event, &feed.events);
     }
+    // Watches see it after the feed's lock is released (an alert records
+    // an event of its own).
+    drop(feed);
+    crate::tracker::on_event(&event);
 }
 
 /// Events after `cursor` (all kept ones when None), optionally for one
@@ -311,6 +315,8 @@ pub fn on_publish(old: &[Value], new: &[Value]) {
     for (repo, kind, text) in diff(old, new) {
         record(Some(&repo), kind, text);
     }
+    // Duration watches (a process down N minutes, an agent waiting).
+    crate::tracker::on_state(new);
 }
 
 /// Dependencies differing by a major, by name, with each repo's requirement.

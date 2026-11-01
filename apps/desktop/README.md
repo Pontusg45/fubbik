@@ -142,6 +142,14 @@ Other agents can read what the app shows, and start and stop its processes and s
     - `list_worktrees(repo)`: with merged state, sessions, overlaps and the branch's PR.
     - `get_changes(repo, worktree?)` and `get_diff(repo, worktree?, path, staged?)`: a checkout's changed files and one
       file's diff (only the repo's own checkouts, paths inside them).
+  - Notes and watches (`src/tracker.rs`, kept in `~/.config/fubbik/tracker.json`): `add_note` / `list_notes` /
+    `complete_note` (open todos show on Today under "Next up"), and `add_watch` / `list_watches` / `remove_watch`:
+    `event` (a feed event by kind and/or phrase), `process_down` (N minutes) or `agent_waiting` (N minutes). The app
+    checks watches while it runs; one that fires raises an alert (`list_alerts`, `dismiss_alert`): a "Needs you" line
+    on Today, a toast, and a `watch_fired` feed event. One alert per episode.
+  - The feed is also kept in `~/.config/fubbik/events.jsonl` (the newest 2000, read back at start).
+- **Testing a second copy:** set `FUBBIK_DESKTOP_TMUX_SERVER` (with `XDG_CONFIG_HOME`, `FUBBIK_DESKTOP_DATA`, the two
+  ports) so it gets its own tmux server, hooks, events and tracker files and never touches the running app's.
 - **A tracker workspace:** Setup → "Projects tracker" (or ⌘K "Set up the projects tracker") writes, in the repos' common
   folder (`~/projects`), a `.mcp.json` with both servers (`fubbik-desktop` over HTTP and `fubbik mcp`), merged into an
   existing one, and a `CLAUDE.md` with the tracker's job (each check: the change feed from a saved cursor, then Today;
@@ -352,6 +360,7 @@ src/github.rs      pull requests and CI checks per branch (gh pr list)
 src/tmux_events.rs tmux hooks → events file (bells, pane exits), read incrementally
 src/mcp_events.rs  the MCP change feed: diffs between published views, pushed events, deps and tools watchers
 src/mcp_more.rs    MCP tools for a tracker agent: changes since, dependencies, toolchain, PRs, worktrees, changes, diffs
+src/tracker.rs     notes, todos, decisions and watches (alerts) for a tracker agent
 src/tools.rs       developer tools and services: versions, paths, brew outdated, recent upgrades
 src/deps.rs        manifests across repos: declared dependency versions and toolchain pins, compared
 src/probe.rs       port, owner PID, HTTP health, TCP, compose, ps
