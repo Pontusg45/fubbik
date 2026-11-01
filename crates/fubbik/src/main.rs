@@ -1,6 +1,5 @@
 use clap::{CommandFactory, Parser, Subcommand};
 use std::ffi::OsString;
-use std::time::Duration;
 
 #[derive(Parser)]
 #[command(name = "fubbik", version, about = "Local-first knowledge framework")]
@@ -115,33 +114,6 @@ fn resolve_implicit_dev_session(
     Ok(explicit_flag || !is_production)
 }
 
-/// Splits `CORS_ORIGIN` on `,` and trims each entry, mirroring Node's
-/// `env.CORS_ORIGIN.includes(",") ? env.CORS_ORIGIN.split(",").map(s =>
-/// s.trim()) : env.CORS_ORIGIN` (`legacy/server/src/index.ts:36`), which
-/// `CLAUDE.md` documents as supported. Deliberately does **not** strip
-/// trailing slashes from any entry — Node doesn't either, and matching its
-/// normalisation exactly matters more than "improving" on it, since a
-/// silently-added slash would make an origin that used to match stop
-/// matching.
-///
-/// A malformed entry (not a valid HTTP header value) panics rather than
-/// silently dropping the origin: `CORS_ORIGIN` is fixed configuration read
-/// once at startup, same fail-fast posture as the `?` this replaced when
-/// the whole variable was parsed as one `HeaderValue`.
-fn parse_cors_origins(value: &str) -> Vec<axum::http::HeaderValue> {
-    value
-        .split(',')
-        .map(str::trim)
-        .map(|origin| {
-            origin
-                .parse::<axum::http::HeaderValue>()
-                .unwrap_or_else(|_| {
-                    panic!("CORS_ORIGIN entry {origin:?} is not a valid header value")
-                })
-        })
-        .collect()
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
@@ -194,83 +166,25 @@ async fn main() -> anyhow::Result<()> {
                     );
                 }
 
-                let pool = fubbik_db::connect(&database_url).await?;
-                fubbik_db::warn_if_not_icu_collation(&pool).await;
-                let background = fubbik_api::background::BackgroundRuntime::new();
-                fubbik_api::staleness::service::spawn_background_scan(
-                    pool.clone(),
-                    background.clone(),
-                );
-                // Behavior rules only exist to the user through the matrix routes;
-                // with `matrices` off there is nothing to project.
-                if config.features.enabled(fubbik_config::Feature::Matrices) {
-                    fubbik_api::graph::sync::spawn_behavior_sync(pool.clone(), background.clone());
-                }
-                fubbik_api::graph::projection::spawn_projection_worker(
-                    pool.clone(),
-                    background.clone(),
-                );
-                let shutdown_pool = pool.clone();
-                let state = fubbik_api::AppState {
-                    pool,
-                    implicit_dev_session,
-                    better_auth_secret,
-                    ai: fubbik_ai::OllamaClient::from_env(),
-                    rate_limiter: Default::default(),
-                    background: background.clone(),
-                    features: config.features,
-                };
-
                 let cors_origin_env =
                     std::env::var("CORS_ORIGIN").unwrap_or_else(|_| "http://localhost:3001".into());
-                let cors = tower_http::cors::CorsLayer::new()
-                    .allow_origin(tower_http::cors::AllowOrigin::list(parse_cors_origins(
-                        &cors_origin_env,
-                    )))
-                    .allow_credentials(true)
-                    // `Any` panics when combined with `allow_credentials(true)`
-                    // (browsers reject the combination outright); mirroring the
-                    // request's own Access-Control-Request-Method/Headers is the
-                    // credentials-compatible equivalent of "allow everything".
-                    .allow_methods(tower_http::cors::AllowMethods::mirror_request())
-                    .allow_headers(tower_http::cors::AllowHeaders::mirror_request());
-
-                let mut app = fubbik_api::router(state);
-                let asset_dir = std::env::var_os("FUBBIK_WEB_ASSETS_DIR")
+                let web_assets = std::env::var_os("FUBBIK_WEB_ASSETS_DIR")
                     .map(std::path::PathBuf::from)
                     .or_else(|| {
                         let local = std::path::PathBuf::from("apps/web/dist");
                         local.join("index.html").is_file().then_some(local)
                     });
-                if let Some(asset_dir) = asset_dir {
-                    if !asset_dir.join("index.html").is_file() {
-                        anyhow::bail!(
-                            "web asset directory has no index.html: {}",
-                            asset_dir.display()
-                        );
-                    }
-                    app = app.merge(fubbik_api::assets::router(asset_dir));
-                }
-                let app = app
-                    .layer(cors)
-                    .layer(tower_http::catch_panic::CatchPanicLayer::new())
-                    .layer(tower_http::trace::TraceLayer::new_for_http())
-                    .layer(tower_http::request_id::PropagateRequestIdLayer::x_request_id())
-                    .layer(tower_http::request_id::SetRequestIdLayer::x_request_id(
-                        tower_http::request_id::MakeRequestUuid,
-                    ));
+                let options = fubbik_api::server::ServerOptions {
+                    database_url,
+                    better_auth_secret,
+                    implicit_dev_session,
+                    features: config.features,
+                    ai: fubbik_ai::OllamaClient::from_env(),
+                    cors_origins: fubbik_api::server::parse_cors_origins(&cors_origin_env),
+                    web_assets,
+                };
                 let listener = tokio::net::TcpListener::bind((host, port)).await?;
-                tracing::info!("fubbik listening on http://{host}:{port}");
-                axum::serve(listener, app)
-                    .with_graceful_shutdown(shutdown_signal())
-                    .await?;
-                background.shutdown(Duration::from_secs(10)).await;
-                if tokio::time::timeout(Duration::from_secs(5), shutdown_pool.close())
-                    .await
-                    .is_err()
-                {
-                    tracing::warn!("database pool did not close before shutdown deadline");
-                }
+                fubbik_api::server::serve(options, listener, shutdown_signal()).await?;
                 Ok(())
             }
             Commands::Mcp => {
@@ -424,7 +338,8 @@ async fn shutdown_signal() {
 mod tests {
     use clap::{CommandFactory, Parser};
 
-    use super::{Cli, Commands, parse_cors_origins, resolve_implicit_dev_session};
+    use super::{Cli, Commands, resolve_implicit_dev_session};
+    use fubbik_api::server::parse_cors_origins;
 
     #[test]
     fn rust_cli_exposes_the_server_backed_parity_commands() {

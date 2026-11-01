@@ -8,7 +8,9 @@ export default async function setup(project: TestProject) {
     const adminUrl = process.env.FUBBIK_TEST_DATABASE_URL ?? "postgres://postgres:password@localhost:5434/postgres";
     const admin = new Client({ connectionString: adminUrl });
     await admin.connect().catch(error => {
-        throw new Error("Start the test database with ./scripts/test/rust-test-db.sh start, or set FUBBIK_TEST_DATABASE_URL.", { cause: error });
+        throw new Error("Start the test database with ./scripts/test/rust-test-db.sh start, or set FUBBIK_TEST_DATABASE_URL.", {
+            cause: error
+        });
     });
     // Only this generated database is migrated or dropped. DATABASE_URL is intentionally ignored.
     const name = `fubbik_vitest_${randomUUID().replaceAll("-", "")}`;

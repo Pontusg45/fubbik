@@ -72,10 +72,10 @@ fn key(base: &str) -> String {
 }
 
 pub fn token_for(base: &str) -> Result<Option<String>> {
-    if let Ok(token) = std::env::var("FUBBIK_SESSION") {
-        if !token.is_empty() {
-            return Ok(Some(token));
-        }
+    if let Ok(token) = std::env::var("FUBBIK_SESSION")
+        && !token.is_empty()
+    {
+        return Ok(Some(token));
     }
     Ok(read_store(&store_path()?)?.get(&key(base)).cloned())
 }

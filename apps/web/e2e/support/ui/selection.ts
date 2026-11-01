@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop -- Selection changes share one overlay and must settle sequentially. */
 import { expect, type Locator } from "@playwright/test";
-import { reportStep } from "../reporting";
 
+import { reportStep } from "../reporting";
 import { Radio, WritableControl, named, type Name } from "./core";
 import { Overlay } from "./overlay";
 

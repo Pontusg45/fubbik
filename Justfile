@@ -73,7 +73,7 @@ alias dev-web := start-web
 # Start the GPUI desktop app (its own cargo workspace in apps/desktop).
 [group('Development')]
 start-desktop:
-    PATH="/opt/homebrew/opt/zig@0.15/bin:$PATH" cargo run --manifest-path apps/desktop/Cargo.toml
+    PATH="/opt/homebrew/opt/zig@0.15/bin:$PATH" SQLX_OFFLINE=true cargo run --manifest-path apps/desktop/Cargo.toml
 
 alias desktop := start-desktop
 
@@ -92,9 +92,9 @@ build:
 check-types:
     pnpm run check-types
 
-# Run the test suite.
+# Run the test suite (starts the Rust test database first; `@fubbik/db` tests need it).
 [group('Test')]
-test:
+test: rust-test-db-start
     pnpm run test
 
 # Start the canonical PostgreSQL 18 + vector + AGE Rust test adapter.
@@ -142,9 +142,9 @@ format:
 format-check:
     pnpm run fmt:check
 
-# Run the full CI pipeline locally.
+# Run the full CI pipeline locally (starts the Rust test database first).
 [group('Build')]
-ci:
+ci: rust-test-db-start
     pnpm run ci
 
 # Start the development database.

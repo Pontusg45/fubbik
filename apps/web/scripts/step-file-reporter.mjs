@@ -2,26 +2,39 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-})[char]);
-const escapeMarkdown = value => String(value).replace(/[\\`*_[\]<>|]/g, "\\$&").replace(/\r?\n/g, " ");
+const escapeHtml = value =>
+    String(value).replace(
+        /[&<>"']/g,
+        char =>
+            ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            })[char]
+    );
+const escapeMarkdown = value =>
+    String(value)
+        .replace(/[\\`*_[\]<>|]/g, "\\$&")
+        .replace(/\r?\n/g, " ");
 const imageType = type => ["image/png", "image/jpeg", "image/webp"].includes(type);
 const extension = type => ({ "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" })[type];
 
 async function evidence(attachments) {
-    return Promise.all(attachments.filter(item => imageType(item.contentType)).map(async item => ({
-        name: item.name,
-        type: item.contentType,
-        data: item.body ?? await readFile(item.path)
-    })));
+    return Promise.all(
+        attachments
+            .filter(item => imageType(item.contentType))
+            .map(async item => ({
+                name: item.name,
+                type: item.contentType,
+                data: item.body ?? (await readFile(item.path))
+            }))
+    );
 }
 
 function stepAttachments(step) {
-    return [
-        ...step.attachments,
-        ...step.steps.filter(child => child.category !== "test.step").flatMap(stepAttachments)
-    ];
+    return [...step.attachments, ...step.steps.filter(child => child.category !== "test.step").flatMap(stepAttachments)];
 }
 
 async function stepsFor(steps) {
@@ -41,18 +54,25 @@ async function stepsFor(steps) {
 }
 
 function imageName(testIndex, trail, imageIndex, type) {
-    const digest = createHash("sha256").update(`${testIndex}:${trail.join(":")}:${imageIndex}`).digest("hex").slice(0, 16);
+    const digest = createHash("sha256")
+        .update(`${testIndex}:${trail.join(":")}:${imageIndex}`)
+        .digest("hex")
+        .slice(0, 16);
     return `${digest}.${extension(type)}`;
 }
 
 function renderHtmlSteps(steps) {
     if (!steps.length) return "";
-    return `<ol class="steps">${steps.map(step => `<li>
+    return `<ol class="steps">${steps
+        .map(
+            step => `<li>
       <div class="step-title">${step.error ? "❌" : "✓"} ${escapeHtml(step.title)} <small>${step.duration} ms</small></div>
       ${step.error ? `<pre>${escapeHtml(step.error)}</pre>` : ""}
       ${step.images.map(image => `<figure><img loading="lazy" src="data:${image.type};base64,${image.data.toString("base64")}" alt="${escapeHtml(image.name)}"><figcaption>${escapeHtml(image.name)}</figcaption></figure>`).join("")}
       ${renderHtmlSteps(step.children)}
-    </li>`).join("")}</ol>`;
+    </li>`
+        )
+        .join("")}</ol>`;
 }
 
 function renderHtml(tests, errors) {
@@ -67,10 +87,14 @@ img{display:block;max-width:100%;height:auto;border:1px solid #c6d0da;border-rad
 pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f4f7;padding:.75rem;border-radius:4px}
 </style></head><body><h1>Fubbik step report</h1>
 <p class="summary">${tests.length} attempts · ${counts.passed?.length ?? 0} passed · ${counts.failed?.length ?? 0} failed · ${counts.skipped?.length ?? 0} skipped</p>
-${tests.map(test => `<details class="test" ${test.status === "failed" ? "open" : ""}><summary>${test.status === "passed" ? "✅" : test.status === "skipped" ? "○" : "❌"} ${escapeHtml(test.title)}${test.retry ? ` (retry ${test.retry})` : ""}</summary>
+${tests
+    .map(
+        test => `<details class="test" ${test.status === "failed" ? "open" : ""}><summary>${test.status === "passed" ? "✅" : test.status === "skipped" ? "○" : "❌"} ${escapeHtml(test.title)}${test.retry ? ` (retry ${test.retry})` : ""}</summary>
 <p>${escapeHtml(test.status)} · ${test.duration} ms</p>${test.error ? `<pre>${escapeHtml(test.error)}</pre>` : ""}
 ${renderHtmlSteps(test.steps)}${test.images.map(image => `<figure><img loading="lazy" src="data:${image.type};base64,${image.data.toString("base64")}" alt="${escapeHtml(image.name)}"><figcaption>${escapeHtml(image.name)}</figcaption></figure>`).join("")}
-</details>`).join("\n")}${errors.length ? `<h2>Runner errors</h2>${errors.map(error => `<pre>${escapeHtml(error)}</pre>`).join("")}` : ""}
+</details>`
+    )
+    .join("\n")}${errors.length ? `<h2>Runner errors</h2>${errors.map(error => `<pre>${escapeHtml(error)}</pre>`).join("")}` : ""}
 </body></html>\n`;
 }
 
@@ -96,7 +120,12 @@ async function renderMarkdown(tests, errors, outputDir) {
         }
     }
     for (const [index, test] of tests.entries()) {
-        lines.push(`## ${test.status === "passed" ? "✅" : test.status === "skipped" ? "○" : "❌"} ${escapeMarkdown(test.title)}`, "", `Status: ${test.status}; duration: ${test.duration} ms${test.retry ? `; retry: ${test.retry}` : ""}`, "");
+        lines.push(
+            `## ${test.status === "passed" ? "✅" : test.status === "skipped" ? "○" : "❌"} ${escapeMarkdown(test.title)}`,
+            "",
+            `Status: ${test.status}; duration: ${test.duration} ms${test.retry ? `; retry: ${test.retry}` : ""}`,
+            ""
+        );
         if (test.error) lines.push(`> ${escapeMarkdown(test.error)}`, "");
         await addSteps(test.steps, index);
         await addImages(test.images, index, ["test"], "");
@@ -125,15 +154,16 @@ export default class StepFileReporter {
     async onEnd() {
         await mkdir(this.outputDir, { recursive: true });
         const tests = [];
-        for (const { test, result } of this.tests) tests.push({
-            title: test.titlePath().filter(Boolean).join(" › "),
-            status: result.status,
-            retry: result.retry,
-            duration: result.duration,
-            error: result.error?.message ?? "",
-            steps: await stepsFor(result.steps),
-            images: await evidence(result.attachments.filter(item => !item.name.startsWith("Action: ")))
-        });
+        for (const { test, result } of this.tests)
+            tests.push({
+                title: test.titlePath().filter(Boolean).join(" › "),
+                status: result.status,
+                retry: result.retry,
+                duration: result.duration,
+                error: result.error?.message ?? "",
+                steps: await stepsFor(result.steps),
+                images: await evidence(result.attachments.filter(item => !item.name.startsWith("Action: ")))
+            });
         if (this.format === "html" || this.format === "both") {
             const file = path.join(this.outputDir, "step-report.html");
             await writeFile(file, renderHtml(tests, this.errors));

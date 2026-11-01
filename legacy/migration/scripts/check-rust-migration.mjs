@@ -24,18 +24,16 @@ function sourceOf(entry) {
 function inventoryFiles(spec, root) {
     const inventoryRoot = join(root, spec.root);
     return filesBelow(inventoryRoot)
-        .filter((path) => path.endsWith(spec.suffix))
-        .filter((path) => !spec.excludeSuffix || !path.endsWith(spec.excludeSuffix))
-        .map((path) => relative(inventoryRoot, path).split(sep).join("/"))
+        .filter(path => path.endsWith(spec.suffix))
+        .filter(path => !spec.excludeSuffix || !path.endsWith(spec.excludeSuffix))
+        .map(path => relative(inventoryRoot, path).split(sep).join("/"))
         .sort();
 }
 
 function rustToolNames(spec, root) {
     const sourceRoot = join(root, spec.root);
-    const files = filesBelow(sourceRoot).filter((path) => path.endsWith(".rs"));
-    const names = files.flatMap((path) =>
-        [...readFileSync(path, "utf8").matchAll(/\btool\(\s*"([^"]+)"/g)].map((match) => match[1]),
-    );
+    const files = filesBelow(sourceRoot).filter(path => path.endsWith(".rs"));
+    const names = files.flatMap(path => [...readFileSync(path, "utf8").matchAll(/\btool\(\s*"([^"]+)"/g)].map(match => match[1]));
     return names.sort();
 }
 
@@ -50,8 +48,8 @@ function compareContract(name, expected, actual, errors) {
     }
     const expectedSet = new Set(expected);
     const actualSet = new Set(actual);
-    const missing = expected.filter((value) => !actualSet.has(value));
-    const unexpected = actual.filter((value) => !expectedSet.has(value));
+    const missing = expected.filter(value => !actualSet.has(value));
+    const unexpected = actual.filter(value => !expectedSet.has(value));
     if (missing.length) errors.push(`${name} is missing Rust entries: ${missing.join(", ")}`);
     if (unexpected.length) errors.push(`${name} has untracked Rust entries: ${unexpected.join(", ")}`);
 }
@@ -86,8 +84,8 @@ export function validateMigration(manifest, root = repoRoot) {
 
         const claimSet = new Set(claims);
         const actualSet = new Set(actual);
-        const untracked = actual.filter((path) => !claimSet.has(path));
-        const missing = claims.filter((path) => !actualSet.has(path));
+        const untracked = actual.filter(path => !claimSet.has(path));
+        const missing = claims.filter(path => !actualSet.has(path));
         if (untracked.length) errors.push(`${areaName} has untracked sources: ${untracked.join(", ")}`);
         if (missing.length) errors.push(`${areaName} claims missing sources: ${missing.join(", ")}`);
         if (!area.exitCriterion) errors.push(`${areaName}.exitCriterion is required`);
@@ -152,17 +150,17 @@ export function validateMigration(manifest, root = repoRoot) {
 export function checkMigration(manifestPath = defaultManifest, root = repoRoot) {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     const errors = validateMigration(manifest, root);
-    if (errors.length) throw new Error(errors.map((error) => `- ${error}`).join("\n"));
+    if (errors.length) throw new Error(errors.map(error => `- ${error}`).join("\n"));
 
     const totals = Object.fromEntries(
         Object.entries(manifest.areas).map(([name, area]) => [
             name,
-            Object.values(area.statuses).reduce((sum, entries) => sum + entries.length, 0),
-        ]),
+            Object.values(area.statuses).reduce((sum, entries) => sum + entries.length, 0)
+        ])
     );
     const gates = {
-        complete: manifest.cutoverGates.filter((gate) => gate.status === "complete").length,
-        pending: manifest.cutoverGates.filter((gate) => gate.status === "pending").map((gate) => gate.id),
+        complete: manifest.cutoverGates.filter(gate => gate.status === "complete").length,
+        pending: manifest.cutoverGates.filter(gate => gate.status === "pending").map(gate => gate.id)
     };
     return { version: manifest.version, totals, gates };
 }
@@ -170,11 +168,13 @@ export function checkMigration(manifestPath = defaultManifest, root = repoRoot) 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     try {
         const result = checkMigration(process.argv[2] ? resolve(process.argv[2]) : defaultManifest);
-        const inventory = Object.entries(result.totals).map(([name, count]) => `${name}=${count}`).join(", ");
+        const inventory = Object.entries(result.totals)
+            .map(([name, count]) => `${name}=${count}`)
+            .join(", ");
         console.log(`Rust source inventory is classified (v${result.version}): ${inventory}`);
         if (result.gates.pending.length) {
             console.log(
-                `Runtime cutover is pending: ${result.gates.complete} gates complete, ${result.gates.pending.length} pending (${result.gates.pending.join(", ")})`,
+                `Runtime cutover is pending: ${result.gates.complete} gates complete, ${result.gates.pending.length} pending (${result.gates.pending.join(", ")})`
             );
         } else {
             console.log(`Runtime cutover is complete: ${result.gates.complete} gates verified`);

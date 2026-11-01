@@ -11,10 +11,16 @@ for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === "--step-screenshots") screenshots = true;
     else if (arg === "--no-step-screenshots") screenshots = false;
-    else if (arg === "--no-step-report") { report = ""; reportRequested = false; }
-    else if (arg === "--step-report") { report = args[++index] ?? ""; reportRequested = true; }
-    else if (arg.startsWith("--step-report=")) { report = arg.slice("--step-report=".length); reportRequested = true; }
-    else forwarded.push(arg);
+    else if (arg === "--no-step-report") {
+        report = "";
+        reportRequested = false;
+    } else if (arg === "--step-report") {
+        report = args[++index] ?? "";
+        reportRequested = true;
+    } else if (arg.startsWith("--step-report=")) {
+        report = arg.slice("--step-report=".length);
+        reportRequested = true;
+    } else forwarded.push(arg);
 }
 if (reportRequested && !["html", "md", "both"].includes(report)) {
     console.error("--step-report must be html, md, or both");

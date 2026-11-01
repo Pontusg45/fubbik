@@ -3,6 +3,7 @@
 
 mod activity;
 mod agent_task;
+mod backend;
 mod claude_md;
 mod config;
 mod detect;
@@ -54,6 +55,7 @@ fn main() {
         }
     }
     let supervisor = Supervisor::new();
+    let embedded = config.as_ref().is_none_or(|c| c.embedded_backend());
 
     // `fubbik-desktop --probe <repo>`: print one poll of a repo without the UI.
     let args: Vec<String> = std::env::args().collect();
@@ -79,6 +81,16 @@ fn main() {
         );
         return;
     }
+
+    let backend = std::sync::Arc::new(std::sync::Mutex::new(
+        embedded.then(|| backend::Backend::start(backend::data_dir())),
+    ));
+    let stop_backend = move || {
+        if let Some(mut backend) = backend.lock().unwrap().take() {
+            backend.stop();
+        }
+    };
+    let stop_on_close = stop_backend.clone();
 
     Application::new().run(move |cx: &mut App| {
         ui::keymap::bind_all(cx, &ui::keymap::path());
@@ -125,6 +137,7 @@ fn main() {
         let on_quit = supervisor.clone();
         cx.on_action(move |_: &Quit, cx| {
             on_quit.stop_all();
+            stop_backend();
             cx.quit();
         });
 
@@ -149,6 +162,7 @@ fn main() {
         cx.on_window_closed(move |cx| {
             if cx.windows().is_empty() {
                 on_close.stop_all();
+                stop_on_close();
                 cx.quit();
             }
         })

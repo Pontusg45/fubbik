@@ -392,6 +392,19 @@ impl Workspace {
                 self.config.terminal = on.then(|| "external".to_string());
                 self.save_config();
             }
+            Command::ImportDatabase(source) => {
+                match crate::backend::request_import(&crate::backend::data_dir(), &source) {
+                    Ok(()) => self.show_info(
+                        "Restart fubbik to import: the built-in database is replaced by a copy (the source is only read)",
+                    ),
+                    Err(error) => self.show_error(format!("Could not queue the import: {error}")),
+                }
+            }
+            Command::SetEmbeddedBackend(on) => {
+                self.config.backend = (!on).then(|| "off".to_string());
+                self.save_config();
+                self.show_info("Applies when the app next starts");
+            }
             Command::SetTaskStatus { plan, task, status } => {
                 self.set_task_status(plan, task, status, cx)
             }

@@ -41,6 +41,10 @@ pub struct AppConfig {
     /// `"ctrl-alt-f"` (the default when unset); `""` or `"none"` turns it off.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub global_hotkey: Option<String>,
+    /// `"embedded"` (the default): the app runs the fubbik API and its own
+    /// PostgreSQL; `"off"`: it starts neither (run `fubbik serve` yourself).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backend: Option<String>,
     #[serde(default, rename = "repo")]
     pub repos: Vec<RepoEntry>,
 }
@@ -73,6 +77,10 @@ pub fn path() -> PathBuf {
 }
 
 impl AppConfig {
+    pub fn embedded_backend(&self) -> bool {
+        self.backend.as_deref() != Some("off")
+    }
+
     /// The summon key, or None when turned off.
     pub fn global_hotkey(&self) -> Option<&str> {
         match self.global_hotkey.as_deref() {

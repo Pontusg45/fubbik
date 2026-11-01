@@ -13,7 +13,34 @@ cargo run --manifest-path apps/desktop/Cargo.toml -- --probe <repo>   # print on
 by `scripts/make-icon.swift`, ad-hoc signed) and pins it to the Dock once (`--no-dock` skips that; `FUBBIK_APP_DIR` changes
 the folder). Re-run it after changes; the Dock entry is kept.
 
+## Built-in server
+
+Starting the app is all fubbik needs. Docker, `fubbik serve` and `just dev` aren't needed.
+
+- **The API runs inside the app**, on `127.0.0.1:3000`. The CLI, MCP, VS Code and Claude Code reach it as usual while the app is
+  open, and the web UI is served there too (from `apps/web/dist`, bundled by `just desktop-install`). The app runs the same
+  `fubbik_api::server::serve` as `fubbik serve`, with every feature on and the local dev session.
+- **Its own PostgreSQL 18**, a private cluster in `~/Library/Application Support/fubbik/pgdata` (`FUBBIK_DESKTOP_DATA` moves
+  it). It listens only on a Unix socket in `…/fubbik/run`, so it never takes a TCP port, and it starts with the app and
+  stops when the app quits (fast shutdown).
+  - **First run:** `initdb` (ICU collation), the migrations, and the `core` seed (built-in types, relations, templates).
+  - **Binaries:** `fubbik.app/Contents/Resources/postgres`, a trimmed copy of Postgres.app 18 that `install-app.sh` bundles
+    (about 200 MB, with pgvector). Otherwise `FUBBIK_POSTGRES_BIN`, Postgres.app, then Homebrew `postgresql@18`; each needs
+    pgvector.
+  - **No AGE:** the bundle has no Apache AGE, so graph projection is off, as on any Postgres without it.
+- **Already running?** When something healthy answers on `:3000` (for example `just dev`), the app uses it and starts nothing.
+- **Existing data:** Setup → "Import on restart" copies `postgresql://localhost:5432/fubbik` into the built-in database on the
+  next launch.
+  - The source is only read (`pg_dump`). The built-in database is replaced, and AGE objects are skipped.
+  - `pg_restore`'s messages go to `import.log` in the data folder.
+- **Turning it off:** `backend = "off"` in `desktop.toml` (or the Setup toggle) makes the app start neither. Run `fubbik serve`
+  yourself then.
+- **Quitting** stops the API, so MCP and the CLI lose fubbik until the app runs again.
+- **Files:** in the data folder, `postgres.log` is the server log and `auth-secret` signs session cookies (generated once).
+
 It is its own cargo workspace (not a member of the root one under `crates/`), so `cargo build --workspace` and CI never compile GPUI.
+It links `fubbik-api` and `fubbik-db` by path for the built-in server; their sqlx queries build from the checked-in `.sqlx/`
+(`SQLX_OFFLINE`, set in `apps/desktop/.cargo/config.toml`, the `start-desktop` recipe and `install-app.sh`).
 GPUI's `runtime_shaders` feature is on, so builds do not need Xcode's Metal Toolchain download. Developed on macOS; Linux needs GPUI's
 X11/Wayland system libraries, and the notifications and "open in Terminal" use macOS tools.
 
@@ -219,6 +246,7 @@ src/model.rs       Status, ProcessState, DatabaseState, RepoSnapshot, roll-up
 src/poll.rs        one repo poll (runs on the background executor)
 src/launch.rs      editor, Terminal, notifications, login-shell PATH
 src/global_hotkey.rs  the system-wide summon key (Carbon RegisterEventHotKey)
+src/backend.rs     the built-in server: finds Postgres, owns its cluster, runs the API in-process, import
 src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,
                    chrome, preferences, tasks, today, insights), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
                    setup_view.rs; terminal_view.rs), actions.rs (fubbik calls and scans), palette, text field, widgets,

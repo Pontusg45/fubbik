@@ -35,6 +35,10 @@ pub enum Command {
     SetPersistence(bool),
     /// AI sessions in Terminal.app (true) or the Terminal tab.
     SetExternalTerminal(bool),
+    /// The built-in server (API + PostgreSQL) on (true) or off; on restart.
+    SetEmbeddedBackend(bool),
+    /// Replace the built-in database with a copy of this one, on restart.
+    ImportDatabase(String),
     SetTaskStatus {
         plan: String,
         task: String,

@@ -1,6 +1,5 @@
 /* eslint-disable no-await-in-loop -- Form controls share focus and must be filled sequentially. */
 import { reportStep } from "../reporting";
-
 import { fieldValue, validateField, writeField, type FormField } from "./core";
 
 export type FormFields = Readonly<Record<string, FormField>>;

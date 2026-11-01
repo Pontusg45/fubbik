@@ -1,0 +1,5 @@
+[env]
+# The embedded backend links fubbik-db, whose sqlx queries are checked at
+# compile time. Build them from the checked-in `.sqlx/` data instead of a
+# live database.
+SQLX_OFFLINE = "true"

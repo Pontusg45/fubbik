@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
-import { reportStep } from "../reporting";
 
 import type { ApiTraffic } from "../network";
+import { reportStep } from "../reporting";
 import { defineForm, type FubbikUI } from "../ui";
 
 export interface ChunkDraft {

@@ -36,6 +36,7 @@ pub mod requirements;
 pub mod saved_graphs;
 pub mod scope_keys;
 pub mod search;
+pub mod server;
 pub mod settings;
 pub mod spaces;
 pub mod staleness;
