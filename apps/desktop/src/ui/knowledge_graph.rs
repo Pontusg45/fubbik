@@ -452,30 +452,19 @@ impl Workspace {
                             .flex_none()
                             .rounded_full()
                             .bg(color.opacity(if faded { 0.2 } else { 0.9 * place.alpha }))
-                            // A drop shadow under it and a glow in its own
-                            // color around it (weaker when faded or far).
-                            .shadow({
-                                let strength = if faded { 0.15 } else { place.alpha };
-                                vec![
-                                    gpui::BoxShadow {
-                                        color: gpui::black().opacity(0.8 * strength),
-                                        offset: point(px(0.), px(size * 0.22 + 1.5)),
-                                        blur_radius: px(size * 0.5 + 3.),
-                                        spread_radius: px(0.),
-                                    },
-                                    gpui::BoxShadow {
-                                        color: color.opacity(0.6 * strength),
-                                        offset: point(px(0.), px(0.)),
-                                        blur_radius: px(size * 1.1 + 4.),
-                                        spread_radius: px(1.),
-                                    },
-                                ]
-                            })
-                            .border_2()
-                            .border_color(if selected {
-                                theme::text()
-                            } else {
-                                color.opacity(0.0)
+                            // A contour: a lighter tint of its own color,
+                            // thicker and in the text color when selected.
+                            .when(selected, |d| d.border_2().border_color(theme::text()))
+                            .when(!selected, |d| {
+                                let tint = gpui::Hsla {
+                                    l: (color.l + 0.22).min(0.92),
+                                    ..color
+                                };
+                                d.border_1().border_color(tint.opacity(if faded {
+                                    0.3
+                                } else {
+                                    place.alpha
+                                }))
                             }),
                     )
                     .when(show_label, |d| {
