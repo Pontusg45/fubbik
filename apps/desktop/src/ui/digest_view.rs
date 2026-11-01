@@ -13,10 +13,12 @@ impl Workspace {
         let digest = crate::digest::current(24);
         self.panel = Some(Panel {
             title: format!("Digest — {date}"),
-            body: Loadable::Done(Ok(crate::digest::markdown(
+            // The panel colors lines starting with "-" as removed (it shows
+            // diffs too): bullets read as bullets here.
+            body: Loadable::Done(Ok(as_bullets(&crate::digest::markdown(
                 &digest,
                 &format!("Digest {date}"),
-            ))),
+            )))),
             actions: vec![("Save to fubbik".into(), Command::SaveDigest)],
         });
     }
@@ -97,4 +99,19 @@ impl Workspace {
         })
         .detach();
     }
+}
+
+/// `- item` → `• item`, keeping the indentation.
+fn as_bullets(markdown: &str) -> String {
+    markdown
+        .lines()
+        .map(|line| {
+            let indent = line.len() - line.trim_start().len();
+            match line.trim_start().strip_prefix("- ") {
+                Some(rest) => format!("{}• {rest}", &line[..indent]),
+                None => line.to_string(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
