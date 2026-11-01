@@ -583,7 +583,47 @@ impl FubbikClient {
         let json = self
             .get_json("/api/graph", &[("spaceId", space_id)])?
             .ok_or("the server has no /api/graph")?;
-        Ok(crate::graph_layout::Graph::from_api(&json))
+        let mut graph = crate::graph_layout::Graph::from_api(&json);
+        // What needs attention (best effort: the graph shows without it).
+        let ids = |list: &Value, key: &str| -> Vec<String> {
+            list.as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|c| c[key].as_str().map(str::to_string))
+                .collect()
+        };
+        if let Ok(Some(flags)) = self.get_json(
+            "/api/chunks/stale",
+            &[("spaceId", space_id), ("limit", "1000")],
+        ) {
+            // `age` only means old (stale); a changed file or a diverged
+            // duplicate means the chunk may be wrong (flagged).
+            let by_reason = |age: bool| -> Vec<String> {
+                flags
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|f| (f["reason"] == "age") == age)
+                    .filter_map(|f| f["chunkId"].as_str().map(str::to_string))
+                    .collect()
+            };
+            graph.mark(&by_reason(false), "flagged");
+            graph.mark(&by_reason(true), "stale");
+        }
+        if let Ok(Some(health)) = self.get_json("/api/health/knowledge", &[("spaceId", space_id)]) {
+            graph.mark(&ids(&health["stale"]["chunks"], "id"), "stale");
+            graph.mark(&ids(&health["thin"]["chunks"], "id"), "thin");
+        }
+        Ok(graph)
+    }
+
+    /// A connection between two chunks, made by the user.
+    pub fn connect(&self, source: &str, target: &str, relation: &str) -> Result<(), String> {
+        self.post(
+            "/api/connections",
+            json!({ "sourceId": source, "targetId": target, "relation": relation, "origin": "human" }),
+        )
+        .map(|_| ())
     }
 
     pub fn search(&self, query: &str, space_id: Option<&str>) -> Result<Vec<ChunkRef>, String> {

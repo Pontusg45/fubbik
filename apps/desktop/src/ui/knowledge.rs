@@ -116,7 +116,7 @@ impl Workspace {
             .gap_6()
             .child(links)
             .child(cards)
-            .child(self.render_knowledge_graph(cx))
+            .child(self.render_knowledge_graph(_window, cx))
             .child(muted("Drop a file on the window to see why it is the way it is · ⌘K then `?words` searches chunks"))
             .child(self.render_inbox(repo, k, cx))
             .child(self.render_enrichment(repo, k, cx))

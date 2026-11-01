@@ -72,6 +72,7 @@ impl Workspace {
             Field::WebUrl => &mut self.web_url_field,
             Field::FubbikBin => &mut self.fubbik_bin_field,
             Field::Commit => &mut self.commit_field,
+            Field::GraphSearch => &mut self.graph_search,
         }
     }
 
@@ -147,6 +148,11 @@ impl Workspace {
             }
             (Field::Reply, KeyOutcome::Submit) => self.send_reply(cx),
             (Field::Commit, KeyOutcome::Submit) => self.commit_staged(cx),
+            (Field::GraphSearch, KeyOutcome::Submit) => self.graph_fly_to_match(cx),
+            (Field::GraphSearch, KeyOutcome::Cancel) => {
+                self.graph_search.text.clear();
+                self.focus.focus(window);
+            }
             (Field::FubbikUrl | Field::WebUrl | Field::FubbikBin, KeyOutcome::Submit) => {
                 self.submit_preference(field, cx);
                 self.focus.focus(window);
@@ -191,6 +197,7 @@ impl Workspace {
             Field::WebUrl => &self.web_url_field,
             Field::FubbikBin => &self.fubbik_bin_field,
             Field::Commit => &self.commit_field,
+            Field::GraphSearch => &self.graph_search,
         };
         let focus = text_field.focus.clone();
         widgets::text_box(&text_field.text, placeholder, focus.is_focused(window))

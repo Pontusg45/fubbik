@@ -16,6 +16,10 @@ pub struct Node {
     pub degree: usize,
     /// The 3D position, centred on the origin inside the unit ball.
     pub p3: [f32; 3],
+    /// What needs attention: `flagged` (a staleness flag: its files changed,
+    /// or a diverged duplicate), `stale` (not updated in a long while),
+    /// `thin` (little content). Empty: healthy.
+    pub attention: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,6 +53,7 @@ impl Graph {
                     y: 0.5,
                     degree: 0,
                     p3: [0.0; 3],
+                    attention: Vec::new(),
                 })
             })
             .collect();
@@ -299,6 +304,34 @@ impl Graph {
         }
     }
 
+    /// Tags `kind` on the nodes with these ids.
+    pub fn mark(&mut self, ids: &[String], kind: &str) {
+        for node in &mut self.nodes {
+            if ids.contains(&node.id) && !node.attention.iter().any(|a| a == kind) {
+                node.attention.push(kind.to_string());
+            }
+        }
+    }
+
+    /// Adds a connection made in the app (no new layout: the picture stays).
+    pub fn connect(&mut self, source: usize, target: usize, relation: &str) {
+        if source == target
+            || self
+                .edges
+                .iter()
+                .any(|e| (e.source, e.target) == (source, target))
+        {
+            return;
+        }
+        self.edges.push(Edge {
+            source,
+            target,
+            relation: relation.to_string(),
+        });
+        self.nodes[source].degree += 1;
+        self.nodes[target].degree += 1;
+    }
+
     /// Indexes of the nodes connected to `node`.
     pub fn neighbours(&self, node: usize) -> Vec<usize> {
         self.edges
@@ -521,5 +554,26 @@ mod tests {
             "a quarter turn puts +x straight behind or ahead"
         );
         assert!(turned.depth.abs() > 0.49);
+    }
+
+    #[test]
+    fn marks_attention_and_connects_without_moving_anything() {
+        // Given
+        let mut graph = Graph::from_api(&sample());
+        let before: Vec<(f32, f32)> = graph.nodes.iter().map(|n| (n.x, n.y)).collect();
+
+        // When
+        graph.mark(&["a".into(), "f".into()], "stale");
+        graph.mark(&["a".into()], "stale");
+        graph.connect(5, 0, "related_to");
+        graph.connect(5, 0, "related_to");
+        graph.connect(1, 1, "related_to");
+
+        // Then
+        assert_eq!(graph.nodes[0].attention, ["stale"]);
+        assert_eq!(graph.nodes[5].degree, 1, "the orphan is connected once");
+        assert_eq!(graph.edges.len(), 6);
+        let after: Vec<(f32, f32)> = graph.nodes.iter().map(|n| (n.x, n.y)).collect();
+        assert_eq!(before, after);
     }
 }

@@ -40,6 +40,11 @@ pub struct GraphState {
     pub hidden: HashSet<String>,
     pub labels: bool,
     pub three_d: bool,
+    /// Color by what needs attention instead of by type.
+    pub by_attention: bool,
+    /// A connection being made: from, to, and the relation picked.
+    pub link: Option<(usize, usize)>,
+    pub link_relation: &'static str,
     pub yaw: f32,
     pub pitch: f32,
     pub zoom: f32,
@@ -60,6 +65,9 @@ impl Default for GraphState {
             hidden: HashSet::new(),
             labels: false,
             three_d: false,
+            by_attention: false,
+            link: None,
+            link_relation: "related_to",
             yaw: 0.6,
             pitch: -0.35,
             zoom: 1.0,
@@ -92,6 +100,34 @@ fn kind_color(kind: &str) -> gpui::Hsla {
         "convention" => theme::hue(Hue::Yellow),
         "guide" => theme::hue(Hue::Pink),
         _ => theme::hue(Hue::Lime),
+    }
+}
+
+/// The relations a connection can have.
+const RELATIONS: [&str; 8] = [
+    "related_to",
+    "part_of",
+    "depends_on",
+    "extends",
+    "references",
+    "supports",
+    "contradicts",
+    "alternative_to",
+];
+
+/// Attention coloring: flagged red, stale amber, thin orange, orphan grey,
+/// healthy green.
+fn attention_color(node: &crate::graph_layout::Node) -> gpui::Hsla {
+    if node.attention.iter().any(|a| a == "flagged") {
+        theme::danger()
+    } else if node.attention.iter().any(|a| a == "stale") {
+        theme::hue(Hue::Yellow)
+    } else if node.attention.iter().any(|a| a == "thin") {
+        theme::hue(Hue::Orange)
+    } else if node.degree == 0 {
+        theme::text_muted()
+    } else {
+        theme::hue(Hue::Green)
     }
 }
 
@@ -222,7 +258,83 @@ impl Workspace {
             .collect()
     }
 
-    pub(super) fn render_knowledge_graph(&self, cx: &mut Context<Self>) -> AnyElement {
+    /// Nodes whose title contains the search text (none without one).
+    fn graph_matches(&self, graph: &Graph) -> Vec<usize> {
+        let query = self.graph_search.text.trim().to_lowercase();
+        if query.is_empty() {
+            return Vec::new();
+        }
+        (0..graph.nodes.len())
+            .filter(|&i| graph.nodes[i].title.to_lowercase().contains(&query))
+            .collect()
+    }
+
+    /// ⏎ in the search: select the first match and, in 3D, turn the camera
+    /// so it faces you.
+    pub(super) fn graph_fly_to_match(&mut self, cx: &mut Context<Self>) {
+        let Some((_, Loadable::Done(Ok(graph)))) = &self.graph.loaded else {
+            return;
+        };
+        let Some(&first) = self.graph_matches(graph).first() else {
+            self.show_info("No chunk in the graph matches");
+            return;
+        };
+        let [x, y, z] = graph.nodes[first].p3;
+        self.graph.selected = Some(first);
+        if self.graph.three_d {
+            let r = (x * x + z * z).sqrt();
+            self.graph.yaw = (-x).atan2(z);
+            self.graph.pitch = y.atan2(r).clamp(-1.45, 1.45);
+            self.graph.auto_rotate = false;
+        }
+        cx.notify();
+    }
+
+    /// Creates the pending connection through the API, then adds it here.
+    fn create_link(&mut self, cx: &mut Context<Self>) {
+        let (Some((from, to)), Some((_, Loadable::Done(Ok(graph))))) =
+            (self.graph.link, &self.graph.loaded)
+        else {
+            return;
+        };
+        let (source, target) = (graph.nodes[from].id.clone(), graph.nodes[to].id.clone());
+        let relation = self.graph.link_relation;
+        let client = self.client.clone();
+        let work = cx
+            .background_executor()
+            .spawn(async move { client.connect(&source, &target, relation) });
+        cx.spawn(async move |this, cx| {
+            let result = work.await;
+            this.update(cx, |this, cx| {
+                match result {
+                    Ok(()) => {
+                        if let Some((_, Loadable::Done(Ok(graph)))) = &mut this.graph.loaded {
+                            graph.connect(from, to, relation);
+                            let (a, b) = (
+                                graph.nodes[from].title.clone(),
+                                graph.nodes[to].title.clone(),
+                            );
+                            this.show_info(format!(
+                                "Connected {a} → {b} ({})",
+                                relation.replace('_', " ")
+                            ));
+                        }
+                        this.graph.link = None;
+                    }
+                    Err(error) => this.show_error(format!("Could not connect: {error}")),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    pub(super) fn render_knowledge_graph(
+        &self,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let graph = match &self.graph.loaded {
             Some((_, Loadable::Done(Ok(graph)))) => graph.clone(),
             Some((_, Loadable::Done(Err(error)))) => {
@@ -240,14 +352,22 @@ impl Workspace {
             .iter()
             .map(|n| !self.graph.hidden.contains(&n.kind))
             .collect();
+        // A search lights up its matches; else hover or selection lights a
+        // chunk and its neighbours.
+        let matches = self.graph_matches(&graph);
         let focus = self.graph.hover.or(self.graph.selected);
-        let lit: HashSet<usize> = focus
-            .map(|f| {
-                let mut set: HashSet<usize> = graph.neighbours(f).into_iter().collect();
-                set.insert(f);
-                set
-            })
-            .unwrap_or_default();
+        let lit: HashSet<usize> = if !matches.is_empty() && self.graph.hover.is_none() {
+            matches.iter().copied().chain(self.graph.selected).collect()
+        } else {
+            focus
+                .map(|f| {
+                    let mut set: HashSet<usize> = graph.neighbours(f).into_iter().collect();
+                    set.insert(f);
+                    set
+                })
+                .unwrap_or_default()
+        };
+        let searching = !matches.is_empty();
 
         // Type chips: count, color, click to hide or show.
         let mut kinds: Vec<(String, usize)> = Vec::new();
@@ -258,20 +378,23 @@ impl Workspace {
             }
         }
         kinds.sort_by_key(|(_, n)| std::cmp::Reverse(*n));
-        let chips = kinds.into_iter().map(|(kind, count)| {
-            let shown = !self.graph.hidden.contains(&kind);
-            let color = kind_color(&kind);
-            let id = SharedString::from(format!("graph-kind-{kind}"));
-            let label = format!("{kind} {count}");
-            segment(id, label, shown)
-                .text_color(if shown { color } else { theme::text_muted() })
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    if !this.graph.hidden.remove(&kind) {
-                        this.graph.hidden.insert(kind.clone());
-                    }
-                    cx.notify();
-                }))
-        });
+        let chips = kinds
+            .into_iter()
+            .map(|(kind, count)| {
+                let shown = !self.graph.hidden.contains(&kind);
+                let color = kind_color(&kind);
+                let id = SharedString::from(format!("graph-kind-{kind}"));
+                let label = format!("{kind} {count}");
+                segment(id, label, shown)
+                    .text_color(if shown { color } else { theme::text_muted() })
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        if !this.graph.hidden.remove(&kind) {
+                            this.graph.hidden.insert(kind.clone());
+                        }
+                        cx.notify();
+                    }))
+            })
+            .collect::<Vec<_>>();
         let toolbar =
             div()
                 .flex()
@@ -290,6 +413,29 @@ impl Workspace {
                         )),
                 )
                 .child(div().flex_1())
+                .child(div().w(px(220.)).child(self.field(
+                    Field::GraphSearch,
+                    "Find a chunk — ⏎ goes to it",
+                    window,
+                    cx,
+                )))
+                .child(muted("Color"))
+                .child(
+                    segment("graph-by-type", "Type", !self.graph.by_attention).on_click(
+                        cx.listener(|this, _, _, cx| {
+                            this.graph.by_attention = false;
+                            cx.notify();
+                        }),
+                    ),
+                )
+                .child(
+                    segment("graph-by-attention", "Attention", self.graph.by_attention).on_click(
+                        cx.listener(|this, _, _, cx| {
+                            this.graph.by_attention = true;
+                            cx.notify();
+                        }),
+                    ),
+                )
                 .child(
                     segment("graph-2d", "2D", !self.graph.three_d)
                         .on_click(cx.listener(|this, _, _, cx| this.set_three_d(false, cx))),
@@ -321,7 +467,45 @@ impl Workspace {
                         },
                     )))
                 })
-                .children(chips)
+                .when(!self.graph.by_attention, |d| d.children(chips))
+                .when(self.graph.by_attention, |d| {
+                    let count = |f: &dyn Fn(&crate::graph_layout::Node) -> bool| {
+                        graph.nodes.iter().filter(|n| f(n)).count()
+                    };
+                    let has =
+                        |n: &crate::graph_layout::Node, k: &str| n.attention.iter().any(|a| a == k);
+                    let legend = [
+                        ("flagged", theme::danger(), count(&|n| has(n, "flagged"))),
+                        (
+                            "stale",
+                            theme::hue(Hue::Yellow),
+                            count(&|n| !has(n, "flagged") && has(n, "stale")),
+                        ),
+                        (
+                            "thin",
+                            theme::hue(Hue::Orange),
+                            count(&|n| !has(n, "flagged") && !has(n, "stale") && has(n, "thin")),
+                        ),
+                        (
+                            "orphan",
+                            theme::text_muted(),
+                            count(&|n| n.attention.is_empty() && n.degree == 0),
+                        ),
+                        (
+                            "healthy",
+                            theme::hue(Hue::Green),
+                            count(&|n| n.attention.is_empty() && n.degree > 0),
+                        ),
+                    ];
+                    d.children(legend.into_iter().map(|(label, color, n)| {
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_1()
+                            .child(div().size(px(9.)).rounded_full().bg(color))
+                            .child(muted(format!("{label} {n}")))
+                    }))
+                })
                 .child(
                     div()
                         .flex()
@@ -413,12 +597,16 @@ impl Workspace {
             .map(|(i, node)| {
                 let place = places[i];
                 let size = place.size;
-                let color = kind_color(&node.kind);
-                let faded = dimmed && !lit.contains(&i);
+                let color = if self.graph.by_attention {
+                    attention_color(node)
+                } else {
+                    kind_color(&node.kind)
+                };
+                let faded = (dimmed || searching) && !lit.contains(&i);
                 // In 3D, only the near half gets labels (the rest would pile up).
                 let near = !three_d || place.depth > 0.0;
-                let show_label =
-                    lit.contains(&i) || (!dimmed && near && (label_all || node.degree >= 4));
+                let show_label = lit.contains(&i)
+                    || (!dimmed && !searching && near && (label_all || node.degree >= 4));
                 let selected = self.graph.selected == Some(i);
                 div()
                     .id(("graph-node", i))
@@ -438,7 +626,17 @@ impl Workspace {
                             cx.notify();
                         }
                     }))
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.listener(move |this, event: &gpui::ClickEvent, _, cx| {
+                        // Shift-click with a chunk selected: connect them.
+                        if event.modifiers().shift
+                            && let Some(from) = this.graph.selected
+                            && from != i
+                        {
+                            this.graph.link = Some((from, i));
+                            cx.notify();
+                            return;
+                        }
+                        this.graph.link = None;
                         this.graph.selected = if this.graph.selected == Some(i) {
                             None
                         } else {
@@ -543,11 +741,11 @@ impl Workspace {
             .gap_2()
             .child(toolbar)
             .child(area)
-            .when(three_d, |d| {
-                d.child(muted(
-                    "Drag to turn · scroll to zoom · click a chunk to select it",
-                ))
-            })
+            .child(muted(if three_d {
+                "Drag to turn · scroll to zoom · click a chunk to select it · shift-click another to connect them"
+            } else {
+                "Click a chunk to select it · shift-click another to connect them"
+            }))
             .children(
                 self.graph
                     .selected
@@ -566,6 +764,62 @@ impl Workspace {
     ) -> AnyElement {
         let node = &graph.nodes[s];
         let id = node.id.clone();
+        // A connection being made from this chunk.
+        let linking = self
+            .graph
+            .link
+            .filter(|(from, _)| *from == s)
+            .map(|(_, to)| {
+                let target = graph.nodes[to].title.clone();
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .p_2()
+                    .rounded_md()
+                    .border_1()
+                    .border_color(theme::accent())
+                    .child(
+                        div()
+                            .text_sm()
+                            .child(format!("Connect {} → {target}", node.title)),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_wrap()
+                            .gap_1()
+                            .children(RELATIONS.iter().map(|relation| {
+                                let relation: &'static str = relation;
+                                segment(
+                                    SharedString::from(format!("rel-{relation}")),
+                                    relation.replace('_', " "),
+                                    self.graph.link_relation == relation,
+                                )
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
+                                        this.graph.link_relation = relation;
+                                        cx.notify();
+                                    },
+                                ))
+                            })),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .gap_2()
+                            .child(
+                                button("link-create", "Connect")
+                                    .on_click(cx.listener(|this, _, _, cx| this.create_link(cx))),
+                            )
+                            .child(button("link-cancel", "Cancel").on_click(cx.listener(
+                                |this, _, _, cx| {
+                                    this.graph.link = None;
+                                    cx.notify();
+                                },
+                            ))),
+                    )
+            });
         let mut links: Vec<(usize, String, bool)> = graph
             .edges
             .iter()
@@ -589,6 +843,7 @@ impl Workspace {
             .border_1()
             .border_color(theme::border())
             .bg(theme::elevated())
+            .children(linking)
             .child(
                 div()
                     .flex()
