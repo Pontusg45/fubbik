@@ -465,6 +465,78 @@ pub fn compare(repos: &[Vec<Decl>], min_repos: usize) -> Vec<Row> {
     rows
 }
 
+/// The requirement to align to: the spec (as written) of a declaration at
+/// the row's newest version, e.g. `^5.0.1`.
+pub fn target_spec(row: &Row) -> Option<String> {
+    let newest = row.newest?;
+    row.per_repo
+        .iter()
+        .flatten()
+        .find(|d| version_of(&d.spec) == Some(newest))
+        .map(|d| d.spec.clone())
+}
+
+/// A branch name for the bump: `deps/vitest-5.0`, `deps/tanstack-react-query-5.102`.
+pub fn bump_branch(name: &str, newest: (u64, u64)) -> String {
+    let slug: String = name
+        .trim_start_matches('@')
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    let slug = slug
+        .split('-')
+        .filter(|p| !p.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    format!("deps/{slug}-{}.{}", newest.0, newest.1)
+}
+
+/// What an agent is asked to do in one repo to bring a dependency up to
+/// `target` (a requirement as written elsewhere).
+pub fn bump_prompt(row: &Row, repo: usize, repo_name: &str, target: &str) -> String {
+    let files: Vec<String> = row.per_repo[repo]
+        .iter()
+        .map(|d| {
+            format!(
+                "- `{}`: `{}`{}",
+                d.file.display(),
+                d.spec,
+                if d.dev { " (dev)" } else { "" }
+            )
+        })
+        .collect();
+    let how = match row.eco {
+        Eco::Npm => {
+            "Update every declaration (keep this repo's range style: `^`, `~` or exact; resolve `catalog:` entries in pnpm-workspace.yaml), then refresh the lockfile with the repo's package manager (`pnpm install`, `npm install` or `bun install`)."
+        }
+        Eco::Cargo => {
+            "Update every declaration (and `[workspace.dependencies]` if it is declared there), then run `cargo update -p` for it so Cargo.lock follows."
+        }
+        Eco::Toolchain => {
+            "Update every pin (packageManager, engines, .nvmrc, .tool-versions, mise.toml, rust-toolchain) consistently."
+        }
+    };
+    format!(
+        "Bring `{name}` ({eco}) in {repo_name} up to `{target}`, the newest version used across the user's other projects.\n\n\
+         Declared here today:\n{files}\n\n\
+         1. {how}\n\
+         2. Read the release notes / migration guide for every major (and, below 1.0, minor) version you cross, and apply what they require.\n\
+         3. Fix type, build and test failures it causes. Prefer the library's documented replacement over workarounds.\n\
+         4. Run the repo's checks (look for `just test`, `pnpm test`, `cargo test`, `pnpm check-types` and lint) until they pass.\n\
+         5. Commit on this branch with `chore(deps): bump {name} to {target}`. Do not push and do not merge.\n\n\
+         When done, report what changed, what you had to fix, and anything you could not resolve.",
+        name = row.name,
+        eco = row.eco.label(),
+        files = files.join("\n"),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -630,6 +702,36 @@ mod tests {
                 (Eco::Cargo, "tokio", "1.40"),
             ]
         );
+    }
+
+    #[test]
+    fn bump_branch_target_and_prompt() {
+        // Given: vitest at 3 in one repo, 5 in another
+        let a = vec![decl(Eco::Npm, "vitest", "^3.1.1")];
+        let b = vec![Decl {
+            dev: true,
+            ..decl(Eco::Npm, "vitest", "5.0.1")
+        }];
+        let row = compare(&[a, b], 2).remove(0);
+
+        // When
+        let target = target_spec(&row).unwrap();
+        let branch = bump_branch("@tanstack/react-query", (5, 102));
+        let prompt = bump_prompt(&row, 0, "fubbik", &target);
+
+        // Then
+        assert_eq!(target, "5.0.1");
+        assert_eq!(branch, "deps/tanstack-react-query-5.102");
+        assert_eq!(
+            bump_branch("vitest", row.newest.unwrap()),
+            "deps/vitest-5.0"
+        );
+        assert!(
+            prompt.contains("`vitest` (npm) in fubbik up to `5.0.1`"),
+            "{prompt}"
+        );
+        assert!(prompt.contains("- `package.json`: `^3.1.1`"));
+        assert!(prompt.contains("Do not push"));
     }
 }
 

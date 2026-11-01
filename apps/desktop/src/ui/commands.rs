@@ -946,6 +946,7 @@ impl Workspace {
             Command::Fetch(repo) => self.fetch_due(Some(repo), cx),
             Command::Pull(repo) => self.pull(repo, cx),
             Command::Push(repo) => self.push(repo, cx),
+            Command::AlignDependency { eco, name, now } => self.align_dependency(eco, name, now, cx),
             Command::DismissAlert(id) => {
                 if let Err(error) = crate::tracker::dismiss(&id) {
                     self.show_error(error);

@@ -1279,3 +1279,62 @@ fn push_asks_first_and_names_the_commits(cx: &mut TestAppContext) {
         "nothing pushed"
     );
 }
+
+#[gpui::test]
+fn aligning_a_dependency_asks_first_and_names_the_repos(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: two repos, vitest 3 and vitest 5
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    std::fs::write(
+        a.path().join("package.json"),
+        r#"{"devDependencies": {"vitest": "^3.1.1"}}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        b.path().join("package.json"),
+        r#"{"devDependencies": {"vitest": "5.0.1"}}"#,
+    )
+    .unwrap();
+    let (view, cx) = open(
+        cx,
+        &format!(
+            "[[repo]]\npath = {:?}\n\n[[repo]]\npath = {:?}\n",
+            a.path().display().to_string(),
+            b.path().display().to_string()
+        ),
+    );
+    view.update(cx, |w, cx| w.scan_deps(cx));
+    cx.run_until_parked();
+
+    // When
+    view.update(cx, |w, cx| {
+        w.run(
+            Command::AlignDependency {
+                eco: crate::deps::Eco::Npm,
+                name: "vitest".into(),
+                now: false,
+            },
+            cx,
+        )
+    });
+    let asked = view.read_with(cx, |w, _| {
+        w.confirm
+            .as_ref()
+            .map(|c| (c.title.clone(), c.detail.clone()))
+    });
+    cx.simulate_keystrokes("escape");
+
+    // Then
+    let (title, detail) = asked.expect("asks first");
+    assert_eq!(title, "Start 1 agent(s) to bring vitest to 5.0.1?");
+    assert!(detail.contains("^3.1.1 → 5.0.1"), "{detail}");
+    assert!(detail.contains("deps/vitest-5.0"), "{detail}");
+    assert!(
+        !a.path().parent().unwrap().read_dir().unwrap().any(|e| e
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .contains("deps-vitest")),
+        "no worktree before confirming"
+    );
+}

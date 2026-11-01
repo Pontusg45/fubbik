@@ -284,6 +284,13 @@ pub enum Command {
     Pull(usize),
     /// Asks, then pushes in a terminal tab.
     Push(usize),
+    /// One agent per repo behind on a dependency, each in a new worktree
+    /// (`now: false` asks first).
+    AlignDependency {
+        eco: crate::deps::Eco,
+        name: String,
+        now: bool,
+    },
 }
 
 #[derive(Debug, Clone)]

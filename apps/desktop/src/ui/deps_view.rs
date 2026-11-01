@@ -359,6 +359,44 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let mut list = div().flex().flex_col().gap_0p5().pl(px(24.)).pr_3().pb_2();
+        // Fix it: one agent per repo that is behind, each in its own worktree.
+        let behind = (0..report.repos.len())
+            .filter(|&r| {
+                !row.per_repo[r].is_empty() && matches!(row.lag(r), Align::Breaking | Align::Drift)
+            })
+            .count();
+        if behind > 0
+            && let Some(target) = deps::target_spec(row)
+        {
+            let (eco, name) = (row.eco, row.name.clone());
+            list = list.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .pb_1()
+                    .child(
+                        button(
+                            SharedString::from(format!("dep-align-{i}")),
+                            format!("Align to {target} with agents ({behind})…"),
+                        )
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            cx.stop_propagation();
+                            this.run(
+                                Command::AlignDependency {
+                                    eco,
+                                    name: name.clone(),
+                                    now: false,
+                                },
+                                cx,
+                            )
+                        })),
+                    )
+                    .child(muted(
+                        "a worktree and an agent per repo that is behind; nothing is pushed",
+                    )),
+            );
+        }
         for (r, decls) in row.per_repo.iter().enumerate() {
             if decls.is_empty() {
                 continue;
@@ -398,5 +436,107 @@ impl Workspace {
             }
         }
         list.into_any_element()
+    }
+}
+
+impl Workspace {
+    /// Starts one agent per repo that is behind on a dependency, each in a
+    /// new worktree on `deps/<name>-<version>`, with a prompt to bump it, fix
+    /// what breaks, run the checks and commit (never push). Asks first.
+    pub(super) fn align_dependency(
+        &mut self,
+        eco: Eco,
+        name: String,
+        now: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(Loadable::Done(Ok(report))) = &self.deps.report else {
+            self.show_error("Open Home → Dependencies first");
+            return;
+        };
+        let Some(row) = report
+            .rows
+            .iter()
+            .find(|r| r.eco == eco && r.name == name)
+            .cloned()
+        else {
+            self.show_error(format!("{name} is no longer in the list; rescan"));
+            return;
+        };
+        let (Some(target), Some(newest)) = (deps::target_spec(&row), row.newest) else {
+            self.show_error(format!("No readable version for {name}"));
+            return;
+        };
+        let lagging: Vec<(usize, String, PathBuf)> = report
+            .repos
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| {
+                !row.per_repo[*i].is_empty()
+                    && matches!(row.lag(*i), Align::Breaking | Align::Drift)
+            })
+            .map(|(i, (repo, path))| (i, repo.clone(), path.clone()))
+            .collect();
+        if lagging.is_empty() {
+            self.show_info(format!("Every repo is already at {target}"));
+            return;
+        }
+        let branch = deps::bump_branch(&name, newest);
+        if !now {
+            let lines: Vec<String> = lagging
+                .iter()
+                .map(|(i, repo, _)| format!("{repo}: {} → {target}", row.specs(*i)))
+                .collect();
+            let confirm = Command::AskFirst(Box::new(super::palette::Confirm {
+                title: format!(
+                    "Start {} agent(s) to bring {name} to {target}?",
+                    lagging.len()
+                ),
+                detail: format!(
+                    "{}. Each works in a new worktree on {branch}, fixes what breaks, runs the checks and commits there. Nothing is pushed or merged.",
+                    lines.join(" · ")
+                ),
+                action: "Start agents".into(),
+                danger: false,
+                command: Command::AlignDependency {
+                    eco,
+                    name,
+                    now: true,
+                },
+            }));
+            self.run(confirm, cx);
+            return;
+        }
+        for (i, repo, path) in lagging {
+            let prompt = deps::bump_prompt(&row, i, &repo, &target);
+            let branch = branch.clone();
+            let label = format!("deps: {name} → {target} — {repo}");
+            let work = cx.background_executor().spawn(async move {
+                let worktree = crate::worktree::create(&path, &branch)?;
+                let session = crate::agent_task::uuid_v4();
+                let file = std::env::temp_dir().join(format!("fubbik-deps-{session}.md"));
+                std::fs::write(&file, prompt).map_err(|e| e.to_string())?;
+                let command = format!(
+                    "claude --session-id {session} \"$(cat '{}')\"",
+                    file.display()
+                );
+                Ok::<_, String>((worktree, command))
+            });
+            cx.spawn(async move |this, cx| {
+                let result = work.await;
+                this.update(cx, |this, cx| {
+                    match result {
+                        Ok((worktree, command)) => {
+                            this.launch_agent(worktree, label, command, true, cx)
+                        }
+                        Err(error) => this.show_error(format!("{repo}: {error}")),
+                    }
+                    this.poll_now(false, cx);
+                    cx.notify();
+                })
+                .ok();
+            })
+            .detach();
+        }
     }
 }
