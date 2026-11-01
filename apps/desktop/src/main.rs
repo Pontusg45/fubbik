@@ -27,6 +27,7 @@ mod system;
 mod term;
 mod theme;
 mod tmux;
+mod tmux_events;
 mod tmux_runs;
 mod ui;
 mod worktree;

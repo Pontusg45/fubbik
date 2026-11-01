@@ -28,6 +28,7 @@ mod tasks;
 mod terminal_view;
 mod terminals;
 mod text;
+mod tmux_live;
 pub mod today;
 #[cfg(test)]
 mod ui_tests;
@@ -497,6 +498,9 @@ pub struct Workspace {
     /// Watches services files and Claude's live-session registry.
     _watcher: Option<notify::RecommendedWatcher>,
     _watch_task: Task<()>,
+    _events_task: Task<()>,
+    /// Terminal tabs that rang the bell and have not been looked at since.
+    bells: Vec<(usize, Instant)>,
     knowledge_paused_until: Option<Instant>,
     /// Ghostty theme names, read once at startup.
     ghostty_themes: Vec<String>,
@@ -634,6 +638,8 @@ impl Workspace {
             api_backoff: Duration::ZERO,
             _watcher: None,
             _watch_task: Task::ready(()),
+            _events_task: Task::ready(()),
+            bells: Vec::new(),
             knowledge_paused_until: None,
             ghostty_themes: crate::ghostty::list_themes(&crate::ghostty::theme_dirs()),
             reply_target: None,
@@ -674,6 +680,7 @@ impl Workspace {
         workspace.tmux_terminals = workspace.config.tmux_persistence() && tmux::available();
         if workspace.tmux_terminals {
             workspace.restore_terminals(cx);
+            workspace.watch_tmux_events(cx);
         }
         // A developer hook for smoke runs: open on a tab by name.
         if !workspace.repos.is_empty() {

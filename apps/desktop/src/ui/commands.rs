@@ -940,7 +940,8 @@ impl Workspace {
             Command::StartNextTask => self.start_next_task(cx),
             Command::NextNeedsYou => self.next_needs_you(cx),
                         Command::ShowHome => self.go_home(),
-            Command::OpenUrl(url) => cx.open_url(&url),
+                        Command::OpenUrl(url) => cx.open_url(&url),
+            Command::FocusTerminal(id) => self.focus_terminal_tab(id),
             Command::OpenPane { pane, cwd } => self.open_pane(pane, cwd, cx),
             Command::Focus { repo, tab } => {
                 self.select(repo);

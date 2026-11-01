@@ -61,6 +61,26 @@ impl Workspace {
             primary_label: label,
             secondary: Vec::new(),
         };
+        // Terminal tabs that rang the bell (a program wants you).
+        for (id, _) in &self.bells {
+            let Some(tab) = self.terminals.iter().find(|t| t.id == *id) else {
+                continue;
+            };
+            let repo = self
+                .repos
+                .iter()
+                .find(|r| tab.dir.starts_with(&r.entry.path))
+                .map(|r| r.entry.name())
+                .unwrap_or_default();
+            rows.push(need(
+                &repo,
+                "bell".into(),
+                theme::hue(crate::theme::Hue::Orange),
+                format!("{} rang the bell", tab.label),
+                "Open the tab",
+                Command::FocusTerminal(*id),
+            ));
+        }
         for (repo, view) in self.repos.iter().enumerate() {
             let name = view.entry.name();
             let focus = |tab: Tab| Command::Focus { repo, tab };

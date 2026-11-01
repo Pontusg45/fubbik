@@ -164,6 +164,10 @@ pub fn create(
     let locale = locale_args();
     args.extend(locale.iter().map(String::as_str));
     tmux(server, &args)?;
+    // The server may have just started: give it the event hooks.
+    if server.is_fubbik() {
+        let _ = crate::tmux_events::install(server, &crate::tmux_events::events_path());
+    }
     tmux(server, &["set-option", "-t", name, LABEL_OPTION, label])?;
     if let Some(command) = command {
         tmux(server, &["send-keys", "-t", name, "-l", command])?;

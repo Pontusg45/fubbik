@@ -108,6 +108,7 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let index = self.selected;
+        self.clear_shown_bell();
         // The terminal fills the content area, without padding or scrolling.
         let terminal = (self.tab == Tab::Terminal)
             .then(|| self.terminal_for_selected(window, cx))

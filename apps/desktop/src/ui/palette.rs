@@ -270,6 +270,8 @@ pub enum Command {
     ShowHome,
     /// Any URL in the browser (a pull request).
     OpenUrl(String),
+    /// A terminal tab by id, in its repo (clears its bell).
+    FocusTerminal(usize),
 }
 
 #[derive(Debug, Clone)]

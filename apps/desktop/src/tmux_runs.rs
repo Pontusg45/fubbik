@@ -152,6 +152,9 @@ impl Runs {
         args.extend(locale.iter().map(String::as_str));
         args.extend([shell.as_str(), "-lc", &script]);
         tmux::command(&self.server, &args)?;
+        if self.server.is_fubbik() {
+            let _ = crate::tmux_events::install(&self.server, &crate::tmux_events::events_path());
+        }
         tmux::command(&self.server, &["set-option", "-t", &name, KEY_OPTION, key])?;
         tmux::command(
             &self.server,
