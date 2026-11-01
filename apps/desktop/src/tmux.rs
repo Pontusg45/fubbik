@@ -205,6 +205,25 @@ pub fn kill_server(server: &Server) {
     }
 }
 
+/// What a session's pane runs in the foreground (`zsh`, `node`, `claude`…).
+pub fn foreground_command(server: &Server, name: &str) -> Option<String> {
+    let out = tmux(
+        server,
+        &[
+            "list-panes",
+            "-t",
+            &format!("={name}"),
+            "-F",
+            "#{pane_current_command}",
+        ],
+    )
+    .ok()?;
+    out.lines()
+        .next()
+        .map(str::to_string)
+        .filter(|c| !c.is_empty())
+}
+
 /// Drops a session's history (its screen is cleared by the shell).
 pub fn clear(server: &Server, name: &str) -> Result<(), String> {
     tmux(server, &["clear-history", "-t", &format!("={name}")]).map(|_| ())

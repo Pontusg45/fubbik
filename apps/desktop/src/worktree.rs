@@ -263,6 +263,12 @@ pub fn remove(repo: &Path, path: &Path) -> Result<(), String> {
     git(repo, &["worktree", "remove", &path_arg]).map(|_| ())
 }
 
+/// `git worktree remove --force`: also when it has changes (they are lost).
+pub fn remove_force(repo: &Path, path: &Path) -> Result<(), String> {
+    let path_arg = path.to_string_lossy().into_owned();
+    git(repo, &["worktree", "remove", "--force", &path_arg]).map(|_| ())
+}
+
 pub fn prune(repo: &Path) -> Result<(), String> {
     git(repo, &["worktree", "prune", "-v"]).map(|_| ())
 }

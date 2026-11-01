@@ -486,6 +486,8 @@ pub struct Workspace {
     toasts: Vec<Toast>,
     /// "Are you sure?" while open.
     confirm: Option<Confirm>,
+    /// True while a confirmed command runs, so its handler does not ask again.
+    confirmed: bool,
     polling: bool,
     poll_again: bool,
     tick: u64,
@@ -580,6 +582,7 @@ impl Workspace {
             user_stopped: HashSet::new(),
             toasts: Vec::new(),
             confirm: None,
+            confirmed: false,
             polling: false,
             poll_again: false,
             tick: 0,
@@ -658,6 +661,22 @@ impl Workspace {
     #[cfg(test)]
     fn toast(&self) -> Option<&Toast> {
         self.toasts.last()
+    }
+
+    /// For a destructive handler: true when the user already confirmed;
+    /// otherwise opens "Are you sure?" for `command` and returns false.
+    fn confirmed_or_ask(
+        &mut self,
+        title: impl Into<String>,
+        detail: impl Into<String>,
+        action: &str,
+        command: Command,
+    ) -> bool {
+        if self.confirmed {
+            return true;
+        }
+        self.ask(title, detail, action, command);
+        false
     }
 
     /// Asks before running `command`.

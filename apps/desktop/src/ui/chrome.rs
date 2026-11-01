@@ -183,7 +183,9 @@ impl Workspace {
     /// Runs the open confirmation's command.
     pub(super) fn confirm_now(&mut self, cx: &mut Context<Self>) {
         if let Some(confirm) = self.confirm.take() {
+            self.confirmed = true;
             self.run(confirm.command, cx);
+            self.confirmed = false;
         }
     }
 

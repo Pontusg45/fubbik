@@ -168,8 +168,20 @@ impl Workspace {
                         return false;
                     };
                     match key {
-                        "a" => self.review(proposal.id, true, cx),
-                        "r" => self.review(proposal.id, false, cx),
+                        "a" => self.run(
+                            Command::Review {
+                                proposal: proposal.id,
+                                approve: true,
+                            },
+                            cx,
+                        ),
+                        "r" => self.run(
+                            Command::Review {
+                                proposal: proposal.id,
+                                approve: false,
+                            },
+                            cx,
+                        ),
                         "enter" | "o" => self.run(
                             Command::OpenWeb(format!("/chunks/{}", proposal.chunk_id)),
                             cx,

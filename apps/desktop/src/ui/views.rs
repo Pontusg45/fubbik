@@ -735,11 +735,18 @@ impl Workspace {
                     move |this, _, _, cx| this.run(Command::RestartProcess(repo, p), cx),
                 )));
         } else if let (true, Some(pid)) = (up, process.pid) {
+            let name = spec.name.clone();
             actions = actions.child(
                 button(id("kill"), "Kill")
                     .text_color(theme::danger())
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        this.kill_external(pid, cx);
+                        this.run(
+                            Command::KillPid {
+                                pid,
+                                what: format!("{name} (pid {pid})"),
+                            },
+                            cx,
+                        );
                         cx.notify();
                     })),
             );
@@ -870,7 +877,14 @@ impl Workspace {
                     if show {
                         actions = actions.child(button(id(action), text).on_click(cx.listener(
                             move |this, _, _, cx| {
-                                this.database_task(index, d, action, cx);
+                                this.run(
+                                    Command::DatabaseTask {
+                                        repo: index,
+                                        index: d,
+                                        action,
+                                    },
+                                    cx,
+                                );
                                 cx.notify();
                             },
                         )));
@@ -1006,7 +1020,11 @@ impl Workspace {
             .child(
                 button("log-clear", "Clear").on_click(cx.listener(move |this, _, _, cx| {
                     if let Some(key) = &clear_key {
-                        this.supervisor.clear_logs(key);
+                        if this.supervisor.tmux_session(key).is_some() {
+                            this.run(Command::ClearRunLog(key.clone()), cx);
+                        } else {
+                            this.supervisor.clear_logs(key);
+                        }
                     }
                     this.log_paused = None;
                     cx.notify();

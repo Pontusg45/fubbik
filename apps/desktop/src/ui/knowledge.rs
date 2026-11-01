@@ -187,14 +187,28 @@ impl Workspace {
                             this.run(Command::OpenWeb(format!("/chunks/{chunk}")), cx)
                         },
                     )))
-                    .child(button(id("approve"), "Approve").on_click(
-                        cx.listener(move |this, _, _, cx| this.review(approve.clone(), true, cx)),
-                    ))
+                    .child(button(id("approve"), "Approve").on_click(cx.listener(
+                        move |this, _, _, cx| {
+                            this.run(
+                                Command::Review {
+                                    proposal: approve.clone(),
+                                    approve: true,
+                                },
+                                cx,
+                            )
+                        },
+                    )))
                     .child(
                         button(id("reject"), "Reject")
                             .text_color(theme::danger())
                             .on_click(cx.listener(move |this, _, _, cx| {
-                                this.review(reject.clone(), false, cx)
+                                this.run(
+                                    Command::Review {
+                                        proposal: reject.clone(),
+                                        approve: false,
+                                    },
+                                    cx,
+                                )
                             })),
                     )
                     .into_any_element(),

@@ -145,6 +145,26 @@ pub enum Command {
     AskFirst(Box<Confirm>),
     /// Stops whatever the supervisor runs under this key (a script, a task).
     StopKey(String),
+    /// SIGTERM to a process the app did not start (holding a port).
+    KillPid {
+        pid: u32,
+        what: String,
+    },
+    /// Approve or reject a proposed knowledge change.
+    Review {
+        proposal: String,
+        approve: bool,
+    },
+    /// `git worktree remove --force` after a plain remove was refused.
+    ForceRemoveWorktree(usize, PathBuf),
+    /// Empties a tmux run's log file.
+    ClearRunLog(String),
+    /// A database task from the services file (start, stop, migrate, seed, studio).
+    DatabaseTask {
+        repo: usize,
+        index: usize,
+        action: &'static str,
+    },
     ShowBackups,
     /// Stop a `--serve` server left running by "Quit, Keep Server Running".
     StopBackgroundServer,

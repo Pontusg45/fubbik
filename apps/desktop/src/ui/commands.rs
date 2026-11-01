@@ -259,12 +259,44 @@ impl Workspace {
     }
 
     pub(super) fn stop_all(&mut self, repo: usize, cx: &mut Context<Self>) {
-        let count = self
-            .repos
-            .get(repo)
-            .and_then(|v| v.snapshot.as_ref())
-            .map_or(0, |s| s.processes.len());
-        for index in 0..count {
+        let Some(snapshot) = self.repos.get(repo).and_then(|v| v.snapshot.as_ref()) else {
+            return;
+        };
+        // Only what the app started; processes held by others stay up.
+        let ours: Vec<usize> = (0..snapshot.processes.len())
+            .filter(|&i| snapshot.processes[i].owned)
+            .collect();
+        let outside = snapshot
+            .processes
+            .iter()
+            .filter(|p| !p.owned && p.status.is_up())
+            .count();
+        if ours.is_empty() {
+            if outside > 0 {
+                self.show_info(format!(
+                    "Nothing to stop: {outside} running process(es) were started outside the app"
+                ));
+            }
+            return;
+        }
+        let names: Vec<String> = ours
+            .iter()
+            .map(|&i| snapshot.processes[i].spec.name.clone())
+            .collect();
+        let title = format!(
+            "Stop {} in {}?",
+            names.join(", "),
+            self.repos[repo].entry.name()
+        );
+        let detail = if outside > 0 {
+            format!("{outside} process(es) started outside the app keep running.")
+        } else {
+            String::new()
+        };
+        if !self.confirmed_or_ask(title, detail, "Stop all", Command::StopAll(repo)) {
+            return;
+        }
+        for index in ours {
             self.stop_process(repo, index, cx);
         }
     }
@@ -310,6 +342,31 @@ impl Workspace {
             ));
             return;
         };
+        if matches!(action, "seed" | "stop") && !self.confirmed {
+            let (title, what) = match action {
+                "seed" => (
+                    format!("Seed {}?", spec.name),
+                    "Seeding often resets or overwrites its data.",
+                ),
+                _ => (
+                    format!("Stop {}?", spec.name),
+                    "Anything using it loses its connection.",
+                ),
+            };
+            let detail = format!("{what} Runs: {command}");
+            let label = if action == "seed" { "Seed" } else { "Stop" };
+            self.ask(
+                title,
+                detail,
+                label,
+                Command::DatabaseTask {
+                    repo,
+                    index,
+                    action,
+                },
+            );
+            return;
+        }
         let key = process_key(&view.entry.path, &format!("{}:{action}", spec.name));
         if self.supervisor.is_running(&key) {
             self.show_error(format!(
@@ -377,6 +434,15 @@ impl Workspace {
 
     pub(super) fn remove_repo(&mut self, repo: usize, cx: &mut Context<Self>) {
         if repo >= self.repos.len() {
+            return;
+        }
+        let name = self.repos[repo].entry.name();
+        if !self.confirmed_or_ask(
+            format!("Remove {name} from fubbik?"),
+            "Processes the app started there are stopped. Its files, branches and worktrees are untouched; register it again any time.",
+            "Remove",
+            Command::RemoveRepo(repo),
+        ) {
             return;
         }
         self.stop_all(repo, cx);
@@ -460,11 +526,65 @@ impl Workspace {
             self.show_error("An AI session is still running in that worktree");
             return;
         }
-        self.refresh_worktrees = true;
-        let repo_path = view.entry.path.clone();
-        self.run_background(cx, "Worktree removed (its branch is kept)", move || {
-            worktree::remove(&repo_path, &path)
+        let info = view.snapshot.as_ref().and_then(|s| {
+            s.worktrees
+                .as_ref()?
+                .as_ref()
+                .ok()?
+                .iter()
+                .find(|w| w.path == path)
+                .cloned()
         });
+        let detail = match &info {
+            Some(w) => {
+                let mut parts = vec![format!("{} — the branch is kept.", display_path(&path))];
+                if w.changed_files > 0 {
+                    parts.push(format!(
+                        "{} uncommitted change(s) would be lost (git refuses unless forced).",
+                        w.changed_files
+                    ));
+                }
+                if w.ahead > 0 {
+                    parts.push(format!(
+                        "{} commit(s) not on main stay on the branch.",
+                        w.ahead
+                    ));
+                }
+                parts.join(" ")
+            }
+            None => display_path(&path),
+        };
+        let repo_path = view.entry.path.clone();
+        if !self.confirmed_or_ask(
+            "Remove this worktree?",
+            detail,
+            "Remove",
+            Command::RemoveWorktree(repo, path.clone()),
+        ) {
+            return;
+        }
+        self.refresh_worktrees = true;
+        let task = cx.background_executor().spawn({
+            let (repo_path, path) = (repo_path.clone(), path.clone());
+            async move { worktree::remove(&repo_path, &path) }
+        });
+        cx.spawn(async move |this, cx| {
+            let result = task.await;
+            this.update(cx, |this, cx| {
+                match result {
+                    Ok(()) => this.show_info("Worktree removed (its branch is kept)"),
+                    // Dirty or locked: offer the forced remove, which asks again.
+                    Err(error) => this.show_alert(Alert {
+                        message: format!("git refused: {error} — remove anyway with --force?"),
+                        target: Command::ForceRemoveWorktree(repo, path.clone()),
+                    }),
+                }
+                this.poll_now(false, cx);
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
     }
 
     pub(super) fn run(&mut self, command: Command, cx: &mut Context<Self>) {
@@ -547,6 +667,17 @@ impl Workspace {
             Command::SetExternalTerminal(on) => {
                 self.config.terminal = on.then(|| "external".to_string());
                 self.save_config();
+            }
+            Command::ImportDatabase(source) if !self.confirmed => {
+                let detail = format!(
+                    "The built-in database is replaced by a copy of {source} (only read). Anything only in the built-in one is lost — Setup → Back up now first if unsure. The API pauses during the copy."
+                );
+                self.ask(
+                    "Replace the built-in database?",
+                    detail,
+                    "Replace",
+                    Command::ImportDatabase(source),
+                );
             }
             Command::ImportDatabase(source) => {
                 use crate::backend::{Control, data_dir, request_import, send};
@@ -635,6 +766,71 @@ impl Workspace {
             }
             Command::AttachRun(session) => self.attach_run(session, cx),
             Command::AskFirst(confirm) => self.confirm = Some(*confirm),
+            Command::KillPid { pid, what } => {
+                let detail = format!(
+                    "pid {pid} was not started by this app. It gets SIGTERM; unsaved work in it is lost."
+                );
+                if self.confirmed_or_ask(
+                    format!("Kill {what}?"),
+                    detail,
+                    "Kill",
+                    Command::KillPid {
+                        pid,
+                        what: what.clone(),
+                    },
+                ) {
+                    self.kill_external(pid, cx);
+                }
+            }
+            Command::Review { proposal, approve } => {
+                if approve
+                    || self.confirmed_or_ask(
+                        "Reject this proposal?",
+                        "The proposed change is discarded; the chunk stays as it is.",
+                        "Reject",
+                        Command::Review {
+                            proposal: proposal.clone(),
+                            approve,
+                        },
+                    )
+                {
+                    self.review(proposal, approve, cx);
+                }
+            }
+            Command::ForceRemoveWorktree(r, path) => {
+                let detail = format!(
+                    "{} has changes git would lose. --force deletes them along with the folder; the branch is kept.",
+                    display_path(&path)
+                );
+                if self.confirmed_or_ask(
+                    "Remove anyway, losing its changes?",
+                    detail,
+                    "Remove with --force",
+                    Command::ForceRemoveWorktree(r, path.clone()),
+                ) && let Some(view) = self.repos.get(r)
+                {
+                    let repo_path = view.entry.path.clone();
+                    self.refresh_worktrees = true;
+                    self.run_background(cx, "Worktree removed (its branch is kept)", move || {
+                        worktree::remove_force(&repo_path, &path)
+                    });
+                }
+            }
+            Command::ClearRunLog(key) => {
+                if self.confirmed_or_ask(
+                    "Clear this log?",
+                    "Its log file is emptied; the process keeps running.",
+                    "Clear",
+                    Command::ClearRunLog(key.clone()),
+                ) {
+                    self.supervisor.clear_logs(&key);
+                }
+            }
+            Command::DatabaseTask {
+                repo,
+                index,
+                action,
+            } => self.database_task(repo, index, action, cx),
             Command::StopKey(key) => {
                 self.user_stopped.insert(key.clone());
                 let supervisor = self.supervisor.clone();
@@ -703,6 +899,33 @@ impl Workspace {
                         cx,
                     );
                     self.split_with = Some(second);
+                }
+            }
+            Command::CloseTerminal(id) if !self.confirmed => {
+                // A shell tab still running something (a server, an agent) asks first.
+                let busy = self
+                    .terminals
+                    .iter()
+                    .find(|t| t.id == id)
+                    .and_then(|t| t.tmux.clone())
+                    .filter(|name| !name.starts_with(crate::tmux_runs::PREFIX))
+                    .and_then(|name| tmux::foreground_command(&tmux::Server::fubbik(), &name))
+                    .filter(|command| {
+                        !["zsh", "bash", "fish", "sh", "-zsh", "login", "tmux"]
+                            .contains(&command.as_str())
+                    });
+                match busy {
+                    Some(command) => self.ask(
+                        format!("Close this tab? {command} is still running"),
+                        "Closing ends its tmux session and everything in it.",
+                        "Close",
+                        Command::CloseTerminal(id),
+                    ),
+                    None => {
+                        self.confirmed = true;
+                        self.run(Command::CloseTerminal(id), cx);
+                        self.confirmed = false;
+                    }
                 }
             }
             Command::CloseTerminal(id) => {
@@ -791,6 +1014,28 @@ impl Workspace {
             .flat_map(|s| s.processes.iter().enumerate())
             .map(|(i, p)| (i, p.spec.name.clone(), p.owned, p.status.is_up()))
             .collect();
+        let stopping: Vec<String> = processes
+            .iter()
+            .filter(|(_, name, owned, _)| *owned && !wanted.contains(name))
+            .map(|(_, name, _, _)| name.clone())
+            .collect();
+        if !stopping.is_empty()
+            && !self.confirmed_or_ask(
+                format!("Start profile “{profile}”?"),
+                format!("It also stops {}.", stopping.join(", ")),
+                "Start profile",
+                Command::RunAt {
+                    what: RunWhat::Profile {
+                        repo,
+                        profile: profile.to_string(),
+                    },
+                    target,
+                    remember: false,
+                },
+            )
+        {
+            return;
+        }
         for (index, name, owned, up) in processes {
             match (wanted.contains(&name), owned, up) {
                 (true, _, false) => self.start_process(repo, index, target, cx),

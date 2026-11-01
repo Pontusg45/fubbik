@@ -1088,3 +1088,32 @@ fn cmd_0_goes_home_and_enter_opens_a_project(cx: &mut TestAppContext) {
     assert!(back, "⌘0 is Home");
     assert_eq!((home, tab, selected), (false, Tab::Overview, 1));
 }
+
+#[gpui::test]
+fn removing_a_repo_asks_first(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: two repos
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let (view, cx) = open(
+        cx,
+        &format!(
+            "[[repo]]\npath = {:?}\n\n[[repo]]\npath = {:?}\n",
+            a.path().display().to_string(),
+            b.path().display().to_string()
+        ),
+    );
+
+    // When: remove, esc; remove again, enter
+    view.update(cx, |w, cx| w.run(Command::RemoveRepo(1), cx));
+    let asked = view.read_with(cx, |w, _| w.confirm.as_ref().map(|c| c.action.clone()));
+    cx.simulate_keystrokes("escape");
+    let after_cancel = view.read_with(cx, |w, _| (w.confirm.is_none(), w.repos.len()));
+    view.update(cx, |w, cx| w.run(Command::RemoveRepo(1), cx));
+    cx.simulate_keystrokes("enter");
+    let after_confirm = view.read_with(cx, |w, _| (w.confirm.is_none(), w.repos.len()));
+
+    // Then
+    assert_eq!(asked.as_deref(), Some("Remove"));
+    assert_eq!(after_cancel, (true, 2), "esc keeps it");
+    assert_eq!(after_confirm, (true, 1), "enter removes it");
+}
