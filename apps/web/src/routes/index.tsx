@@ -174,7 +174,7 @@ function LandingPage() {
                             Get Started
                             <ArrowRight className="size-4" />
                         </Button>
-                        <Button variant="outline" size="lg" className="w-full sm:w-auto" render={<a href="/features" />}>
+                        <Button variant="outline" size="lg" className="w-full sm:w-auto" render={<a href="/product" />}>
                             How it works
                         </Button>
                         <Button
@@ -230,7 +230,7 @@ function LandingPage() {
                             {featureTeasers.map((item, i) => (
                                 <a
                                     key={item.title}
-                                    href={`/features${item.hash}`}
+                                    href={`/product${item.hash}`}
                                     className="group hover:bg-muted/30 flex items-start gap-4 px-5 py-5 transition-all duration-300"
                                     style={{ animationDelay: `${i * 80}ms` }}
                                 >

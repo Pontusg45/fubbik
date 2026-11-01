@@ -10,6 +10,17 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 const KNOWN_ROUTES = [
+    "/",
+    "/product",
+    "/browse",
+    "/saved-graphs",
+    "/learn",
+    "/features",
+    "/matrices",
+    "/review",
+    "/compose",
+    "/density",
+    "/timeline",
     "/chunks",
     "/graph",
     "/dashboard",
@@ -22,6 +33,8 @@ const KNOWN_ROUTES = [
     "/knowledge-health",
     "/coverage",
     "/plans",
+    "/tasks",
+    "/notes",
     "/requirements",
     "/import",
     "/settings",
@@ -55,7 +68,7 @@ function extractLinks(content: string, chunkId: string, chunkTitle: string): Lin
             status = "external";
         } else if (url.startsWith("/")) {
             const basePath = url.split("?")[0]?.split("#")[0] ?? "";
-            const isKnown = KNOWN_ROUTES.some(r => basePath === r || basePath.startsWith(r + "/"));
+            const isKnown = KNOWN_ROUTES.some(r => basePath === r || (r !== "/" && basePath.startsWith(r + "/")));
             status = isKnown ? "ok" : "broken";
         } else if (url.startsWith("#")) {
             status = "ok";

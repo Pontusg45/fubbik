@@ -110,6 +110,7 @@ Site specs under `e2e/*.spec.ts` use the actual application. The groupings below
 | Review and health | `review-health-journeys` | Proposal decisions, bulk review, orphan and thin-content health |
 | Compare, compose and context | `compare-compose-context-journeys` | Selection, diff URLs, composition export and file context |
 | Learning and coverage | `learning-coverage-journeys` | Path order and requirement coverage links |
+| Page completeness | `page-completeness` | Product anchors, nested Browse routing, mobile navigation, and learning-path and saved-graph lifecycle |
 | Workspaces | `workspace-journeys` | Membership, deletion behavior and cross-account privacy |
 
 The import fixtures are in `fixtures/import-docs/`. They include Markdown inputs and a non-Markdown file that the folder picker should ignore. Component specs under `components/` cover controls and forms (`helpers`, `fields`), overlays and keyboard interaction (`overlays`, `keyboard`), invalid bindings and disabled actions (`failures`), request observation (`network`), and screenshot step behavior (`reporting`). The fixture host in `components/fixture/` imports the real UI components; it is not a mock of a deployed page.

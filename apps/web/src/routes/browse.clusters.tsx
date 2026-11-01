@@ -10,7 +10,7 @@ export const Route = createFileRoute("/browse/clusters")({
 });
 
 function ClustersPage() {
-    const { data } = useQuery({
+    const { data, isLoading, isError } = useQuery({
         queryKey: ["chunk-clusters"],
         queryFn: async () => unwrapEden(await api.api.chunks.clusters.get())
     });
@@ -19,8 +19,17 @@ function ClustersPage() {
 
     return (
         <div className="container mx-auto max-w-6xl px-4 py-8">
+            <Link to="/browse" className="text-primary mb-4 inline-block text-sm hover:underline">
+                ← Browse
+            </Link>
             <h1 className="mb-6 text-2xl font-bold">Topic Clusters</h1>
-            {clusters.length === 0 ? (
+            {isLoading ? (
+                <p className="text-muted-foreground">Loading clusters…</p>
+            ) : isError ? (
+                <p role="alert" className="text-destructive">
+                    Could not load topic clusters.
+                </p>
+            ) : clusters.length === 0 ? (
                 <p className="text-muted-foreground">No clusters found. Chunks need embeddings for clustering to work.</p>
             ) : (
                 <div className="space-y-8">

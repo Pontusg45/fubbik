@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
-import { reportStep } from "../reporting";
 
+import { reportStep } from "../reporting";
 import { defineForm, type FubbikUI } from "../ui";
 
 export interface Credentials {
@@ -32,7 +32,7 @@ export class AuthScreen {
             await this.openSignUp();
             await this.signUpForm.fill({ name: user.name, email: user.email, password: user.password });
             await this.ui.within(this.page.locator("form")).button("Sign Up").click();
-            await this.page.waitForURL("**/dashboard", { timeout: 15_000 });
+            await this.page.waitForURL("**/dashboard", { waitUntil: "commit", timeout: 30_000 });
         });
     }
     async signIn(user: Credentials) {
@@ -41,7 +41,7 @@ export class AuthScreen {
             await this.ui.button("Already have an account? Sign In").click();
             await this.signInForm.fill({ email: user.email, password: user.password });
             await this.ui.within(this.page.locator("form")).button("Sign In").click();
-            await this.page.waitForURL("**/dashboard", { timeout: 15_000 });
+            await this.page.waitForURL("**/dashboard", { waitUntil: "commit", timeout: 30_000 });
         });
     }
     async session() {

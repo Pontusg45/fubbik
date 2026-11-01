@@ -34,6 +34,7 @@ test("text, type and tag filters narrow chunks and survive a reload", async ({ p
     // When the user clears all filters, then both chunks return.
     await page.getByRole("button", { name: "Filters" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Clear all" }).click();
+    await expect(page).not.toHaveURL(/(?:type|q|tags)=/);
     await expect(page.getByText(note, { exact: true })).toBeVisible();
     await expect(page.getByText(document, { exact: true })).toBeVisible();
 });

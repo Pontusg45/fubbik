@@ -16,6 +16,7 @@ import { chunkTemplates } from "@/features/chunks/templates";
 import { loadDraft, useAutosave } from "@/features/chunks/use-autosave";
 import { MarkdownEditor } from "@/features/editor/markdown-editor";
 import { useFeatureEnabled } from "@/features/nav/use-capabilities";
+import { useActiveSpace } from "@/features/spaces/use-active-space";
 import { getUser } from "@/functions/get-user";
 import { useApiListQuery } from "@/hooks/use-api-query";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -51,6 +52,7 @@ interface ChunkDraft {
 function NewChunk() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { spaceId } = useActiveSpace();
 
     const draft = useRef(loadDraft<ChunkDraft>(DRAFT_KEY)).current;
 
@@ -177,6 +179,7 @@ function NewChunk() {
                     content,
                     type,
                     tags,
+                    ...(spaceId && spaceId !== "global" ? { spaceIds: [spaceId] } : {}),
                     ...(rationale ? { rationale } : {}),
                     ...(alternatives.length > 0 ? { alternatives } : {}),
                     ...(consequences ? { consequences } : {})
@@ -226,6 +229,7 @@ function NewChunk() {
         onSuccess: data => {
             clearDraft();
             queryClient.invalidateQueries({ queryKey: ["chunks"] });
+            queryClient.invalidateQueries({ queryKey: ["notes"] });
             queryClient.invalidateQueries({ queryKey: ["stats"] });
             toast.success("Chunk created");
             if (data && typeof data === "object" && "id" in (data as Record<string, unknown>)) {

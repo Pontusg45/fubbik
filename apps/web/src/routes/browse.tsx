@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { AlphabeticalIndex } from "@/features/browse/alphabetical-index";
@@ -8,8 +8,13 @@ import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
 export const Route = createFileRoute("/browse")({
-    component: BrowsePage
+    component: BrowseRoute
 });
+
+function BrowseRoute() {
+    const pathname = useRouterState({ select: state => state.location.pathname });
+    return pathname === "/browse" || pathname === "/browse/" ? <BrowsePage /> : <Outlet />;
+}
 
 function BrowsePage() {
     const [view, setView] = useState<"alphabetical" | "tags">("alphabetical");
@@ -44,6 +49,9 @@ function BrowsePage() {
             <div className="mb-6">
                 <h1 className="text-2xl font-bold tracking-tight">Browse</h1>
                 <p className="text-muted-foreground text-sm">Explore chunks by letter or tag</p>
+                <Link to="/browse/clusters" className="text-primary mt-2 inline-block text-sm hover:underline">
+                    Explore topic clusters
+                </Link>
             </div>
 
             {/* Tab toggle */}

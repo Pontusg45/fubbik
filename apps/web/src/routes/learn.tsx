@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { api } from "@/utils/api";
 import { unwrapEden } from "@/utils/eden";
 
@@ -15,7 +16,7 @@ function LearningPathsRoute() {
 }
 
 function LearnPage() {
-    const { data } = useQuery({
+    const { data, isLoading, isError } = useQuery({
         queryKey: ["learning-paths"],
         queryFn: async () => unwrapEden(await api.api["learning-paths"].get())
     });
@@ -29,8 +30,17 @@ function LearnPage() {
 
     return (
         <div className="container mx-auto max-w-4xl px-4 py-8">
-            <h1 className="mb-6 text-2xl font-bold tracking-tight">Learning Paths</h1>
-            {paths.length === 0 ? (
+            <div className="mb-6 flex items-center justify-between gap-3">
+                <h1 className="text-2xl font-bold tracking-tight">Learning Paths</h1>
+                <Button render={<Link to="/learn/new" />}>New path</Button>
+            </div>
+            {isLoading ? (
+                <p className="text-muted-foreground">Loading learning paths…</p>
+            ) : isError ? (
+                <p role="alert" className="text-destructive">
+                    Could not load learning paths.
+                </p>
+            ) : paths.length === 0 ? (
                 <div className="rounded-lg border p-8 text-center">
                     <BookOpen className="text-muted-foreground/40 mx-auto mb-2 size-8" />
                     <p className="text-muted-foreground">No learning paths yet.</p>

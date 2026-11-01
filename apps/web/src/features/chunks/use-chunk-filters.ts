@@ -68,23 +68,13 @@ export function useChunkFilters() {
     }
 
     function clearAllFilters() {
-        navigate({
+        void navigate({
+            to: "/chunks",
             search: {
-                type: undefined,
-                q: undefined,
-                sort: undefined,
-                tags: undefined,
-                size: undefined,
-                after: undefined,
-                enrichment: undefined,
-                minConnections: undefined,
                 group,
                 subGroup,
                 collection,
-                view,
-                origin: undefined,
-                reviewStatus: undefined,
-                allSpaces: undefined
+                view
             }
         });
     }
