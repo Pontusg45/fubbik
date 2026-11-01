@@ -9,17 +9,35 @@ impl Workspace {
     /// The strip under the transparent system titlebar: traffic lights on
     /// the left, the title in the middle. Nothing in it is clickable, so the
     /// system can drag the window from it.
-    pub(super) fn render_titlebar(&self) -> impl IntoElement {
+    /// The window's title bar. A double-click does what macOS does for its
+    /// own title bars (System Settings → Desktop & Dock: zoom to fill the
+    /// screen by default, or minimize).
+    pub(super) fn render_titlebar(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let title = match self.repos.get(self.selected) {
             Some(repo) => format!("fubbik — {}", repo.entry.name()),
             None => "fubbik".to_string(),
         };
         div()
+            .id("titlebar")
             .flex()
             .flex_none()
             .items_center()
             .justify_center()
             .h(px(TITLEBAR_HEIGHT))
+            .on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener(|this, event: &gpui::MouseDownEvent, window, _| {
+                    // One zoom per double-click: a repeated event would zoom
+                    // the window back at once.
+                    let recent = this
+                        .titlebar_zoomed_at
+                        .is_some_and(|at| at.elapsed() < std::time::Duration::from_millis(500));
+                    if event.click_count == 2 && !recent {
+                        this.titlebar_zoomed_at = Some(Instant::now());
+                        window.titlebar_double_click();
+                    }
+                }),
+            )
             .border_b_1()
             .border_color(theme::border())
             .bg(theme::sidebar())
@@ -688,7 +706,7 @@ impl Render for Workspace {
             .on_drop(cx.listener(|this, paths: &ExternalPaths, _, cx| {
                 this.show_file_context(paths.paths().to_vec(), cx);
             }))
-            .child(self.render_titlebar())
+            .child(self.render_titlebar(cx))
             .child(
                 div()
                     .flex()

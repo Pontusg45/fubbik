@@ -531,6 +531,8 @@ pub struct Workspace {
     /// Watch alerts already toasted.
     alerts_seen: HashSet<String>,
     alerts_announced: bool,
+    /// When a title-bar double-click last zoomed the window.
+    titlebar_zoomed_at: Option<Instant>,
     knowledge_paused_until: Option<Instant>,
     /// Ghostty theme names, read once at startup.
     ghostty_themes: Vec<String>,
@@ -676,6 +678,7 @@ impl Workspace {
             bells: Vec::new(),
             alerts_seen: HashSet::new(),
             alerts_announced: false,
+            titlebar_zoomed_at: None,
             knowledge_paused_until: None,
             ghostty_themes: crate::ghostty::list_themes(&crate::ghostty::theme_dirs()),
             reply_target: None,
