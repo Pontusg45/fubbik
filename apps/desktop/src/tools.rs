@@ -322,7 +322,7 @@ pub fn report() -> Report {
                 service(
                     "tmux server (fubbik)",
                     "tmux",
-                    &["-L", crate::tmux::SERVER, "has-session"],
+                    &["-L", &crate::tmux::server_name(), "has-session"],
                     "running",
                 ),
             ]

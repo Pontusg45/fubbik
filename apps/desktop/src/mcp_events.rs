@@ -10,8 +10,10 @@
 //! - slow background checks: dependencies that start or stop disagreeing by
 //!   a major version (every 10 min), and tools Homebrew upgraded (every 30).
 //!
-//! Sequence numbers start at the app's start time in milliseconds × 1000, so
-//! a cursor from before a restart is always older than every new event.
+//! Events are also appended to `~/.config/fubbik/events.jsonl` and read back
+//! at start, so a tracker that checks once a day still sees what happened
+//! before a restart. Sequence numbers continue after the last saved one, or
+//! start at the app's start time in milliseconds × 1000, whichever is later.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::{Mutex, OnceLock};
@@ -51,16 +53,78 @@ fn now_secs() -> u64 {
         .map_or(0, |d| d.as_secs())
 }
 
+/// Where the feed is kept between runs: `~/.config/fubbik/events.jsonl`
+/// (beside the tmux config). None in tests.
+fn events_file() -> Option<std::path::PathBuf> {
+    if cfg!(test) {
+        return None;
+    }
+    Some(crate::tmux::config_path().parent()?.join("events.jsonl"))
+}
+
+impl Event {
+    fn from_json(value: &Value) -> Option<Event> {
+        Some(Event {
+            seq: value["seq"].as_u64()?,
+            at: value["at"].as_u64()?,
+            repo: value["repo"].as_str().map(str::to_string),
+            kind: value["kind"].as_str()?.to_string(),
+            text: value["text"].as_str()?.to_string(),
+        })
+    }
+}
+
+/// The last [`KEEP`] events in a JSON-lines file (unreadable lines skipped).
+pub fn load(path: &std::path::Path) -> Vec<Event> {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let events: Vec<Event> = text
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter_map(|v| Event::from_json(&v))
+        .collect();
+    let skip = events.len().saturating_sub(KEEP);
+    events.into_iter().skip(skip).collect()
+}
+
+/// Appends one event; when the file holds twice [`KEEP`], it is rewritten
+/// with the newest `KEEP`.
+pub fn append(path: &std::path::Path, event: &Event, kept: &VecDeque<Event>) {
+    use std::io::Write;
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let lines = std::fs::read_to_string(path)
+        .map(|t| t.lines().count())
+        .unwrap_or(0);
+    if lines >= 2 * KEEP {
+        let text: String = kept
+            .iter()
+            .map(|e| e.to_json().to_string() + "\n")
+            .collect();
+        let _ = std::fs::write(path, text);
+        return;
+    }
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
+        let _ = writeln!(file, "{}", event.to_json());
+    }
+}
+
 fn feed() -> &'static Mutex<Feed> {
     static FEED: OnceLock<Mutex<Feed>> = OnceLock::new();
     FEED.get_or_init(|| {
         let millis = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| d.as_millis() as u64);
-        Mutex::new(Feed {
-            next: millis * 1000,
-            events: VecDeque::new(),
-        })
+        // Yesterday's events stay readable; new ones continue after them.
+        let events: VecDeque<Event> = events_file().map(|p| load(&p)).unwrap_or_default().into();
+        let next = (millis * 1000).max(events.back().map_or(0, |e| e.seq + 1));
+        Mutex::new(Feed { next, events })
     })
 }
 
@@ -75,9 +139,12 @@ pub fn record(repo: Option<&str>, kind: &str, text: impl Into<String>) {
         text: text.into(),
     };
     feed.next += 1;
-    feed.events.push_back(event);
+    feed.events.push_back(event.clone());
     while feed.events.len() > KEEP {
         feed.events.pop_front();
+    }
+    if let Some(path) = events_file() {
+        append(&path, &event, &feed.events);
     }
 }
 
@@ -362,6 +429,42 @@ mod tests {
             "nothing changed, nothing to say"
         );
         assert!(diff(&[], &new).is_empty(), "a first view is a baseline");
+    }
+
+    #[test]
+    fn the_file_keeps_events_across_restarts_and_is_capped() {
+        // Given: an events file written past twice the cap
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("events.jsonl");
+        let mut kept = VecDeque::new();
+        for seq in 0..(2 * KEEP as u64 + 5) {
+            let event = Event {
+                seq,
+                at: 1,
+                repo: Some("app".into()),
+                kind: "commit".into(),
+                text: format!("c{seq}"),
+            };
+            kept.push_back(event.clone());
+            while kept.len() > KEEP {
+                kept.pop_front();
+            }
+            append(&path, &event, &kept);
+        }
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .and_then(|mut f| std::io::Write::write_all(&mut f, b"not json\n"))
+            .unwrap();
+
+        // When
+        let loaded = load(&path);
+        let lines = std::fs::read_to_string(&path).unwrap().lines().count();
+
+        // Then
+        assert_eq!(loaded.len(), KEEP);
+        assert_eq!(loaded.last().unwrap().text, format!("c{}", 2 * KEEP + 4));
+        assert!(lines < 2 * KEEP + 10, "rewritten once it doubled: {lines}");
     }
 
     #[test]

@@ -47,7 +47,7 @@ pub fn session_name(key: &str) -> String {
 
 /// The attach command for a run's session, to paste into any terminal.
 pub fn attach_command(session: &str) -> String {
-    format!("tmux -u -L {} attach -t {session}", tmux::SERVER)
+    format!("tmux -u -L {} attach -t {session}", tmux::server_name())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

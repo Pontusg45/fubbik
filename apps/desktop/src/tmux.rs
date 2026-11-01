@@ -9,8 +9,15 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-/// The app's tmux server: `tmux -L fubbik`.
-pub const SERVER: &str = "fubbik";
+/// The app's tmux server: `tmux -L fubbik`, or the name in
+/// `FUBBIK_DESKTOP_TMUX_SERVER` (a second copy of the app, for testing, gets
+/// its own server so it never touches the first one's tabs, runs or hooks).
+pub fn server_name() -> String {
+    std::env::var("FUBBIK_DESKTOP_TMUX_SERVER")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "fubbik".into())
+}
 /// Session options that carry the tab's label and directory across restarts.
 const LABEL_OPTION: &str = "@fubbik_label";
 
@@ -23,7 +30,7 @@ pub enum Server {
 
 impl Server {
     pub fn fubbik() -> Self {
-        Server::Named(SERVER.into())
+        Server::Named(server_name())
     }
 
     fn args(&self) -> Vec<String> {
