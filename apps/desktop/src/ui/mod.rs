@@ -398,6 +398,8 @@ pub struct Workspace {
     palette_recent: Vec<Command>,
     /// The built-in server's status at the last tick, to notice changes.
     backend_seen: crate::backend::Status,
+    /// Script rows unfolded past "+N more" (`repo:tool:group`).
+    scripts_expanded: std::collections::HashSet<String>,
     global: Option<GlobalStatus>,
     panel: Option<Panel>,
     /// The worktree whose branch context is shown.
@@ -510,6 +512,7 @@ impl Workspace {
             palette_search: Vec::new(),
             palette_recent: Vec::new(),
             backend_seen: crate::backend::status(),
+            scripts_expanded: Default::default(),
             global: None,
             panel: None,
             expanded_worktree: None,

@@ -27,6 +27,15 @@ pub fn api_addr() -> &'static str {
         format!("127.0.0.1:{port}")
     })
 }
+/// The port of `api_addr()`.
+pub fn api_port() -> u16 {
+    api_addr()
+        .rsplit(':')
+        .next()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(3000)
+}
+
 /// Names the socket file (`.s.PGSQL.<port>`); there is no TCP listener.
 const PG_PORT: u16 = 5432;
 const PG_USER: &str = "fubbik";

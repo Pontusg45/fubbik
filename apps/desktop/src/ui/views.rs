@@ -42,6 +42,9 @@ pub(super) fn repo_badge(name: &str, size: f32) -> impl IntoElement {
         )
 }
 
+/// Script buttons shown per row before "+N more".
+const SCRIPTS_FOLDED: usize = 10;
+
 /// Log chips for the built-in server, shown in every repo's Logs tab.
 const BUILTIN_LOGS: [(&str, crate::backend::LogFile); 2] = [
     ("builtin::server", crate::backend::LogFile::Server),
@@ -616,7 +619,31 @@ impl Workspace {
             .enumerate()
             .map(|(p, process)| self.process_row(index, p, process, cx))
             .collect();
-        section("Processes", rows)
+        if snapshot.processes.is_empty() {
+            let empty = row()
+                .child(div().flex_1().child(muted(format!(
+                    "No processes: list them in {} (the app can draft one from this repo)",
+                    crate::services::FILE_NAME
+                ))))
+                .child(
+                    button(("processes-generate", index), "Generate services file").on_click(
+                        cx.listener(move |this, _, _, cx| {
+                            this.run(Command::GenerateServices(index), cx)
+                        }),
+                    ),
+                )
+                .into_any_element();
+            return section("Processes", vec![empty]);
+        }
+        let up = snapshot
+            .processes
+            .iter()
+            .filter(|p| p.status.is_up())
+            .count();
+        section(
+            format!("Processes · {up} of {} up", snapshot.processes.len()),
+            rows,
+        )
     }
 
     /// Run profiles and the repo's scripts, each a click away.
@@ -653,28 +680,66 @@ impl Workspace {
                 }))
                 .child(muted("starts these, stops the repo's others"))
         });
-        let mut groups: Vec<(String, Vec<&crate::scripts::Script>)> = Vec::new();
+        // One row per tool, or per just group; long rows fold behind "+N more".
+        let mut groups: Vec<(String, Option<String>, Vec<&crate::scripts::Script>)> = Vec::new();
         for script in &snapshot.scripts {
-            match groups.iter_mut().find(|(tool, _)| *tool == script.tool) {
-                Some((_, list)) => list.push(script),
-                None => groups.push((script.tool.clone(), vec![script])),
+            match groups
+                .iter_mut()
+                .find(|(tool, group, _)| *tool == script.tool && *group == script.group)
+            {
+                Some((_, _, list)) => list.push(script),
+                None => groups.push((script.tool.clone(), script.group.clone(), vec![script])),
             }
         }
         let rows: Vec<AnyElement> = groups
             .into_iter()
-            .map(|(tool, scripts)| {
+            .map(|(tool, group, scripts)| {
+                let key = format!("{index}:{tool}:{}", group.as_deref().unwrap_or(""));
+                let expanded = self.scripts_expanded.contains(&key);
+                let hidden = scripts.len().saturating_sub(SCRIPTS_FOLDED);
+                let shown = if expanded {
+                    scripts.len()
+                } else {
+                    scripts.len().min(SCRIPTS_FOLDED)
+                };
+                let toggle = (hidden > 0).then(|| {
+                    let key = key.clone();
+                    button(
+                        SharedString::from(format!("scripts-more-{key}")),
+                        if expanded {
+                            "Fewer".to_string()
+                        } else {
+                            format!("+{hidden} more")
+                        },
+                    )
+                    .text_color(theme::text_muted())
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        if !this.scripts_expanded.remove(&key) {
+                            this.scripts_expanded.insert(key.clone());
+                        }
+                        cx.notify();
+                    }))
+                });
                 row()
+                    .items_start()
                     .child(
                         div()
-                            .w(px(56.))
-                            .child(pill(tool.clone(), theme::tool(&tool))),
+                            .w(px(128.))
+                            .flex_none()
+                            .flex()
+                            .flex_col()
+                            .items_start()
+                            .gap_1()
+                            .child(pill(tool.clone(), theme::tool(&tool)))
+                            .children(group.clone().map(muted)),
                     )
                     .child(
                         div()
                             .flex()
+                            .flex_1()
                             .flex_wrap()
                             .gap_1()
-                            .children(scripts.into_iter().map(|script| {
+                            .children(scripts.into_iter().take(shown).map(|script| {
                                 let (name, command) = (script.name.clone(), script.command.clone());
                                 button(
                                     SharedString::from(format!("script-{tool}-{}", script.name)),
@@ -692,7 +757,8 @@ impl Workspace {
                                         )
                                     },
                                 ))
-                            })),
+                            }))
+                            .children(toggle),
                     )
                     .into_any_element()
             })
@@ -702,7 +768,7 @@ impl Workspace {
             .flex_col()
             .gap_3()
             .children(profile_row)
-            .child(section("Scripts (output in Logs)", rows))
+            .child(section("Scripts · output in Logs", rows))
     }
 
     fn process_row(
@@ -714,22 +780,32 @@ impl Workspace {
     ) -> AnyElement {
         let spec = &process.spec;
         let id = |name: &str| SharedString::from(format!("{name}-{repo}-{p}"));
-        let ownership = match (process.owned, process.status.is_up()) {
-            (true, _) => "started here",
-            (false, true) => "external",
-            (false, false) => "",
+        let up = process.status.is_up();
+        // The app's own built-in server holds this port: starting the
+        // process would only collide with it.
+        let builtin = spec
+            .port
+            .is_some_and(|port| port == crate::backend::api_port())
+            && matches!(
+                crate::backend::status(),
+                crate::backend::Status::Running { .. }
+            );
+        let state = match (builtin, process.owned, up) {
+            (true, _, _) => "served by the app's built-in server".to_string(),
+            (_, true, _) => format!("{} · started here", process.status.label()),
+            (_, false, true) => format!("{} · started outside the app", process.status.label()),
+            (_, false, false) => process.status.label().to_string(),
         };
-        let pid = process
-            .pid
-            .map(|pid| format!("pid {pid}"))
-            .unwrap_or_default();
-        let memory = process
-            .rss_kb
-            .map(|kb| format!("{:.0} MB", kb as f64 / 1024.0))
-            .unwrap_or_default();
+        let status_color = if builtin {
+            theme::status(Status::Running)
+        } else {
+            theme::status(process.status)
+        };
 
-        let mut actions = div().flex().gap_1();
-        if process.owned {
+        let mut actions = div().flex().justify_end().gap_1().w(px(200.)).flex_none();
+        if builtin {
+            // Nothing to start or stop here; Setup controls the built-in server.
+        } else if process.owned {
             actions = actions
                 .child(button(id("stop"), "Stop").on_click(
                     cx.listener(move |this, _, _, cx| this.run(Command::StopProcess(repo, p), cx)),
@@ -737,9 +813,9 @@ impl Workspace {
                 .child(button(id("restart"), "Restart").on_click(cx.listener(
                     move |this, _, _, cx| this.run(Command::RestartProcess(repo, p), cx),
                 )));
-        } else if let (true, Some(pid)) = (process.status.is_up(), process.pid) {
+        } else if let (true, Some(pid)) = (up, process.pid) {
             actions = actions.child(
-                button(id("kill"), format!("Kill {pid}"))
+                button(id("kill"), "Kill")
                     .text_color(theme::danger())
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.kill_external(pid, cx);
@@ -760,12 +836,44 @@ impl Workspace {
             },
         )));
 
+        // pid · memory · CPU, only while it runs.
+        let live = (up && !builtin).then(|| {
+            let mut facts = Vec::new();
+            if let Some(pid) = process.pid {
+                facts.push(format!("pid {pid}"));
+            }
+            if let Some(kb) = process.rss_kb {
+                facts.push(format!("{:.0} MB", kb as f64 / 1024.0));
+            }
+            div()
+                .flex()
+                .items_center()
+                .gap_3()
+                .child(muted(facts.join(" · ")))
+                .child(sparkline(&process.cpu_history))
+        });
+        let port = spec.port.map(|port| {
+            div()
+                .id(id("port"))
+                .text_xs()
+                .when(up || builtin, |d| {
+                    d.text_color(theme::accent())
+                        .cursor_pointer()
+                        .hover(|s| s.underline())
+                        .on_click(cx.listener(move |_, _, _, cx| {
+                            cx.open_url(&format!("http://localhost:{port}"))
+                        }))
+                })
+                .when(!(up || builtin), |d| d.text_color(theme::text_muted()))
+                .child(format!(":{port}"))
+        });
+
         row()
             .when(
                 self.tab == Tab::Processes && self.list_cursor == Some(p),
                 |r| r.bg(theme::surface_hover()),
             )
-            .child(status_dot(process.status))
+            .child(div().size_2().flex_none().rounded_full().bg(status_color))
             .child(
                 div()
                     .flex()
@@ -774,36 +882,26 @@ impl Workspace {
                     .overflow_hidden()
                     .child(
                         div()
-                            .text_sm()
-                            .font_weight(FontWeight::MEDIUM)
-                            .child(spec.name.clone()),
+                            .flex()
+                            .items_baseline()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .child(spec.name.clone()),
+                            )
+                            .children(port),
                     )
-                    .child(muted(spec.command.clone())),
+                    .child(muted(format!("{} · {state}", spec.command))),
             )
-            .when_some(spec.port, |row, port| {
-                row.child(
-                    div()
-                        .id(id("port"))
-                        .text_xs()
-                        .text_color(theme::accent())
-                        .cursor_pointer()
-                        .hover(|s| s.underline())
-                        .on_click(cx.listener(move |_, _, _, cx| {
-                            cx.open_url(&format!("http://localhost:{port}"))
-                        }))
-                        .child(format!(":{port}")),
-                )
-            })
-            .child(div().w(px(80.)).child(muted(pid)))
-            .child(div().w(px(80.)).child(muted(ownership)))
-            .child(sparkline(&process.cpu_history))
-            .child(div().w(px(56.)).child(muted(memory)))
             .child(
                 div()
-                    .w(px(84.))
+                    .w(px(220.))
+                    .flex_none()
                     .flex()
                     .justify_end()
-                    .child(status_pill(process.status)),
+                    .children(live),
             )
             .child(actions)
             .into_any_element()

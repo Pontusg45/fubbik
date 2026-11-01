@@ -9,6 +9,34 @@ pub struct Script {
     pub tool: String,
     pub name: String,
     pub command: String,
+    /// A just recipe's `[group('…')]`.
+    pub group: Option<String>,
+}
+
+/// Recipe names from a justfile with their `[group('…')]` attribute, if any.
+pub fn just_recipes_grouped(text: &str) -> Vec<(String, Option<String>)> {
+    let mut group: Option<String> = None;
+    let mut recipes = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix("[group(") {
+            group = rest
+                .trim_end_matches(")]")
+                .trim_matches(|c| c == '\'' || c == '"')
+                .to_string()
+                .into();
+            continue;
+        }
+        if trimmed.starts_with('[') || trimmed.starts_with('#') {
+            continue;
+        }
+        if let [name] = just_recipes(line).as_slice() {
+            recipes.push((name.clone(), group.take()));
+        } else if !line.starts_with([' ', '\t']) && !trimmed.is_empty() {
+            group = None;
+        }
+    }
+    recipes
 }
 
 /// Recipe names from a justfile: lines starting a recipe (`name args:`),
@@ -69,23 +97,42 @@ pub fn detect(repo: &Path) -> Vec<Script> {
     let justfile = ["justfile", "Justfile", ".justfile"]
         .iter()
         .find_map(|name| std::fs::read_to_string(repo.join(name)).ok());
+    let has_justfile = justfile.is_some();
     if let Some(text) = justfile {
-        scripts.extend(just_recipes(&text).into_iter().map(|name| Script {
-            tool: "just".into(),
-            command: format!("just {name}"),
-            name,
-        }));
+        scripts.extend(
+            just_recipes_grouped(&text)
+                .into_iter()
+                // `default` usually just lists the recipes.
+                .filter(|(name, _)| name != "default")
+                .map(|(name, group)| Script {
+                    tool: "just".into(),
+                    command: format!("just {name}"),
+                    name,
+                    group,
+                }),
+        );
     }
     if let Ok(text) = std::fs::read_to_string(repo.join("package.json"))
         && let Ok(json) = serde_json::from_str::<serde_json::Value>(&text)
         && let Some(map) = json["scripts"].as_object()
     {
         let pm = package_manager(repo);
-        scripts.extend(map.keys().map(|name| Script {
-            tool: pm.into(),
-            command: format!("{pm} run {name}"),
-            name: name.clone(),
-        }));
+        scripts.extend(
+            map.iter()
+                // A script that only calls `just …` is already a just recipe.
+                .filter(|(_, body)| {
+                    !(has_justfile
+                        && body
+                            .as_str()
+                            .is_some_and(|b| b.trim_start().starts_with("just ")))
+                })
+                .map(|(name, _)| Script {
+                    tool: pm.into(),
+                    command: format!("{pm} run {name}"),
+                    name: name.clone(),
+                    group: None,
+                }),
+        );
     }
     if let Some(text) = ["Makefile", "makefile", "GNUmakefile"]
         .iter()
@@ -95,6 +142,7 @@ pub fn detect(repo: &Path) -> Vec<Script> {
             tool: "make".into(),
             command: format!("make {name}"),
             name,
+            group: None,
         }));
     }
     scripts
@@ -114,6 +162,49 @@ mod tests {
 
         // Then
         assert_eq!(recipes, ["dev", "build", "test"]);
+    }
+
+    #[test]
+    fn just_recipes_keep_their_group() {
+        // Given
+        let text = "default:\n    @just --list\n\n# Build it.\n[group('Build')]\nbuild:\n    cargo build\n\n[group('Test')]\n[doc('x')]\ntest *args:\n    cargo test\n\nloose:\n    true\n";
+
+        // When
+        let recipes = just_recipes_grouped(text);
+
+        // Then
+        assert_eq!(
+            recipes,
+            [
+                ("default".to_string(), None),
+                ("build".to_string(), Some("Build".to_string())),
+                ("test".to_string(), Some("Test".to_string())),
+                ("loose".to_string(), None),
+            ]
+        );
+    }
+
+    #[test]
+    fn package_scripts_that_call_just_are_left_out() {
+        // Given
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("justfile"),
+            "default:\n    @just --list\ndev:\n    run\n",
+        )
+        .unwrap();
+        std::fs::write(dir.path().join("pnpm-lock.yaml"), "").unwrap();
+        std::fs::write(
+            dir.path().join("package.json"),
+            r#"{"scripts":{"dev":"just dev","lint":"oxlint"}}"#,
+        )
+        .unwrap();
+
+        // When
+        let commands: Vec<String> = detect(dir.path()).into_iter().map(|s| s.command).collect();
+
+        // Then
+        assert_eq!(commands, ["just dev", "pnpm run lint"]);
     }
 
     #[test]
