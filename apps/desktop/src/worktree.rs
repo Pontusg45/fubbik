@@ -263,6 +263,11 @@ pub fn remove(repo: &Path, path: &Path) -> Result<(), String> {
     git(repo, &["worktree", "remove", &path_arg]).map(|_| ())
 }
 
+/// `git branch -d`: only a merged branch (git refuses otherwise).
+pub fn delete_merged_branch(repo: &Path, name: &str) -> Result<(), String> {
+    git(repo, &["branch", "-d", name]).map(|_| ())
+}
+
 /// `git worktree remove --force`: also when it has changes (they are lost).
 pub fn remove_force(repo: &Path, path: &Path) -> Result<(), String> {
     let path_arg = path.to_string_lossy().into_owned();

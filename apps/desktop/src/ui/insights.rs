@@ -5,7 +5,9 @@
 
 use gpui::{AnyElement, FontWeight, SharedString};
 
-use super::widgets::{button, label, muted, pill, row, section};
+use super::widgets::{
+    button, disabled_button, label, loading, muted, pill, row, section, section_or,
+};
 use super::*;
 use crate::activity::{self, Branch, Health, HealthInputs};
 
@@ -32,7 +34,12 @@ impl Workspace {
         let Some(view) = self.repos.get_mut(repo) else {
             return;
         };
-        view.insights = Some(Loadable::Loading);
+        // Keep what is shown while recomputing; only a first load blanks.
+        if matches!(view.insights, Some(Loadable::Done(Ok(_)))) {
+            view.insights_refreshing = true;
+        } else {
+            view.insights = Some(Loadable::Loading);
+        }
         let path = view.entry.path.clone();
         let name = view.entry.name();
         let snapshot = view.snapshot.clone().unwrap_or_default();
@@ -170,6 +177,7 @@ impl Workspace {
             this.update(cx, |this, cx| {
                 if let Some(view) = this.repos.get_mut(repo) {
                     view.insights = Some(Loadable::Done(Ok(insights)));
+                    view.insights_refreshing = false;
                 }
                 cx.notify();
             })
@@ -183,24 +191,35 @@ impl Workspace {
         let Some(view) = self.repos.get(repo) else {
             return;
         };
+        if view.auditing {
+            return;
+        }
         let path = view.entry.path.clone();
-        self.show_info("Auditing dependencies…");
+        if let Some(view) = self.repos.get_mut(repo) {
+            view.auditing = true;
+        }
         let work = cx
             .background_executor()
             .spawn(async move { activity::audit(&path) });
         cx.spawn(async move |this, cx| {
             let result = work.await;
-            this.update(cx, |this, cx| match result {
-                None => this.show_info("No audit tool for this repo (cargo-audit or pnpm)"),
-                Some(Err(error)) => this.show_error(error),
-                Some(Ok(n)) => {
-                    if let Some(view) = this.repos.get_mut(repo) {
-                        view.audit = Some(n);
-                    }
-                    this.show_info(format!("{n} known vulnerabilit(ies)"));
-                    let days = this.insights_days;
-                    this.load_insights(repo, days, cx);
+            this.update(cx, |this, cx| {
+                if let Some(view) = this.repos.get_mut(repo) {
+                    view.auditing = false;
                 }
+                match result {
+                    None => this.show_info("No audit tool for this repo (cargo-audit or pnpm)"),
+                    Some(Err(error)) => this.show_error(error),
+                    Some(Ok(n)) => {
+                        if let Some(view) = this.repos.get_mut(repo) {
+                            view.audit = Some(n);
+                        }
+                        this.show_info(format!("{n} known vulnerabilit(ies)"));
+                        let days = this.insights_days;
+                        this.load_insights(repo, days, cx);
+                    }
+                }
+                cx.notify();
             })
             .ok();
         })
@@ -211,14 +230,16 @@ impl Workspace {
         let days = self.insights_days;
         let loaded = self.repos[repo].insights.clone();
         let stale = !matches!(&loaded, Some(Loadable::Done(Ok(i))) if i.days == days);
-        if loaded.is_none() || (stale && !matches!(loaded, Some(Loadable::Loading))) {
+        let refreshing = self.repos[repo].insights_refreshing;
+        if loaded.is_none() || (stale && !refreshing && !matches!(loaded, Some(Loadable::Loading)))
+        {
             self.load_insights(repo, days, cx);
         }
         let controls = div()
             .flex()
             .items_center()
             .gap_2()
-            .children([(1, "Standup (1 day)"), (7, "Week")].map(|(n, text)| {
+            .children([(1, "Today"), (7, "This week")].map(|(n, text)| {
                 button(SharedString::from(format!("insights-{n}")), text)
                     .when(days == n, |b| {
                         b.border_color(theme::accent()).bg(theme::surface_hover())
@@ -236,17 +257,28 @@ impl Workspace {
                     cx.notify();
                 },
             )))
-            .child(
+            .child(if self.repos[repo].auditing {
+                disabled_button("insights-audit", "Auditing…").into_any_element()
+            } else {
                 button("insights-audit", "Run audit")
-                    .on_click(cx.listener(move |this, _, _, cx| this.run_audit(repo, cx))),
-            );
+                    .on_click(cx.listener(move |this, _, _, cx| this.run_audit(repo, cx)))
+                    .into_any_element()
+            })
+            .children(self.repos[repo].audit.map(|n| {
+                muted(if n == 0 {
+                    "no known vulnerabilities".to_string()
+                } else {
+                    format!("{n} known vulnerabilit(ies)")
+                })
+            }))
+            .when(refreshing, |d| d.child(loading("Refreshing…")));
         let Some(Loadable::Done(Ok(insights))) = loaded else {
             return div()
                 .flex()
                 .flex_col()
                 .gap_4()
                 .child(controls)
-                .child(muted("Gathering…"))
+                .child(loading("Reading git history, sessions and knowledge…"))
                 .into_any_element();
         };
 
@@ -265,29 +297,36 @@ impl Workspace {
                     .child(button("summary-copy", "Copy Markdown").on_click(
                         cx.listener(move |this, _, _, cx| this.copy(copy_text.clone(), cx)),
                     ))
-                    .child(
-                        button("summary-save", "Save as chunk").on_click(cx.listener(
-                            move |this, _, _, cx| {
-                                let Some(space) = this.repos.get(repo).and_then(|r| r.space_id())
-                                else {
-                                    this.show_error("This repo has no fubbik space");
-                                    return;
-                                };
-                                let title = save_text
-                                    .lines()
-                                    .next()
-                                    .unwrap_or("Summary")
-                                    .trim_start_matches("## ")
-                                    .to_string();
-                                let content = save_text.clone();
-                                this.api_action(
-                                    "Saved the summary as a chunk",
-                                    move |c| c.quick_note(&space, &title, &content),
-                                    cx,
-                                );
-                            },
-                        )),
-                    ),
+                    .when(self.repos[repo].space_id().is_none(), |d| {
+                        d.child(disabled_button("summary-save", "Save as chunk"))
+                            .child(muted("link a fubbik space (Setup) to save it"))
+                    })
+                    .when(self.repos[repo].space_id().is_some(), |d| {
+                        d.child(
+                            button("summary-save", "Save as chunk").on_click(cx.listener(
+                                move |this, _, _, cx| {
+                                    let Some(space) =
+                                        this.repos.get(repo).and_then(|r| r.space_id())
+                                    else {
+                                        this.show_error("This repo has no fubbik space");
+                                        return;
+                                    };
+                                    let title = save_text
+                                        .lines()
+                                        .next()
+                                        .unwrap_or("Summary")
+                                        .trim_start_matches("## ")
+                                        .to_string();
+                                    let content = save_text.clone();
+                                    this.api_action(
+                                        "Saved the summary as a chunk",
+                                        move |c| c.quick_note(&space, &title, &content),
+                                        cx,
+                                    );
+                                },
+                            )),
+                        )
+                    }),
             )
             .child(
                 div()
@@ -337,13 +376,11 @@ impl Workspace {
                             .text_xl()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(score_color)
-                            .child(insights.health.score.to_string()),
+                            .child(format!("{} / 100", insights.health.score)),
                     )
-                    .child(muted(if self.repos[repo].audit.is_none() {
-                        "dependency audit not run"
-                    } else {
-                        ""
-                    })),
+                    .when(self.repos[repo].audit.is_none(), |d| {
+                        d.child(muted("dependency audit not run"))
+                    }),
             )
             .child(section("What costs points", health_rows));
 
@@ -368,13 +405,24 @@ impl Workspace {
                 })))
                 .child(muted(format!("{} total", counts.iter().sum::<u32>())))
         };
+        let dates = div()
+            .flex()
+            .items_center()
+            .gap_3()
+            .child(div().w(px(110.)))
+            .child(
+                div()
+                    .flex()
+                    .justify_between()
+                    .w(px(HEATMAP_DAYS as f32 * 17.0 - 3.0))
+                    .child(muted(format!("{HEATMAP_DAYS} days ago")))
+                    .child(muted("today")),
+            );
         let heatmap = div()
             .flex()
             .flex_col()
             .gap_2()
-            .child(label(format!(
-                "ACTIVITY — LAST {HEATMAP_DAYS} DAYS (OLDEST LEFT)"
-            )))
+            .child(label(format!("ACTIVITY — LAST {HEATMAP_DAYS} DAYS")))
             .child(heat(
                 "commits",
                 &insights.commits_per_day,
@@ -384,15 +432,43 @@ impl Workspace {
                 "agent sessions",
                 &insights.sessions_per_day,
                 theme::agent(crate::sessions::Agent::ClaudeCode),
-            ));
+            ))
+            .child(dates);
 
         let branches: Vec<AnyElement> = insights
             .stale_branches
             .iter()
             .map(|b| {
+                let name = b.name.clone();
                 row()
-                    .child(div().flex_1().text_sm().child(b.name.clone()))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w(px(0.))
+                            .text_sm()
+                            .truncate()
+                            .child(b.name.clone()),
+                    )
                     .child(muted(format!("{}d since last commit", b.age_days)))
+                    .when(b.merged, |r| {
+                        r.child(
+                            button(
+                                SharedString::from(format!("branch-delete-{name}")),
+                                "Delete",
+                            )
+                            .on_click(cx.listener(
+                                move |this, _, _, cx| {
+                                    this.run(
+                                        Command::DeleteBranch {
+                                            repo,
+                                            name: name.clone(),
+                                        },
+                                        cx,
+                                    )
+                                },
+                            )),
+                        )
+                    })
                     .child(pill(
                         if b.merged { "merged" } else { "not merged" },
                         if b.merged {
@@ -409,8 +485,30 @@ impl Workspace {
             .iter()
             .map(|(name, age)| {
                 row()
-                    .child(div().flex_1().text_sm().child(name.clone()))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w(px(0.))
+                            .text_sm()
+                            .truncate()
+                            .child(name.clone()),
+                    )
                     .child(muted(format!("{age}d since last commit")))
+                    .child(
+                        button(
+                            SharedString::from(format!("idle-{name}")),
+                            "Show in Worktrees",
+                        )
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.run(
+                                Command::Focus {
+                                    repo,
+                                    tab: Tab::Worktrees,
+                                },
+                                cx,
+                            )
+                        })),
+                    )
                     .into_any_element()
             })
             .collect();
@@ -420,16 +518,18 @@ impl Workspace {
             .flex_col()
             .gap_6()
             .child(controls)
+            .child(summary)
             .child(health)
             .child(heatmap)
-            .child(summary)
-            .child(section(
+            .child(section_or(
                 format!("Stale branches (no commit for {STALE_BRANCH_DAYS}+ days)"),
                 branches,
+                "No stale branches",
             ))
-            .child(section(
+            .child(section_or(
                 format!("Idle worktrees (no commit for {IDLE_WORKTREE_DAYS}+ days)"),
                 idle,
+                "No idle worktrees",
             ))
             .into_any_element()
     }

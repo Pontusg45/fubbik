@@ -6,8 +6,8 @@ use gpui::{
 
 use super::palette::Command;
 use super::widgets::{
-    button, disabled_button, label, muted, muted_line, pill, row, section, sparkline, stat_card,
-    status_dot, status_pill, top_highlight,
+    button, disabled_button, label, loading, muted, muted_line, pill, row, section, sparkline,
+    stat_card, status_dot, status_pill, top_highlight,
 };
 use super::{Field, RepoView, Tab, Workspace, display_path};
 use crate::model::{ProcessState, RepoSnapshot, Status};
@@ -88,7 +88,7 @@ impl Workspace {
         let window: &Window = window;
         let repo = &self.repos[index];
         let body: AnyElement = match &repo.snapshot {
-            None => muted("Checking…").into_any_element(),
+            None => loading("Reading git, processes, databases and sessions…").into_any_element(),
             Some(snapshot) => match self.tab {
                 Tab::Overview => self
                     .render_overview(index, snapshot, window, cx)
@@ -586,44 +586,108 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let repo = &self.repos[index];
+        // The header has the branch and changes; this says where it stands.
         let git = match &snapshot.git {
-            Some(Ok(git)) => format!("{} · {} changed", git.branch, git.changed_files),
+            Some(Ok(git)) if git.ahead == 0 && git.behind == 0 => "in sync".to_string(),
+            Some(Ok(git)) => format!("↑{} ↓{}", git.ahead, git.behind),
             _ => "—".into(),
         };
-        let knowledge = match &repo.knowledge {
-            Some(Ok(k)) if k.space.is_some() => format!("{} chunks · {} stale", k.chunks, k.stale),
-            Some(Ok(_)) => "no space".into(),
-            Some(Err(_)) => "offline".into(),
-            None => "…".into(),
+        let (knowledge, knowledge_tab) = match &repo.knowledge {
+            Some(Ok(k)) if k.space.is_some() => (
+                format!("{} chunks · {} stale", k.chunks, k.stale),
+                Tab::Knowledge,
+            ),
+            Some(Ok(_)) => ("no space — set up".into(), Tab::Setup),
+            Some(Err(_)) => ("offline — see Setup".into(), Tab::Setup),
+            None => ("…".into(), Tab::Knowledge),
+        };
+        let (working, waiting) = {
+            use crate::sessions::SessionState;
+            (
+                snapshot
+                    .sessions
+                    .iter()
+                    .filter(|s| s.state == SessionState::Busy)
+                    .count(),
+                snapshot
+                    .sessions
+                    .iter()
+                    .filter(|s| s.state == SessionState::Idle)
+                    .count(),
+            )
+        };
+        let worktrees = match &snapshot.worktrees {
+            Some(Ok(list)) => list.iter().filter(|w| !w.main).count(),
+            _ => 0,
+        };
+        // Every card opens the tab it summarises.
+        let linked = |id: &'static str, card: gpui::Div, tab: Tab, cx: &mut Context<Self>| {
+            div()
+                .id(id)
+                .flex()
+                .flex_1()
+                .min_w(px(160.))
+                .cursor_pointer()
+                .hover(|d| d.opacity(0.85))
+                .on_click(cx.listener(move |this, _, _, cx| this.run(Command::ShowTab(tab), cx)))
+                .child(card.w_full())
         };
         let cards = div()
             .flex()
+            .flex_wrap()
             .gap_4()
-            .child(stat_card(
-                "Processes",
-                format!(
-                    "{} / {} up",
-                    snapshot.processes_up(),
-                    snapshot.processes.len()
+            .child(linked(
+                "card-processes",
+                stat_card(
+                    "Processes",
+                    format!(
+                        "{} / {} up",
+                        snapshot.processes_up(),
+                        snapshot.processes.len()
+                    ),
                 ),
+                Tab::Processes,
+                cx,
             ))
-            .child(stat_card(
-                "Databases",
-                format!(
-                    "{} / {} up",
-                    snapshot.databases_up(),
-                    snapshot.databases.len()
+            .child(linked(
+                "card-databases",
+                stat_card(
+                    "Databases",
+                    format!(
+                        "{} / {} up",
+                        snapshot.databases_up(),
+                        snapshot.databases.len()
+                    ),
                 ),
+                Tab::Databases,
+                cx,
             ))
-            .child(stat_card("Git", git))
-            .child(stat_card("Knowledge", knowledge))
-            .child(stat_card(
-                "AI & worktrees",
-                format!(
-                    "{} live · {} trees",
-                    snapshot.live_sessions(),
-                    snapshot.worktree_paths().len()
+            .child(linked("card-git", stat_card("Git", git), Tab::Insights, cx))
+            .child(linked(
+                "card-knowledge",
+                stat_card("Knowledge", knowledge),
+                knowledge_tab,
+                cx,
+            ))
+            .child(linked(
+                "card-agents",
+                stat_card(
+                    "Agents",
+                    match (working, waiting) {
+                        (0, 0) => "none live".to_string(),
+                        (w, 0) => format!("{w} working"),
+                        (0, q) => format!("{q} waiting"),
+                        (w, q) => format!("{w} working · {q} waiting"),
+                    },
                 ),
+                Tab::Sessions,
+                cx,
+            ))
+            .child(linked(
+                "card-worktrees",
+                stat_card("Worktrees", worktrees.to_string()),
+                Tab::Worktrees,
+                cx,
             ));
 
         let last_commit = match &snapshot.git {
@@ -653,11 +717,21 @@ impl Workspace {
                         cx,
                     ))),
             )
+            // Only processes that need a look; the full list is a click away.
             .when(
-                snapshot.has_services_file && snapshot.services_error.is_none(),
+                snapshot
+                    .processes
+                    .iter()
+                    .any(|p| matches!(p.status, Status::Error | Status::Degraded)),
                 |view| {
-                    view.child(self.render_processes(index, snapshot, cx))
-                        .child(self.render_databases(index, snapshot, cx))
+                    let rows = snapshot
+                        .processes
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, p)| matches!(p.status, Status::Error | Status::Degraded))
+                        .map(|(p, process)| self.process_row(index, p, process, cx))
+                        .collect();
+                    view.child(section("Needs a look", rows))
                 },
             )
     }
@@ -691,15 +765,54 @@ impl Workspace {
             return Some(
                 callout(
                     "Folder not found".into(),
-                    "The repo was moved or deleted. It stays registered until you remove it."
+                    "The repo was moved or deleted. Point fubbik at its new place, or remove it."
                         .into(),
+                )
+                .border_color(theme::danger())
+                .child(
+                    div()
+                        .flex()
+                        .gap_2()
+                        .child(button("locate-repo", "Locate…").on_click(cx.listener(
+                            move |this, _, _, cx| this.run(Command::LocateRepo(index), cx),
+                        )))
+                        .child(button("remove-missing", "Remove from fubbik").on_click(
+                            cx.listener(move |this, _, _, cx| {
+                                this.run(Command::RemoveRepo(index), cx)
+                            }),
+                        )),
                 )
                 .into_any_element(),
             );
         }
         if let Some(error) = &snapshot.services_error {
             return Some(
-                callout(format!("{FILE_NAME} has an error"), error.clone()).into_any_element(),
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .p_4()
+                    .rounded_lg()
+                    .border_1()
+                    .border_color(theme::danger())
+                    .bg(theme::surface())
+                    .child(
+                        div()
+                            .text_sm()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child(format!("{FILE_NAME} has an error")),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_family("Menlo")
+                            .text_color(theme::danger())
+                            .child(error.clone()),
+                    )
+                    .child(button("services-edit", "Open in editor").on_click(
+                        cx.listener(move |this, _, _, cx| this.run(Command::OpenEditor(index), cx)),
+                    ))
+                    .into_any_element(),
             );
         }
         if !snapshot.has_services_file {

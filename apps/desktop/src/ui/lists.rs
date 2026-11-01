@@ -68,7 +68,7 @@ impl Workspace {
         match self.tab {
             Tab::Today => {
                 let Some(command) = self
-                    .today_rows()
+                    .today_view_rows()
                     .into_iter()
                     .nth(cursor)
                     .and_then(|r| r.primary)
@@ -80,8 +80,16 @@ impl Workspace {
                     _ => return false,
                 }
             }
-            Tab::Sessions => {
-                let Some(session) = self.session_order(repo).into_iter().nth(cursor) else {
+            Tab::Agents | Tab::Sessions => {
+                let session = if self.tab == Tab::Agents {
+                    self.all_agents_order()
+                        .into_iter()
+                        .nth(cursor)
+                        .map(|(_, s)| s)
+                } else {
+                    self.session_order(repo).into_iter().nth(cursor)
+                };
+                let Some(session) = session else {
                     return false;
                 };
                 match (key, session.pane.clone()) {
@@ -205,7 +213,8 @@ impl Workspace {
             .get(self.selected)
             .and_then(|r| r.snapshot.as_ref());
         match self.tab {
-            Tab::Today => self.today_rows().len(),
+            Tab::Today => self.today_view_rows().len(),
+            Tab::Agents => self.all_agents_order().len(),
             Tab::Sessions => self.session_order(self.selected).len(),
             Tab::Processes => snapshot.map_or(0, |s| s.processes.len()),
             Tab::Worktrees => snapshot
@@ -333,6 +342,7 @@ impl Workspace {
         }
         let view = match self.tab {
             Tab::Today => "Today",
+            Tab::Agents => "AI Sessions",
             Tab::Processes => "Processes",
             Tab::Worktrees => "Worktrees",
             Tab::Sessions => "AI Sessions",

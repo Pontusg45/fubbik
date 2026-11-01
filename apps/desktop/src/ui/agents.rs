@@ -7,20 +7,37 @@ use gpui::{
 };
 
 use super::palette::Command;
-use super::widgets::{button, label, muted, pill, row, section};
+use super::widgets::{button, label, loading, muted, muted_line, pill, row, section, section_or};
 use super::{BranchContext, Field, Loadable, Tab, Workspace, display_path};
 use crate::model::{RepoSnapshot, Status};
 use crate::sessions::{AiSession, SessionState, ago};
 use crate::theme;
 use crate::worktree::Worktree;
 
+/// Waiting for you stands out; working is the accent; the rest is quiet.
 pub fn session_color(state: SessionState) -> Hsla {
     match state {
-        SessionState::Busy | SessionState::Active => theme::accent(),
-        SessionState::Idle => theme::status(Status::Running),
+        SessionState::Busy => theme::accent(),
+        SessionState::Idle => theme::status(Status::Degraded),
+        SessionState::Active => theme::text_muted(),
         SessionState::Ended => theme::status(Status::Stopped),
     }
 }
+
+/// Waiting first, then working, then recently active.
+fn state_rank(state: SessionState) -> u8 {
+    match state {
+        SessionState::Idle => 0,
+        SessionState::Busy => 1,
+        SessionState::Active => 2,
+        SessionState::Ended => 3,
+    }
+}
+
+/// Ended sessions shown before "Show all".
+const RECENT_SHOWN: usize = 10;
+/// Row ids on All agents start here (the Sessions page uses 0…).
+const AGENTS_ROW_BASE: usize = 1000;
 
 fn sessions_in<'a>(snapshot: &'a RepoSnapshot, worktree: &Worktree) -> Vec<&'a AiSession> {
     // A session belongs to the most specific worktree containing its cwd.
@@ -379,21 +396,31 @@ impl Workspace {
     ) -> impl IntoElement {
         let now = SystemTime::now();
         let repo_path = self.repos[index].entry.path.clone();
-        let (live, ended): (Vec<&AiSession>, Vec<&AiSession>) =
-            snapshot.sessions.iter().partition(|s| s.state.is_live());
-        let rows =
-            |sessions: Vec<&AiSession>, offset: usize, cx: &mut Context<Self>| -> Vec<AnyElement> {
-                sessions
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, session)| {
-                        self.session_row(index, offset + i, session, snapshot, now, window, cx)
-                    })
-                    .collect()
-            };
-        let live_count = live.len();
-        let live_rows = rows(live, 0, cx);
-        let ended_rows = rows(ended, live_count, cx);
+        let order = self.session_order(index);
+        let live_count = order.iter().filter(|s| s.state.is_live()).count();
+        let ended_total = snapshot
+            .sessions
+            .iter()
+            .filter(|s| !s.state.is_live())
+            .count();
+        let mut live_rows = Vec::new();
+        let mut ended_rows = Vec::new();
+        for (i, session) in order.iter().enumerate() {
+            let row = self.session_row(index, i, session, snapshot, now, window, cx);
+            if session.state.is_live() {
+                live_rows.push(row)
+            } else {
+                ended_rows.push(row)
+            }
+        }
+        let waiting = order
+            .iter()
+            .any(|s| s.state == SessionState::Idle && s.pane.is_some());
+        let opens_in = if self.config.external_terminal() {
+            "Terminal.app"
+        } else {
+            "the Terminal tab"
+        };
 
         div()
             .flex()
@@ -407,13 +434,44 @@ impl Workspace {
                     .child(button("session-new", "New Claude session").on_click(cx.listener(move |this, _, _, cx| {
                         this.run(Command::NewSession(repo_path.clone()), cx)
                     })))
-                    .child(muted("Claude Code and Codex sessions in this repo and its worktrees. Resume opens Terminal.")),
+                    .when(waiting, |d| {
+                        d.child(
+                            button(
+                                "session-reply-longest",
+                                format!(
+                                    "Reply to the longest-waiting ({})",
+                                    super::keymap::keys_for("reply_latest").map(|k| super::keymap::pretty(&k)).unwrap_or_default()
+                                ),
+                            )
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.reply_latest(window, cx);
+                                cx.notify();
+                            })),
+                        )
+                    })
+                    .child(muted(format!("Claude Code and Codex sessions in this repo and its worktrees; Resume opens {opens_in}."))),
             )
-            .child(section(format!("Live ({live_count})"), live_rows))
-            .child(section("Recent", ended_rows))
+            .child(section_or(format!("Live ({live_count})"), live_rows, "No live agents"))
+            .child(section_or(format!("Recent ({ended_total})"), ended_rows, "No past sessions"))
+            .when(ended_total > RECENT_SHOWN, |d| {
+                d.child(
+                    div()
+                        .id("sessions-all")
+                        .text_xs()
+                        .text_color(theme::accent())
+                        .cursor_pointer()
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.sessions_all = !this.sessions_all;
+                            cx.notify();
+                        }))
+                        .child(if self.sessions_all { "Show fewer".to_string() } else { format!("Show all {ended_total}") }),
+                )
+            })
     }
 
-    /// AI Sessions in display order: live first, then the rest.
+    /// AI Sessions in display order: waiting first (longest-waiting on
+    /// top), then working, then recently active; then the ended ones,
+    /// newest first (the last `RECENT_SHOWN` unless "Show all").
     pub(super) fn session_order(&self, repo: usize) -> Vec<AiSession> {
         let sessions = self
             .repos
@@ -421,53 +479,153 @@ impl Workspace {
             .and_then(|r| r.snapshot.as_ref())
             .map(|s| s.sessions.clone())
             .unwrap_or_default();
-        let (live, ended): (Vec<_>, Vec<_>) = sessions.into_iter().partition(|s| s.state.is_live());
-        live.into_iter().chain(ended).collect()
+        let (mut live, ended): (Vec<_>, Vec<_>) =
+            sessions.into_iter().partition(|s| s.state.is_live());
+        live.sort_by_key(|s| (state_rank(s.state), s.last_activity));
+        let shown = if self.sessions_all {
+            ended.len()
+        } else {
+            ended.len().min(RECENT_SHOWN)
+        };
+        live.into_iter()
+            .chain(ended.into_iter().take(shown))
+            .collect()
     }
 
-    /// Every repo's agents: live ones, then the most recent few, per repo.
+    /// All agents in display order: repos with waiting agents first, then
+    /// the busiest; per repo its live sessions (waiting first) and its last
+    /// few ended ones. Repos with nothing live come last.
+    pub(super) fn all_agents_order(&self) -> Vec<(usize, AiSession)> {
+        let mut repos: Vec<usize> = (0..self.repos.len())
+            .filter(|&r| self.repos[r].snapshot.is_some())
+            .collect();
+        let counts = |r: usize| {
+            let s = self.repos[r]
+                .snapshot
+                .as_ref()
+                .map(|s| s.sessions.as_slice())
+                .unwrap_or_default();
+            (
+                s.iter().filter(|s| s.state == SessionState::Idle).count(),
+                s.iter().filter(|s| s.state.is_live()).count(),
+            )
+        };
+        repos.sort_by_key(|&r| {
+            let (waiting, live) = counts(r);
+            (std::cmp::Reverse(waiting), std::cmp::Reverse(live))
+        });
+        let mut rows = Vec::new();
+        for r in repos {
+            let sessions = self.repos[r]
+                .snapshot
+                .as_ref()
+                .map(|s| s.sessions.clone())
+                .unwrap_or_default();
+            let (mut live, ended): (Vec<_>, Vec<_>) =
+                sessions.into_iter().partition(|s| s.state.is_live());
+            live.sort_by_key(|s| (state_rank(s.state), s.last_activity));
+            for s in live.into_iter().chain(ended.into_iter().take(3)) {
+                rows.push((r, s));
+            }
+        }
+        rows
+    }
+
+    /// Every repo's agents, waiting ones first; j/k and ⏎ work here too.
     pub(super) fn render_all_agents(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         let now = SystemTime::now();
-        let mut column = div().flex().flex_col().gap_6();
-        let mut any = false;
-        for (repo, view) in self.repos.iter().enumerate() {
-            let Some(snapshot) = &view.snapshot else {
-                continue;
-            };
-            let live = snapshot
-                .sessions
-                .iter()
-                .filter(|s| s.state.is_live())
-                .count();
-            let shown: Vec<&AiSession> = snapshot
-                .sessions
-                .iter()
-                .filter(|s| s.state.is_live())
-                .chain(
-                    snapshot
-                        .sessions
-                        .iter()
-                        .filter(|s| !s.state.is_live())
-                        .take(3),
+        let checking = self.repos.iter().filter(|r| r.snapshot.is_none()).count();
+        let order = self.all_agents_order();
+        let mut column = div().flex().flex_col().gap_6().child(
+            div()
+                .flex()
+                .items_center()
+                .gap_3()
+                .child(
+                    div()
+                        .text_xl()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child("All agents"),
                 )
-                .collect();
-            if shown.is_empty() {
-                continue;
+                .child(muted(format!(
+                    "{} live across {} repos",
+                    self.live_agents(),
+                    self.repos.len()
+                )))
+                .when(checking > 0, |d| {
+                    d.child(loading(format!("{checking} repo(s) still checking")))
+                }),
+        );
+        let mut current: Option<usize> = None;
+        let mut rows: Vec<AnyElement> = Vec::new();
+        let flush = |column: gpui::Div,
+                     repo: Option<usize>,
+                     rows: Vec<AnyElement>,
+                     cx: &mut Context<Self>|
+         -> gpui::Div {
+            let Some(repo) = repo else { return column };
+            let view = &self.repos[repo];
+            let live = view.snapshot.as_ref().map_or(0, |s| s.live_sessions());
+            let path = view.entry.path.clone();
+            let header = div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .child(
+                    div()
+                        .id(("agents-repo", repo))
+                        .text_sm()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .cursor_pointer()
+                        .hover(|d| d.underline())
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.run(
+                                Command::Focus {
+                                    repo,
+                                    tab: Tab::Sessions,
+                                },
+                                cx,
+                            )
+                        }))
+                        .child(view.entry.name()),
+                )
+                .child(muted(format!("{live} live")))
+                .child(div().flex_1())
+                .child(
+                    button(("agents-new", repo), "+ Claude").on_click(cx.listener(
+                        move |this, _, _, cx| this.run(Command::NewSession(path.clone()), cx),
+                    )),
+                );
+            column.child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .child(header)
+                    .child(section_or("", rows, "No sessions")),
+            )
+        };
+        for (flat, (repo, session)) in order.iter().enumerate() {
+            if current != Some(*repo) {
+                column = flush(column, current, std::mem::take(&mut rows), cx);
+                current = Some(*repo);
             }
-            any = true;
-            let rows = shown
-                .into_iter()
-                .enumerate()
-                .map(|(i, session)| {
-                    self.session_row(repo, 1000 + i, session, snapshot, now, window, cx)
-                })
-                .collect();
-            column = column.child(section(
-                format!("{} — {live} live", view.entry.name()),
-                rows,
+            let snapshot = self.repos[*repo]
+                .snapshot
+                .as_ref()
+                .expect("ordered repos have snapshots");
+            rows.push(self.session_row(
+                *repo,
+                AGENTS_ROW_BASE + flat,
+                session,
+                snapshot,
+                now,
+                window,
+                cx,
             ));
         }
-        if !any {
+        column = flush(column, current, rows, cx);
+        if order.is_empty() && checking == 0 {
             column = column.child(muted("No AI sessions in any registered repo yet."));
         }
         column.into_any_element()
@@ -505,21 +663,18 @@ impl Workspace {
             detail.push(format!("on {branch}"));
         }
         detail.push(ago(session.last_activity, now));
-        if let Some(pid) = session.pid {
-            detail.push(format!("pid {pid}"));
-        }
         if let Some(task) = self.task_of_session(repo, &session.id) {
             detail.push(format!("task {task}"));
         }
-        if let Some(pane) = &session.pane {
-            let owner = if pane.server.is_fubbik() { "" } else { "your " };
-            detail.push(format!("{owner}tmux {}", pane.session));
+        if session.pane.is_some() {
+            detail.push("in tmux".to_string());
         }
 
         let (agent, session_id, cwd) = (session.agent, session.id.clone(), session.cwd.clone());
         let copy_id = session.id.clone();
         let mut actions = div().flex().gap_1();
-        if !session.state.is_live() || session.state == SessionState::Active {
+        // Resume is for ended sessions; a live one would get a second client.
+        if !session.state.is_live() {
             actions = actions.child(button(id("resume"), "Resume").on_click(cx.listener(
                 move |this, _, _, cx| {
                     this.run(
@@ -563,8 +718,11 @@ impl Workspace {
                 .on_click(cx.listener(move |this, _, _, cx| this.copy(copy_id.clone(), cx))),
         );
 
-        let highlighted =
-            self.tab == Tab::Sessions && repo == self.selected && self.list_cursor == Some(i);
+        let highlighted = if i >= AGENTS_ROW_BASE {
+            self.tab == Tab::Agents && self.list_cursor == Some(i - AGENTS_ROW_BASE)
+        } else {
+            self.tab == Tab::Sessions && repo == self.selected && self.list_cursor == Some(i)
+        };
         let row = row()
             .when(highlighted, |r| r.bg(theme::surface_hover()))
             .child(
@@ -588,12 +746,14 @@ impl Workspace {
                             .child(pill(session.agent.label(), theme::agent(session.agent)))
                             .child(
                                 div()
+                                    .min_w(px(0.))
                                     .text_sm()
                                     .font_weight(FontWeight::MEDIUM)
+                                    .truncate()
                                     .child(session.title.clone()),
                             ),
                     )
-                    .child(muted(detail.join("  ·  "))),
+                    .child(muted_line(detail.join("  ·  "))),
             )
             .child(pill(session.state.label(), session_color(session.state)))
             .child(actions);
@@ -612,9 +772,10 @@ impl Workspace {
                     .font_family("Menlo")
                     .text_xs()
                     .text_color(theme::text_muted())
+                    .overflow_hidden()
                     .children(
                         text.lines()
-                            .map(|line| div().whitespace_nowrap().child(line.to_string())),
+                            .map(|line| div().truncate().child(line.to_string())),
                     )
             });
         let reply = session

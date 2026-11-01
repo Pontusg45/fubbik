@@ -5,11 +5,19 @@
 use gpui::{AnyElement, FontWeight, Hsla, SharedString};
 
 use super::plans::open_dependencies;
-use super::widgets::{button, muted, pill, row, section};
+use super::widgets::{button, muted, pill, row, section_or};
 use super::*;
 use crate::activity;
 use crate::model::Status;
 use crate::sessions::SessionState;
+
+fn section_order(section: Section) -> u8 {
+    match section {
+        Section::Needs => 0,
+        Section::Flight => 1,
+        Section::Next => 2,
+    }
+}
 
 /// Pending tasks shown per plan under "Next up".
 const NEXT_PER_PLAN: usize = 2;
@@ -84,7 +92,7 @@ impl Workspace {
                         },
                         None => focus(Tab::Sessions),
                     };
-                    let tag = format!("{} waits", session.agent.label());
+                    let tag = session.agent.label().to_string();
                     rows.push(need(
                         &name,
                         tag,
@@ -105,7 +113,7 @@ impl Workspace {
                         status.label().into(),
                         theme::status(status),
                         process.spec.name.clone(),
-                        "Processes",
+                        "Show processes",
                         focus(Tab::Processes),
                     ));
                 }
@@ -121,7 +129,7 @@ impl Workspace {
                         "overlap".into(),
                         theme::status(Status::Degraded),
                         title,
-                        "Worktrees",
+                        "Show worktrees",
                         focus(Tab::Worktrees),
                     ));
                 }
@@ -137,7 +145,7 @@ impl Workspace {
                     "failing".into(),
                     theme::danger(),
                     title,
-                    "Knowledge",
+                    "Show checks",
                     focus(Tab::Knowledge),
                 ));
             }
@@ -148,7 +156,7 @@ impl Workspace {
                     "stale".into(),
                     theme::status(Status::Degraded),
                     title,
-                    "Knowledge",
+                    "Show checks",
                     focus(Tab::Knowledge),
                 ));
             }
@@ -176,8 +184,8 @@ impl Workspace {
                             plan: plan.id.clone(),
                             task: task.id.clone(),
                         }),
-                        primary_label: "Timeline",
-                        secondary: vec![("Board".into(), focus(Tab::Plans))],
+                        primary_label: "Open timeline",
+                        secondary: vec![("Open board".into(), focus(Tab::Plans))],
                     });
                 }
                 let startable = plan
@@ -204,17 +212,41 @@ impl Workspace {
                         title: task.title.clone(),
                         detail: Some(plan.title.clone()),
                         primary: Some(start(false)),
-                        primary_label: "Start",
+                        primary_label: "Start in new worktree",
                         secondary: vec![("In background".into(), start(true))],
                     });
                 }
             }
         }
+        // Needs you: most urgent first (a broken repo, a failing process,
+        // failing checks, a waiting agent, overlaps, stale knowledge).
+        let rank = |row: &TodayRow| -> u8 {
+            match row.tag.as_ref().map(|(t, _)| t.as_str()) {
+                _ if row.section != Section::Needs => 9,
+                Some("repo") => 0,
+                Some("Error") => 1,
+                Some("Degraded") => 2,
+                Some("failing") => 3,
+                Some("overlap") => 5,
+                Some("stale") => 6,
+                _ => 4, // an agent waiting
+            }
+        };
+        rows.sort_by_key(|r| (section_order(r.section), rank(r)));
         rows
     }
 
-    pub(super) fn render_today(&self, cx: &mut Context<Self>) -> AnyElement {
+    /// Today's rows as shown: filtered to one repo when a chip is picked.
+    pub(super) fn today_view_rows(&self) -> Vec<TodayRow> {
         let rows = self.today_rows();
+        match &self.today_filter {
+            Some(repo) => rows.into_iter().filter(|r| &r.repo == repo).collect(),
+            None => rows,
+        }
+    }
+
+    pub(super) fn render_today(&self, cx: &mut Context<Self>) -> AnyElement {
+        let rows = self.today_view_rows();
         let mut sections: [Vec<AnyElement>; 3] = Default::default();
         for (index, r) in rows.iter().enumerate() {
             let key = |name: &str| SharedString::from(format!("today-{name}-{index}"));
@@ -236,11 +268,8 @@ impl Workspace {
                     .flex_col()
                     .flex_1()
                     .overflow_hidden()
-                    .child(div().text_sm().child(r.title.clone()))
-                    .child(muted(match &r.detail {
-                        Some(detail) => format!("{} · {detail}", r.repo),
-                        None => r.repo.clone(),
-                    })),
+                    .child(div().text_sm().truncate().child(r.title.clone()))
+                    .children(r.detail.clone().map(super::widgets::muted_line)),
             );
             if let Some(command) = r.primary.clone() {
                 line = line
@@ -290,9 +319,110 @@ impl Workspace {
                         }
                     ))),
             )
-            .child(section(format!("Needs you ({})", needs.len()), needs))
-            .child(section(format!("In flight ({})", flight.len()), flight))
-            .child(section("Next up", next))
+            .children(
+                self.today_caveat()
+                    .map(super::widgets::loading),
+            )
+            .child(self.today_filters(cx))
+            .child(section_or(
+                format!("Needs you ({})", needs.len()),
+                needs,
+                "All clear: nothing waits for you",
+            ))
+            .child(section_or(
+                format!("In flight ({})", flight.len()),
+                flight,
+                "Nothing in progress",
+            ))
+            .child(section_or(
+                format!("Next up ({})", next.len()),
+                next,
+                "No task is ready to start",
+            ))
+            .into_any_element()
+    }
+
+    /// What Today cannot see yet (so an empty list is not a false all-clear).
+    fn today_caveat(&self) -> Option<String> {
+        let checking = self.repos.iter().filter(|r| r.snapshot.is_none()).count();
+        let offline: Vec<String> = self
+            .repos
+            .iter()
+            .filter(|r| matches!(r.knowledge, Some(Err(_))))
+            .map(|r| r.entry.name())
+            .collect();
+        let mut parts = Vec::new();
+        if checking > 0 {
+            parts.push(format!("{checking} repo(s) still checking"));
+        }
+        if !offline.is_empty() {
+            parts.push(format!("knowledge offline for {}", offline.join(", ")));
+        }
+        (!parts.is_empty()).then(|| parts.join(" · "))
+    }
+
+    /// Repo chips: All, or one repo.
+    fn today_filters(&self, cx: &mut Context<Self>) -> AnyElement {
+        let chip = |id: SharedString,
+                    text: String,
+                    active: bool,
+                    filter: Option<String>,
+                    cx: &mut Context<Self>| {
+            div()
+                .id(id)
+                .px_2()
+                .py(px(3.))
+                .rounded_md()
+                .text_xs()
+                .cursor_pointer()
+                .border_1()
+                .border_color(if active {
+                    theme::accent()
+                } else {
+                    theme::border()
+                })
+                .text_color(if active {
+                    theme::text()
+                } else {
+                    theme::text_muted()
+                })
+                .hover(|d| d.bg(theme::surface_hover()))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.today_filter = filter.clone();
+                    this.list_cursor = None;
+                    cx.notify();
+                }))
+                .child(text)
+        };
+        let mut chips = vec![
+            chip(
+                "today-all".into(),
+                "All repos".into(),
+                self.today_filter.is_none(),
+                None,
+                cx,
+            )
+            .into_any_element(),
+        ];
+        for view in &self.repos {
+            let name = view.entry.name();
+            let active = self.today_filter.as_deref() == Some(name.as_str());
+            chips.push(
+                chip(
+                    format!("today-repo-{name}").into(),
+                    name.clone(),
+                    active,
+                    Some(name),
+                    cx,
+                )
+                .into_any_element(),
+            );
+        }
+        div()
+            .flex()
+            .flex_wrap()
+            .gap_1()
+            .children(chips)
             .into_any_element()
     }
 

@@ -313,6 +313,10 @@ struct RepoView {
     insights: Option<Loadable<insights::Insights>>,
     /// Known vulnerabilities from the last dependency audit.
     audit: Option<usize>,
+    /// Insights are being recomputed (the last ones stay on screen).
+    insights_refreshing: bool,
+    /// A dependency audit is running.
+    auditing: bool,
 }
 
 impl RepoView {
@@ -325,6 +329,8 @@ impl RepoView {
             branch_context: HashMap::new(),
             gaps: None,
             insights: None,
+            insights_refreshing: false,
+            auditing: false,
             audit: None,
         }
     }
@@ -489,6 +495,10 @@ pub struct Workspace {
     user_stopped: HashSet<String>,
     /// Newest last; info fades after `TOAST_FOR`, errors stay until closed.
     toasts: Vec<Toast>,
+    /// AI Sessions lists every ended session, not just the last few.
+    sessions_all: bool,
+    /// Today shows only this repo's lines (None: every repo).
+    today_filter: Option<String>,
     /// Home: every listening port, not just the first few.
     ports_all: bool,
     /// "Are you sure?" while open.
@@ -589,6 +599,8 @@ impl Workspace {
             user_stopped: HashSet::new(),
             toasts: Vec::new(),
             ports_all: false,
+            today_filter: None,
+            sessions_all: false,
             confirm: None,
             confirmed: false,
             polling: false,

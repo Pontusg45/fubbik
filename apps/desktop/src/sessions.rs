@@ -61,7 +61,7 @@ impl SessionState {
         match self {
             SessionState::Busy => "Working",
             SessionState::Idle => "Waiting",
-            SessionState::Active => "Active",
+            SessionState::Active => "Recently active",
             SessionState::Ended => "Ended",
         }
     }

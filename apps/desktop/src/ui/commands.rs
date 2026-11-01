@@ -432,6 +432,42 @@ impl Workspace {
         .detach();
     }
 
+    /// Re-points a registered repo whose folder moved.
+    pub(super) fn locate_repo(&mut self, repo: usize, cx: &mut Context<Self>) {
+        let paths = cx.prompt_for_paths(PathPromptOptions {
+            files: false,
+            directories: true,
+            multiple: false,
+            prompt: Some("Use this folder".into()),
+        });
+        cx.spawn(async move |this, cx| {
+            let Ok(Ok(Some(paths))) = paths.await else {
+                return;
+            };
+            let Some(path) = paths.into_iter().next() else {
+                return;
+            };
+            this.update(cx, |this, cx| {
+                let root = git::toplevel(&path).unwrap_or(path);
+                let Some(view) = this.repos.get_mut(repo) else {
+                    return;
+                };
+                let old = view.entry.path.clone();
+                view.entry.path = root;
+                view.snapshot = None;
+                view.knowledge = None;
+                this.config.remove_repo(&old);
+                this.save_config();
+                this.watch_files(cx);
+                this.poll_now(true, cx);
+                this.show_info("Repo located");
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     pub(super) fn remove_repo(&mut self, repo: usize, cx: &mut Context<Self>) {
         if repo >= self.repos.len() {
             return;
@@ -765,7 +801,22 @@ impl Workspace {
                 self.save_config();
             }
             Command::AttachRun(session) => self.attach_run(session, cx),
-            Command::AskFirst(confirm) => self.confirm = Some(*confirm),
+                        Command::AskFirst(confirm) => self.confirm = Some(*confirm),
+                        Command::LocateRepo(repo) => self.locate_repo(repo, cx),
+            Command::DeleteBranch { repo, name } => {
+                if self.confirmed_or_ask(
+                    format!("Delete branch {name}?"),
+                    "It is merged; git refuses if it is not. Its commits stay on the branch it was merged into.",
+                    "Delete",
+                    Command::DeleteBranch { repo, name: name.clone() },
+                ) && let Some(view) = self.repos.get(repo)
+                {
+                    let path = view.entry.path.clone();
+                    let days = self.insights_days;
+                    self.run_background(cx, "Branch deleted", move || worktree::delete_merged_branch(&path, &name));
+                    self.load_insights(repo, days, cx);
+                }
+            }
             Command::KillPid { pid, what } => {
                 let detail = format!(
                     "pid {pid} was not started by this app. It gets SIGTERM; unsaved work in it is lost."

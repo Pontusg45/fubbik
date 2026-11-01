@@ -139,6 +139,13 @@ pub enum Command {
     SetRunIn(Option<RunTarget>),
     /// A run's tmux session, in a terminal tab.
     AttachRun(String),
+    /// `git branch -d` (merged branches only).
+    DeleteBranch {
+        repo: usize,
+        name: String,
+    },
+    /// A missing repo's new folder (asks for it).
+    LocateRepo(usize),
     /// Closes toast `index` (0 = oldest shown).
     DismissToast(usize),
     /// Asks first, then runs the confirmation's command.

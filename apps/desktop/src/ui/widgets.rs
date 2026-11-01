@@ -186,7 +186,8 @@ fn card_color(title: &str) -> gpui::Hsla {
         "Stale" => theme::hue(Hue::Yellow),
         "Orphans" => theme::hue(Hue::Pink),
         "Thin" => theme::hue(Hue::Lime),
-        "Active agents" | "AI & worktrees" => theme::hue(Hue::Orange),
+        "Active agents" | "AI & worktrees" | "Agents" => theme::hue(Hue::Orange),
+        "Worktrees" => theme::hue(Hue::Violet),
         _ => theme::accent(),
     }
 }
@@ -197,6 +198,8 @@ pub fn stat_card(title: &'static str, value: impl Into<SharedString>) -> Div {
         .flex()
         .flex_col()
         .flex_1()
+        // Wraps to a new row before squeezing its text.
+        .min_w(px(160.))
         .gap_1()
         .p_4()
         .rounded_lg()
