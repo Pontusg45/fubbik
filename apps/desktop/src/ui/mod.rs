@@ -17,6 +17,7 @@ mod palette;
 mod plans;
 mod polling;
 mod preferences;
+mod projects;
 mod run_prompt;
 mod scripts_view;
 mod setup_view;
@@ -73,6 +74,7 @@ actions!(
         ShowAgents,
         ShowToday,
         ShowInsights,
+        ShowHome,
         CaptureNote,
         ToggleTheme,
         ChooseTheme,
@@ -380,6 +382,8 @@ pub struct Workspace {
     repos: Vec<RepoView>,
     selected: usize,
     tab: Tab,
+    /// Home: every project and the computer's stats, instead of one repo.
+    home: bool,
     supervisor: Supervisor,
     client: FubbikClient,
     focus: FocusHandle,
@@ -507,6 +511,7 @@ impl Workspace {
             repos,
             selected: 0,
             tab: Tab::Overview,
+            home: true,
             supervisor,
             client,
             focus,
@@ -586,6 +591,9 @@ impl Workspace {
         if !workspace.repos.is_empty() {
             workspace.tab = Tab::Today;
         }
+        if std::env::var("FUBBIK_DESKTOP_TAB").is_ok_and(|t| !t.eq_ignore_ascii_case("home")) {
+            workspace.home = false;
+        }
         if let Ok(name) = std::env::var("FUBBIK_DESKTOP_TAB")
             && let Some(tab) = Tab::ALL
                 .into_iter()
@@ -636,6 +644,7 @@ impl Workspace {
 
     fn select(&mut self, index: usize) {
         if index < self.repos.len() {
+            self.home = false;
             self.selected = index;
             self.list_cursor = None;
             self.board_cursor = None;

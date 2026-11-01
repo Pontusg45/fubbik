@@ -58,6 +58,21 @@ Starting the app is all fubbik needs. Docker, `fubbik serve` and `just dev` aren
   yourself then.
 - **Files:** `auth-secret` in the data folder signs session cookies (generated once).
 
+## Home
+
+The app opens at Home (⌘0, or "Home" at the top of the sidebar): every registered repo as a card, and the computer beside them.
+
+- **A card per repo:** status, branch, changes, ahead/behind and the last commit, processes up (one dot each), live and waiting
+  agents, worktrees, how many things need you, overlapping worktrees, knowledge chunks and failing requirements. Click a card,
+  or press j/k and ⏎, to open the repo.
+- **The computer**, sampled every 2 s (`src/system.rs`, using `sysinfo`):
+  - **CPU and memory:** CPU use with a two-minute graph, per-core bars and the load average; memory and swap.
+  - **Disk:** free space on the data volume, red under 10 GB.
+  - **Power and network:** battery (`pmset`), network rates and uptime.
+  - **Processes:** the busiest processes by CPU and by memory.
+  - **Ports:** every listening TCP port with its process (`lsof`), named after the repo process when one owns it.
+- A repo tab (⌘1–⌘9…) or a repo in the sidebar leaves Home. `FUBBIK_DESKTOP_TAB` opens on a tab instead.
+
 ## Where processes and scripts run
 
 Starting a process ("Start", "Start all", a profile, the palette, the list keys) or a script asks where it should run:
@@ -91,6 +106,7 @@ Other agents can read what the app shows, and start and stop its processes and s
   - `list_sessions`: AI sessions, filtered by repo or state.
   - `get_process_logs`: output of a process or script started from the app.
   - `get_builtin_server`: the built-in server's status and paths.
+  - `get_system_stats`: the computer's CPU, memory, disk, battery, network, busiest processes and listening ports (as on Home).
   - `start_process` and `run_script`: `where` is `tmux` (the default, attachable from any terminal), `background` or
     `terminal`. The result names the tmux session and the attach command.
   - `stop_process` and `restart_process`: only for what the app started; anything started elsewhere is left alone.
@@ -306,6 +322,7 @@ src/poll.rs        one repo poll (runs on the background executor)
 src/launch.rs      editor, Terminal, notifications, login-shell PATH
 src/global_hotkey.rs  the system-wide summon key (Carbon RegisterEventHotKey)
 src/tmux_runs.rs   processes and scripts in tmux sessions (fk-run-*), their logs and exit codes
+src/system.rs      the computer's stats for Home (CPU, memory, disk, battery, network, top processes, ports)
 src/mcp.rs         the app's MCP server (HTTP on :3100, --mcp stdio bridge), answering from ui/mcp_publish.rs
 src/backend.rs     the built-in server: Postgres cluster, in-process API, import, backups, server.json, --serve
 src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,

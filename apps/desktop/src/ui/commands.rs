@@ -439,6 +439,7 @@ impl Workspace {
             Command::StartAll(r) => self.ask_where(RunWhat::All(r), cx),
             Command::StopAll(r) => self.stop_all(r, cx),
             Command::ShowTab(tab) => {
+                self.home = false;
                 if self.tab != tab {
                     self.list_cursor = None;
                     self.board_cursor = None;

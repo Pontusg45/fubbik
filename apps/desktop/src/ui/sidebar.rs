@@ -59,6 +59,7 @@ impl Workspace {
                     .flex_1()
                     .overflow_y_scroll()
                     .pb_2()
+                    .child(self.home_row(cx))
                     .children(sections),
             )
             .child(
@@ -187,13 +188,15 @@ impl Workspace {
                 .py_2()
                 .rounded_md()
                 .cursor_pointer()
-                .when(index == self.selected, |row| row.bg(theme::surface_hover()))
+                .when(index == self.selected && !self.home, |row| {
+                    row.bg(theme::surface_hover())
+                })
                 .hover(|row| row.bg(theme::surface_hover()))
                 .on_click(
                     cx.listener(move |this, _, _, cx| this.run(Command::SelectRepo(index), cx)),
                 )
                 .border_l_2()
-                .border_color(if index == self.selected {
+                .border_color(if index == self.selected && !self.home {
                     theme::name_color(&repo.entry.name())
                 } else {
                     gpui::transparent_black()

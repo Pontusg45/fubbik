@@ -22,6 +22,7 @@ mod services;
 mod sessions;
 mod setup;
 mod supervisor;
+mod system;
 mod term;
 mod theme;
 mod tmux;
@@ -37,9 +38,9 @@ use gpui::{
 use supervisor::Supervisor;
 use ui::{
     CaptureNote, ChooseTheme, NextRepo, PrevRepo, Quit, QuitKeepServer, Refresh, RegisterRepo,
-    ShowAgents, ShowDatabases, ShowInsights, ShowKnowledge, ShowLogs, ShowOverview, ShowPlans,
-    ShowProcesses, ShowSessions, ShowSetup, ShowTerminal, ShowToday, ShowWorktrees, TogglePalette,
-    ToggleTheme, Workspace,
+    ShowAgents, ShowDatabases, ShowHome, ShowInsights, ShowKnowledge, ShowLogs, ShowOverview,
+    ShowPlans, ShowProcesses, ShowSessions, ShowSetup, ShowTerminal, ShowToday, ShowWorktrees,
+    TogglePalette, ToggleTheme, Workspace,
 };
 
 fn main() {
@@ -116,6 +117,7 @@ fn main() {
     };
     let stop_on_close = stop_backend.clone();
 
+    system::start();
     mcp::set_supervisor(supervisor.clone());
     mcp::start_http();
 
@@ -159,6 +161,7 @@ fn main() {
                     MenuItem::action("Today", ShowToday),
                     MenuItem::action("All Agents", ShowAgents),
                     MenuItem::action("Insights", ShowInsights),
+                    MenuItem::action("Home", ShowHome),
                     MenuItem::action("Capture Note…", CaptureNote),
                 ],
             },

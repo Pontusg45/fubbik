@@ -162,6 +162,12 @@ fn tools() -> Value {
             "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": false }
         },
         {
+            "name": "get_system_stats",
+            "description": "The computer the app runs on: CPU use (total, per core, load average), memory and swap, free disk space, battery, network rates, uptime, the busiest processes by CPU and memory, and which process listens on which TCP port.",
+            "inputSchema": { "type": "object", "properties": {} },
+            "annotations": { "readOnlyHint": true }
+        },
+        {
             "name": "get_builtin_server",
             "description": "The status of the app's built-in fubbik server (the API on 127.0.0.1:3000 and its own PostgreSQL), and where its data, logs and backups are.",
             "inputSchema": { "type": "object", "properties": {} }
@@ -186,7 +192,7 @@ fn call_tool(name: &str, args: &Value) -> Result<Value, String> {
 
 /// A tool call against a published view.
 fn call_tool_in(state: Published, name: &str, args: &Value) -> Result<Value, String> {
-    if state.at.is_none() && name != "get_builtin_server" {
+    if state.at.is_none() && !matches!(name, "get_builtin_server" | "get_system_stats") {
         return Err("the app has not finished its first poll yet; try again in a moment".into());
     }
     let arg = |key: &str| args.get(key).and_then(Value::as_str);
@@ -352,6 +358,28 @@ fn call_tool_in(state: Published, name: &str, args: &Value) -> Result<Value, Str
             Ok(json!({
                 "restarted": wanted,
                 "tmux_session": supervisor.tmux_session(&key),
+            }))
+        }
+        "get_system_stats" => {
+            let s = crate::system::stats();
+            if s.at.is_none() {
+                return Err(
+                    "the first measurement is still running; try again in a few seconds".into(),
+                );
+            }
+            let procs = |list: &[crate::system::Proc]| -> Vec<Value> {
+                list.iter().map(|p| json!({ "pid": p.pid, "name": p.name, "cpu_percent": p.cpu, "memory_bytes": p.memory })).collect()
+            };
+            Ok(json!({
+                "host": s.host, "os": s.os, "cpu_model": s.cpu_brand, "uptime_seconds": s.uptime,
+                "cpu": { "percent": s.cpu, "cores": s.cores, "load_average": [s.load.0, s.load.1, s.load.2] },
+                "memory": { "used_bytes": s.mem_used, "total_bytes": s.mem_total, "percent": s.mem_percent(), "swap_used_bytes": s.swap_used, "swap_total_bytes": s.swap_total },
+                "disk": s.disk.map(|d| json!({ "mount": d.mount, "free_bytes": d.free, "total_bytes": d.total })),
+                "battery": s.battery.map(|b| json!({ "percent": b.percent, "state": b.state, "remaining": b.remaining })),
+                "network": { "receive_bytes_per_second": s.net_rx, "transmit_bytes_per_second": s.net_tx },
+                "busiest_processes": procs(&s.top_cpu),
+                "largest_processes": procs(&s.top_memory),
+                "listening_ports": s.ports.iter().map(|p| json!({ "port": p.port, "pid": p.pid, "command": p.command })).collect::<Vec<_>>(),
             }))
         }
         "get_builtin_server" => {

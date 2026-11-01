@@ -41,6 +41,8 @@ fubbik-ai = { path = "../../crates/fubbik-ai" }
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres"] }
 tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros", "process", "signal"] }
 tracing = "0.1"
+# Computer stats for the Projects page (`system.rs`).
+sysinfo = { version = "0.35", default-features = false, features = ["system", "disk", "network"] }
 # The app's own MCP server (`mcp.rs`): POST /mcp on 127.0.0.1:3100.
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

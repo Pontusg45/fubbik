@@ -39,6 +39,10 @@ impl Workspace {
             self.backend_seen = backend;
             redraw = true;
         }
+        // The computer's stats change every sample.
+        if self.home {
+            redraw = true;
+        }
         if self.tab == Tab::Logs && self.log_paused.is_none() {
             self.log_scroll.scroll_to_bottom();
             redraw = true;

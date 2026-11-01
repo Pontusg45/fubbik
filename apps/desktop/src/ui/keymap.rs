@@ -98,6 +98,13 @@ const DEFAULTS: &[(&str, &str, Option<&str>, &str, &str)] = &[
         "General",
         "Quit (shells in tmux keep running)",
     ),
+    b(
+        "cmd-0",
+        "show_home",
+        None,
+        "Tabs",
+        "Home: every project and the computer's stats",
+    ),
     b("cmd-1", "show_today", None, "Tabs", "Today"),
     b("cmd-2", "show_overview", None, "Tabs", "Overview"),
     b("cmd-3", "show_processes", None, "Tabs", "Processes"),
@@ -208,6 +215,7 @@ const DEFAULTS: &[(&str, &str, Option<&str>, &str, &str)] = &[
 pub const LIST_KEYS: &[(&str, &str, &str)] = &[
     ("Lists", "j / k  ↓ / ↑", "Move the highlight"),
     ("Lists", "⏎", "The highlighted row's main action"),
+    ("Home", "⏎", "Open the repo's Overview"),
     (
         "Today",
         "⏎",
@@ -403,6 +411,7 @@ fn make(action: &str, keys: &str, context: Option<&str>) -> Option<KeyBinding> {
         "show_terminal" => ShowTerminal,
         "show_databases" => ShowDatabases,
         "show_insights" => ShowInsights,
+        "show_home" => ShowHome,
         "show_agents" => ShowAgents,
         "show_setup" => ShowSetup,
         "prev_repo" => PrevRepo,

@@ -35,6 +35,21 @@ impl Workspace {
         if self.sidebar_nav {
             return self.on_sidebar_key(key);
         }
+        if self.home {
+            // Home: j/k over the project cards, ⏎ opens one.
+            if let Some(cursor) = step(self.list_cursor, self.repos.len(), key) {
+                self.list_cursor = Some(cursor);
+                return true;
+            }
+            return match (key, self.list_cursor) {
+                ("enter", Some(cursor)) => {
+                    self.select(cursor);
+                    self.tab = Tab::Overview;
+                    true
+                }
+                _ => false,
+            };
+        }
         if self.tab == Tab::Plans {
             return self.on_board_key(key, cx);
         }
@@ -290,6 +305,9 @@ impl Workspace {
     pub(super) fn list_hint(&self) -> Option<String> {
         if self.sidebar_nav {
             return Some("Sidebar: j/k pick a repo · ⏎ or esc back".into());
+        }
+        if self.home {
+            return Some("j/k move · ⏎ open the project · ⌘1–⌘9 a tab of the selected repo · ⌘/ all shortcuts".into());
         }
         let view = match self.tab {
             Tab::Today => "Today",

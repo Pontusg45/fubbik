@@ -282,6 +282,8 @@ impl Render for Workspace {
         }
         let main = if self.repos.is_empty() {
             self.render_empty(window, cx).into_any_element()
+        } else if self.home {
+            self.render_home(cx)
         } else {
             self.render_repo(window, cx).into_any_element()
         };
@@ -424,6 +426,10 @@ impl Render for Workspace {
             )
             .on_action(cx.listener(|this, _: &ShowInsights, _, cx| {
                 this.run(Command::ShowTab(Tab::Insights), cx)
+            }))
+            .on_action(cx.listener(|this, _: &ShowHome, _, cx| {
+                this.go_home();
+                cx.notify();
             }))
             .on_action(cx.listener(|this, _: &CaptureNote, window, cx| {
                 this.capture_open = true;

@@ -24,7 +24,18 @@ fn serial() -> std::sync::MutexGuard<'static, ()> {
     LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+/// A workspace in a repo view (most tests start there; the app starts at Home).
 fn open<'a>(
+    cx: &'a mut TestAppContext,
+    config: &str,
+) -> (Entity<Workspace>, &'a mut VisualTestContext) {
+    let (view, cx) = open_home(cx, config);
+    view.update(cx, |w, _| w.home = false);
+    (view, cx)
+}
+
+/// A workspace as the app opens it: at Home.
+fn open_home<'a>(
     cx: &'a mut TestAppContext,
     config: &str,
 ) -> (Entity<Workspace>, &'a mut VisualTestContext) {
@@ -1044,4 +1055,36 @@ fn starting_asks_where_and_can_remember_the_answer(cx: &mut TestAppContext) {
     assert!(!asked_again, "a saved choice is used without asking");
     let on_disk = std::fs::read_to_string(config_file()).unwrap();
     assert!(on_disk.contains("run_in = \"background\""), "{on_disk}");
+}
+
+#[gpui::test]
+fn cmd_0_goes_home_and_enter_opens_a_project(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: two repos
+    cx.update(|cx| keymap::bind_all(cx, std::path::Path::new("/nonexistent/keymap.toml")));
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let (view, cx) = open_home(
+        cx,
+        &format!(
+            "[[repo]]\npath = {:?}\n\n[[repo]]\npath = {:?}\n",
+            a.path().display().to_string(),
+            b.path().display().to_string()
+        ),
+    );
+    let started_home = view.read_with(cx, |w, _| w.home);
+
+    // When: a repo tab, then ⌘0, then j and ⏎ on the second card
+    cx.simulate_keystrokes("cmd-3");
+    let left = view.read_with(cx, |w, _| w.home);
+    cx.simulate_keystrokes("cmd-0");
+    cx.run_until_parked();
+    let back = view.read_with(cx, |w, _| w.home);
+    cx.simulate_keystrokes("j j enter");
+    let (home, tab, selected) = view.read_with(cx, |w, _| (w.home, w.tab, w.selected));
+
+    // Then
+    assert!(started_home, "the app opens at Home");
+    assert!(!left, "a repo tab leaves Home");
+    assert!(back, "⌘0 is Home");
+    assert_eq!((home, tab, selected), (false, Tab::Overview, 1));
 }
