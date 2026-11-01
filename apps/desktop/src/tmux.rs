@@ -107,6 +107,17 @@ fn tmux(server: &Server, args: &[&str]) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
+/// Runs `tmux <server args> <args>`; stdout on success.
+pub fn command(server: &Server, args: &[&str]) -> Result<String, String> {
+    tmux(server, args)
+}
+
+/// The app's tmux config file, written if missing (pass with `-f` when a
+/// command may start the server).
+pub fn config_file() -> Result<String, String> {
+    write_config().map(|p| p.to_string_lossy().into_owned())
+}
+
 /// A session name from a directory and a number: `fubbik-desktop-3`.
 /// tmux reserves `.` and `:` in target names.
 pub fn session_name(dir: &Path, n: usize) -> String {

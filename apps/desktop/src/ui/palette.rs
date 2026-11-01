@@ -6,6 +6,82 @@ use std::path::PathBuf;
 use super::Tab;
 use crate::sessions::Agent;
 
+/// Where a process or script runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunTarget {
+    /// A child of the app, output in Logs.
+    Background,
+    /// A detached session on the app's tmux server: attach from any
+    /// terminal; it keeps running when the app quits.
+    Tmux,
+    /// A terminal tab in the app.
+    Tab,
+    /// Terminal.app.
+    TerminalApp,
+}
+
+impl RunTarget {
+    pub const ALL: [RunTarget; 4] = [
+        RunTarget::Background,
+        RunTarget::Tmux,
+        RunTarget::Tab,
+        RunTarget::TerminalApp,
+    ];
+
+    pub fn key(self) -> &'static str {
+        match self {
+            RunTarget::Background => "background",
+            RunTarget::Tmux => "tmux",
+            RunTarget::Tab => "tab",
+            RunTarget::TerminalApp => "terminal",
+        }
+    }
+
+    pub fn from_key(key: &str) -> Option<RunTarget> {
+        RunTarget::ALL.into_iter().find(|t| t.key() == key)
+    }
+
+    pub fn title(self) -> &'static str {
+        match self {
+            RunTarget::Background => "In the background",
+            RunTarget::Tmux => "In a tmux session",
+            RunTarget::Tab => "In a terminal tab",
+            RunTarget::TerminalApp => "In Terminal.app",
+        }
+    }
+
+    pub fn detail(self) -> &'static str {
+        match self {
+            RunTarget::Background => "The app runs it; output in Logs. Stops when the app quits.",
+            RunTarget::Tmux => {
+                "Detached on the app's tmux server: attach from any terminal; keeps running when the app quits."
+            }
+            RunTarget::Tab => "Opens a tab in the Terminal view, where you can type into it.",
+            RunTarget::TerminalApp => "A new Terminal.app window.",
+        }
+    }
+}
+
+/// What to run, before knowing where.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RunWhat {
+    Process {
+        repo: usize,
+        index: usize,
+    },
+    /// Every stopped process in a repo.
+    All(usize),
+    Profile {
+        repo: usize,
+        profile: String,
+    },
+    Script {
+        repo: usize,
+        name: String,
+        command: String,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     SelectRepo(usize),
@@ -40,6 +116,16 @@ pub enum Command {
     /// Replace the built-in database with a copy of this one.
     ImportDatabase(String),
     BackupNow,
+    /// Run something where chosen; `remember` saves the choice.
+    RunAt {
+        what: RunWhat,
+        target: RunTarget,
+        remember: bool,
+    },
+    /// Where processes and scripts start: None asks each time.
+    SetRunIn(Option<RunTarget>),
+    /// A run's tmux session, in a terminal tab.
+    AttachRun(String),
     ShowBackups,
     /// Stop a `--serve` server left running by "Quit, Keep Server Running".
     StopBackgroundServer,

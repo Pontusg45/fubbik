@@ -458,6 +458,11 @@ impl Render for Workspace {
             )
             .on_action(cx.listener(|this, _: &Refresh, _, cx| this.run(Command::Refresh, cx)))
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                if this.on_run_prompt_key(&event.keystroke, cx) {
+                    cx.stop_propagation();
+                    cx.notify();
+                    return;
+                }
                 if event.keystroke.key == "escape"
                     && (this.panel.is_some() || this.cheat_sheet_open)
                 {
@@ -491,6 +496,7 @@ impl Render for Workspace {
             .when(self.capture_open, |root| {
                 root.child(self.render_capture(window, cx))
             })
+            .children(self.render_run_prompt(cx))
             .when(self.cheat_sheet_open, |root| {
                 root.child(self.render_cheat_sheet(window, cx))
             })

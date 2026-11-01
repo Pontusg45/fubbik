@@ -321,7 +321,8 @@ Input Source → Chunk Resolver → Enrichment (health, stale, features) → Sco
   coordination tools live in `src/tools/{plan,matrix,coordination}.rs`, each with `definitions()` and `handles(name)`
 - Key tools: `get_context`, `get_context_for_task`, `create_plan`, `add_plan_task`, `create_requirements_batch`, `get_matrix_view`,
   `join_board`, `sync_claude_md`
-- The desktop app has its own read-only MCP server for its data (repos, processes, AI sessions, worktrees, Today, logs):
+- The desktop app has its own MCP server for its data (repos, processes, AI sessions, worktrees, Today, logs) and for starting,
+  stopping and restarting processes and scripts (by default in `tmux -L fubbik` sessions named `fk-run-*`):
   `http://127.0.0.1:3100/mcp` while it runs, or `fubbik-desktop --mcp` over stdio (see `apps/desktop/README.md`, "MCP server")
 
 ## Feature switches

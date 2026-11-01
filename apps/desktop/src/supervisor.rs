@@ -3,6 +3,10 @@
 //!
 //! Stopping signals the whole group, so `pnpm dev` takes its vite child down
 //! with it. Dropping the last `Supervisor` clone stops everything it started.
+//!
+//! With `with_runs`, a process can instead run in a tmux session
+//! (`start_tmux`, see `tmux_runs.rs`): attachable from any terminal and
+//! left running when the app quits. The other calls cover both kinds.
 
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, BufReader, Read};
@@ -30,11 +34,19 @@ struct Inner {
     /// Exit codes of processes that ended on their own (not stopped here),
     /// until `take_exits` reads them. None: killed by a signal.
     exits: Vec<(String, Option<i32>)>,
+    /// tmux runs whose end was already reported (or found ended at start).
+    reported_dead: std::collections::HashSet<String>,
+    /// The tmux runs' panes, refreshed at most every `RUNS_FRESH`.
+    runs_cache: Option<(Instant, HashMap<String, crate::tmux_runs::PaneState>)>,
 }
+
+/// How long a read of the tmux runs is reused (renders ask per script).
+const RUNS_FRESH: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Default)]
 pub struct Supervisor {
     inner: Arc<Mutex<Inner>>,
+    runs: Option<crate::tmux_runs::Runs>,
 }
 
 pub fn shell() -> String {
@@ -88,6 +100,74 @@ impl Supervisor {
         Self::default()
     }
 
+    /// A supervisor that can also run in tmux sessions. Runs that already
+    /// ended (before this app started) are not reported again.
+    pub fn with_runs(runs: crate::tmux_runs::Runs) -> Self {
+        let ended: std::collections::HashSet<String> = runs
+            .all_states()
+            .into_iter()
+            .filter(|(_, s)| s.dead)
+            .map(|(k, _)| k)
+            .collect();
+        let supervisor = Self {
+            inner: Default::default(),
+            runs: Some(runs),
+        };
+        supervisor.inner.lock().unwrap().reported_dead = ended;
+        supervisor
+    }
+
+    /// The tmux runs' panes (cached for `RUNS_FRESH`).
+    fn run_states(&self) -> HashMap<String, crate::tmux_runs::PaneState> {
+        let Some(runs) = &self.runs else {
+            return HashMap::new();
+        };
+        {
+            let inner = self.inner.lock().unwrap();
+            if let Some((at, states)) = &inner.runs_cache
+                && at.elapsed() < RUNS_FRESH
+            {
+                return states.clone();
+            }
+        }
+        let states = runs.all_states();
+        self.inner.lock().unwrap().runs_cache = Some((Instant::now(), states.clone()));
+        states
+    }
+
+    fn forget_run_states(&self) {
+        self.inner.lock().unwrap().runs_cache = None;
+    }
+
+    /// Starts `command` in a tmux session named for `key`; the session name.
+    pub fn start_tmux(
+        &self,
+        key: &str,
+        command: &str,
+        cwd: &Path,
+        label: &str,
+    ) -> Result<String, String> {
+        let runs = self
+            .runs
+            .as_ref()
+            .ok_or("tmux runs are not available (is tmux installed?)")?;
+        if self.is_running(key) {
+            return Err(format!("{key} is already running"));
+        }
+        let name = runs.start(key, command, cwd, label)?;
+        let mut inner = self.inner.lock().unwrap();
+        inner.reported_dead.remove(key);
+        inner.runs_cache = None;
+        Ok(name)
+    }
+
+    /// The tmux session `key` runs (or ran) in, if it has one.
+    pub fn tmux_session(&self, key: &str) -> Option<String> {
+        self.run_states()
+            .contains_key(key)
+            .then(|| crate::tmux_runs::session_name(key))
+    }
+
     /// Starts `command` under the login shell in `cwd`. Returns the PID
     /// (also the process group id).
     pub fn start(&self, key: &str, command: &str, cwd: &Path) -> Result<u32, String> {
@@ -125,15 +205,44 @@ impl Supervisor {
         if let Some(managed) = managed {
             stop_child(managed);
         }
+        if let Some(runs) = &self.runs
+            && self.run_states().contains_key(key)
+        {
+            runs.stop(key);
+            let mut inner = self.inner.lock().unwrap();
+            inner.reported_dead.insert(key.to_string());
+            inner.runs_cache = None;
+        }
     }
 
+    /// Restarts where it ran: in its tmux session, or in the background.
     pub fn restart(&self, key: &str, command: &str, cwd: &Path) -> Result<u32, String> {
+        if self.runs.is_some() && self.run_states().contains_key(key) {
+            self.stop(key);
+            let label = key
+                .rsplit_once("::")
+                .map_or(key, |(_, name)| name)
+                .to_string();
+            self.start_tmux(key, command, cwd, &label)?;
+            self.forget_run_states();
+            return Ok(self.pid(key).unwrap_or(0));
+        }
         self.stop(key);
         self.start(key, command, cwd)
     }
 
     /// Reaps exited children; true while the process is alive.
     pub fn is_running(&self, key: &str) -> bool {
+        if let Some(state) = self.run_states().get(key).copied() {
+            if !state.dead {
+                return true;
+            }
+            let mut inner = self.inner.lock().unwrap();
+            if inner.reported_dead.insert(key.to_string()) {
+                inner.exits.push((key.to_string(), state.exit));
+            }
+            return false;
+        }
         let mut inner = self.inner.lock().unwrap();
         let Some(managed) = inner.running.get_mut(key) else {
             return false;
@@ -156,6 +265,9 @@ impl Supervisor {
         if !self.is_running(key) {
             return None;
         }
+        if let Some(state) = self.run_states().get(key) {
+            return Some(state.pid);
+        }
         self.inner
             .lock()
             .unwrap()
@@ -165,6 +277,13 @@ impl Supervisor {
     }
 
     pub fn logs(&self, key: &str) -> Vec<String> {
+        if let Some(runs) = &self.runs
+            && (self.run_states().contains_key(key)
+                || (runs.log_path(key).exists()
+                    && !self.inner.lock().unwrap().logs.contains_key(key)))
+        {
+            return runs.read_log(key, LOG_LINES);
+        }
         let inner = self.inner.lock().unwrap();
         inner
             .logs
@@ -184,6 +303,11 @@ impl Supervisor {
             .filter(|k| k.starts_with(prefix))
             .cloned()
             .collect();
+        for key in self.run_states().into_keys() {
+            if key.starts_with(prefix) && !keys.contains(&key) {
+                keys.push(key);
+            }
+        }
         keys.sort();
         keys
     }
@@ -191,6 +315,9 @@ impl Supervisor {
     pub fn clear_logs(&self, key: &str) {
         if let Some(log) = self.inner.lock().unwrap().logs.get(key) {
             log.lock().unwrap().clear();
+        }
+        if let Some(runs) = &self.runs {
+            runs.clear_log(key);
         }
     }
 

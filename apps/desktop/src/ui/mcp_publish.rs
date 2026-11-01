@@ -16,7 +16,11 @@ fn seconds_ago(at: SystemTime) -> u64 {
 
 impl Workspace {
     pub(super) fn publish_for_mcp(&self) {
-        let repos = self.repos.iter().map(repo_json).collect();
+        let repos = self
+            .repos
+            .iter()
+            .map(|view| repo_json(view, &self.supervisor))
+            .collect();
         let today = self
             .today_rows()
             .into_iter()
@@ -38,7 +42,7 @@ impl Workspace {
     }
 }
 
-fn repo_json(view: &RepoView) -> Value {
+fn repo_json(view: &RepoView, supervisor: &crate::supervisor::Supervisor) -> Value {
     let name = view.entry.name();
     let path = view.entry.path.display().to_string();
     let Some(snapshot) = &view.snapshot else {
@@ -62,6 +66,9 @@ fn repo_json(view: &RepoView) -> Value {
             json!({
                 "name": p.spec.name,
                 "command": p.spec.command,
+                "cwd": p.spec.cwd(&view.entry.path),
+                "key": p.key,
+                "tmux_session": supervisor.tmux_session(&p.key),
                 "status": p.status.label(),
                 "up": p.status.is_up(),
                 "port": p.spec.port,

@@ -705,8 +705,14 @@ impl Workspace {
                 crate::backend::status(),
                 crate::backend::Status::Running { .. }
             );
+        let session = self.supervisor.tmux_session(&process.key);
         let state = match (builtin, process.owned, up) {
             (true, _, _) => "served by the app's built-in server".to_string(),
+            (_, true, _) if session.is_some() => format!(
+                "{} · tmux session {}",
+                process.status.label(),
+                session.as_deref().unwrap_or_default()
+            ),
             (_, true, _) => format!("{} · started here", process.status.label()),
             (_, false, true) => format!("{} · started outside the app", process.status.label()),
             (_, false, false) => process.status.label().to_string(),
@@ -717,7 +723,7 @@ impl Workspace {
             theme::status(process.status)
         };
 
-        let mut actions = div().flex().justify_end().gap_1().w(px(200.)).flex_none();
+        let mut actions = div().flex().justify_end().gap_1().w(px(260.)).flex_none();
         if builtin {
             // Nothing to start or stop here; Setup controls the built-in server.
         } else if process.owned {
@@ -741,6 +747,11 @@ impl Workspace {
             actions = actions.child(button(id("start"), "Start").on_click(
                 cx.listener(move |this, _, _, cx| this.run(Command::StartProcess(repo, p), cx)),
             ));
+        }
+        if let Some(session) = session.clone() {
+            actions = actions.child(button(id("attach"), "Terminal").on_click(cx.listener(
+                move |this, _, _, cx| this.run(Command::AttachRun(session.clone()), cx),
+            )));
         }
         let key = process.key.clone();
         actions = actions.child(button(id("logs"), "Logs").on_click(cx.listener(

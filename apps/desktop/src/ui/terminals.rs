@@ -68,9 +68,48 @@ impl Workspace {
         id
     }
 
+    /// A process or script's tmux session in a terminal tab (the existing
+    /// tab when one is open).
+    pub(super) fn attach_run(&mut self, session: String, cx: &mut Context<Self>) {
+        if let Some(tab) = self
+            .terminals
+            .iter()
+            .find(|t| t.tmux.as_deref() == Some(session.as_str()))
+        {
+            self.active_terminal = Some(tab.id);
+        } else {
+            let id = self.next_terminal_id;
+            self.next_terminal_id += 1;
+            let dir = self
+                .repos
+                .get(self.selected)
+                .map(|r| r.entry.path.clone())
+                .unwrap_or_default();
+            let label = session
+                .trim_start_matches(crate::tmux_runs::PREFIX)
+                .to_string();
+            let (view_dir, name) = (dir.clone(), session.clone());
+            let view = cx.new(|cx| terminal_view::TerminalView::tmux(view_dir, name, cx));
+            self.terminals.push(TermTab {
+                id,
+                dir,
+                label,
+                view,
+                tmux: Some(session),
+            });
+            self.active_terminal = Some(id);
+        }
+        self.tab = Tab::Terminal;
+        self.focus_terminal = true;
+    }
+
     /// Reattaches the app's tmux sessions left from the last run as tabs.
     pub(super) fn restore_terminals(&mut self, cx: &mut Context<Self>) {
-        for session in tmux::sessions(&tmux::Server::fubbik()) {
+        for session in tmux::sessions(&tmux::Server::fubbik())
+            .into_iter()
+            // Process and script runs are not tabs; they open from Processes.
+            .filter(|s| !s.name.starts_with(crate::tmux_runs::PREFIX))
+        {
             let id = self.next_terminal_id;
             self.next_terminal_id += 1;
             let (dir, name) = (session.dir.clone(), session.name.clone());

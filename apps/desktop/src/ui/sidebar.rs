@@ -138,7 +138,7 @@ impl Workspace {
                             button(SharedString::from(format!("group-start-{name}")), "▶")
                                 .on_click(cx.listener(move |this, _, _, cx| {
                                     for &repo in &start {
-                                        this.start_all(repo, cx);
+                                        this.ask_where(super::RunWhat::All(repo), cx);
                                     }
                                     cx.notify();
                                 })),

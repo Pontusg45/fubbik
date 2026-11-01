@@ -75,6 +75,10 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) {
         let keystroke = &event.keystroke;
+        // The run prompt answers keys even when a field had focus.
+        if self.run_prompt.is_some() {
+            return;
+        }
         if keystroke.modifiers.platform && keystroke.key == "v" {
             if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
                 self.field_mut(field)

@@ -143,6 +143,35 @@ impl Workspace {
                 .into_any_element(),
             ),
             choice_row(
+                "Start processes and scripts",
+                match self.config.run_in.as_deref().and_then(RunTarget::from_key) {
+                    Some(target) => format!("{} (saved)", target.title()),
+                    None => "Ask each time".to_string(),
+                },
+                div()
+                    .flex()
+                    .gap_1()
+                    .child(button("pref-run-ask", "Ask").on_click(
+                        cx.listener(|this, _, _, cx| this.run(Command::SetRunIn(None), cx)),
+                    ))
+                    .children(RunTarget::ALL.into_iter().map(|target| {
+                        let label = match target {
+                            RunTarget::Background => "Background",
+                            RunTarget::Tmux => "tmux",
+                            RunTarget::Tab => "Tab",
+                            RunTarget::TerminalApp => "Terminal.app",
+                        };
+                        button(
+                            SharedString::from(format!("pref-run-{}", target.key())),
+                            label,
+                        )
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.run(Command::SetRunIn(Some(target)), cx)
+                        }))
+                    }))
+                    .into_any_element(),
+            ),
+            choice_row(
                 "Built-in server (API + PostgreSQL)",
                 crate::backend::status().label(),
                 toggle(

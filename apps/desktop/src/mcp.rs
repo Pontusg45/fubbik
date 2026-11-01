@@ -6,9 +6,11 @@
 //!   (`FUBBIK_DESKTOP_MCP_PORT` moves it), served while the app runs.
 //! - `fubbik-desktop --mcp`: the same over stdio, forwarded to the running
 //!   app (for clients that only start stdio servers).
-//! - Read-only. The UI publishes a JSON view after every poll
-//!   (`ui/mcp_publish.rs`); tools answer from it, so a call never waits
-//!   on git or the network.
+//! - Reads come from a JSON view the UI publishes after every poll
+//!   (`ui/mcp_publish.rs`), so a read never waits on git or the network.
+//! - start_process / run_script / stop_process / restart_process act
+//!   through the app's supervisor, by default in tmux sessions
+//!   (`tmux_runs.rs`) the user can attach from any terminal.
 
 use std::sync::{Mutex, OnceLock};
 use std::time::SystemTime;
@@ -65,6 +67,11 @@ fn tools() -> Value {
         "type": "string",
         "description": "Repo name (its folder name, as list_repos shows) or its path"
     });
+    let where_schema = json!({
+        "type": "string",
+        "enum": ["tmux", "background", "terminal"],
+        "description": "Where it runs (default tmux)"
+    });
     json!([
         {
             "name": "list_repos",
@@ -104,6 +111,55 @@ fn tools() -> Value {
                 },
                 "required": ["repo", "process"]
             }
+        },
+        {
+            "name": "start_process",
+            "description": "Starts a process from a repo's services file (see get_repo). `where`: \"tmux\" (default) runs it in a detached session on the app's tmux server, which the user can attach from any terminal and which keeps running when the app quits; \"background\" runs it inside the app with output in its Logs; \"terminal\" opens it in a Terminal.app window (the app can't stop that one). Returns the tmux session and the command to attach.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "repo": repo,
+                    "process": { "type": "string", "description": "Process name from get_repo" },
+                    "where": where_schema
+                },
+                "required": ["repo", "process"]
+            },
+            "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": false }
+        },
+        {
+            "name": "stop_process",
+            "description": "Stops a process the app started (in tmux or in the background): its whole process group gets SIGTERM, then SIGKILL after 2 s. Processes started outside the app are left alone.",
+            "inputSchema": {
+                "type": "object",
+                "properties": { "repo": repo, "process": { "type": "string", "description": "Process name, or `script:<name>` for a script" } },
+                "required": ["repo", "process"]
+            },
+            "annotations": { "readOnlyHint": false, "destructiveHint": true }
+        },
+        {
+            "name": "restart_process",
+            "description": "Restarts a process the app started, where it ran (same tmux session name, or in the background).",
+            "inputSchema": {
+                "type": "object",
+                "properties": { "repo": repo, "process": { "type": "string" } },
+                "required": ["repo", "process"]
+            },
+            "annotations": { "readOnlyHint": false, "destructiveHint": true }
+        },
+        {
+            "name": "run_script",
+            "description": "Runs one of a repo's scripts (just recipe, package.json script or make target; see get_repo's scripts). `where` as for start_process, default \"tmux\". Read its output with get_process_logs and process `script:<name>`.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "repo": repo,
+                    "script": { "type": "string", "description": "Script name, e.g. `test` or `db-start`" },
+                    "tool": { "type": "string", "description": "just, pnpm, npm, make… when two tools have a script with that name" },
+                    "where": where_schema
+                },
+                "required": ["repo", "script"]
+            },
+            "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": false }
         },
         {
             "name": "get_builtin_server",
@@ -199,6 +255,105 @@ fn call_tool_in(state: Published, name: &str, args: &Value) -> Result<Value, Str
             let skip = all.len().saturating_sub(lines);
             Ok(json!({ "process": process, "lines": all[skip..] }))
         }
+        "start_process" | "run_script" => {
+            let repo = find_repo(&state.repos, arg("repo").ok_or("repo is required")?)?;
+            let path = repo["path"].as_str().unwrap_or_default();
+            let target = arg("where").unwrap_or("tmux");
+            let (key, label, command, cwd) = if name == "start_process" {
+                let wanted = arg("process").ok_or("process is required")?;
+                let process = find_named(&repo["processes"], "name", wanted, "process")?;
+                // The supervisor knows the app's own runs now; the published
+                // view (a poll ago) only matters for outside processes.
+                let key = process["key"].as_str().unwrap_or_default();
+                let supervisor = supervisor_cell()
+                    .get()
+                    .ok_or("the app's supervisor is not available")?;
+                if supervisor.is_running(key) {
+                    return Err(match supervisor.tmux_session(key) {
+                        Some(session) => {
+                            format!("{wanted} is already running in tmux session {session}")
+                        }
+                        None => format!("{wanted} is already running in the background"),
+                    });
+                }
+                if process["up"] == true && process["started_by_app"] == false {
+                    return Err(format!(
+                        "{wanted} is already up outside the app ({}); stop it first",
+                        process["status"].as_str().unwrap_or("")
+                    ));
+                }
+                (
+                    process["key"].as_str().unwrap_or_default().to_string(),
+                    wanted.to_string(),
+                    process["command"].as_str().unwrap_or_default().to_string(),
+                    process["cwd"].as_str().unwrap_or(path).to_string(),
+                )
+            } else {
+                let wanted = arg("script").ok_or("script is required")?;
+                let scripts: Vec<&Value> = repo["scripts"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|s| s["name"] == wanted && arg("tool").is_none_or(|t| s["tool"] == t))
+                    .collect();
+                let script = match scripts.as_slice() {
+                    [one] => *one,
+                    [] => {
+                        return Err(format!(
+                            "no script \"{wanted}\" in {}; see get_repo's scripts",
+                            repo["name"].as_str().unwrap_or(path)
+                        ));
+                    }
+                    _ => {
+                        return Err(format!(
+                            "several tools have \"{wanted}\"; pass tool (just, pnpm, make…)"
+                        ));
+                    }
+                };
+                (
+                    crate::model::process_key(
+                        std::path::Path::new(path),
+                        &format!("script:{wanted}"),
+                    ),
+                    wanted.to_string(),
+                    script["command"].as_str().unwrap_or_default().to_string(),
+                    path.to_string(),
+                )
+            };
+            run_at(&key, &label, &command, std::path::Path::new(&cwd), target)
+        }
+        "stop_process" | "restart_process" => {
+            let repo = find_repo(&state.repos, arg("repo").ok_or("repo is required")?)?;
+            let path = repo["path"].as_str().unwrap_or_default();
+            let wanted = arg("process").ok_or("process is required")?;
+            let supervisor = supervisor_cell()
+                .get()
+                .ok_or("the app's supervisor is not available")?;
+            let process = find_named(&repo["processes"], "name", wanted, "process").ok();
+            let key = match process {
+                Some(p) => p["key"].as_str().unwrap_or_default().to_string(),
+                None => crate::model::process_key(std::path::Path::new(path), wanted),
+            };
+            if !supervisor.is_running(&key) {
+                return Err(format!(
+                    "{wanted} is not running from the app (processes started elsewhere are left alone)"
+                ));
+            }
+            if name == "stop_process" {
+                supervisor.stop(&key);
+                return Ok(json!({ "stopped": wanted }));
+            }
+            let process = process.ok_or(
+                "only services-file processes can be restarted; run the script again instead",
+            )?;
+            let command = process["command"].as_str().unwrap_or_default();
+            let cwd = process["cwd"].as_str().unwrap_or(path);
+            supervisor.restart(&key, command, std::path::Path::new(cwd))?;
+            Ok(json!({
+                "restarted": wanted,
+                "tmux_session": supervisor.tmux_session(&key),
+            }))
+        }
         "get_builtin_server" => {
             let status = crate::backend::status();
             let root = crate::backend::data_dir();
@@ -214,6 +369,64 @@ fn call_tool_in(state: Published, name: &str, args: &Value) -> Result<Value, Str
     }
 }
 
+fn find_named<'a>(
+    list: &'a Value,
+    field: &str,
+    wanted: &str,
+    what: &str,
+) -> Result<&'a Value, String> {
+    let items = list.as_array().map(Vec::as_slice).unwrap_or_default();
+    items
+        .iter()
+        .find(|item| item[field] == wanted)
+        .ok_or_else(|| {
+            let names: Vec<&str> = items.iter().filter_map(|i| i[field].as_str()).collect();
+            format!("no {what} \"{wanted}\"; there are: {}", names.join(", "))
+        })
+}
+
+/// Starts something for an agent: in tmux, in the background, or in
+/// Terminal.app.
+fn run_at(
+    key: &str,
+    label: &str,
+    command: &str,
+    cwd: &std::path::Path,
+    target: &str,
+) -> Result<Value, String> {
+    let supervisor = supervisor_cell()
+        .get()
+        .ok_or("the app's supervisor is not available")?;
+    match target {
+        "tmux" => {
+            let session = supervisor.start_tmux(key, command, cwd, label)?;
+            Ok(json!({
+                "started": label,
+                "where": "tmux",
+                "tmux_session": session,
+                "attach": crate::tmux_runs::attach_command(&session),
+                "logs": "get_process_logs, or attach to the session",
+            }))
+        }
+        "background" => {
+            supervisor.stop(key);
+            let pid = supervisor.start(key, command, cwd)?;
+            Ok(
+                json!({ "started": label, "where": "background", "pid": pid, "logs": "get_process_logs" }),
+            )
+        }
+        "terminal" => {
+            crate::launch::run_in_terminal(cwd, command)?;
+            Ok(
+                json!({ "started": label, "where": "Terminal.app", "note": "the app does not track or stop it" }),
+            )
+        }
+        other => Err(format!(
+            "where must be tmux, background or terminal, not \"{other}\""
+        )),
+    }
+}
+
 /// One JSON-RPC message in, at most one out (notifications get none).
 pub fn handle(request: &Value) -> Option<Value> {
     let id = request.get("id").cloned()?;
@@ -224,7 +437,7 @@ pub fn handle(request: &Value) -> Option<Value> {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": { "tools": { "listChanged": false } },
             "serverInfo": { "name": "fubbik-desktop", "version": env!("CARGO_PKG_VERSION") },
-            "instructions": "Read-only view of the fubbik desktop app: the user's registered repos, their running processes, AI agent sessions, worktrees and the Today list. For the knowledge base itself (chunks, plans, requirements) use the fubbik MCP server (`fubbik mcp`)."
+            "instructions": "The fubbik desktop app: the user's registered repos, their processes, AI agent sessions, worktrees and the Today list, and starting, stopping and restarting processes and scripts (by default in tmux sessions the user can attach from any terminal). For the knowledge base itself (chunks, plans, requirements) use the fubbik MCP server (`fubbik mcp`)."
         })),
         "ping" => Ok(json!({})),
         "tools/list" => Ok(json!({ "tools": tools() })),
@@ -315,14 +528,17 @@ async fn http_post(headers: axum::http::HeaderMap, body: String) -> axum::respon
         let error = json!({ "jsonrpc": "2.0", "id": null, "error": { "code": -32700, "message": "parse error" } });
         return (StatusCode::BAD_REQUEST, axum::Json(error)).into_response();
     };
-    // A batch is an array of messages.
-    let reply = match &message {
+    // Tools may wait (a stop waits out its grace period): off the server's thread.
+    let reply = tokio::task::spawn_blocking(move || match &message {
+        // A batch is an array of messages.
         Value::Array(batch) => {
             let replies: Vec<Value> = batch.iter().filter_map(handle).collect();
             (!replies.is_empty()).then_some(Value::Array(replies))
         }
         single => handle(single),
-    };
+    })
+    .await
+    .unwrap_or(None);
     match reply {
         Some(reply) => axum::Json(reply).into_response(),
         // Notifications and responses: accepted, nothing to say.

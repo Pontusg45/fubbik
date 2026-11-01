@@ -58,9 +58,26 @@ Starting the app is all fubbik needs. Docker, `fubbik serve` and `just dev` aren
   yourself then.
 - **Files:** `auth-secret` in the data folder signs session cookies (generated once).
 
+## Where processes and scripts run
+
+Starting a process ("Start", "Start all", a profile, the palette, the list keys) or a script asks where it should run:
+
+1. **In the background:** the app runs it, with output in Logs. It stops when the app quits.
+2. **In a tmux session:** a detached session on the app's tmux server, named `fk-run-<repo>-<name>`. Attach from any terminal with
+   `tmux -L fubbik attach -t fk-run-fubbik-api` (detach with ⌃B D), or from the Processes row's "Terminal" button. It keeps
+   running when the app quits, and the app finds it again on the next start.
+   - Stop and Restart act on the session (the process group gets SIGTERM, then SIGKILL after 2 s), and Restart reuses its name.
+   - Output is also piped to `…/fubbik/runs/<session>.log` for the Logs tab, and the pane stays after the command ends, so
+     the exit code stays readable.
+3. **In a terminal tab:** a tab in the Terminal view, where you can type into it.
+4. **In Terminal.app.**
+
+The prompt's "Always use this" (A) saves the choice as `run_in` in `desktop.toml`. Setup → "Start processes and scripts" changes
+it, or switches back to asking. Keys in the prompt: 1–4 choose, A toggles "always", esc cancels.
+
 ## MCP server
 
-Other agents can read what the app shows through its own MCP server (read-only):
+Other agents can read what the app shows, and start and stop its processes and scripts, through its own MCP server:
 
 - **HTTP:** `http://127.0.0.1:3100/mcp` while the app runs (MCP streamable HTTP with JSON replies; `FUBBIK_DESKTOP_MCP_PORT`
   moves it). Requests with a non-local `Origin` are refused. Claude Code: `claude mcp add --transport http fubbik-desktop
@@ -74,6 +91,9 @@ Other agents can read what the app shows through its own MCP server (read-only):
   - `list_sessions`: AI sessions, filtered by repo or state.
   - `get_process_logs`: output of a process or script started from the app.
   - `get_builtin_server`: the built-in server's status and paths.
+  - `start_process` and `run_script`: `where` is `tmux` (the default, attachable from any terminal), `background` or
+    `terminal`. The result names the tmux session and the attach command.
+  - `stop_process` and `restart_process`: only for what the app started; anything started elsewhere is left alone.
 - **How it works:** the UI publishes a JSON view after every poll (`src/ui/mcp_publish.rs`), and `src/mcp.rs` answers from it,
   so calls never wait on git or the network. For the knowledge base itself, use `fubbik mcp`.
 
@@ -285,6 +305,7 @@ src/model.rs       Status, ProcessState, DatabaseState, RepoSnapshot, roll-up
 src/poll.rs        one repo poll (runs on the background executor)
 src/launch.rs      editor, Terminal, notifications, login-shell PATH
 src/global_hotkey.rs  the system-wide summon key (Carbon RegisterEventHotKey)
+src/tmux_runs.rs   processes and scripts in tmux sessions (fk-run-*), their logs and exit codes
 src/mcp.rs         the app's MCP server (HTTP on :3100, --mcp stdio bridge), answering from ui/mcp_publish.rs
 src/backend.rs     the built-in server: Postgres cluster, in-process API, import, backups, server.json, --serve
 src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,

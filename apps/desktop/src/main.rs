@@ -25,6 +25,7 @@ mod supervisor;
 mod term;
 mod theme;
 mod tmux;
+mod tmux_runs;
 mod ui;
 mod worktree;
 
@@ -55,7 +56,16 @@ fn main() {
             eprintln!("fubbik: {error}; using the built-in colors");
         }
     }
-    let supervisor = Supervisor::new();
+    // With tmux, processes and scripts can also run in sessions on the app's
+    // tmux server (when you choose that), attachable from any terminal.
+    let supervisor = if tmux::available() {
+        Supervisor::with_runs(tmux_runs::Runs {
+            server: tmux::Server::fubbik(),
+            logs: backend::data_dir().join("runs"),
+        })
+    } else {
+        Supervisor::new()
+    };
     let embedded = config.as_ref().is_none_or(|c| c.embedded_backend());
 
     let args: Vec<String> = std::env::args().collect();

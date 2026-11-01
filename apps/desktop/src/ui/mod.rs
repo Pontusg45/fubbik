@@ -17,6 +17,7 @@ mod palette;
 mod plans;
 mod polling;
 mod preferences;
+mod run_prompt;
 mod scripts_view;
 mod setup_view;
 mod sidebar;
@@ -48,7 +49,7 @@ use crate::sessions::{AiSession, SessionIndex, SessionState};
 use crate::supervisor::{self, Supervisor};
 use crate::{claude_md, detect, gaps, git, launch, poll, setup, theme, tmux, worktree};
 
-use palette::{Command, Entry};
+use palette::{Command, Entry, RunTarget, RunWhat};
 use text::{KeyOutcome, TextField, apply_key};
 
 actions!(
@@ -434,6 +435,10 @@ pub struct Workspace {
     insights_days: i64,
     /// The quick-capture note overlay is open.
     capture_open: bool,
+    /// "Where should this run?" while open.
+    run_prompt: Option<RunWhat>,
+    /// The prompt's "always use this" checkbox.
+    run_prompt_remember: bool,
     /// The ⌘/ cheat sheet is open.
     cheat_sheet_open: bool,
     /// ⇧⌘E: j/k move through the repos until ⏎ or esc.
@@ -541,6 +546,8 @@ impl Workspace {
             recent_launches: Vec::new(),
             insights_days: 1,
             capture_open: false,
+            run_prompt: None,
+            run_prompt_remember: false,
             cheat_sheet_open: false,
             sidebar_nav: false,
             needs_cursor: 0,

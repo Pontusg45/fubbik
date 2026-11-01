@@ -988,6 +988,16 @@ fn the_script_filter_runs_its_first_match_and_remembers_it(cx: &mut TestAppConte
             .map(|s| s.name.clone())
             .collect();
         w.run_first_script_match(cx);
+        // The app asks where; the background is picked.
+        let what = w.run_prompt.clone().expect("the run prompt opens");
+        w.run(
+            Command::RunAt {
+                what,
+                target: RunTarget::Background,
+                remember: false,
+            },
+            cx,
+        );
         shown
     });
 
@@ -1001,4 +1011,37 @@ fn the_script_filter_runs_its_first_match_and_remembers_it(cx: &mut TestAppConte
     });
     assert_eq!(recent, Some(vec!["hello".to_string()]));
     assert!(log_key.is_some_and(|k| k.ends_with("script:hello")));
+}
+
+#[gpui::test]
+fn starting_asks_where_and_can_remember_the_answer(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a repo with one script and no saved choice
+    let repo = tempfile::tempdir().unwrap();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", repo.path().display().to_string()),
+    );
+    let script = Command::RunScript {
+        repo: 0,
+        name: "hello".into(),
+        command: "true".into(),
+    };
+
+    // When: it starts, A ticks "always", 1 picks the background
+    view.update(cx, |w, cx| w.run(script.clone(), cx));
+    let asked = view.read_with(cx, |w, _| w.run_prompt.is_some());
+    cx.simulate_keystrokes("a 1");
+    let (closed, saved) =
+        view.read_with(cx, |w, _| (w.run_prompt.is_none(), w.config.run_in.clone()));
+    view.update(cx, |w, cx| w.run(script.clone(), cx));
+    let asked_again = view.read_with(cx, |w, _| w.run_prompt.is_some());
+
+    // Then
+    assert!(asked, "the first start asks");
+    assert!(closed);
+    assert_eq!(saved.as_deref(), Some("background"));
+    assert!(!asked_again, "a saved choice is used without asking");
+    let on_disk = std::fs::read_to_string(config_file()).unwrap();
+    assert!(on_disk.contains("run_in = \"background\""), "{on_disk}");
 }

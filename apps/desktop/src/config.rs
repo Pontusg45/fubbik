@@ -41,6 +41,10 @@ pub struct AppConfig {
     /// `"ctrl-alt-f"` (the default when unset); `""` or `"none"` turns it off.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub global_hotkey: Option<String>,
+    /// Where processes and scripts start without asking: `"background"`,
+    /// `"tmux"`, `"tab"` or `"terminal"`. Unset: the app asks each time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_in: Option<String>,
     /// `"embedded"` (the default): the app runs the fubbik API and its own
     /// PostgreSQL; `"off"`: it starts neither (run `fubbik serve` yourself).
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -6,7 +6,13 @@ use super::*;
 impl Workspace {
     // ── commands ───────────────────────────────────────────────────────
 
-    pub(super) fn start_process(&mut self, repo: usize, index: usize, cx: &mut Context<Self>) {
+    pub(super) fn start_process(
+        &mut self,
+        repo: usize,
+        index: usize,
+        target: RunTarget,
+        cx: &mut Context<Self>,
+    ) {
         let Some(view) = self.repos.get(repo) else {
             return;
         };
@@ -38,14 +44,122 @@ impl Workspace {
             return;
         }
         self.user_stopped.remove(&state.key);
-        self.log_key = Some(state.key.clone());
-        let supervisor = self.supervisor.clone();
         let cwd = state.spec.cwd(&view.entry.path);
-        self.run_background(cx, "", move || {
-            supervisor
-                .start(&state.key, &state.spec.command, &cwd)
-                .map(|_| ())
-        });
+        self.launch_run(
+            state.key.clone(),
+            state.spec.name.clone(),
+            state.spec.command.clone(),
+            cwd,
+            target,
+            cx,
+        );
+    }
+
+    /// Starts a process or script where chosen.
+    pub(super) fn launch_run(
+        &mut self,
+        key: String,
+        label: String,
+        command: String,
+        cwd: PathBuf,
+        target: RunTarget,
+        cx: &mut Context<Self>,
+    ) {
+        match target {
+            RunTarget::Background => {
+                self.log_key = Some(key.clone());
+                let supervisor = self.supervisor.clone();
+                self.run_background(cx, "", move || {
+                    supervisor.stop(&key);
+                    supervisor.start(&key, &command, &cwd).map(|_| ())
+                });
+            }
+            RunTarget::Tmux => {
+                if !tmux::available() {
+                    self.show_error("tmux is not installed (brew install tmux)");
+                    return;
+                }
+                self.log_key = Some(key.clone());
+                let session = crate::tmux_runs::session_name(&key);
+                self.show_info(format!(
+                    "Running in tmux session {session} — attach from any terminal: {}",
+                    crate::tmux_runs::attach_command(&session)
+                ));
+                let supervisor = self.supervisor.clone();
+                self.run_background(cx, "", move || {
+                    supervisor
+                        .start_tmux(&key, &command, &cwd, &label)
+                        .map(|_| ())
+                });
+            }
+            RunTarget::Tab => {
+                let launch_label = label.clone();
+                self.launch(cwd, launch_label, command, false, cx);
+                self.tab = Tab::Terminal;
+            }
+            RunTarget::TerminalApp => {
+                self.run_background(cx, "Opened in Terminal.app", move || {
+                    launch::run_in_terminal(&cwd, &command)
+                });
+            }
+        }
+    }
+
+    /// Runs `what` where the saved choice says, or asks.
+    pub(super) fn ask_where(&mut self, what: RunWhat, cx: &mut Context<Self>) {
+        match self.config.run_in.as_deref().and_then(RunTarget::from_key) {
+            Some(target) => self.run_what(what, target, cx),
+            None => {
+                self.run_prompt = Some(what);
+                self.run_prompt_remember = false;
+            }
+        }
+    }
+
+    pub(super) fn run_what(&mut self, what: RunWhat, target: RunTarget, cx: &mut Context<Self>) {
+        match what {
+            RunWhat::Process { repo, index } => self.start_process(repo, index, target, cx),
+            RunWhat::All(repo) => self.start_all(repo, target, cx),
+            RunWhat::Profile { repo, profile } => self.start_profile(repo, &profile, target, cx),
+            RunWhat::Script {
+                repo,
+                name,
+                command,
+            } => self.run_script(repo, name, command, target, cx),
+        }
+    }
+
+    /// What `what` is, for the prompt's title.
+    pub(super) fn run_what_label(&self, what: &RunWhat) -> String {
+        let repo_name = |r: usize| {
+            self.repos
+                .get(r)
+                .map(|v| v.entry.name())
+                .unwrap_or_default()
+        };
+        match what {
+            RunWhat::Process { repo, index } => {
+                let process = self
+                    .repos
+                    .get(*repo)
+                    .and_then(|v| v.snapshot.as_ref())
+                    .and_then(|s| s.processes.get(*index));
+                match process {
+                    Some(p) => format!(
+                        "{} ({}) — {}",
+                        p.spec.name,
+                        p.spec.command,
+                        repo_name(*repo)
+                    ),
+                    None => repo_name(*repo),
+                }
+            }
+            RunWhat::All(repo) => format!("every stopped process — {}", repo_name(*repo)),
+            RunWhat::Profile { repo, profile } => {
+                format!("profile {profile} — {}", repo_name(*repo))
+            }
+            RunWhat::Script { repo, command, .. } => format!("{command} — {}", repo_name(*repo)),
+        }
     }
 
     pub(super) fn stop_process(&mut self, repo: usize, index: usize, cx: &mut Context<Self>) {
@@ -88,7 +202,7 @@ impl Workspace {
             return;
         };
         if !state.owned {
-            self.start_process(repo, index, cx);
+            self.ask_where(RunWhat::Process { repo, index }, cx);
             return;
         }
         let supervisor = self.supervisor.clone();
@@ -105,7 +219,7 @@ impl Workspace {
         self.run_background(cx, "Sent SIGTERM", move || supervisor::kill_external(pid));
     }
 
-    pub(super) fn start_all(&mut self, repo: usize, cx: &mut Context<Self>) {
+    pub(super) fn start_all(&mut self, repo: usize, target: RunTarget, cx: &mut Context<Self>) {
         let count = self
             .repos
             .get(repo)
@@ -117,7 +231,7 @@ impl Workspace {
                 .as_ref()
                 .is_some_and(|s| s.processes[index].status.is_up());
             if !up {
-                self.start_process(repo, index, cx);
+                self.start_process(repo, index, target, cx);
             }
         }
     }
@@ -317,10 +431,12 @@ impl Workspace {
     pub(super) fn run(&mut self, command: Command, cx: &mut Context<Self>) {
         match command {
             Command::SelectRepo(i) => self.select(i),
-            Command::StartProcess(r, p) => self.start_process(r, p, cx),
+            Command::StartProcess(r, p) => {
+                self.ask_where(RunWhat::Process { repo: r, index: p }, cx)
+            }
             Command::StopProcess(r, p) => self.stop_process(r, p, cx),
             Command::RestartProcess(r, p) => self.restart_process(r, p, cx),
-            Command::StartAll(r) => self.start_all(r, cx),
+            Command::StartAll(r) => self.ask_where(RunWhat::All(r), cx),
             Command::StopAll(r) => self.stop_all(r, cx),
             Command::ShowTab(tab) => {
                 if self.tab != tab {
@@ -450,8 +566,34 @@ impl Workspace {
                 repo,
                 name,
                 command,
-            } => self.run_script(repo, name, command, cx),
-            Command::StartProfile { repo, profile } => self.start_profile(repo, &profile, cx),
+            } => self.ask_where(
+                RunWhat::Script {
+                    repo,
+                    name,
+                    command,
+                },
+                cx,
+            ),
+            Command::StartProfile { repo, profile } => {
+                self.ask_where(RunWhat::Profile { repo, profile }, cx)
+            }
+            Command::RunAt {
+                what,
+                target,
+                remember,
+            } => {
+                self.run_prompt = None;
+                if remember {
+                    self.config.run_in = Some(target.key().to_string());
+                    self.save_config();
+                }
+                self.run_what(what, target, cx);
+            }
+            Command::SetRunIn(target) => {
+                self.config.run_in = target.map(|t| t.key().to_string());
+                self.save_config();
+            }
+            Command::AttachRun(session) => self.attach_run(session, cx),
             Command::SetMaxAgents(max) => {
                 self.config.max_agents = max;
                 self.save_config();
@@ -551,6 +693,7 @@ impl Workspace {
         repo: usize,
         name: String,
         command: String,
+        target: RunTarget,
         cx: &mut Context<Self>,
     ) {
         let Some(view) = self.repos.get(repo) else {
@@ -559,18 +702,23 @@ impl Workspace {
         let key = process_key(&view.entry.path, &format!("script:{name}"));
         let cwd = view.entry.path.clone();
         self.remember_script(repo, &name);
-        self.log_key = Some(key.clone());
         self.user_stopped.insert(key.clone());
-        let supervisor = self.supervisor.clone();
-        self.run_background(cx, "Running — see Logs", move || {
-            supervisor.stop(&key);
-            supervisor.start(&key, &command, &cwd).map(|_| ())
-        });
+        if target == RunTarget::Tmux && self.supervisor.is_running(&key) {
+            self.show_error(format!("{name} is still running in its tmux session"));
+            return;
+        }
+        self.launch_run(key, name, command, cwd, target, cx);
     }
 
     /// Starts a profile's processes and stops the repo's other processes
     /// that this app started.
-    pub(super) fn start_profile(&mut self, repo: usize, profile: &str, cx: &mut Context<Self>) {
+    pub(super) fn start_profile(
+        &mut self,
+        repo: usize,
+        profile: &str,
+        target: RunTarget,
+        cx: &mut Context<Self>,
+    ) {
         let Some(view) = self.repos.get(repo) else {
             return;
         };
@@ -589,7 +737,7 @@ impl Workspace {
             .collect();
         for (index, name, owned, up) in processes {
             match (wanted.contains(&name), owned, up) {
-                (true, _, false) => self.start_process(repo, index, cx),
+                (true, _, false) => self.start_process(repo, index, target, cx),
                 (false, true, _) => self.stop_process(repo, index, cx),
                 _ => {}
             }
