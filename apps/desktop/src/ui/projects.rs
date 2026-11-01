@@ -634,6 +634,23 @@ impl Workspace {
                 cx,
             ));
         }
+        // Commits not on the remote yet (a laptop is not a backup).
+        if let Some(Ok(git)) = &snapshot.git
+            && git.ahead > 0
+            && snapshot.remote.is_some()
+        {
+            tags = tags.child(link_pill(
+                id("unpushed"),
+                format!("↑{} unpushed", git.ahead),
+                if git.ahead >= 10 {
+                    theme::status(Status::Degraded)
+                } else {
+                    theme::text_muted()
+                },
+                focus(Tab::Changes),
+                cx,
+            ));
+        }
         if !snapshot.overlaps.is_empty() {
             tags = tags.child(link_pill(
                 id("overlaps"),

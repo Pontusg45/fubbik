@@ -423,6 +423,51 @@ impl Workspace {
 
     fn render_header(&self, index: usize, cx: &mut Context<Self>) -> impl IntoElement {
         let repo = &self.repos[index];
+        // Sync with the remote: Fetch, Pull (fast-forward), Push (asks).
+        let mut sync_buttons: Vec<AnyElement> = Vec::new();
+        if let Some(snapshot) = repo.snapshot.as_ref().filter(|s| s.remote.is_some())
+            && let Some(Ok(git)) = &snapshot.git
+        {
+            match repo.sync.busy {
+                Some(busy) => {
+                    sync_buttons.push(disabled_button("sync-busy", busy).into_any_element())
+                }
+                None => {
+                    if git.behind > 0 {
+                        sync_buttons.push(
+                            button("sync-pull", format!("↓ Pull {}", git.behind))
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.run(Command::Pull(index), cx)
+                                }))
+                                .into_any_element(),
+                        );
+                    }
+                    if git.ahead > 0 {
+                        sync_buttons.push(
+                            button("sync-push", format!("↑ Push {}", git.ahead))
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.run(Command::Push(index), cx)
+                                }))
+                                .into_any_element(),
+                        );
+                    }
+                    sync_buttons.push(
+                        button(
+                            "sync-fetch",
+                            if repo.sync.fetch_error.is_some() {
+                                "Fetch ⚠"
+                            } else {
+                                "Fetch"
+                            },
+                        )
+                        .on_click(
+                            cx.listener(move |this, _, _, cx| this.run(Command::Fetch(index), cx)),
+                        )
+                        .into_any_element(),
+                    );
+                }
+            }
+        }
         let status = repo
             .snapshot
             .as_ref()
@@ -547,6 +592,7 @@ impl Workspace {
                                 .into_any_element()
                         })
                     })
+                    .children(sync_buttons)
                     .child(button("open-editor", "Editor").on_click(
                         cx.listener(move |this, _, _, cx| this.run(Command::OpenEditor(index), cx)),
                     ))

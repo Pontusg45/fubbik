@@ -25,6 +25,7 @@ mod run_prompt;
 mod scripts_view;
 mod setup_view;
 mod sidebar;
+mod sync;
 mod tasks;
 mod terminal_view;
 mod terminals;
@@ -344,6 +345,8 @@ struct RepoView {
     auditing: bool,
     /// Pull requests and their checks, by branch (GitHub remotes only).
     prs: prs::RepoPrs,
+    /// Background fetch and pull state.
+    sync: sync::SyncState,
 }
 
 impl RepoView {
@@ -359,6 +362,7 @@ impl RepoView {
             insights_refreshing: false,
             auditing: false,
             prs: Default::default(),
+            sync: Default::default(),
             audit: None,
         }
     }

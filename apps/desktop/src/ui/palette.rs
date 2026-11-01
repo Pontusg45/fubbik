@@ -278,6 +278,12 @@ pub enum Command {
     DismissAlert(String),
     /// A tracker todo is done.
     CompleteNote(String),
+    /// `git fetch` now.
+    Fetch(usize),
+    /// Fast-forward to the upstream (never a rebase or merge).
+    Pull(usize),
+    /// Asks, then pushes in a terminal tab.
+    Push(usize),
 }
 
 #[derive(Debug, Clone)]

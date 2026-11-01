@@ -157,6 +157,68 @@ pub fn commit(repo: &Path, message: &str) -> Result<String, String> {
     git(repo, &["log", "-1", "--format=%h %s"]).map(|s| s.trim().to_string())
 }
 
+/// Runs git with prompts off: a background fetch must never wait on a
+/// password or a host-key question.
+fn git_quiet(repo: &Path, args: &[&str]) -> Result<String, String> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(repo)
+        .args(args)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_SSH_COMMAND", "ssh -o BatchMode=yes")
+        .output()
+        .map_err(|e| format!("git: {e}"))?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+/// `git fetch --prune` (all remotes' branches; nothing local changes).
+pub fn fetch(repo: &Path) -> Result<(), String> {
+    git_quiet(repo, &["fetch", "--quiet", "--prune"]).map(|_| ())
+}
+
+/// The current branch's upstream (`origin/main`), if it has one.
+pub fn upstream(repo: &Path) -> Option<String> {
+    git(
+        repo,
+        &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+    )
+    .ok()
+    .map(|s| s.trim().to_string())
+    .filter(|s| !s.is_empty())
+}
+
+/// Fetches, then fast-forwards the current branch to its upstream. Never
+/// rebases or merges: a branch that has diverged is left alone, with a
+/// message saying so. Returns the new head (`abc1234 subject`).
+pub fn pull_ff(repo: &Path) -> Result<String, String> {
+    let upstream = upstream(repo).ok_or("this branch has no upstream to pull from")?;
+    fetch(repo)?;
+    git_quiet(repo, &["merge", "--ff-only", "--quiet", "@{u}"]).map_err(|e| {
+        if e.contains("Not possible to fast-forward")
+            || e.contains("fatal: Not possible")
+            || e.contains("diverg")
+        {
+            format!("{upstream} and this branch have diverged: merge or rebase it yourself")
+        } else {
+            e
+        }
+    })?;
+    git(repo, &["log", "-1", "--format=%h %s"]).map(|s| s.trim().to_string())
+}
+
+/// The command that pushes the current branch: `git push`, or with
+/// `-u origin <branch>` the first time.
+pub fn push_command(repo: &Path, branch: &str) -> String {
+    if upstream(repo).is_some() {
+        "git push".into()
+    } else {
+        format!("git push -u origin '{}'", branch.replace('\'', ""))
+    }
+}
+
 /// The repo root containing `path`.
 pub fn toplevel(path: &Path) -> Option<std::path::PathBuf> {
     git(path, &["rev-parse", "--show-toplevel"])
@@ -194,6 +256,50 @@ pub fn web_url(remote: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pull_fast_forwards_and_refuses_to_merge_a_diverged_branch() {
+        // Given: an "origin" repo and a clone of it, origin one commit ahead
+        let dir = tempfile::tempdir().unwrap();
+        let origin = dir.path().join("origin");
+        let clone = dir.path().join("clone");
+        let run = |repo: &Path, args: &[&str]| git(repo, args).unwrap();
+        std::fs::create_dir_all(&origin).unwrap();
+        run(&origin, &["init", "-q", "-b", "main"]);
+        run(&origin, &["config", "user.email", "t@example.com"]);
+        run(&origin, &["config", "user.name", "t"]);
+        std::fs::write(origin.join("a.txt"), "1\n").unwrap();
+        run(&origin, &["add", "a.txt"]);
+        run(&origin, &["commit", "-q", "-m", "one"]);
+        run(
+            dir.path(),
+            &["clone", "-q", origin.to_str().unwrap(), "clone"],
+        );
+        run(&clone, &["config", "user.email", "t@example.com"]);
+        run(&clone, &["config", "user.name", "t"]);
+        std::fs::write(origin.join("a.txt"), "2\n").unwrap();
+        run(&origin, &["commit", "-qam", "two"]);
+
+        // When: pull (a fast-forward), then diverge and pull again
+        let pulled = pull_ff(&clone);
+        std::fs::write(origin.join("a.txt"), "3\n").unwrap();
+        run(&origin, &["commit", "-qam", "three"]);
+        std::fs::write(clone.join("b.txt"), "local\n").unwrap();
+        run(&clone, &["add", "b.txt"]);
+        run(&clone, &["commit", "-qm", "local"]);
+        let diverged = pull_ff(&clone);
+        let head = run(&clone, &["log", "-1", "--format=%s"]);
+        let push_known = push_command(&clone, "main");
+        run(&clone, &["checkout", "-qb", "feat"]);
+        let push_new = push_command(&clone, "feat");
+
+        // Then
+        assert!(pulled.unwrap().ends_with("two"));
+        assert!(diverged.unwrap_err().contains("diverged"));
+        assert_eq!(head.trim(), "local", "nothing was merged or rebased");
+        assert_eq!(push_known, "git push");
+        assert_eq!(push_new, "git push -u origin 'feat'");
+    }
 
     #[test]
     fn parses_staged_unstaged_untracked_and_renames() {

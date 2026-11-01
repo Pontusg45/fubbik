@@ -943,6 +943,9 @@ impl Workspace {
                         Command::OpenUrl(url) => cx.open_url(&url),
             Command::FocusTerminal(id) => self.focus_terminal_tab(id),
             Command::SetupTracker => self.setup_tracker(),
+            Command::Fetch(repo) => self.fetch_due(Some(repo), cx),
+            Command::Pull(repo) => self.pull(repo, cx),
+            Command::Push(repo) => self.push(repo, cx),
             Command::DismissAlert(id) => {
                 if let Err(error) = crate::tracker::dismiss(&id) {
                     self.show_error(error);

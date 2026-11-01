@@ -305,6 +305,11 @@ start = "…"                        # optional, overrides the compose default; 
 - **Changes** (⇧⌘G): the changed files of the repo or any of its worktrees, staged and not, with each file's colored diff;
   stage and unstage files (or all), and commit what is staged. Beside the commit box: the fubbik chunks related to the
   staged files (`fubbik --json check-files --staged`), so the knowledge for a change is in view before it is committed.
+- **Sync with the remote** (`src/ui/sync.rs`): every repo with a remote is fetched quietly every 15 min (prompts off,
+  so it never hangs on a password), so ahead/behind is current. The repo header shows "↓ Pull N" (fetch, then
+  `git merge --ff-only @{u}`: never a rebase or merge — a diverged branch is left alone with a message), "↑ Push N"
+  (asks first, then runs `git push`, or `git push -u origin <branch>` the first time, in a terminal tab where hooks
+  and credential prompts show) and "Fetch". Home cards show "↑N unpushed" (amber from 10). Also in ⌘K.
 - **Pull requests** (`gh`, repos with a GitHub remote, read every 3 min and on Refresh): each worktree's branch shows its
   latest PR as a pill (checks, review, conflicts) with a "PR #n" button; the Changes tab shows it for the checkout picked.
   An open PR with failing checks, changes requested or conflicts is a "Needs you" line on Today.

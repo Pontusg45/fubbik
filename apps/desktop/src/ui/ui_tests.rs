@@ -1211,3 +1211,71 @@ fn the_changes_tab_stages_and_commits(cx: &mut TestAppContext) {
         .unwrap();
     assert_eq!(String::from_utf8_lossy(&log.stdout).trim(), "second");
 }
+
+#[gpui::test]
+fn push_asks_first_and_names_the_commits(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a clone two commits ahead of its origin
+    let dir = tempfile::tempdir().unwrap();
+    let origin = dir.path().join("origin");
+    let clone = dir.path().join("clone");
+    let git = |repo: &std::path::Path, args: &[&str]| {
+        let ok = std::process::Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(args)
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "git {args:?}");
+    };
+    std::fs::create_dir_all(&origin).unwrap();
+    git(&origin, &["init", "-q", "-b", "main"]);
+    git(&origin, &["config", "user.email", "t@example.com"]);
+    git(&origin, &["config", "user.name", "t"]);
+    std::fs::write(origin.join("a.txt"), "1\n").unwrap();
+    git(&origin, &["add", "a.txt"]);
+    git(&origin, &["commit", "-qm", "one"]);
+    git(
+        dir.path(),
+        &["clone", "-q", origin.to_str().unwrap(), "clone"],
+    );
+    git(&clone, &["config", "user.email", "t@example.com"]);
+    git(&clone, &["config", "user.name", "t"]);
+    for n in ["two", "three"] {
+        std::fs::write(clone.join("a.txt"), format!("{n}\n")).unwrap();
+        git(&clone, &["commit", "-qam", n]);
+    }
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", clone.display().to_string()),
+    );
+    view.update(cx, |w, cx| w.poll_now(false, cx));
+    cx.run_until_parked();
+
+    // When
+    view.update(cx, |w, cx| w.run(Command::Push(0), cx));
+    let asked = view.read_with(cx, |w, _| {
+        w.confirm
+            .as_ref()
+            .map(|c| (c.title.clone(), c.action.clone()))
+    });
+    cx.simulate_keystrokes("escape");
+    let origin_head = std::process::Command::new("git")
+        .arg("-C")
+        .arg(&origin)
+        .args(["log", "-1", "--format=%s"])
+        .output()
+        .unwrap();
+
+    // Then
+    assert_eq!(
+        asked,
+        Some(("Push 2 commit(s) on main?".to_string(), "Push".to_string()))
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&origin_head.stdout).trim(),
+        "one",
+        "nothing pushed"
+    );
+}

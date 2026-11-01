@@ -237,6 +237,7 @@ impl Workspace {
         self.report_test_exits(cx);
         self.publish_for_mcp();
         self.refresh_prs(false, cx);
+        self.fetch_due(None, cx);
         self.announce_alerts();
     }
 

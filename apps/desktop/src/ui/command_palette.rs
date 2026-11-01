@@ -351,6 +351,24 @@ impl Workspace {
                 label: format!("Open on GitHub — {name}"),
                 command: Command::OpenGitHub(r),
             });
+            if let Some(Ok(git)) = view.snapshot.as_ref().and_then(|s| s.git.as_ref()) {
+                entries.push(Entry {
+                    label: format!("Fetch — {name}"),
+                    command: Command::Fetch(r),
+                });
+                if git.behind > 0 {
+                    entries.push(Entry {
+                        label: format!("Pull {} commit(s), fast-forward — {name}", git.behind),
+                        command: Command::Pull(r),
+                    });
+                }
+                if git.ahead > 0 {
+                    entries.push(Entry {
+                        label: format!("Push {} commit(s)… — {name}", git.ahead),
+                        command: Command::Push(r),
+                    });
+                }
+            }
             entries.push(Entry {
                 label: format!("Remove repo — {name}"),
                 command: Command::RemoveRepo(r),
