@@ -31,6 +31,16 @@ async-channel = "2"
 # Re-polls when services files or Claude's live-session registry change.
 notify = "8"
 
+# The embedded backend: the fubbik API in-process (`backend.rs`), from the
+# main workspace's crates. Their sqlx queries build from the checked-in
+# `.sqlx/` data (SQLX_OFFLINE, set in .cargo/config.toml).
+fubbik-api = { path = "../../crates/fubbik-api" }
+fubbik-db = { path = "../../crates/fubbik-db" }
+fubbik-config = { path = "../../crates/fubbik-config" }
+fubbik-ai = { path = "../../crates/fubbik-ai" }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros"] }
+
 [dev-dependencies]
 tempfile = "3"
 # GPUI's test harness (TestAppContext, simulated keystrokes) for the UI tests.

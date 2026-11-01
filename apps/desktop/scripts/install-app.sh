@@ -21,7 +21,8 @@ fi
 # (brew install zig@0.15, keg-only).
 export PATH="/opt/homebrew/opt/zig@0.15/bin:$PATH"
 echo "Building release binary…"
-cargo build --release --manifest-path "$app_root/Cargo.toml"
+# The embedded backend links fubbik-db; build its sqlx queries from .sqlx/.
+SQLX_OFFLINE=true cargo build --release --manifest-path "$app_root/Cargo.toml"
 # Cargo honors CARGO_TARGET_DIR (just exports one); fall back to the crate's own target/.
 binary="${CARGO_TARGET_DIR:-$app_root/target}/release/fubbik-desktop"
 [[ -x "$binary" ]] || binary="$app_root/target/release/fubbik-desktop"
@@ -46,6 +47,50 @@ rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary" "$app/Contents/MacOS/fubbik-desktop"
 cp "$work/AppIcon.icns" "$app/Contents/Resources/AppIcon.icns"
+# The embedded backend's PostgreSQL: a trimmed copy of Postgres.app 18 (it
+# ships pgvector and is relocatable: its binaries load libraries through
+# @loader_path). Only the server tools, the libraries they load, and
+# Postgres's own lib/ and share/ trees; PostGIS and GDAL stay behind.
+# Override the source with FUBBIK_POSTGRES_SRC (a Versions/<n> folder).
+pg_src="${FUBBIK_POSTGRES_SRC:-/Applications/Postgres.app/Contents/Versions/18}"
+if [[ -x "$pg_src/bin/postgres" && -f "$pg_src/share/postgresql/extension/vector.control" ]]; then
+  echo "Bundling PostgreSQL from ${pg_src}…"
+  pg_dest="$app/Contents/Resources/postgres"
+  mkdir -p "$pg_dest/bin" "$pg_dest/lib"
+  tools=(postgres initdb pg_ctl pg_config pg_dump pg_restore)
+  for tool in "${tools[@]}"; do cp -p "$pg_src/bin/$tool" "$pg_dest/bin/"; done
+  # Every @loader_path/../lib dylib the tools need, followed transitively.
+  queue=()
+  for tool in "${tools[@]}"; do queue+=("$pg_src/bin/$tool"); done
+  seen=" "
+  while ((${#queue[@]})); do
+    file="${queue[0]}"; queue=("${queue[@]:1}")
+    while read -r lib; do
+      name="${lib##*/}"
+      [[ "$seen" == *" $name "* ]] && continue
+      seen+="$name "
+      cp -p "$pg_src/lib/$name" "$pg_dest/lib/"
+      queue+=("$pg_src/lib/$name")
+    done < <(otool -L "$file" | awk '/@loader_path\/(\.\.\/lib\/)?[^ ]+\.dylib/ {print $1}')
+  done
+  cp -Rp "$pg_src/lib/postgresql" "$pg_dest/lib/"
+  mkdir -p "$pg_dest/share"
+  cp -Rp "$pg_src/share/postgresql" "$pg_dest/share/"
+  "$pg_dest/bin/postgres" --version >/dev/null
+  echo "  $(du -sh "$pg_dest" | cut -f1) — $("$pg_dest/bin/postgres" --version)"
+else
+  echo "No Postgres.app 18 with pgvector at $pg_src: the app will look for one when it starts."
+fi
+
+# The web UI, served by the embedded API at http://127.0.0.1:3000.
+web_dist="$app_root/../web/dist"
+if [[ -f "$web_dist/index.html" ]]; then
+  cp -Rp "$web_dist" "$app/Contents/Resources/web"
+  echo "Bundled the web UI from apps/web/dist."
+else
+  echo "No apps/web/dist build (run: pnpm build): the embedded API serves only /api."
+fi
+
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

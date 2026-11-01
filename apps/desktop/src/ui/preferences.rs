@@ -142,6 +142,32 @@ impl Workspace {
                 }))
                 .into_any_element(),
             ),
+            choice_row(
+                "Built-in server (API + PostgreSQL)",
+                crate::backend::status().label(),
+                toggle(
+                    "pref-backend",
+                    self.config.embedded_backend(),
+                    Command::SetEmbeddedBackend(!self.config.embedded_backend()),
+                    cx,
+                )
+                .into_any_element(),
+            ),
+            choice_row(
+                "Import existing data",
+                format!(
+                    "Copy {} into the built-in database on the next start (it replaces the built-in data)",
+                    crate::backend::DEFAULT_IMPORT_SOURCE
+                ),
+                button("pref-import", "Import on restart")
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.run(
+                            Command::ImportDatabase(crate::backend::DEFAULT_IMPORT_SOURCE.into()),
+                            cx,
+                        )
+                    }))
+                    .into_any_element(),
+            ),
             field_row(
                 "fubbik server",
                 Field::FubbikUrl,

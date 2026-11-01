@@ -73,7 +73,7 @@ alias dev-web := start-web
 # Start the GPUI desktop app (its own cargo workspace in apps/desktop).
 [group('Development')]
 start-desktop:
-    PATH="/opt/homebrew/opt/zig@0.15/bin:$PATH" cargo run --manifest-path apps/desktop/Cargo.toml
+    PATH="/opt/homebrew/opt/zig@0.15/bin:$PATH" SQLX_OFFLINE=true cargo run --manifest-path apps/desktop/Cargo.toml
 
 alias desktop := start-desktop
 

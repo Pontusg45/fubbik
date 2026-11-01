@@ -3,11 +3,27 @@ on:
     push:
         paths:
             - "apps/desktop/**"
+            # The embedded backend links these crates and their sqlx data.
+            - "crates/fubbik-api/**"
+            - "crates/fubbik-db/**"
+            - "crates/fubbik-core/**"
+            - "crates/fubbik-contracts/**"
+            - "crates/fubbik-config/**"
+            - "crates/fubbik-ai/**"
+            - ".sqlx/**"
             - ".github/workflows/desktop.yml"
             - "rust-toolchain.toml"
     pull_request:
         paths:
             - "apps/desktop/**"
+            # The embedded backend links these crates and their sqlx data.
+            - "crates/fubbik-api/**"
+            - "crates/fubbik-db/**"
+            - "crates/fubbik-core/**"
+            - "crates/fubbik-contracts/**"
+            - "crates/fubbik-config/**"
+            - "crates/fubbik-ai/**"
+            - ".sqlx/**"
             - ".github/workflows/desktop.yml"
             - "rust-toolchain.toml"
 
