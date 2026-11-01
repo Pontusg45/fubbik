@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop -- Each sort click depends on the state produced by the previous click. */
 import { expect, type Locator } from "@playwright/test";
-import { reportStep } from "../reporting";
 
+import { reportStep } from "../reporting";
 import { Button, Checkbox, Surface, named, type Name } from "./core";
 
 export interface Column {

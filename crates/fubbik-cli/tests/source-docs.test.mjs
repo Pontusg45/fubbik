@@ -77,13 +77,22 @@ for (const fixtureName of ["source-docs", "source-docs-forms"]) {
         const fixture = fileURLToPath(new URL(`./fixtures/${fixtureName}`, import.meta.url));
         try {
             // When the legacy JSDoc path and shipped Rust CLI extract the same source
-            const legacy = spawnSync("node", [
-                fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
-                fixture, "javascript", "fixture", temporary
-            ], { encoding: "utf8" });
-            const native = spawnSync(rustBinary, [
-                "docs", "extract", fixture, "--language", "javascript", "--project", "fixture", "--preview"
-            ], { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } });
+            const legacy = spawnSync(
+                "node",
+                [
+                    fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
+                    fixture,
+                    "javascript",
+                    "fixture",
+                    temporary
+                ],
+                { encoding: "utf8" }
+            );
+            const native = spawnSync(
+                rustBinary,
+                ["docs", "extract", fixture, "--language", "javascript", "--project", "fixture", "--preview"],
+                { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } }
+            );
 
             // Then stable symbol keys, signatures, documentation, and locations agree exactly
             assert.equal(legacy.status, 0, legacy.stderr);
@@ -101,13 +110,22 @@ test("native TypeScript extraction preserves the TypeDoc symbol contract", () =>
     const fixture = fileURLToPath(new URL("./fixtures/source-docs", import.meta.url));
     try {
         // When the legacy and native paths extract the same typed function
-        const legacy = spawnSync("node", [
-            fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
-            fixture, "typescript", "fixture", temporary
-        ], { encoding: "utf8" });
-        const native = spawnSync(rustBinary, [
-            "docs", "extract", fixture, "--language", "typescript", "--project", "fixture", "--preview"
-        ], { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } });
+        const legacy = spawnSync(
+            "node",
+            [
+                fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
+                fixture,
+                "typescript",
+                "fixture",
+                temporary
+            ],
+            { encoding: "utf8" }
+        );
+        const native = spawnSync(
+            rustBinary,
+            ["docs", "extract", fixture, "--language", "typescript", "--project", "fixture", "--preview"],
+            { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } }
+        );
 
         // Then symbol keys, signatures, comments, and locations agree exactly
         assert.equal(legacy.status, 0, legacy.stderr);
@@ -126,13 +144,15 @@ test("native Java extraction preserves the Javadoc symbol contract", () => {
         copyFileSync(new URL("./fixtures/legacy-source-docs/FubbikDoclet.java", import.meta.url), join(temporary, "FubbikDoclet.java"));
 
         // When the legacy and native paths extract the same declarations
-        const legacy = spawnSync("node", [
-            fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
-            fixture, "java", "fixture", temporary
-        ], { encoding: "utf8" });
-        const native = spawnSync(rustBinary, [
-            "docs", "extract", fixture, "--language", "java", "--project", "fixture", "--preview"
-        ], { encoding: "utf8", env: { ...process.env, PATH: "/usr/bin:/bin" } });
+        const legacy = spawnSync(
+            "node",
+            [fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)), fixture, "java", "fixture", temporary],
+            { encoding: "utf8" }
+        );
+        const native = spawnSync(rustBinary, ["docs", "extract", fixture, "--language", "java", "--project", "fixture", "--preview"], {
+            encoding: "utf8",
+            env: { ...process.env, PATH: "/usr/bin:/bin" }
+        });
 
         // Then overload keys, signatures, comments, and source lines agree exactly
         assert.equal(legacy.status, 0, legacy.stderr);
@@ -151,7 +171,13 @@ test("failed source parsing never produces a complete manifest", () => {
         // When
         const result = spawnSync(
             "node",
-            [fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)), temporary, "javascript", "fixture", temporary],
+            [
+                fileURLToPath(new URL("./fixtures/legacy-source-docs/extract.mjs", import.meta.url)),
+                temporary,
+                "javascript",
+                "fixture",
+                temporary
+            ],
             { encoding: "utf8" }
         );
         // Then

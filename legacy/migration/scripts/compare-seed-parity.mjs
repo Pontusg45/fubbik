@@ -9,19 +9,47 @@ if (!legacy || !native) {
 }
 
 const tables = [
-    "chunk_type", "connection_relation", "chunk_template", "space", "space_code_metadata",
-    "tag_type", "tag", "chunk", "chunk_tag", "chunk_space", "chunk_connection",
-    "chunk_applies_to", "chunk_file_ref", "use_case", "requirement", "requirement_chunk",
-    "plan", "plan_task", "plan_analyze_item", "plan_requirement", "agent_run",
-    "plan_task_claim", "coordination_entry", "document", "vocabulary_entry",
-    "workspace", "workspace_space", "collection", "behavior_matrix", "behavior_dimension",
-    "behavior_rule", "behavior_cell", "behavior_cell_requirement"
+    "chunk_type",
+    "connection_relation",
+    "chunk_template",
+    "space",
+    "space_code_metadata",
+    "tag_type",
+    "tag",
+    "chunk",
+    "chunk_tag",
+    "chunk_space",
+    "chunk_connection",
+    "chunk_applies_to",
+    "chunk_file_ref",
+    "use_case",
+    "requirement",
+    "requirement_chunk",
+    "plan",
+    "plan_task",
+    "plan_analyze_item",
+    "plan_requirement",
+    "agent_run",
+    "plan_task_claim",
+    "coordination_entry",
+    "document",
+    "vocabulary_entry",
+    "workspace",
+    "workspace_space",
+    "collection",
+    "behavior_matrix",
+    "behavior_dimension",
+    "behavior_rule",
+    "behavior_cell",
+    "behavior_cell_requirement"
 ];
 
 function query(url, sql) {
-    return JSON.parse(execFileSync("psql", [url, "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c", sql], {
-        encoding: "utf8"
-    }).trim());
+    return JSON.parse(
+        execFileSync("psql", [url, "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c", sql], {
+            encoding: "utf8"
+        }).trim()
+    );
 }
 
 const countsSql = `SELECT jsonb_build_object(${tables.map(table => `'${table}', (SELECT count(*) FROM ${table})`).join(", ")})`;

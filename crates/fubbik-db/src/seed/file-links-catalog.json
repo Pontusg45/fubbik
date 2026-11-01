@@ -1,265 +1,265 @@
 {
-  "applies": [
-    {
-      "chunkName": "arch",
-      "pattern": "**/*",
-      "note": "Applies to the whole repo"
-    },
-    {
-      "chunkName": "schema-chunks",
-      "pattern": "packages/db/src/schema/chunk.ts"
-    },
-    {
-      "chunkName": "schema-connection",
-      "pattern": "packages/db/src/schema/chunk.ts"
-    },
-    {
-      "chunkName": "schema-catalogs",
-      "pattern": "packages/db/src/schema/chunk-type.ts"
-    },
-    {
-      "chunkName": "schema-catalogs",
-      "pattern": "packages/db/src/schema/connection-relation.ts"
-    },
-    {
-      "chunkName": "schema-plan",
-      "pattern": "packages/db/src/schema/plan.ts"
-    },
-    {
-      "chunkName": "repo-pattern",
-      "pattern": "legacy/api/src/**/service.ts"
-    },
-    {
-      "chunkName": "repo-pattern",
-      "pattern": "packages/db/src/repository/**"
-    },
-    {
-      "chunkName": "typed-errors",
-      "pattern": "legacy/api/src/errors.ts"
-    },
-    {
-      "chunkName": "typed-errors",
-      "pattern": "legacy/api/src/index.ts"
-    },
-    {
-      "chunkName": "eden-treaty",
-      "pattern": "legacy/api/src/index.ts"
-    },
-    {
-      "chunkName": "eden-treaty",
-      "pattern": "apps/web/src/utils/api.ts"
-    },
-    {
-      "chunkName": "env-validation",
-      "pattern": "packages/env/**"
-    },
-    {
-      "chunkName": "catalog-pattern",
-      "pattern": "crates/fubbik-api/src/vocabularies/**"
-    },
-    {
-      "chunkName": "catalog-pattern",
-      "pattern": "apps/web/src/features/vocabularies/**"
-    },
-    {
-      "chunkName": "scope-jsonb",
-      "pattern": "packages/db/src/schema/chunk.ts"
-    },
-    {
-      "chunkName": "tanstack-start",
-      "pattern": "apps/web/src/routes/**"
-    },
-    {
-      "chunkName": "feature-structure",
-      "pattern": "apps/web/src/features/**"
-    },
-    {
-      "chunkName": "base-ui-render",
-      "pattern": "apps/web/src/components/ui/**"
-    },
-    {
-      "chunkName": "react-flow-graph",
-      "pattern": "apps/web/src/features/graph/**"
-    },
-    {
-      "chunkName": "graph-layout",
-      "pattern": "apps/web/src/features/graph/force-layout.ts"
-    },
-    {
-      "chunkName": "graph-filter-dialog",
-      "pattern": "apps/web/src/features/graph/graph-filter-*.tsx"
-    },
-    {
-      "chunkName": "graph-perf",
-      "pattern": "apps/web/src/features/graph/**"
-    },
-    {
-      "chunkName": "mermaid-export",
-      "pattern": "apps/web/src/features/graph/mermaid-export*"
-    },
-    {
-      "chunkName": "ollama",
-      "pattern": "crates/fubbik-api/src/ai/**"
-    },
-    {
-      "chunkName": "embeddings",
-      "pattern": "packages/db/src/repository/semantic.ts"
-    },
-    {
-      "chunkName": "semantic-search",
-      "pattern": "crates/fubbik-api/src/chunks/routes.rs"
-    },
-    {
-      "chunkName": "semantic-neighbors",
-      "pattern": "apps/web/src/features/chunks/detail/chunk-neighbors.tsx"
-    },
-    {
-      "chunkName": "enrichment",
-      "pattern": "crates/fubbik-api/src/enrich/**"
-    },
-    {
-      "chunkName": "context-export",
-      "pattern": "crates/fubbik-api/src/context_export/**"
-    },
-    {
-      "chunkName": "chunks-concept",
-      "pattern": "packages/db/src/schema/chunk.ts"
-    },
-    {
-      "chunkName": "connections-concept",
-      "pattern": "packages/db/src/schema/chunk.ts"
-    },
-    {
-      "chunkName": "tags-concept",
-      "pattern": "packages/db/src/schema/tag.ts"
-    },
-    {
-      "chunkName": "health-scores",
-      "pattern": "crates/fubbik-api/src/chunks/service.rs"
-    },
-    {
-      "chunkName": "staleness-detection",
-      "pattern": "packages/db/src/schema/staleness.ts"
-    },
-    {
-      "chunkName": "applies-to-refs",
-      "pattern": "packages/db/src/schema/applies-to.ts"
-    },
-    {
-      "chunkName": "applies-to-refs",
-      "pattern": "packages/db/src/schema/file-ref.ts"
-    },
-    {
-      "chunkName": "decision-context",
-      "pattern": "packages/db/src/schema/chunk.ts"
-    },
-    {
-      "chunkName": "plans-overview",
-      "pattern": "packages/db/src/schema/plan.ts"
-    },
-    {
-      "chunkName": "plans-overview",
-      "pattern": "apps/web/src/routes/plans.*.tsx"
-    },
-    {
-      "chunkName": "analyze-items",
-      "pattern": "crates/fubbik-api/src/plans/service.rs"
-    },
-    {
-      "chunkName": "task-dependencies",
-      "pattern": "packages/db/src/repository/plan.ts"
-    },
-    {
-      "chunkName": "plan-metadata",
-      "pattern": "packages/db/src/schema/plan.ts"
-    },
-    {
-      "chunkName": "external-links",
-      "pattern": "packages/db/src/schema/plan.ts"
-    },
-    {
-      "chunkName": "activity-audit",
-      "pattern": "crates/fubbik-api/src/plans/**"
-    },
-    {
-      "chunkName": "requirements-bdd",
-      "pattern": "packages/db/src/schema/requirement.ts"
-    },
-    {
-      "chunkName": "mcp-server",
-      "pattern": "crates/fubbik-mcp/**"
-    },
-    {
-      "chunkName": "vscode-ext",
-      "pattern": "apps/vscode/**"
-    },
-    {
-      "chunkName": "cli-overview",
-      "pattern": "crates/fubbik-cli/**"
-    },
-    {
-      "chunkName": "claude-md-sync",
-      "pattern": "crates/fubbik-cli/src/commands/context.rs"
-    },
-    {
-      "chunkName": "git-hooks",
-      "pattern": "crates/fubbik-cli/src/commands/hooks.rs"
-    },
-    {
-      "chunkName": "seed-system",
-      "pattern": "crates/fubbik-db/src/seed/**"
-    }
-  ],
-  "refs": [
-    {
-      "chunkName": "seed-system",
-      "path": "crates/fubbik-db/src/seed/mod.rs",
-      "relation": "documents"
-    },
-    {
-      "chunkName": "seed-system",
-      "path": "crates/fubbik-db/src/seed/core.rs",
-      "relation": "documents"
-    },
-    {
-      "chunkName": "repo-pattern",
-      "path": "crates/fubbik-api/src/chunks/service.rs",
-      "relation": "documents"
-    },
-    {
-      "chunkName": "catalog-pattern",
-      "path": "packages/db/src/schema/chunk-type.ts",
-      "relation": "documents"
-    },
-    {
-      "chunkName": "graph-perf",
-      "path": "apps/web/src/features/graph/graph-timings.ts",
-      "relation": "documents"
-    },
-    {
-      "chunkName": "graph-perf",
-      "path": "apps/web/src/features/graph/layout-cache.ts",
-      "relation": "documents"
-    },
-    {
-      "chunkName": "graph-layout",
-      "path": "apps/web/src/features/graph/force-layout.ts",
-      "relation": "documents"
-    },
-    {
-      "chunkName": "mermaid-export",
-      "path": "apps/web/src/features/graph/mermaid-export.ts",
-      "relation": "documents"
-    },
-    {
-      "chunkName": "plan-metadata",
-      "path": "packages/db/src/schema/plan.ts",
-      "relation": "documents"
-    },
-    {
-      "chunkName": "external-links",
-      "path": "packages/db/src/schema/plan.ts",
-      "relation": "documents"
-    }
-  ]
+    "applies": [
+        {
+            "chunkName": "arch",
+            "pattern": "**/*",
+            "note": "Applies to the whole repo"
+        },
+        {
+            "chunkName": "schema-chunks",
+            "pattern": "packages/db/src/schema/chunk.ts"
+        },
+        {
+            "chunkName": "schema-connection",
+            "pattern": "packages/db/src/schema/chunk.ts"
+        },
+        {
+            "chunkName": "schema-catalogs",
+            "pattern": "packages/db/src/schema/chunk-type.ts"
+        },
+        {
+            "chunkName": "schema-catalogs",
+            "pattern": "packages/db/src/schema/connection-relation.ts"
+        },
+        {
+            "chunkName": "schema-plan",
+            "pattern": "packages/db/src/schema/plan.ts"
+        },
+        {
+            "chunkName": "repo-pattern",
+            "pattern": "legacy/api/src/**/service.ts"
+        },
+        {
+            "chunkName": "repo-pattern",
+            "pattern": "packages/db/src/repository/**"
+        },
+        {
+            "chunkName": "typed-errors",
+            "pattern": "legacy/api/src/errors.ts"
+        },
+        {
+            "chunkName": "typed-errors",
+            "pattern": "legacy/api/src/index.ts"
+        },
+        {
+            "chunkName": "eden-treaty",
+            "pattern": "legacy/api/src/index.ts"
+        },
+        {
+            "chunkName": "eden-treaty",
+            "pattern": "apps/web/src/utils/api.ts"
+        },
+        {
+            "chunkName": "env-validation",
+            "pattern": "packages/env/**"
+        },
+        {
+            "chunkName": "catalog-pattern",
+            "pattern": "crates/fubbik-api/src/vocabularies/**"
+        },
+        {
+            "chunkName": "catalog-pattern",
+            "pattern": "apps/web/src/features/vocabularies/**"
+        },
+        {
+            "chunkName": "scope-jsonb",
+            "pattern": "packages/db/src/schema/chunk.ts"
+        },
+        {
+            "chunkName": "tanstack-start",
+            "pattern": "apps/web/src/routes/**"
+        },
+        {
+            "chunkName": "feature-structure",
+            "pattern": "apps/web/src/features/**"
+        },
+        {
+            "chunkName": "base-ui-render",
+            "pattern": "apps/web/src/components/ui/**"
+        },
+        {
+            "chunkName": "react-flow-graph",
+            "pattern": "apps/web/src/features/graph/**"
+        },
+        {
+            "chunkName": "graph-layout",
+            "pattern": "apps/web/src/features/graph/force-layout.ts"
+        },
+        {
+            "chunkName": "graph-filter-dialog",
+            "pattern": "apps/web/src/features/graph/graph-filter-*.tsx"
+        },
+        {
+            "chunkName": "graph-perf",
+            "pattern": "apps/web/src/features/graph/**"
+        },
+        {
+            "chunkName": "mermaid-export",
+            "pattern": "apps/web/src/features/graph/mermaid-export*"
+        },
+        {
+            "chunkName": "ollama",
+            "pattern": "crates/fubbik-api/src/ai/**"
+        },
+        {
+            "chunkName": "embeddings",
+            "pattern": "packages/db/src/repository/semantic.ts"
+        },
+        {
+            "chunkName": "semantic-search",
+            "pattern": "crates/fubbik-api/src/chunks/routes.rs"
+        },
+        {
+            "chunkName": "semantic-neighbors",
+            "pattern": "apps/web/src/features/chunks/detail/chunk-neighbors.tsx"
+        },
+        {
+            "chunkName": "enrichment",
+            "pattern": "crates/fubbik-api/src/enrich/**"
+        },
+        {
+            "chunkName": "context-export",
+            "pattern": "crates/fubbik-api/src/context_export/**"
+        },
+        {
+            "chunkName": "chunks-concept",
+            "pattern": "packages/db/src/schema/chunk.ts"
+        },
+        {
+            "chunkName": "connections-concept",
+            "pattern": "packages/db/src/schema/chunk.ts"
+        },
+        {
+            "chunkName": "tags-concept",
+            "pattern": "packages/db/src/schema/tag.ts"
+        },
+        {
+            "chunkName": "health-scores",
+            "pattern": "crates/fubbik-api/src/chunks/service.rs"
+        },
+        {
+            "chunkName": "staleness-detection",
+            "pattern": "packages/db/src/schema/staleness.ts"
+        },
+        {
+            "chunkName": "applies-to-refs",
+            "pattern": "packages/db/src/schema/applies-to.ts"
+        },
+        {
+            "chunkName": "applies-to-refs",
+            "pattern": "packages/db/src/schema/file-ref.ts"
+        },
+        {
+            "chunkName": "decision-context",
+            "pattern": "packages/db/src/schema/chunk.ts"
+        },
+        {
+            "chunkName": "plans-overview",
+            "pattern": "packages/db/src/schema/plan.ts"
+        },
+        {
+            "chunkName": "plans-overview",
+            "pattern": "apps/web/src/routes/plans.*.tsx"
+        },
+        {
+            "chunkName": "analyze-items",
+            "pattern": "crates/fubbik-api/src/plans/service.rs"
+        },
+        {
+            "chunkName": "task-dependencies",
+            "pattern": "packages/db/src/repository/plan.ts"
+        },
+        {
+            "chunkName": "plan-metadata",
+            "pattern": "packages/db/src/schema/plan.ts"
+        },
+        {
+            "chunkName": "external-links",
+            "pattern": "packages/db/src/schema/plan.ts"
+        },
+        {
+            "chunkName": "activity-audit",
+            "pattern": "crates/fubbik-api/src/plans/**"
+        },
+        {
+            "chunkName": "requirements-bdd",
+            "pattern": "packages/db/src/schema/requirement.ts"
+        },
+        {
+            "chunkName": "mcp-server",
+            "pattern": "crates/fubbik-mcp/**"
+        },
+        {
+            "chunkName": "vscode-ext",
+            "pattern": "apps/vscode/**"
+        },
+        {
+            "chunkName": "cli-overview",
+            "pattern": "crates/fubbik-cli/**"
+        },
+        {
+            "chunkName": "claude-md-sync",
+            "pattern": "crates/fubbik-cli/src/commands/context.rs"
+        },
+        {
+            "chunkName": "git-hooks",
+            "pattern": "crates/fubbik-cli/src/commands/hooks.rs"
+        },
+        {
+            "chunkName": "seed-system",
+            "pattern": "crates/fubbik-db/src/seed/**"
+        }
+    ],
+    "refs": [
+        {
+            "chunkName": "seed-system",
+            "path": "crates/fubbik-db/src/seed/mod.rs",
+            "relation": "documents"
+        },
+        {
+            "chunkName": "seed-system",
+            "path": "crates/fubbik-db/src/seed/core.rs",
+            "relation": "documents"
+        },
+        {
+            "chunkName": "repo-pattern",
+            "path": "crates/fubbik-api/src/chunks/service.rs",
+            "relation": "documents"
+        },
+        {
+            "chunkName": "catalog-pattern",
+            "path": "packages/db/src/schema/chunk-type.ts",
+            "relation": "documents"
+        },
+        {
+            "chunkName": "graph-perf",
+            "path": "apps/web/src/features/graph/graph-timings.ts",
+            "relation": "documents"
+        },
+        {
+            "chunkName": "graph-perf",
+            "path": "apps/web/src/features/graph/layout-cache.ts",
+            "relation": "documents"
+        },
+        {
+            "chunkName": "graph-layout",
+            "path": "apps/web/src/features/graph/force-layout.ts",
+            "relation": "documents"
+        },
+        {
+            "chunkName": "mermaid-export",
+            "path": "apps/web/src/features/graph/mermaid-export.ts",
+            "relation": "documents"
+        },
+        {
+            "chunkName": "plan-metadata",
+            "path": "packages/db/src/schema/plan.ts",
+            "relation": "documents"
+        },
+        {
+            "chunkName": "external-links",
+            "path": "packages/db/src/schema/plan.ts",
+            "relation": "documents"
+        }
+    ]
 }

@@ -113,7 +113,7 @@ pub async fn list_tasks(
     if status == "in_progress" {
         rows.sort_by_key(|row| std::cmp::Reverse(priority_rank(row)));
     } else {
-        rows.sort_by(|a, b| b.completed_at.cmp(&a.completed_at));
+        rows.sort_by_key(|row| std::cmp::Reverse(row.completed_at));
     }
     Ok(Json(rows))
 }

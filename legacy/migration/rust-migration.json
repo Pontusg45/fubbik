@@ -156,14 +156,7 @@
                     "watch.ts",
                     "why.ts"
                 ],
-                "replaced": [
-                    "codebase.ts",
-                    "context-group.ts",
-                    "maintain.ts",
-                    "requirements.ts",
-                    "tag-group.ts",
-                    "tags.ts"
-                ],
+                "replaced": ["codebase.ts", "context-group.ts", "maintain.ts", "requirements.ts", "tag-group.ts", "tags.ts"],
                 "partial": [],
                 "pending": [],
                 "retire": [
@@ -177,10 +170,7 @@
                     }
                 ]
             },
-            "rustTargets": [
-                "crates/fubbik-cli/src/lib.rs",
-                "crates/fubbik-cli/src/commands"
-            ],
+            "rustTargets": ["crates/fubbik-cli/src/lib.rs", "crates/fubbik-cli/src/commands"],
             "exitCriterion": "Every supported legacy invocation has a Rust implementation or a documented compatibility alias, including exit codes and JSON output."
         },
         "mcpSources": {
@@ -212,9 +202,7 @@
                     }
                 ]
             },
-            "rustTargets": [
-                "crates/fubbik-mcp"
-            ],
+            "rustTargets": ["crates/fubbik-mcp"],
             "exitCriterion": "fubbik mcp serves the retained tool catalog over stdio from Rust and passes protocol and tool contract tests."
         }
     },
@@ -304,14 +292,7 @@
             ]
         }
     },
-    "legacyPackages": [
-        "legacy/cli",
-        "legacy/server",
-        "legacy/api",
-        "legacy/auth",
-        "packages/db",
-        "legacy/mcp"
-    ],
+    "legacyPackages": ["legacy/cli", "legacy/server", "legacy/api", "legacy/auth", "packages/db", "legacy/mcp"],
     "cutoverGates": [
         {
             "id": "source-inventory",

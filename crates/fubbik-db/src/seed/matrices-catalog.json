@@ -1,1404 +1,1404 @@
 {
-  "matrices": [
-    {
-      "name": "Domain Invariants",
-      "layer": "invariant",
-      "description": "Rules that must always hold across domain entities — data integrity, ownership, lifecycle, and structural constraints",
-      "dimensions": [
+    "matrices": [
         {
-          "name": "Chunk",
-          "key": "e-chunk"
+            "name": "Domain Invariants",
+            "layer": "invariant",
+            "description": "Rules that must always hold across domain entities — data integrity, ownership, lifecycle, and structural constraints",
+            "dimensions": [
+                {
+                    "name": "Chunk",
+                    "key": "e-chunk"
+                },
+                {
+                    "name": "Connection",
+                    "key": "e-connection"
+                },
+                {
+                    "name": "Tag",
+                    "key": "e-tag"
+                },
+                {
+                    "name": "Plan",
+                    "key": "e-plan"
+                },
+                {
+                    "name": "Plan Task",
+                    "key": "e-task"
+                },
+                {
+                    "name": "Requirement",
+                    "key": "e-requirement"
+                },
+                {
+                    "name": "Feature",
+                    "key": "e-feature"
+                },
+                {
+                    "name": "Codebase",
+                    "key": "e-codebase"
+                },
+                {
+                    "name": "Workspace",
+                    "key": "e-workspace"
+                },
+                {
+                    "name": "Template",
+                    "key": "e-template"
+                },
+                {
+                    "name": "Collection",
+                    "key": "e-collection"
+                },
+                {
+                    "name": "Document",
+                    "key": "e-document"
+                },
+                {
+                    "name": "Vocabulary",
+                    "key": "e-vocabulary"
+                },
+                {
+                    "name": "Scope Key",
+                    "key": "e-scope-key"
+                }
+            ],
+            "rules": [
+                {
+                    "title": "Title/name is required",
+                    "category": "Validation",
+                    "key": "r-title-required"
+                },
+                {
+                    "title": "Content/body is required",
+                    "category": "Validation",
+                    "key": "r-content-required"
+                },
+                {
+                    "title": "BDD steps follow given→when→then order",
+                    "category": "Validation",
+                    "key": "r-bdd-order",
+                    "description": "Steps must start with given, include at least one when and one then, with no backtracking"
+                },
+                {
+                    "title": "Unique name per user",
+                    "category": "Validation",
+                    "key": "r-unique-name"
+                },
+                {
+                    "title": "Unique source+target+relation",
+                    "category": "Validation",
+                    "key": "r-unique-edge"
+                },
+                {
+                    "title": "Must belong to a user",
+                    "category": "Ownership",
+                    "key": "r-user-owned"
+                },
+                {
+                    "title": "Only owner can mutate",
+                    "category": "Ownership",
+                    "key": "r-owner-write"
+                },
+                {
+                    "title": "Builtin entries are read-only",
+                    "category": "Ownership",
+                    "key": "r-builtin-readonly",
+                    "description": "Builtin templates, chunk types, and connection relations cannot be modified or deleted"
+                },
+                {
+                    "title": "Cascade deletes to children",
+                    "category": "Lifecycle",
+                    "key": "r-cascade-delete",
+                    "description": "Deleting a parent removes all child entities via FK cascade"
+                },
+                {
+                    "title": "Changes create version history",
+                    "category": "Lifecycle",
+                    "key": "r-version-history"
+                },
+                {
+                    "title": "Supports archive/restore",
+                    "category": "Lifecycle",
+                    "key": "r-archivable"
+                },
+                {
+                    "title": "Status transitions are ungated",
+                    "category": "Lifecycle",
+                    "key": "r-status-ungated",
+                    "description": "Status labels only — no enforced state machine. Any status can transition to any other."
+                },
+                {
+                    "title": "Marking task done unblocks dependents",
+                    "category": "Lifecycle",
+                    "key": "r-task-unblock"
+                },
+                {
+                    "title": "Optional codebase scoping",
+                    "category": "Data Integrity",
+                    "key": "r-codebase-scope",
+                    "description": "Can belong to a codebase or be global (null codebase)"
+                },
+                {
+                    "title": "Embedding auto-refreshes on content change",
+                    "category": "Data Integrity",
+                    "key": "r-embedding-refresh"
+                },
+                {
+                    "title": "Ordering preserved via order column",
+                    "category": "Data Integrity",
+                    "key": "r-ordering"
+                },
+                {
+                    "title": "Priority is unique per user",
+                    "category": "Data Integrity",
+                    "key": "r-priority-unique"
+                },
+                {
+                    "title": "Feature deltas are sparse JSONB",
+                    "category": "Data Integrity",
+                    "key": "r-delta-sparse",
+                    "description": "Deltas contain only changed fields, not full copies"
+                },
+                {
+                    "title": "Merge permanently applies deltas to base",
+                    "category": "Data Integrity",
+                    "key": "r-merge-permanent"
+                }
+            ],
+            "cells": [
+                {
+                    "key": "c-title-chunk",
+                    "rule": "r-title-required",
+                    "dim": "e-chunk"
+                },
+                {
+                    "key": "c-title-plan",
+                    "rule": "r-title-required",
+                    "dim": "e-plan"
+                },
+                {
+                    "key": "c-title-task",
+                    "rule": "r-title-required",
+                    "dim": "e-task"
+                },
+                {
+                    "key": "c-title-req",
+                    "rule": "r-title-required",
+                    "dim": "e-requirement"
+                },
+                {
+                    "key": "c-title-feature",
+                    "rule": "r-title-required",
+                    "dim": "e-feature"
+                },
+                {
+                    "key": "c-title-codebase",
+                    "rule": "r-title-required",
+                    "dim": "e-codebase"
+                },
+                {
+                    "key": "c-title-workspace",
+                    "rule": "r-title-required",
+                    "dim": "e-workspace"
+                },
+                {
+                    "key": "c-title-template",
+                    "rule": "r-title-required",
+                    "dim": "e-template"
+                },
+                {
+                    "key": "c-title-collection",
+                    "rule": "r-title-required",
+                    "dim": "e-collection"
+                },
+                {
+                    "key": "c-title-document",
+                    "rule": "r-title-required",
+                    "dim": "e-document"
+                },
+                {
+                    "key": "c-title-tag",
+                    "rule": "r-title-required",
+                    "dim": "e-tag"
+                },
+                {
+                    "key": "c-content-chunk",
+                    "rule": "r-content-required",
+                    "dim": "e-chunk"
+                },
+                {
+                    "key": "c-content-template",
+                    "rule": "r-content-required",
+                    "dim": "e-template"
+                },
+                {
+                    "key": "c-bdd-req",
+                    "rule": "r-bdd-order",
+                    "dim": "e-requirement"
+                },
+                {
+                    "key": "c-uniq-tag",
+                    "rule": "r-unique-name",
+                    "dim": "e-tag"
+                },
+                {
+                    "key": "c-uniq-codebase",
+                    "rule": "r-unique-name",
+                    "dim": "e-codebase"
+                },
+                {
+                    "key": "c-uniq-workspace",
+                    "rule": "r-unique-name",
+                    "dim": "e-workspace"
+                },
+                {
+                    "key": "c-uniq-feature",
+                    "rule": "r-unique-name",
+                    "dim": "e-feature"
+                },
+                {
+                    "key": "c-uniq-collection",
+                    "rule": "r-unique-name",
+                    "dim": "e-collection"
+                },
+                {
+                    "key": "c-uniq-connection",
+                    "rule": "r-unique-edge",
+                    "dim": "e-connection"
+                },
+                {
+                    "key": "c-owned-chunk",
+                    "rule": "r-user-owned",
+                    "dim": "e-chunk"
+                },
+                {
+                    "key": "c-owned-plan",
+                    "rule": "r-user-owned",
+                    "dim": "e-plan"
+                },
+                {
+                    "key": "c-owned-req",
+                    "rule": "r-user-owned",
+                    "dim": "e-requirement"
+                },
+                {
+                    "key": "c-owned-feature",
+                    "rule": "r-user-owned",
+                    "dim": "e-feature"
+                },
+                {
+                    "key": "c-owned-codebase",
+                    "rule": "r-user-owned",
+                    "dim": "e-codebase"
+                },
+                {
+                    "key": "c-owned-workspace",
+                    "rule": "r-user-owned",
+                    "dim": "e-workspace"
+                },
+                {
+                    "key": "c-owned-tag",
+                    "rule": "r-user-owned",
+                    "dim": "e-tag"
+                },
+                {
+                    "key": "c-owned-collection",
+                    "rule": "r-user-owned",
+                    "dim": "e-collection"
+                },
+                {
+                    "key": "c-owned-document",
+                    "rule": "r-user-owned",
+                    "dim": "e-document"
+                },
+                {
+                    "key": "c-owned-scope-key",
+                    "rule": "r-user-owned",
+                    "dim": "e-scope-key"
+                },
+                {
+                    "key": "c-write-chunk",
+                    "rule": "r-owner-write",
+                    "dim": "e-chunk"
+                },
+                {
+                    "key": "c-write-plan",
+                    "rule": "r-owner-write",
+                    "dim": "e-plan"
+                },
+                {
+                    "key": "c-write-req",
+                    "rule": "r-owner-write",
+                    "dim": "e-requirement"
+                },
+                {
+                    "key": "c-write-feature",
+                    "rule": "r-owner-write",
+                    "dim": "e-feature"
+                },
+                {
+                    "key": "c-write-codebase",
+                    "rule": "r-owner-write",
+                    "dim": "e-codebase"
+                },
+                {
+                    "key": "c-builtin-template",
+                    "rule": "r-builtin-readonly",
+                    "dim": "e-template"
+                },
+                {
+                    "key": "c-cascade-plan",
+                    "rule": "r-cascade-delete",
+                    "dim": "e-plan"
+                },
+                {
+                    "key": "c-cascade-feature",
+                    "rule": "r-cascade-delete",
+                    "dim": "e-feature"
+                },
+                {
+                    "key": "c-cascade-codebase",
+                    "rule": "r-cascade-delete",
+                    "dim": "e-codebase"
+                },
+                {
+                    "key": "c-cascade-workspace",
+                    "rule": "r-cascade-delete",
+                    "dim": "e-workspace"
+                },
+                {
+                    "key": "c-cascade-document",
+                    "rule": "r-cascade-delete",
+                    "dim": "e-document"
+                },
+                {
+                    "key": "c-version-chunk",
+                    "rule": "r-version-history",
+                    "dim": "e-chunk"
+                },
+                {
+                    "key": "c-archive-chunk",
+                    "rule": "r-archivable",
+                    "dim": "e-chunk"
+                },
+                {
+                    "key": "c-archive-plan",
+                    "rule": "r-archivable",
+                    "dim": "e-plan"
+                },
+                {
+                    "key": "c-status-plan",
+                    "rule": "r-status-ungated",
+                    "dim": "e-plan"
+                },
+                {
+                    "key": "c-status-task",
+                    "rule": "r-status-ungated",
+                    "dim": "e-task"
+                },
+                {
+                    "key": "c-status-req",
+                    "rule": "r-status-ungated",
+                    "dim": "e-requirement"
+                },
+                {
+                    "key": "c-unblock-task",
+                    "rule": "r-task-unblock",
+                    "dim": "e-task"
+                },
+                {
+                    "key": "c-scope-chunk",
+                    "rule": "r-codebase-scope",
+                    "dim": "e-chunk"
+                },
+                {
+                    "key": "c-scope-plan",
+                    "rule": "r-codebase-scope",
+                    "dim": "e-plan"
+                },
+                {
+                    "key": "c-scope-req",
+                    "rule": "r-codebase-scope",
+                    "dim": "e-requirement"
+                },
+                {
+                    "key": "c-scope-collection",
+                    "rule": "r-codebase-scope",
+                    "dim": "e-collection"
+                },
+                {
+                    "key": "c-scope-document",
+                    "rule": "r-codebase-scope",
+                    "dim": "e-document"
+                },
+                {
+                    "key": "c-scope-vocabulary",
+                    "rule": "r-codebase-scope",
+                    "dim": "e-vocabulary"
+                },
+                {
+                    "key": "c-embed-chunk",
+                    "rule": "r-embedding-refresh",
+                    "dim": "e-chunk"
+                },
+                {
+                    "key": "c-order-task",
+                    "rule": "r-ordering",
+                    "dim": "e-task"
+                },
+                {
+                    "key": "c-order-req",
+                    "rule": "r-ordering",
+                    "dim": "e-requirement"
+                },
+                {
+                    "key": "c-priority-feature",
+                    "rule": "r-priority-unique",
+                    "dim": "e-feature"
+                },
+                {
+                    "key": "c-delta-feature",
+                    "rule": "r-delta-sparse",
+                    "dim": "e-feature"
+                },
+                {
+                    "key": "c-merge-feature",
+                    "rule": "r-merge-permanent",
+                    "dim": "e-feature"
+                }
+            ]
         },
         {
-          "name": "Connection",
-          "key": "e-connection"
-        },
-        {
-          "name": "Tag",
-          "key": "e-tag"
-        },
-        {
-          "name": "Plan",
-          "key": "e-plan"
-        },
-        {
-          "name": "Plan Task",
-          "key": "e-task"
-        },
-        {
-          "name": "Requirement",
-          "key": "e-requirement"
-        },
-        {
-          "name": "Feature",
-          "key": "e-feature"
-        },
-        {
-          "name": "Codebase",
-          "key": "e-codebase"
-        },
-        {
-          "name": "Workspace",
-          "key": "e-workspace"
-        },
-        {
-          "name": "Template",
-          "key": "e-template"
-        },
-        {
-          "name": "Collection",
-          "key": "e-collection"
-        },
-        {
-          "name": "Document",
-          "key": "e-document"
-        },
-        {
-          "name": "Vocabulary",
-          "key": "e-vocabulary"
-        },
-        {
-          "name": "Scope Key",
-          "key": "e-scope-key"
+            "name": "API Contracts",
+            "layer": "contract",
+            "description": "Which capabilities are available to each actor — Web User, AI Agent (MCP), CLI, API Consumer, System (background)",
+            "dimensions": [
+                {
+                    "name": "Web User",
+                    "key": "a-web"
+                },
+                {
+                    "name": "AI Agent (MCP)",
+                    "key": "a-mcp"
+                },
+                {
+                    "name": "CLI User",
+                    "key": "a-cli"
+                },
+                {
+                    "name": "API Consumer",
+                    "key": "a-api"
+                },
+                {
+                    "name": "System",
+                    "key": "a-system"
+                }
+            ],
+            "rules": [
+                {
+                    "title": "Chunk CRUD",
+                    "category": "Chunks",
+                    "key": "cap-chunk-crud"
+                },
+                {
+                    "title": "Chunk search (full-text)",
+                    "category": "Chunks",
+                    "key": "cap-chunk-search"
+                },
+                {
+                    "title": "Chunk search (semantic/embedding)",
+                    "category": "Chunks",
+                    "key": "cap-chunk-semantic"
+                },
+                {
+                    "title": "Chunk search (federated cross-codebase)",
+                    "category": "Chunks",
+                    "key": "cap-chunk-federated"
+                },
+                {
+                    "title": "Chunk bulk operations",
+                    "category": "Chunks",
+                    "key": "cap-chunk-bulk"
+                },
+                {
+                    "title": "Chunk import (JSON/markdown/directory)",
+                    "category": "Chunks",
+                    "key": "cap-chunk-import"
+                },
+                {
+                    "title": "Chunk export",
+                    "category": "Chunks",
+                    "key": "cap-chunk-export"
+                },
+                {
+                    "title": "Chunk AI enrichment (summary, aliases)",
+                    "category": "Chunks",
+                    "key": "cap-chunk-enrich"
+                },
+                {
+                    "title": "Chunk review workflow",
+                    "category": "Chunks",
+                    "key": "cap-chunk-review"
+                },
+                {
+                    "title": "Chunk proposal workflow",
+                    "category": "Chunks",
+                    "key": "cap-chunk-proposal"
+                },
+                {
+                    "title": "Chunk health scoring",
+                    "category": "Chunks",
+                    "key": "cap-chunk-health"
+                },
+                {
+                    "title": "Chunk similarity detection",
+                    "category": "Chunks",
+                    "key": "cap-chunk-similar"
+                },
+                {
+                    "title": "Connection CRUD",
+                    "category": "Connections",
+                    "key": "cap-conn-crud"
+                },
+                {
+                    "title": "Connection suggestions (graph-based)",
+                    "category": "Connections",
+                    "key": "cap-conn-suggest"
+                },
+                {
+                    "title": "Tag CRUD",
+                    "category": "Tags",
+                    "key": "cap-tag-crud"
+                },
+                {
+                    "title": "Tag merge",
+                    "category": "Tags",
+                    "key": "cap-tag-merge"
+                },
+                {
+                    "title": "Tag suggestions (neighbor frequency)",
+                    "category": "Tags",
+                    "key": "cap-tag-suggest"
+                },
+                {
+                    "title": "Requirement CRUD",
+                    "category": "Requirements",
+                    "key": "cap-req-crud"
+                },
+                {
+                    "title": "Requirement BDD export (Gherkin/Vitest)",
+                    "category": "Requirements",
+                    "key": "cap-req-export"
+                },
+                {
+                    "title": "Requirement AI generation",
+                    "category": "Requirements",
+                    "key": "cap-req-ai-gen",
+                    "description": "AI generates requirements from context analysis"
+                },
+                {
+                    "title": "Requirement coverage analysis",
+                    "category": "Requirements",
+                    "key": "cap-req-coverage"
+                },
+                {
+                    "title": "Plan CRUD",
+                    "category": "Plans",
+                    "key": "cap-plan-crud"
+                },
+                {
+                    "title": "Plan task management",
+                    "category": "Plans",
+                    "key": "cap-plan-tasks"
+                },
+                {
+                    "title": "Plan analyze items (risks, assumptions)",
+                    "category": "Plans",
+                    "key": "cap-plan-analyze"
+                },
+                {
+                    "title": "Plan-requirement linking",
+                    "category": "Plans",
+                    "key": "cap-plan-req-link"
+                },
+                {
+                    "title": "Feature overlay management",
+                    "category": "Features",
+                    "key": "cap-feature-crud"
+                },
+                {
+                    "title": "Feature delta editing",
+                    "category": "Features",
+                    "key": "cap-feature-delta"
+                },
+                {
+                    "title": "Feature merge to base",
+                    "category": "Features",
+                    "key": "cap-feature-merge"
+                },
+                {
+                    "title": "Context retrieval (for file/plan/concept)",
+                    "category": "Context",
+                    "key": "cap-context-get"
+                },
+                {
+                    "title": "Context snapshot creation",
+                    "category": "Context",
+                    "key": "cap-context-snapshot"
+                },
+                {
+                    "title": "CLAUDE.md generation from tags",
+                    "category": "Context",
+                    "key": "cap-claudemd"
+                },
+                {
+                    "title": "Graph visualization",
+                    "category": "Analysis",
+                    "key": "cap-graph-viz"
+                },
+                {
+                    "title": "Graph path finding",
+                    "category": "Analysis",
+                    "key": "cap-graph-paths"
+                },
+                {
+                    "title": "Cluster analysis",
+                    "category": "Analysis",
+                    "key": "cap-cluster"
+                },
+                {
+                    "title": "Density analysis",
+                    "category": "Analysis",
+                    "key": "cap-density"
+                },
+                {
+                    "title": "Knowledge health dashboard",
+                    "category": "Analysis",
+                    "key": "cap-health-dash"
+                },
+                {
+                    "title": "Staleness detection and scanning",
+                    "category": "Analysis",
+                    "key": "cap-staleness"
+                },
+                {
+                    "title": "Codebase management",
+                    "category": "Organization",
+                    "key": "cap-codebase"
+                },
+                {
+                    "title": "Workspace management",
+                    "category": "Organization",
+                    "key": "cap-workspace"
+                },
+                {
+                    "title": "Collection management",
+                    "category": "Organization",
+                    "key": "cap-collection"
+                },
+                {
+                    "title": "Template management",
+                    "category": "Organization",
+                    "key": "cap-template"
+                },
+                {
+                    "title": "Vocabulary management",
+                    "category": "Organization",
+                    "key": "cap-vocabulary"
+                },
+                {
+                    "title": "Scope key registry",
+                    "category": "Organization",
+                    "key": "cap-scope-key"
+                },
+                {
+                    "title": "Behavioral matrix management",
+                    "category": "Matrices",
+                    "key": "cap-matrix-crud"
+                },
+                {
+                    "title": "Matrix gap analysis",
+                    "category": "Matrices",
+                    "key": "cap-matrix-gaps"
+                },
+                {
+                    "title": "Activity logging",
+                    "category": "System",
+                    "key": "cap-activity"
+                },
+                {
+                    "title": "Notifications",
+                    "category": "System",
+                    "key": "cap-notifications"
+                },
+                {
+                    "title": "Settings management (user/codebase/instance)",
+                    "category": "System",
+                    "key": "cap-settings"
+                },
+                {
+                    "title": "Favorites and saved queries",
+                    "category": "System",
+                    "key": "cap-favorites"
+                },
+                {
+                    "title": "Learning paths",
+                    "category": "System",
+                    "key": "cap-learning-paths"
+                }
+            ],
+            "cells": [
+                {
+                    "key": "cc-chunk-web",
+                    "rule": "cap-chunk-crud",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-chunk-mcp",
+                    "rule": "cap-chunk-crud",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-chunk-cli",
+                    "rule": "cap-chunk-crud",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-chunk-api",
+                    "rule": "cap-chunk-crud",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-search-web",
+                    "rule": "cap-chunk-search",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-search-mcp",
+                    "rule": "cap-chunk-search",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-search-cli",
+                    "rule": "cap-chunk-search",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-search-api",
+                    "rule": "cap-chunk-search",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-semantic-web",
+                    "rule": "cap-chunk-semantic",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-semantic-mcp",
+                    "rule": "cap-chunk-semantic",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-semantic-cli",
+                    "rule": "cap-chunk-semantic",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-fed-web",
+                    "rule": "cap-chunk-federated",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-fed-cli",
+                    "rule": "cap-chunk-federated",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-fed-api",
+                    "rule": "cap-chunk-federated",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-bulk-web",
+                    "rule": "cap-chunk-bulk",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-bulk-api",
+                    "rule": "cap-chunk-bulk",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-import-web",
+                    "rule": "cap-chunk-import",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-import-cli",
+                    "rule": "cap-chunk-import",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-export-web",
+                    "rule": "cap-chunk-export",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-export-cli",
+                    "rule": "cap-chunk-export",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-export-api",
+                    "rule": "cap-chunk-export",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-enrich-web",
+                    "rule": "cap-chunk-enrich",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-enrich-api",
+                    "rule": "cap-chunk-enrich",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-enrich-sys",
+                    "rule": "cap-chunk-enrich",
+                    "dim": "a-system"
+                },
+                {
+                    "key": "cc-review-web",
+                    "rule": "cap-chunk-review",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-review-api",
+                    "rule": "cap-chunk-review",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-proposal-web",
+                    "rule": "cap-chunk-proposal",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-proposal-mcp",
+                    "rule": "cap-chunk-proposal",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-health-web",
+                    "rule": "cap-chunk-health",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-health-api",
+                    "rule": "cap-chunk-health",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-similar-web",
+                    "rule": "cap-chunk-similar",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-similar-api",
+                    "rule": "cap-chunk-similar",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-conn-web",
+                    "rule": "cap-conn-crud",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-conn-cli",
+                    "rule": "cap-conn-crud",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-conn-api",
+                    "rule": "cap-conn-crud",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-connsug-web",
+                    "rule": "cap-conn-suggest",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-connsug-api",
+                    "rule": "cap-conn-suggest",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-tag-web",
+                    "rule": "cap-tag-crud",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-tag-cli",
+                    "rule": "cap-tag-crud",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-tag-api",
+                    "rule": "cap-tag-crud",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-tagmerge-web",
+                    "rule": "cap-tag-merge",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-tagsug-web",
+                    "rule": "cap-tag-suggest",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-tagsug-api",
+                    "rule": "cap-tag-suggest",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-req-web",
+                    "rule": "cap-req-crud",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-req-mcp",
+                    "rule": "cap-req-crud",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-req-cli",
+                    "rule": "cap-req-crud",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-req-api",
+                    "rule": "cap-req-crud",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-reqexp-web",
+                    "rule": "cap-req-export",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-reqexp-cli",
+                    "rule": "cap-req-export",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-reqexp-api",
+                    "rule": "cap-req-export",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-reqai-mcp",
+                    "rule": "cap-req-ai-gen",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-reqcov-web",
+                    "rule": "cap-req-coverage",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-reqcov-api",
+                    "rule": "cap-req-coverage",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-plan-web",
+                    "rule": "cap-plan-crud",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-plan-mcp",
+                    "rule": "cap-plan-crud",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-plan-cli",
+                    "rule": "cap-plan-crud",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-plan-api",
+                    "rule": "cap-plan-crud",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-task-web",
+                    "rule": "cap-plan-tasks",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-task-mcp",
+                    "rule": "cap-plan-tasks",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-task-cli",
+                    "rule": "cap-plan-tasks",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-task-api",
+                    "rule": "cap-plan-tasks",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-analyze-web",
+                    "rule": "cap-plan-analyze",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-analyze-mcp",
+                    "rule": "cap-plan-analyze",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-analyze-api",
+                    "rule": "cap-plan-analyze",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-planreq-web",
+                    "rule": "cap-plan-req-link",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-planreq-mcp",
+                    "rule": "cap-plan-req-link",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-planreq-cli",
+                    "rule": "cap-plan-req-link",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-planreq-api",
+                    "rule": "cap-plan-req-link",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-feat-web",
+                    "rule": "cap-feature-crud",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-feat-api",
+                    "rule": "cap-feature-crud",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-delta-web",
+                    "rule": "cap-feature-delta",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-delta-api",
+                    "rule": "cap-feature-delta",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-fmerge-web",
+                    "rule": "cap-feature-merge",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-fmerge-api",
+                    "rule": "cap-feature-merge",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-ctx-web",
+                    "rule": "cap-context-get",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-ctx-mcp",
+                    "rule": "cap-context-get",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-ctx-cli",
+                    "rule": "cap-context-get",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-ctx-api",
+                    "rule": "cap-context-get",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-snap-web",
+                    "rule": "cap-context-snapshot",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-snap-mcp",
+                    "rule": "cap-context-snapshot",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-claude-cli",
+                    "rule": "cap-claudemd",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-claude-mcp",
+                    "rule": "cap-claudemd",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-graph-web",
+                    "rule": "cap-graph-viz",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-paths-web",
+                    "rule": "cap-graph-paths",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-paths-api",
+                    "rule": "cap-graph-paths",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-cluster-web",
+                    "rule": "cap-cluster",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-cluster-api",
+                    "rule": "cap-cluster",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-density-web",
+                    "rule": "cap-density",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-density-api",
+                    "rule": "cap-density",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-healthd-web",
+                    "rule": "cap-health-dash",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-stale-web",
+                    "rule": "cap-staleness",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-stale-api",
+                    "rule": "cap-staleness",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-stale-sys",
+                    "rule": "cap-staleness",
+                    "dim": "a-system"
+                },
+                {
+                    "key": "cc-cb-web",
+                    "rule": "cap-codebase",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-cb-cli",
+                    "rule": "cap-codebase",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-cb-api",
+                    "rule": "cap-codebase",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-ws-web",
+                    "rule": "cap-workspace",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-ws-api",
+                    "rule": "cap-workspace",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-coll-web",
+                    "rule": "cap-collection",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-coll-api",
+                    "rule": "cap-collection",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-tmpl-web",
+                    "rule": "cap-template",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-tmpl-api",
+                    "rule": "cap-template",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-vocab-web",
+                    "rule": "cap-vocabulary",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-vocab-mcp",
+                    "rule": "cap-vocabulary",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-vocab-cli",
+                    "rule": "cap-vocabulary",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-vocab-api",
+                    "rule": "cap-vocabulary",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-sk-web",
+                    "rule": "cap-scope-key",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-sk-api",
+                    "rule": "cap-scope-key",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-mat-web",
+                    "rule": "cap-matrix-crud",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-mat-mcp",
+                    "rule": "cap-matrix-crud",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-mat-cli",
+                    "rule": "cap-matrix-crud",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-mat-api",
+                    "rule": "cap-matrix-crud",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-gaps-web",
+                    "rule": "cap-matrix-gaps",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-gaps-mcp",
+                    "rule": "cap-matrix-gaps",
+                    "dim": "a-mcp"
+                },
+                {
+                    "key": "cc-gaps-cli",
+                    "rule": "cap-matrix-gaps",
+                    "dim": "a-cli"
+                },
+                {
+                    "key": "cc-activity-web",
+                    "rule": "cap-activity",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-activity-sys",
+                    "rule": "cap-activity",
+                    "dim": "a-system"
+                },
+                {
+                    "key": "cc-notif-web",
+                    "rule": "cap-notifications",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-notif-sys",
+                    "rule": "cap-notifications",
+                    "dim": "a-system"
+                },
+                {
+                    "key": "cc-settings-web",
+                    "rule": "cap-settings",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-settings-api",
+                    "rule": "cap-settings",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-fav-web",
+                    "rule": "cap-favorites",
+                    "dim": "a-web"
+                },
+                {
+                    "key": "cc-fav-api",
+                    "rule": "cap-favorites",
+                    "dim": "a-api"
+                },
+                {
+                    "key": "cc-lp-web",
+                    "rule": "cap-learning-paths",
+                    "dim": "a-web"
+                }
+            ]
         }
-      ],
-      "rules": [
+    ],
+    "requirementLinks": [
         {
-          "title": "Title/name is required",
-          "category": "Validation",
-          "key": "r-title-required"
+            "cell": "cc-chunk-web",
+            "req": "onboarding-graph"
         },
         {
-          "title": "Content/body is required",
-          "category": "Validation",
-          "key": "r-content-required"
+            "cell": "cc-chunk-mcp",
+            "req": "onboarding-graph"
         },
         {
-          "title": "BDD steps follow given→when→then order",
-          "category": "Validation",
-          "key": "r-bdd-order",
-          "description": "Steps must start with given, include at least one when and one then, with no backtracking"
+            "cell": "cc-chunk-cli",
+            "req": "onboarding-graph"
         },
         {
-          "title": "Unique name per user",
-          "category": "Validation",
-          "key": "r-unique-name"
+            "cell": "cc-search-web",
+            "req": "catalog-driven-types"
         },
         {
-          "title": "Unique source+target+relation",
-          "category": "Validation",
-          "key": "r-unique-edge"
+            "cell": "cc-search-mcp",
+            "req": "catalog-driven-types"
         },
         {
-          "title": "Must belong to a user",
-          "category": "Ownership",
-          "key": "r-user-owned"
+            "cell": "c-title-chunk",
+            "req": "onboarding-graph"
         },
         {
-          "title": "Only owner can mutate",
-          "category": "Ownership",
-          "key": "r-owner-write"
-        },
-        {
-          "title": "Builtin entries are read-only",
-          "category": "Ownership",
-          "key": "r-builtin-readonly",
-          "description": "Builtin templates, chunk types, and connection relations cannot be modified or deleted"
-        },
-        {
-          "title": "Cascade deletes to children",
-          "category": "Lifecycle",
-          "key": "r-cascade-delete",
-          "description": "Deleting a parent removes all child entities via FK cascade"
-        },
-        {
-          "title": "Changes create version history",
-          "category": "Lifecycle",
-          "key": "r-version-history"
-        },
-        {
-          "title": "Supports archive/restore",
-          "category": "Lifecycle",
-          "key": "r-archivable"
-        },
-        {
-          "title": "Status transitions are ungated",
-          "category": "Lifecycle",
-          "key": "r-status-ungated",
-          "description": "Status labels only — no enforced state machine. Any status can transition to any other."
-        },
-        {
-          "title": "Marking task done unblocks dependents",
-          "category": "Lifecycle",
-          "key": "r-task-unblock"
-        },
-        {
-          "title": "Optional codebase scoping",
-          "category": "Data Integrity",
-          "key": "r-codebase-scope",
-          "description": "Can belong to a codebase or be global (null codebase)"
-        },
-        {
-          "title": "Embedding auto-refreshes on content change",
-          "category": "Data Integrity",
-          "key": "r-embedding-refresh"
-        },
-        {
-          "title": "Ordering preserved via order column",
-          "category": "Data Integrity",
-          "key": "r-ordering"
-        },
-        {
-          "title": "Priority is unique per user",
-          "category": "Data Integrity",
-          "key": "r-priority-unique"
-        },
-        {
-          "title": "Feature deltas are sparse JSONB",
-          "category": "Data Integrity",
-          "key": "r-delta-sparse",
-          "description": "Deltas contain only changed fields, not full copies"
-        },
-        {
-          "title": "Merge permanently applies deltas to base",
-          "category": "Data Integrity",
-          "key": "r-merge-permanent"
+            "cell": "c-owned-chunk",
+            "req": "onboarding-graph"
         }
-      ],
-      "cells": [
-        {
-          "key": "c-title-chunk",
-          "rule": "r-title-required",
-          "dim": "e-chunk"
-        },
-        {
-          "key": "c-title-plan",
-          "rule": "r-title-required",
-          "dim": "e-plan"
-        },
-        {
-          "key": "c-title-task",
-          "rule": "r-title-required",
-          "dim": "e-task"
-        },
-        {
-          "key": "c-title-req",
-          "rule": "r-title-required",
-          "dim": "e-requirement"
-        },
-        {
-          "key": "c-title-feature",
-          "rule": "r-title-required",
-          "dim": "e-feature"
-        },
-        {
-          "key": "c-title-codebase",
-          "rule": "r-title-required",
-          "dim": "e-codebase"
-        },
-        {
-          "key": "c-title-workspace",
-          "rule": "r-title-required",
-          "dim": "e-workspace"
-        },
-        {
-          "key": "c-title-template",
-          "rule": "r-title-required",
-          "dim": "e-template"
-        },
-        {
-          "key": "c-title-collection",
-          "rule": "r-title-required",
-          "dim": "e-collection"
-        },
-        {
-          "key": "c-title-document",
-          "rule": "r-title-required",
-          "dim": "e-document"
-        },
-        {
-          "key": "c-title-tag",
-          "rule": "r-title-required",
-          "dim": "e-tag"
-        },
-        {
-          "key": "c-content-chunk",
-          "rule": "r-content-required",
-          "dim": "e-chunk"
-        },
-        {
-          "key": "c-content-template",
-          "rule": "r-content-required",
-          "dim": "e-template"
-        },
-        {
-          "key": "c-bdd-req",
-          "rule": "r-bdd-order",
-          "dim": "e-requirement"
-        },
-        {
-          "key": "c-uniq-tag",
-          "rule": "r-unique-name",
-          "dim": "e-tag"
-        },
-        {
-          "key": "c-uniq-codebase",
-          "rule": "r-unique-name",
-          "dim": "e-codebase"
-        },
-        {
-          "key": "c-uniq-workspace",
-          "rule": "r-unique-name",
-          "dim": "e-workspace"
-        },
-        {
-          "key": "c-uniq-feature",
-          "rule": "r-unique-name",
-          "dim": "e-feature"
-        },
-        {
-          "key": "c-uniq-collection",
-          "rule": "r-unique-name",
-          "dim": "e-collection"
-        },
-        {
-          "key": "c-uniq-connection",
-          "rule": "r-unique-edge",
-          "dim": "e-connection"
-        },
-        {
-          "key": "c-owned-chunk",
-          "rule": "r-user-owned",
-          "dim": "e-chunk"
-        },
-        {
-          "key": "c-owned-plan",
-          "rule": "r-user-owned",
-          "dim": "e-plan"
-        },
-        {
-          "key": "c-owned-req",
-          "rule": "r-user-owned",
-          "dim": "e-requirement"
-        },
-        {
-          "key": "c-owned-feature",
-          "rule": "r-user-owned",
-          "dim": "e-feature"
-        },
-        {
-          "key": "c-owned-codebase",
-          "rule": "r-user-owned",
-          "dim": "e-codebase"
-        },
-        {
-          "key": "c-owned-workspace",
-          "rule": "r-user-owned",
-          "dim": "e-workspace"
-        },
-        {
-          "key": "c-owned-tag",
-          "rule": "r-user-owned",
-          "dim": "e-tag"
-        },
-        {
-          "key": "c-owned-collection",
-          "rule": "r-user-owned",
-          "dim": "e-collection"
-        },
-        {
-          "key": "c-owned-document",
-          "rule": "r-user-owned",
-          "dim": "e-document"
-        },
-        {
-          "key": "c-owned-scope-key",
-          "rule": "r-user-owned",
-          "dim": "e-scope-key"
-        },
-        {
-          "key": "c-write-chunk",
-          "rule": "r-owner-write",
-          "dim": "e-chunk"
-        },
-        {
-          "key": "c-write-plan",
-          "rule": "r-owner-write",
-          "dim": "e-plan"
-        },
-        {
-          "key": "c-write-req",
-          "rule": "r-owner-write",
-          "dim": "e-requirement"
-        },
-        {
-          "key": "c-write-feature",
-          "rule": "r-owner-write",
-          "dim": "e-feature"
-        },
-        {
-          "key": "c-write-codebase",
-          "rule": "r-owner-write",
-          "dim": "e-codebase"
-        },
-        {
-          "key": "c-builtin-template",
-          "rule": "r-builtin-readonly",
-          "dim": "e-template"
-        },
-        {
-          "key": "c-cascade-plan",
-          "rule": "r-cascade-delete",
-          "dim": "e-plan"
-        },
-        {
-          "key": "c-cascade-feature",
-          "rule": "r-cascade-delete",
-          "dim": "e-feature"
-        },
-        {
-          "key": "c-cascade-codebase",
-          "rule": "r-cascade-delete",
-          "dim": "e-codebase"
-        },
-        {
-          "key": "c-cascade-workspace",
-          "rule": "r-cascade-delete",
-          "dim": "e-workspace"
-        },
-        {
-          "key": "c-cascade-document",
-          "rule": "r-cascade-delete",
-          "dim": "e-document"
-        },
-        {
-          "key": "c-version-chunk",
-          "rule": "r-version-history",
-          "dim": "e-chunk"
-        },
-        {
-          "key": "c-archive-chunk",
-          "rule": "r-archivable",
-          "dim": "e-chunk"
-        },
-        {
-          "key": "c-archive-plan",
-          "rule": "r-archivable",
-          "dim": "e-plan"
-        },
-        {
-          "key": "c-status-plan",
-          "rule": "r-status-ungated",
-          "dim": "e-plan"
-        },
-        {
-          "key": "c-status-task",
-          "rule": "r-status-ungated",
-          "dim": "e-task"
-        },
-        {
-          "key": "c-status-req",
-          "rule": "r-status-ungated",
-          "dim": "e-requirement"
-        },
-        {
-          "key": "c-unblock-task",
-          "rule": "r-task-unblock",
-          "dim": "e-task"
-        },
-        {
-          "key": "c-scope-chunk",
-          "rule": "r-codebase-scope",
-          "dim": "e-chunk"
-        },
-        {
-          "key": "c-scope-plan",
-          "rule": "r-codebase-scope",
-          "dim": "e-plan"
-        },
-        {
-          "key": "c-scope-req",
-          "rule": "r-codebase-scope",
-          "dim": "e-requirement"
-        },
-        {
-          "key": "c-scope-collection",
-          "rule": "r-codebase-scope",
-          "dim": "e-collection"
-        },
-        {
-          "key": "c-scope-document",
-          "rule": "r-codebase-scope",
-          "dim": "e-document"
-        },
-        {
-          "key": "c-scope-vocabulary",
-          "rule": "r-codebase-scope",
-          "dim": "e-vocabulary"
-        },
-        {
-          "key": "c-embed-chunk",
-          "rule": "r-embedding-refresh",
-          "dim": "e-chunk"
-        },
-        {
-          "key": "c-order-task",
-          "rule": "r-ordering",
-          "dim": "e-task"
-        },
-        {
-          "key": "c-order-req",
-          "rule": "r-ordering",
-          "dim": "e-requirement"
-        },
-        {
-          "key": "c-priority-feature",
-          "rule": "r-priority-unique",
-          "dim": "e-feature"
-        },
-        {
-          "key": "c-delta-feature",
-          "rule": "r-delta-sparse",
-          "dim": "e-feature"
-        },
-        {
-          "key": "c-merge-feature",
-          "rule": "r-merge-permanent",
-          "dim": "e-feature"
-        }
-      ]
-    },
-    {
-      "name": "API Contracts",
-      "layer": "contract",
-      "description": "Which capabilities are available to each actor — Web User, AI Agent (MCP), CLI, API Consumer, System (background)",
-      "dimensions": [
-        {
-          "name": "Web User",
-          "key": "a-web"
-        },
-        {
-          "name": "AI Agent (MCP)",
-          "key": "a-mcp"
-        },
-        {
-          "name": "CLI User",
-          "key": "a-cli"
-        },
-        {
-          "name": "API Consumer",
-          "key": "a-api"
-        },
-        {
-          "name": "System",
-          "key": "a-system"
-        }
-      ],
-      "rules": [
-        {
-          "title": "Chunk CRUD",
-          "category": "Chunks",
-          "key": "cap-chunk-crud"
-        },
-        {
-          "title": "Chunk search (full-text)",
-          "category": "Chunks",
-          "key": "cap-chunk-search"
-        },
-        {
-          "title": "Chunk search (semantic/embedding)",
-          "category": "Chunks",
-          "key": "cap-chunk-semantic"
-        },
-        {
-          "title": "Chunk search (federated cross-codebase)",
-          "category": "Chunks",
-          "key": "cap-chunk-federated"
-        },
-        {
-          "title": "Chunk bulk operations",
-          "category": "Chunks",
-          "key": "cap-chunk-bulk"
-        },
-        {
-          "title": "Chunk import (JSON/markdown/directory)",
-          "category": "Chunks",
-          "key": "cap-chunk-import"
-        },
-        {
-          "title": "Chunk export",
-          "category": "Chunks",
-          "key": "cap-chunk-export"
-        },
-        {
-          "title": "Chunk AI enrichment (summary, aliases)",
-          "category": "Chunks",
-          "key": "cap-chunk-enrich"
-        },
-        {
-          "title": "Chunk review workflow",
-          "category": "Chunks",
-          "key": "cap-chunk-review"
-        },
-        {
-          "title": "Chunk proposal workflow",
-          "category": "Chunks",
-          "key": "cap-chunk-proposal"
-        },
-        {
-          "title": "Chunk health scoring",
-          "category": "Chunks",
-          "key": "cap-chunk-health"
-        },
-        {
-          "title": "Chunk similarity detection",
-          "category": "Chunks",
-          "key": "cap-chunk-similar"
-        },
-        {
-          "title": "Connection CRUD",
-          "category": "Connections",
-          "key": "cap-conn-crud"
-        },
-        {
-          "title": "Connection suggestions (graph-based)",
-          "category": "Connections",
-          "key": "cap-conn-suggest"
-        },
-        {
-          "title": "Tag CRUD",
-          "category": "Tags",
-          "key": "cap-tag-crud"
-        },
-        {
-          "title": "Tag merge",
-          "category": "Tags",
-          "key": "cap-tag-merge"
-        },
-        {
-          "title": "Tag suggestions (neighbor frequency)",
-          "category": "Tags",
-          "key": "cap-tag-suggest"
-        },
-        {
-          "title": "Requirement CRUD",
-          "category": "Requirements",
-          "key": "cap-req-crud"
-        },
-        {
-          "title": "Requirement BDD export (Gherkin/Vitest)",
-          "category": "Requirements",
-          "key": "cap-req-export"
-        },
-        {
-          "title": "Requirement AI generation",
-          "category": "Requirements",
-          "key": "cap-req-ai-gen",
-          "description": "AI generates requirements from context analysis"
-        },
-        {
-          "title": "Requirement coverage analysis",
-          "category": "Requirements",
-          "key": "cap-req-coverage"
-        },
-        {
-          "title": "Plan CRUD",
-          "category": "Plans",
-          "key": "cap-plan-crud"
-        },
-        {
-          "title": "Plan task management",
-          "category": "Plans",
-          "key": "cap-plan-tasks"
-        },
-        {
-          "title": "Plan analyze items (risks, assumptions)",
-          "category": "Plans",
-          "key": "cap-plan-analyze"
-        },
-        {
-          "title": "Plan-requirement linking",
-          "category": "Plans",
-          "key": "cap-plan-req-link"
-        },
-        {
-          "title": "Feature overlay management",
-          "category": "Features",
-          "key": "cap-feature-crud"
-        },
-        {
-          "title": "Feature delta editing",
-          "category": "Features",
-          "key": "cap-feature-delta"
-        },
-        {
-          "title": "Feature merge to base",
-          "category": "Features",
-          "key": "cap-feature-merge"
-        },
-        {
-          "title": "Context retrieval (for file/plan/concept)",
-          "category": "Context",
-          "key": "cap-context-get"
-        },
-        {
-          "title": "Context snapshot creation",
-          "category": "Context",
-          "key": "cap-context-snapshot"
-        },
-        {
-          "title": "CLAUDE.md generation from tags",
-          "category": "Context",
-          "key": "cap-claudemd"
-        },
-        {
-          "title": "Graph visualization",
-          "category": "Analysis",
-          "key": "cap-graph-viz"
-        },
-        {
-          "title": "Graph path finding",
-          "category": "Analysis",
-          "key": "cap-graph-paths"
-        },
-        {
-          "title": "Cluster analysis",
-          "category": "Analysis",
-          "key": "cap-cluster"
-        },
-        {
-          "title": "Density analysis",
-          "category": "Analysis",
-          "key": "cap-density"
-        },
-        {
-          "title": "Knowledge health dashboard",
-          "category": "Analysis",
-          "key": "cap-health-dash"
-        },
-        {
-          "title": "Staleness detection and scanning",
-          "category": "Analysis",
-          "key": "cap-staleness"
-        },
-        {
-          "title": "Codebase management",
-          "category": "Organization",
-          "key": "cap-codebase"
-        },
-        {
-          "title": "Workspace management",
-          "category": "Organization",
-          "key": "cap-workspace"
-        },
-        {
-          "title": "Collection management",
-          "category": "Organization",
-          "key": "cap-collection"
-        },
-        {
-          "title": "Template management",
-          "category": "Organization",
-          "key": "cap-template"
-        },
-        {
-          "title": "Vocabulary management",
-          "category": "Organization",
-          "key": "cap-vocabulary"
-        },
-        {
-          "title": "Scope key registry",
-          "category": "Organization",
-          "key": "cap-scope-key"
-        },
-        {
-          "title": "Behavioral matrix management",
-          "category": "Matrices",
-          "key": "cap-matrix-crud"
-        },
-        {
-          "title": "Matrix gap analysis",
-          "category": "Matrices",
-          "key": "cap-matrix-gaps"
-        },
-        {
-          "title": "Activity logging",
-          "category": "System",
-          "key": "cap-activity"
-        },
-        {
-          "title": "Notifications",
-          "category": "System",
-          "key": "cap-notifications"
-        },
-        {
-          "title": "Settings management (user/codebase/instance)",
-          "category": "System",
-          "key": "cap-settings"
-        },
-        {
-          "title": "Favorites and saved queries",
-          "category": "System",
-          "key": "cap-favorites"
-        },
-        {
-          "title": "Learning paths",
-          "category": "System",
-          "key": "cap-learning-paths"
-        }
-      ],
-      "cells": [
-        {
-          "key": "cc-chunk-web",
-          "rule": "cap-chunk-crud",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-chunk-mcp",
-          "rule": "cap-chunk-crud",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-chunk-cli",
-          "rule": "cap-chunk-crud",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-chunk-api",
-          "rule": "cap-chunk-crud",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-search-web",
-          "rule": "cap-chunk-search",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-search-mcp",
-          "rule": "cap-chunk-search",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-search-cli",
-          "rule": "cap-chunk-search",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-search-api",
-          "rule": "cap-chunk-search",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-semantic-web",
-          "rule": "cap-chunk-semantic",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-semantic-mcp",
-          "rule": "cap-chunk-semantic",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-semantic-cli",
-          "rule": "cap-chunk-semantic",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-fed-web",
-          "rule": "cap-chunk-federated",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-fed-cli",
-          "rule": "cap-chunk-federated",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-fed-api",
-          "rule": "cap-chunk-federated",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-bulk-web",
-          "rule": "cap-chunk-bulk",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-bulk-api",
-          "rule": "cap-chunk-bulk",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-import-web",
-          "rule": "cap-chunk-import",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-import-cli",
-          "rule": "cap-chunk-import",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-export-web",
-          "rule": "cap-chunk-export",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-export-cli",
-          "rule": "cap-chunk-export",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-export-api",
-          "rule": "cap-chunk-export",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-enrich-web",
-          "rule": "cap-chunk-enrich",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-enrich-api",
-          "rule": "cap-chunk-enrich",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-enrich-sys",
-          "rule": "cap-chunk-enrich",
-          "dim": "a-system"
-        },
-        {
-          "key": "cc-review-web",
-          "rule": "cap-chunk-review",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-review-api",
-          "rule": "cap-chunk-review",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-proposal-web",
-          "rule": "cap-chunk-proposal",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-proposal-mcp",
-          "rule": "cap-chunk-proposal",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-health-web",
-          "rule": "cap-chunk-health",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-health-api",
-          "rule": "cap-chunk-health",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-similar-web",
-          "rule": "cap-chunk-similar",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-similar-api",
-          "rule": "cap-chunk-similar",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-conn-web",
-          "rule": "cap-conn-crud",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-conn-cli",
-          "rule": "cap-conn-crud",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-conn-api",
-          "rule": "cap-conn-crud",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-connsug-web",
-          "rule": "cap-conn-suggest",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-connsug-api",
-          "rule": "cap-conn-suggest",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-tag-web",
-          "rule": "cap-tag-crud",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-tag-cli",
-          "rule": "cap-tag-crud",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-tag-api",
-          "rule": "cap-tag-crud",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-tagmerge-web",
-          "rule": "cap-tag-merge",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-tagsug-web",
-          "rule": "cap-tag-suggest",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-tagsug-api",
-          "rule": "cap-tag-suggest",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-req-web",
-          "rule": "cap-req-crud",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-req-mcp",
-          "rule": "cap-req-crud",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-req-cli",
-          "rule": "cap-req-crud",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-req-api",
-          "rule": "cap-req-crud",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-reqexp-web",
-          "rule": "cap-req-export",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-reqexp-cli",
-          "rule": "cap-req-export",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-reqexp-api",
-          "rule": "cap-req-export",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-reqai-mcp",
-          "rule": "cap-req-ai-gen",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-reqcov-web",
-          "rule": "cap-req-coverage",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-reqcov-api",
-          "rule": "cap-req-coverage",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-plan-web",
-          "rule": "cap-plan-crud",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-plan-mcp",
-          "rule": "cap-plan-crud",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-plan-cli",
-          "rule": "cap-plan-crud",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-plan-api",
-          "rule": "cap-plan-crud",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-task-web",
-          "rule": "cap-plan-tasks",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-task-mcp",
-          "rule": "cap-plan-tasks",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-task-cli",
-          "rule": "cap-plan-tasks",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-task-api",
-          "rule": "cap-plan-tasks",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-analyze-web",
-          "rule": "cap-plan-analyze",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-analyze-mcp",
-          "rule": "cap-plan-analyze",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-analyze-api",
-          "rule": "cap-plan-analyze",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-planreq-web",
-          "rule": "cap-plan-req-link",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-planreq-mcp",
-          "rule": "cap-plan-req-link",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-planreq-cli",
-          "rule": "cap-plan-req-link",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-planreq-api",
-          "rule": "cap-plan-req-link",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-feat-web",
-          "rule": "cap-feature-crud",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-feat-api",
-          "rule": "cap-feature-crud",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-delta-web",
-          "rule": "cap-feature-delta",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-delta-api",
-          "rule": "cap-feature-delta",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-fmerge-web",
-          "rule": "cap-feature-merge",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-fmerge-api",
-          "rule": "cap-feature-merge",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-ctx-web",
-          "rule": "cap-context-get",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-ctx-mcp",
-          "rule": "cap-context-get",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-ctx-cli",
-          "rule": "cap-context-get",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-ctx-api",
-          "rule": "cap-context-get",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-snap-web",
-          "rule": "cap-context-snapshot",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-snap-mcp",
-          "rule": "cap-context-snapshot",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-claude-cli",
-          "rule": "cap-claudemd",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-claude-mcp",
-          "rule": "cap-claudemd",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-graph-web",
-          "rule": "cap-graph-viz",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-paths-web",
-          "rule": "cap-graph-paths",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-paths-api",
-          "rule": "cap-graph-paths",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-cluster-web",
-          "rule": "cap-cluster",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-cluster-api",
-          "rule": "cap-cluster",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-density-web",
-          "rule": "cap-density",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-density-api",
-          "rule": "cap-density",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-healthd-web",
-          "rule": "cap-health-dash",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-stale-web",
-          "rule": "cap-staleness",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-stale-api",
-          "rule": "cap-staleness",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-stale-sys",
-          "rule": "cap-staleness",
-          "dim": "a-system"
-        },
-        {
-          "key": "cc-cb-web",
-          "rule": "cap-codebase",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-cb-cli",
-          "rule": "cap-codebase",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-cb-api",
-          "rule": "cap-codebase",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-ws-web",
-          "rule": "cap-workspace",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-ws-api",
-          "rule": "cap-workspace",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-coll-web",
-          "rule": "cap-collection",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-coll-api",
-          "rule": "cap-collection",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-tmpl-web",
-          "rule": "cap-template",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-tmpl-api",
-          "rule": "cap-template",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-vocab-web",
-          "rule": "cap-vocabulary",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-vocab-mcp",
-          "rule": "cap-vocabulary",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-vocab-cli",
-          "rule": "cap-vocabulary",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-vocab-api",
-          "rule": "cap-vocabulary",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-sk-web",
-          "rule": "cap-scope-key",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-sk-api",
-          "rule": "cap-scope-key",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-mat-web",
-          "rule": "cap-matrix-crud",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-mat-mcp",
-          "rule": "cap-matrix-crud",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-mat-cli",
-          "rule": "cap-matrix-crud",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-mat-api",
-          "rule": "cap-matrix-crud",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-gaps-web",
-          "rule": "cap-matrix-gaps",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-gaps-mcp",
-          "rule": "cap-matrix-gaps",
-          "dim": "a-mcp"
-        },
-        {
-          "key": "cc-gaps-cli",
-          "rule": "cap-matrix-gaps",
-          "dim": "a-cli"
-        },
-        {
-          "key": "cc-activity-web",
-          "rule": "cap-activity",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-activity-sys",
-          "rule": "cap-activity",
-          "dim": "a-system"
-        },
-        {
-          "key": "cc-notif-web",
-          "rule": "cap-notifications",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-notif-sys",
-          "rule": "cap-notifications",
-          "dim": "a-system"
-        },
-        {
-          "key": "cc-settings-web",
-          "rule": "cap-settings",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-settings-api",
-          "rule": "cap-settings",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-fav-web",
-          "rule": "cap-favorites",
-          "dim": "a-web"
-        },
-        {
-          "key": "cc-fav-api",
-          "rule": "cap-favorites",
-          "dim": "a-api"
-        },
-        {
-          "key": "cc-lp-web",
-          "rule": "cap-learning-paths",
-          "dim": "a-web"
-        }
-      ]
-    }
-  ],
-  "requirementLinks": [
-    {
-      "cell": "cc-chunk-web",
-      "req": "onboarding-graph"
-    },
-    {
-      "cell": "cc-chunk-mcp",
-      "req": "onboarding-graph"
-    },
-    {
-      "cell": "cc-chunk-cli",
-      "req": "onboarding-graph"
-    },
-    {
-      "cell": "cc-search-web",
-      "req": "catalog-driven-types"
-    },
-    {
-      "cell": "cc-search-mcp",
-      "req": "catalog-driven-types"
-    },
-    {
-      "cell": "c-title-chunk",
-      "req": "onboarding-graph"
-    },
-    {
-      "cell": "c-owned-chunk",
-      "req": "onboarding-graph"
-    }
-  ]
+    ]
 }

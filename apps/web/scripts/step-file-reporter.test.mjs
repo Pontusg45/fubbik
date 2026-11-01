@@ -13,9 +13,16 @@ test("exports nested step images to standalone HTML and Markdown sidecars", asyn
         const attachmentStep = { category: "test.attach", attachments: [image], steps: [] };
         const step = { category: "test.step", title: "When <Save> is clicked", duration: 12, attachments: [], steps: [attachmentStep] };
         const reporter = new StepFileReporter({ format: "both", outputDir });
-        reporter.onTestEnd({ titlePath: () => ["", "chromium", "reporting.spec.ts", "saves <title>"] }, {
-            status: "passed", retry: 0, duration: 20, steps: [step], attachments: [image]
-        });
+        reporter.onTestEnd(
+            { titlePath: () => ["", "chromium", "reporting.spec.ts", "saves <title>"] },
+            {
+                status: "passed",
+                retry: 0,
+                duration: 20,
+                steps: [step],
+                attachments: [image]
+            }
+        );
         await reporter.onEnd();
 
         const html = await readFile(path.join(outputDir, "step-report.html"), "utf8");

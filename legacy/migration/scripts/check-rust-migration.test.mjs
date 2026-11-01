@@ -13,7 +13,7 @@ test("the checked-in Rust migration contract covers every legacy source", () => 
     assert.deepEqual(result.totals, {
         backendRoutes: 52,
         cliCommands: 63,
-        mcpSources: 12,
+        mcpSources: 12
     });
     assert.equal(result.gates.complete, 5);
     assert.ok(!result.gates.pending.includes("mcp-contracts"));
@@ -43,7 +43,7 @@ test("an untracked legacy source fails the contract", () => {
     const errors = validateMigration(manifest);
 
     // Then the omitted sources are reported
-    assert.ok(errors.some((error) => error.includes("untracked sources")));
+    assert.ok(errors.some(error => error.includes("untracked sources")));
 });
 
 test("a missing Rust MCP tool fails the executable contract", () => {
@@ -55,7 +55,7 @@ test("a missing Rust MCP tool fails the executable contract", () => {
     const errors = validateMigration(manifest);
 
     // Then the absent Rust registration is identified by name
-    assert.ok(errors.some((error) => error.includes("mcpTools is missing Rust entries: missing_tool")));
+    assert.ok(errors.some(error => error.includes("mcpTools is missing Rust entries: missing_tool")));
 });
 
 test("a completed gate requires existing evidence", () => {
@@ -67,7 +67,7 @@ test("a completed gate requires existing evidence", () => {
     const errors = validateMigration(manifest);
 
     // Then the unsupported completion claim is rejected
-    assert.ok(errors.some((error) => error.includes("source-inventory is complete but evidence does not exist")));
+    assert.ok(errors.some(error => error.includes("source-inventory is complete but evidence does not exist")));
 });
 
 test("gates require unique ids, status, evidence, and verification", () => {
@@ -79,8 +79,8 @@ test("gates require unique ids, status, evidence, and verification", () => {
     const errors = validateMigration(manifest);
 
     // Then every invalid property is identified
-    assert.ok(errors.some((error) => error.includes("duplicate cutover gate id")));
-    assert.ok(errors.some((error) => error.includes("pending or complete status")));
-    assert.ok(errors.some((error) => error.includes("evidence path")));
-    assert.ok(errors.some((error) => error.includes("verification command")));
+    assert.ok(errors.some(error => error.includes("duplicate cutover gate id")));
+    assert.ok(errors.some(error => error.includes("pending or complete status")));
+    assert.ok(errors.some(error => error.includes("evidence path")));
+    assert.ok(errors.some(error => error.includes("verification command")));
 });

@@ -1,6 +1,6 @@
 import { expect, type Locator } from "@playwright/test";
-import { reportStep } from "../reporting";
 
+import { reportStep } from "../reporting";
 import { Button, Checkbox, Radio, Surface, named, type Name } from "./core";
 
 export interface OverlayOptions {

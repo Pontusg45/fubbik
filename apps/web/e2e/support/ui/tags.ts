@@ -1,6 +1,6 @@
 import { expect, type Locator } from "@playwright/test";
-import { reportStep } from "../reporting";
 
+import { reportStep } from "../reporting";
 import { Input, stringValue } from "./core";
 
 export interface TagInputOptions {
