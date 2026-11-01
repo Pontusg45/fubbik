@@ -319,10 +319,7 @@ impl Workspace {
                         }
                     ))),
             )
-            .children(
-                self.today_caveat()
-                    .map(super::widgets::loading),
-            )
+            .children(self.today_caveat().map(super::widgets::loading))
             .child(self.today_filters(cx))
             .child(section_or(
                 format!("Needs you ({})", needs.len()),

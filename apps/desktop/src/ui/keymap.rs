@@ -223,8 +223,8 @@ pub const LIST_KEYS: &[(&str, &str, &str)] = &[
     ),
     (
         "Processes",
-        "s · r · l · o",
-        "Start/stop · restart · logs · open in the browser",
+        "s · r · l · o · a · K",
+        "Start/stop · restart · logs · open in the browser · attach (tmux) · kill (outside the app)",
     ),
     (
         "Worktrees",

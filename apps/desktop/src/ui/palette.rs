@@ -56,8 +56,10 @@ impl RunTarget {
             RunTarget::Tmux => {
                 "Detached on the app's tmux server: attach from any terminal; keeps running when the app quits."
             }
-            RunTarget::Tab => "Opens a tab in the Terminal view, where you can type into it.",
-            RunTarget::TerminalApp => "A new Terminal.app window.",
+            RunTarget::Tab => {
+                "Opens a tab in the Terminal view, where you can type into it. The app shows it as running but cannot stop or log it."
+            }
+            RunTarget::TerminalApp => "A new Terminal.app window. The app cannot stop or log it.",
         }
     }
 }

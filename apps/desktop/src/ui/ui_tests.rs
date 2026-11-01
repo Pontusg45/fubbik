@@ -1020,8 +1020,12 @@ fn the_script_filter_runs_its_first_match_and_remembers_it(cx: &mut TestAppConte
             w.log_key.clone(),
         )
     });
-    assert_eq!(recent, Some(vec!["hello".to_string()]));
-    assert!(log_key.is_some_and(|k| k.ends_with("script:hello")));
+    assert_eq!(
+        recent,
+        Some(vec!["true".to_string()]),
+        "remembered by command"
+    );
+    assert!(log_key.is_some_and(|k| k.ends_with("script:true:hello")));
 }
 
 #[gpui::test]

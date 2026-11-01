@@ -66,6 +66,17 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) {
         match target {
+            RunTarget::Background | RunTarget::Tmux => {
+                self.launched_in.remove(&key);
+                self.last_exit.remove(&key);
+                self.pending
+                    .insert(key.clone(), (Instant::now(), "Starting…"));
+            }
+            RunTarget::Tab | RunTarget::TerminalApp => {
+                self.launched_in.insert(key.clone(), target);
+            }
+        }
+        match target {
             RunTarget::Background => {
                 if self.supervisor.is_running(&key) {
                     self.show_error(format!(
@@ -102,9 +113,10 @@ impl Workspace {
                 });
             }
             RunTarget::Tab => {
-                let launch_label = label.clone();
-                self.launch(cwd, launch_label, command, false, cx);
+                // Chosen explicitly: a tab, even when AI sessions go to Terminal.app.
+                self.open_terminal(cwd, label.clone(), Some(command), cx);
                 self.tab = Tab::Terminal;
+                self.focus_terminal = true;
             }
             RunTarget::TerminalApp => {
                 self.run_background(cx, "Opened in Terminal.app", move || {
@@ -204,6 +216,8 @@ impl Workspace {
             return;
         }
         self.user_stopped.insert(state.key.clone());
+        self.pending
+            .insert(state.key.clone(), (Instant::now(), "Stopping…"));
         let supervisor = self.supervisor.clone();
         self.run_background(cx, "", move || {
             supervisor.stop(&state.key);
@@ -537,16 +551,32 @@ impl Workspace {
         }
         self.refresh_worktrees = true;
         let path = view.entry.path.clone();
-        self.run_background_then(
-            cx,
-            "Worktree created",
-            move || worktree::create(&path, &branch).map(|_| ()),
-            |this, ok| {
-                if ok {
-                    this.worktree_field.text.clear();
+        // Created: the toast offers the next step (a shell there).
+        let task = cx
+            .background_executor()
+            .spawn(async move { worktree::create(&path, &branch) });
+        cx.spawn(async move |this, cx| {
+            let result = task.await;
+            this.update(cx, |this, cx| {
+                match result {
+                    Ok(created) => {
+                        this.worktree_field.text.clear();
+                        this.show_alert(Alert {
+                            message: format!(
+                                "Worktree created at {} — open a shell there",
+                                display_path(&created)
+                            ),
+                            target: Command::ShellAt(created),
+                        });
+                    }
+                    Err(error) => this.show_error(error),
                 }
-            },
-        );
+                this.poll_now(false, cx);
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
     }
 
     pub(super) fn remove_worktree(&mut self, repo: usize, path: PathBuf, cx: &mut Context<Self>) {
@@ -1029,9 +1059,9 @@ impl Workspace {
         let Some(view) = self.repos.get(repo) else {
             return;
         };
-        let key = process_key(&view.entry.path, &format!("script:{name}"));
+        let key = process_key(&view.entry.path, &crate::scripts::run_name(&name, &command));
         let cwd = view.entry.path.clone();
-        self.remember_script(repo, &name);
+        self.remember_script(repo, &command);
         self.user_stopped.insert(key.clone());
         if target == RunTarget::Tmux && self.supervisor.is_running(&key) {
             self.show_error(format!("{name} is still running in its tmux session"));

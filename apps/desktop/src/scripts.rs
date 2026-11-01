@@ -13,6 +13,13 @@ pub struct Script {
     pub group: Option<String>,
 }
 
+/// The supervisor key part for a script run: `script:<tool>:<name>`, so
+/// `test` in just and `test` in pnpm are two runs, two logs, two sessions.
+pub fn run_name(name: &str, command: &str) -> String {
+    let tool = command.split_whitespace().next().unwrap_or("run");
+    format!("script:{tool}:{name}")
+}
+
 /// Recipe names from a justfile with their `[group('…')]` attribute, if any.
 pub fn just_recipes_grouped(text: &str) -> Vec<(String, Option<String>)> {
     let mut group: Option<String> = None;

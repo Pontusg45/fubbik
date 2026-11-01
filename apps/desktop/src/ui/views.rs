@@ -6,8 +6,8 @@ use gpui::{
 
 use super::palette::Command;
 use super::widgets::{
-    button, disabled_button, label, loading, muted, muted_line, pill, row, section, sparkline,
-    stat_card, status_dot, status_pill, top_highlight,
+    button, disabled_button, label, loading, muted, muted_line, pill, row, section, section_or,
+    sparkline, stat_card, status_dot, status_pill, top_highlight,
 };
 use super::{Field, RepoView, Tab, Workspace, display_path};
 use crate::model::{ProcessState, RepoSnapshot, Status};
@@ -40,6 +40,35 @@ pub(super) fn repo_badge(name: &str, size: f32) -> impl IntoElement {
                 .to_uppercase()
                 .to_string(),
         )
+}
+
+/// `postgresql://user:secret@host/db` → `postgresql://user:•••@host/db`.
+fn mask_password(url: &str) -> String {
+    match (url.find("://"), url.rfind('@')) {
+        (Some(scheme), Some(at)) if at > scheme => {
+            let credentials = &url[scheme + 3..at];
+            match credentials.split_once(':') {
+                Some((user, _)) => format!("{}{user}:•••{}", &url[..scheme + 3], &url[at..]),
+                None => url.to_string(),
+            }
+        }
+        _ => url.to_string(),
+    }
+}
+
+/// A log key's readable name: `script:just:test` → `test (just)`,
+/// `postgres:migrate` → `postgres › migrate`.
+fn log_label(name: &str) -> String {
+    if let Some(rest) = name.strip_prefix("script:") {
+        return match rest.split_once(':') {
+            Some((tool, script)) => format!("{script} ({tool})"),
+            None => rest.to_string(),
+        };
+    }
+    match name.split_once(':') {
+        Some((what, task)) => format!("{what} › {task}"),
+        None => name.to_string(),
+    }
 }
 
 /// Log chips for the built-in server, shown in every repo's Logs tab.
@@ -109,6 +138,31 @@ impl Workspace {
                 Tab::Setup => self.render_setup(index, window, cx).into_any_element(),
                 Tab::Terminal => {
                     let dir = self.repos[index].entry.path.clone();
+                    let claude_dir = dir.clone();
+                    // Process and script runs in tmux are not tabs: offer them here.
+                    let runs: Vec<AnyElement> =
+                        crate::tmux::sessions(&crate::tmux::Server::fubbik())
+                            .into_iter()
+                            .filter(|s| s.name.starts_with(crate::tmux_runs::PREFIX))
+                            .map(|s| {
+                                let name = s.name.clone();
+                                row()
+                                    .child(div().flex_1().text_sm().child(s.label.clone()))
+                                    .child(muted(s.name.clone()))
+                                    .child(
+                                        button(
+                                            SharedString::from(format!("attach-{name}")),
+                                            "Attach",
+                                        )
+                                        .on_click(
+                                            cx.listener(move |this, _, _, cx| {
+                                                this.run(Command::AttachRun(name.clone()), cx)
+                                            }),
+                                        ),
+                                    )
+                                    .into_any_element()
+                            })
+                            .collect();
                     div()
                         .flex()
                         .flex_col()
@@ -116,9 +170,18 @@ impl Workspace {
                         .gap_2()
                         .child(div().text_sm().child("No terminals"))
                         .child(muted("Shells and AI sessions you open here keep running when you switch away."))
-                        .child(button("terminal-empty-new", "+ Shell").on_click(cx.listener(move |this, _, _, cx| {
-                            this.run(Command::ShellAt(dir.clone()), cx)
-                        })))
+                                                .child(
+                            div()
+                                .flex()
+                                .gap_2()
+                                .child(button("terminal-empty-new", "+ Shell").on_click(cx.listener(move |this, _, _, cx| {
+                                    this.run(Command::ShellAt(dir.clone()), cx)
+                                })))
+                                .child(button("terminal-empty-claude", "+ Claude").on_click(cx.listener(move |this, _, _, cx| {
+                                    this.run(Command::NewSession(claude_dir.clone()), cx)
+                                }))),
+                        )
+                        .when(!runs.is_empty(), |d| d.child(section("Running in tmux", runs)))
                         .into_any_element()
                 }
                 Tab::Worktrees => self
@@ -235,7 +298,17 @@ impl Workspace {
                         .bg(theme::surface())
                         .border_b_1()
                         .border_color(theme::border())
-                        .children(chips)
+                        // Many tabs scroll; the buttons stay put on the right.
+                        .child(
+                            div()
+                                .id("terminal-chips")
+                                .flex()
+                                .flex_1()
+                                .min_w(px(0.))
+                                .gap_2()
+                                .overflow_x_scroll()
+                                .children(chips),
+                        )
                         .child(button("terminal-new", "+ Shell").on_click(cx.listener(
                             move |this, _, _, cx| {
                                 this.open_terminal(new_shell_dir.clone(), "Shell".into(), None, cx);
@@ -258,7 +331,7 @@ impl Workspace {
                                 cx.listener(|this, _, _, cx| this.run(Command::ToggleSplit, cx)),
                             ),
                         )
-                        .child(button("terminal-copy", "Copy").on_click(cx.listener(
+                        .child(button("terminal-copy", "Copy screen").on_click(cx.listener(
                             move |this, _, _, cx| {
                                 copy.update(cx, |v, cx| v.copy_screen(cx));
                                 this.show_info("Copied");
@@ -933,7 +1006,41 @@ impl Workspace {
                 crate::backend::Status::Running { .. }
             );
         let session = self.supervisor.tmux_session(&process.key);
+        let pending = self
+            .pending
+            .get(&process.key)
+            .filter(|(at, what)| {
+                at.elapsed() < std::time::Duration::from_secs(15) && (*what == "Starting…") != up
+            })
+            .map(|(_, what)| *what);
+        let elsewhere = self
+            .launched_in
+            .get(&process.key)
+            .copied()
+            .filter(|_| up && !process.owned);
+        let crashed = self
+            .last_exit
+            .get(&process.key)
+            .filter(|(code, _)| *code != Some(0) && !up)
+            .map(|(code, at)| match code {
+                Some(code) => format!(
+                    "exited {code} · {} ago",
+                    crate::activity::short_age(at.elapsed().as_secs() as i64)
+                ),
+                None => format!(
+                    "killed · {} ago",
+                    crate::activity::short_age(at.elapsed().as_secs() as i64)
+                ),
+            });
         let state = match (builtin, process.owned, up) {
+            _ if pending.is_some() => pending.unwrap_or_default().to_string(),
+            (_, false, true) if elsewhere == Some(super::RunTarget::Tab) => {
+                "Running in a terminal tab".to_string()
+            }
+            (_, false, true) if elsewhere == Some(super::RunTarget::TerminalApp) => {
+                "Running in Terminal.app".to_string()
+            }
+            (_, _, false) if crashed.is_some() => crashed.clone().unwrap_or_default(),
             (true, _, _) => "served by the app's built-in server".to_string(),
             (_, true, _) if session.is_some() => format!(
                 "{} · tmux session {}",
@@ -946,6 +1053,8 @@ impl Workspace {
         };
         let status_color = if builtin {
             theme::status(Status::Running)
+        } else if crashed.is_some() {
+            theme::danger()
         } else {
             theme::status(process.status)
         };
@@ -961,6 +1070,12 @@ impl Workspace {
                 .child(button(id("restart"), "Restart").on_click(cx.listener(
                     move |this, _, _, cx| this.run(Command::RestartProcess(repo, p), cx),
                 )));
+        } else if elsewhere == Some(super::RunTarget::Tab) {
+            actions = actions.child(button(id("show-tab"), "Show").on_click(
+                cx.listener(|this, _, _, cx| this.run(Command::ShowTab(Tab::Terminal), cx)),
+            ));
+        } else if elsewhere.is_some() {
+            // In Terminal.app: stop it there.
         } else if let (true, Some(pid)) = (up, process.pid) {
             let name = spec.name.clone();
             actions = actions.child(
@@ -983,7 +1098,7 @@ impl Workspace {
             ));
         }
         if let Some(session) = session.clone() {
-            actions = actions.child(button(id("attach"), "Terminal").on_click(cx.listener(
+            actions = actions.child(button(id("attach"), "Attach").on_click(cx.listener(
                 move |this, _, _, cx| this.run(Command::AttachRun(session.clone()), cx),
             )));
         }
@@ -1053,7 +1168,25 @@ impl Workspace {
                             )
                             .children(port),
                     )
-                    .child(muted(format!("{} · {state}", spec.command))),
+                    // The state first: it is what changes and matters.
+                    .child(
+                        div()
+                            .flex()
+                            .gap_1()
+                            .min_w(px(0.))
+                            .child(
+                                div()
+                                    .flex_none()
+                                    .text_xs()
+                                    .text_color(if crashed.is_some() {
+                                        theme::danger()
+                                    } else {
+                                        theme::text_muted()
+                                    })
+                                    .child(state),
+                            )
+                            .child(muted_line(format!("· {}", spec.command))),
+                    ),
             )
             .child(
                 div()
@@ -1081,10 +1214,23 @@ impl Workspace {
                 let spec = &db.spec;
                 let id = |name: &str| SharedString::from(format!("db-{name}-{index}-{d}"));
                 let url = spec.url.clone();
-                let mut actions = div().flex().gap_1().child(
+                let repo_path = self.repos[index].entry.path.clone();
+                let task_key = |action: &str| {
+                    crate::model::process_key(&repo_path, &format!("{}:{action}", spec.name))
+                };
+                let mut actions = div().flex().flex_none().gap_1().child(
                     button(id("copy"), "Copy URL")
                         .on_click(cx.listener(move |this, _, _, cx| this.copy(url.clone(), cx))),
                 );
+                // The last task's result, and whether one runs now.
+                let mut last: Option<(String, Option<i32>, std::time::Instant)> = None;
+                for action in ["start", "stop", "migrate", "seed", "studio"] {
+                    if let Some((code, at)) = self.last_exit.get(&task_key(action))
+                        && last.as_ref().is_none_or(|(_, _, t)| at > t)
+                    {
+                        last = Some((action.to_string(), *code, *at));
+                    }
+                }
                 let available = [
                     (
                         "start",
@@ -1101,7 +1247,20 @@ impl Workspace {
                     ("studio", "Studio", spec.studio.is_some()),
                 ];
                 for (action, text, show) in available {
-                    if show {
+                    let running = self.supervisor.is_running(&task_key(action));
+                    if running {
+                        // Running now: say so; Studio can be stopped.
+                        let key = task_key(action);
+                        actions = actions.child(disabled_button(id(action), format!("{text}…")));
+                        if action == "studio" {
+                            actions =
+                                actions.child(button(id("studio-stop"), "Stop Studio").on_click(
+                                    cx.listener(move |this, _, _, cx| {
+                                        this.run(Command::StopKey(key.clone()), cx)
+                                    }),
+                                ));
+                        }
+                    } else if show {
                         actions = actions.child(button(id(action), text).on_click(cx.listener(
                             move |this, _, _, cx| {
                                 this.run(
@@ -1117,6 +1276,21 @@ impl Workspace {
                         )));
                     }
                 }
+                let logs_key = last.as_ref().map(|(action, _, _)| task_key(action));
+                if let Some(key) = logs_key {
+                    actions = actions.child(button(id("logs"), "Logs").on_click(cx.listener(
+                        move |this, _, _, cx| {
+                            this.log_key = Some(key.clone());
+                            this.log_paused = None;
+                            this.run(Command::ShowTab(Tab::Logs), cx);
+                        },
+                    )));
+                }
+                let mut meta = vec![db.status.label().to_string()];
+                if let Some(engine) = &spec.engine {
+                    meta.push(engine.clone());
+                }
+                meta.push(mask_password(&spec.url));
                 row()
                     .child(status_dot(db.status))
                     .child(
@@ -1124,6 +1298,7 @@ impl Workspace {
                             .flex()
                             .flex_col()
                             .flex_1()
+                            .min_w(px(0.))
                             .overflow_hidden()
                             .child(
                                 div()
@@ -1131,21 +1306,42 @@ impl Workspace {
                                     .font_weight(FontWeight::MEDIUM)
                                     .child(spec.name.clone()),
                             )
-                            .child(muted(spec.engine.clone().unwrap_or_default())),
-                    )
-                    .child(muted(spec.url.clone()))
-                    .child(
-                        div()
-                            .w(px(84.))
-                            .flex()
-                            .justify_end()
-                            .child(status_pill(db.status)),
+                            .child(muted_line(meta.join(" · ")))
+                            .children(last.map(|(action, code, at)| {
+                                let ok = code == Some(0);
+                                div()
+                                    .text_xs()
+                                    .text_color(if ok {
+                                        theme::text_muted()
+                                    } else {
+                                        theme::danger()
+                                    })
+                                    .child(format!(
+                                        "{action} {} · {} ago",
+                                        if ok {
+                                            "✓".to_string()
+                                        } else {
+                                            format!(
+                                                "✗ exit {}",
+                                                code.map_or("signal".into(), |c| c.to_string())
+                                            )
+                                        },
+                                        crate::activity::short_age(at.elapsed().as_secs() as i64)
+                                    ))
+                            })),
                     )
                     .child(actions)
                     .into_any_element()
             })
             .collect();
-        section("Databases", rows)
+        section_or(
+            "Databases",
+            rows,
+            &format!(
+                "No databases: add a [[database]] to {} (url, and start/stop/migrate/seed/studio commands)",
+                crate::services::FILE_NAME
+            ),
+        )
     }
 
     /// A process's captured output, or a built-in server log file's tail.
@@ -1179,34 +1375,57 @@ impl Workspace {
                 keys.push(key.to_string());
             }
         }
+        let is_builtin = |key: &str| BUILTIN_LOGS.iter().any(|(k, _)| *k == key);
+        // Never the built-in server's log by default: this repo's first.
         let current = self
             .log_key
             .clone()
             .filter(|k| keys.contains(k))
-            .or_else(|| keys.first().cloned());
+            .or_else(|| keys.iter().find(|k| !is_builtin(k)).cloned());
 
-        let chips = keys
-            .iter()
-            .enumerate()
-            .map(|(i, key)| {
-                let name = match BUILTIN_LOGS.iter().find(|(k, _)| k == key) {
-                    Some((_, crate::backend::LogFile::Server)) => "built-in server".to_string(),
-                    Some((_, crate::backend::LogFile::Postgres)) => "built-in postgres".to_string(),
-                    None => key.strip_prefix(&prefix).unwrap_or(key).to_string(),
-                };
-                let active = current.as_ref() == Some(key);
-                let key = key.clone();
-                button(("log-chip", i), name)
-                    .when(active, |b| {
-                        b.border_color(theme::accent()).bg(theme::surface_hover())
-                    })
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.log_key = Some(key.clone());
-                        this.log_paused = None;
-                        cx.notify();
-                    }))
-            })
-            .collect::<Vec<_>>();
+        let chip = |i: usize, key: &String, cx: &mut Context<Self>| {
+            let builtin = BUILTIN_LOGS.iter().find(|(k, _)| k == key).map(|(_, f)| *f);
+            let name = match builtin {
+                Some(crate::backend::LogFile::Server) => "built-in server".to_string(),
+                Some(crate::backend::LogFile::Postgres) => "built-in postgres".to_string(),
+                None => log_label(key.strip_prefix(&prefix).unwrap_or(key)),
+            };
+            let running = builtin.is_none() && self.supervisor.is_running(key);
+            let active = current.as_ref() == Some(key);
+            let key = key.clone();
+            button(("log-chip", i), name)
+                .flex()
+                .items_center()
+                .gap_1p5()
+                .when(running, |b| {
+                    b.child(
+                        div()
+                            .size(px(6.))
+                            .rounded_full()
+                            .bg(theme::status(Status::Running)),
+                    )
+                })
+                .when(active, |b| {
+                    b.border_color(theme::accent()).bg(theme::surface_hover())
+                })
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.log_key = Some(key.clone());
+                    this.log_paused = None;
+                    this.log_follow = true;
+                    cx.notify();
+                }))
+                .into_any_element()
+        };
+        let mut chips: Vec<AnyElement> = Vec::new();
+        for (i, key) in keys.iter().enumerate().filter(|(_, k)| !is_builtin(k)) {
+            chips.push(chip(i, key, cx));
+        }
+        if keys.iter().any(|k| is_builtin(k)) {
+            chips.push(div().px_2().child(muted("·")).into_any_element());
+            for (i, key) in keys.iter().enumerate().filter(|(_, k)| is_builtin(k)) {
+                chips.push(chip(i, key, cx));
+            }
+        }
 
         let lines = match (&self.log_paused, &current) {
             (Some(frozen), _) => frozen.clone(),
@@ -1214,61 +1433,140 @@ impl Workspace {
             (None, None) => Vec::new(),
         };
         let filter = self.log_filter.text.to_lowercase();
+        let all = lines.len();
         let shown: Vec<String> = lines
             .into_iter()
             .filter(|line| filter.is_empty() || line.to_lowercase().contains(&filter))
             .collect();
         let start = shown.len().saturating_sub(LOG_RENDER_LINES);
         let total = shown.len();
+        let current_builtin = current.as_deref().is_some_and(is_builtin);
+        // What the shown log belongs to, for Restart / Stop / Attach.
+        let process = current.as_ref().and_then(|key| {
+            repo.snapshot
+                .as_ref()?
+                .processes
+                .iter()
+                .position(|p| &p.key == key)
+        });
+        let repo_index = self
+            .repos
+            .iter()
+            .position(|r| r.entry.path == repo.entry.path)
+            .unwrap_or(self.selected);
+        let running = current
+            .as_deref()
+            .is_some_and(|k| !current_builtin && self.supervisor.is_running(k));
+        let session = current
+            .as_deref()
+            .and_then(|k| self.supervisor.tmux_session(k));
+        let file =
+            current
+                .as_deref()
+                .and_then(|k| match BUILTIN_LOGS.iter().find(|(b, _)| *b == k) {
+                    Some((_, f)) => Some(f.path()),
+                    None => self.supervisor.log_file(k),
+                });
+        let copy_text = shown[start..].join("\n");
 
         let paused = self.log_paused.is_some();
         let pause_key = current.clone();
         let clear_key = current.clone();
-        let toolbar = div()
-            .flex()
-            .items_center()
-            .gap_2()
-            .child(
-                div()
-                    .w(px(240.))
-                    .child(self.field(Field::LogFilter, "Filter…", window, cx)),
-            )
-            .child(
-                button("log-pause", if paused { "Resume" } else { "Pause" }).on_click(cx.listener(
-                    move |this, _, _, cx| {
-                        this.log_paused = match (&this.log_paused, &pause_key) {
-                            (Some(_), _) | (None, None) => None,
-                            (None, Some(key)) => Some(this.log_lines(key)),
-                        };
-                        cx.notify();
-                    },
-                )),
-            )
-            .child(
-                button("log-clear", "Clear").on_click(cx.listener(move |this, _, _, cx| {
-                    if let Some(key) = &clear_key {
-                        if this.supervisor.tmux_session(key).is_some() {
-                            this.run(Command::ClearRunLog(key.clone()), cx);
-                        } else {
-                            this.supervisor.clear_logs(key);
-                        }
-                    }
-                    this.log_paused = None;
-                    cx.notify();
-                })),
-            )
-            .child(muted(if total > LOG_RENDER_LINES {
-                format!("last {LOG_RENDER_LINES} of {total} lines")
-            } else {
-                format!("{total} lines")
-            }));
+        let toolbar =
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .child(
+                    div()
+                        .w(px(240.))
+                        .child(self.field(Field::LogFilter, "Filter…", window, cx)),
+                )
+                .child(
+                    button("log-pause", if paused { "Resume" } else { "Pause" }).on_click(
+                        cx.listener(move |this, _, _, cx| {
+                            this.log_paused = match (&this.log_paused, &pause_key) {
+                                (Some(_), _) | (None, None) => None,
+                                (None, Some(key)) => Some(this.log_lines(key)),
+                            };
+                            cx.notify();
+                        }),
+                    ),
+                )
+                .when(!current_builtin, |d| {
+                    d.child(button("log-clear", "Clear").on_click(cx.listener(
+                        move |this, _, _, cx| {
+                            if let Some(key) = &clear_key {
+                                if this.supervisor.tmux_session(key).is_some() {
+                                    this.run(Command::ClearRunLog(key.clone()), cx);
+                                } else {
+                                    this.supervisor.clear_logs(key);
+                                }
+                            }
+                            this.log_paused = None;
+                            cx.notify();
+                        },
+                    )))
+                })
+                .when(total > 0, |d| {
+                    d.child(button("log-copy", "Copy").on_click(
+                        cx.listener(move |this, _, _, cx| this.copy(copy_text.clone(), cx)),
+                    ))
+                })
+                .children(file.map(|path| {
+                    button("log-file", "Open log file").on_click(cx.listener(move |_, _, _, cx| {
+                        cx.open_url(&format!(
+                            "file://{}",
+                            path.display().to_string().replace(' ', "%20")
+                        ))
+                    }))
+                }))
+                // The process this log belongs to, from here.
+                .when_some(process.filter(|_| running), |d, p| {
+                    d.child(button("log-restart", "Restart").on_click(cx.listener(
+                        move |this, _, _, cx| {
+                            this.log_follow = true;
+                            this.run(Command::RestartProcess(repo_index, p), cx)
+                        },
+                    )))
+                })
+                .when(running, |d| {
+                    let key = current.clone().unwrap_or_default();
+                    d.child(button("log-stop", "Stop").on_click(cx.listener(
+                        move |this, _, _, cx| match process {
+                            Some(p) => this.run(Command::StopProcess(repo_index, p), cx),
+                            None => this.run(Command::StopKey(key.clone()), cx),
+                        },
+                    )))
+                })
+                .children(session.map(|session| {
+                    button("log-attach", "Attach").on_click(cx.listener(move |this, _, _, cx| {
+                        this.run(Command::AttachRun(session.clone()), cx)
+                    }))
+                }))
+                .child(div().flex_1())
+                .when(!self.log_follow && total > 0, |d| {
+                    d.child(button("log-latest", "↓ Latest").on_click(cx.listener(
+                        |this, _, _, cx| {
+                            this.log_follow = true;
+                            this.log_scroll.scroll_to_bottom();
+                            cx.notify();
+                        },
+                    )))
+                })
+                .child(muted(match (filter.is_empty(), total > LOG_RENDER_LINES) {
+                    (false, _) => format!("{total} of {all} lines match"),
+                    (true, true) => format!("last {LOG_RENDER_LINES} of {total} lines"),
+                    (true, false) => format!("{total} lines"),
+                }));
 
         let body = if current.is_none() {
-            muted("No processes. Logs appear for processes started from this app.")
+            muted("Nothing logged in this repo yet: logs appear for processes, scripts and database tasks started from the app.")
                 .into_any_element()
+        } else if total == 0 && !filter.is_empty() {
+            muted(format!("No line matches “{}”", self.log_filter.text.trim())).into_any_element()
         } else if total == 0 {
-            muted("No output yet. Logs are captured for processes started from this app.")
-                .into_any_element()
+            muted("No output yet.").into_any_element()
         } else {
             div()
                 .id("log-lines")
@@ -1287,7 +1585,8 @@ impl Workspace {
                     }
                     cx.notify();
                 }))
-                .h(px(460.))
+                // Fills the window below the header and toolbar.
+                .h((window.viewport_size().height - px(330.)).max(px(240.)))
                 .p_3()
                 .rounded_lg()
                 .border_1()
@@ -1312,5 +1611,37 @@ impl Workspace {
             .child(div().flex().flex_wrap().gap_1().children(chips))
             .child(toolbar)
             .child(body)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn passwords_are_masked_and_log_keys_read_well() {
+        // Given
+        let urls = [
+            "postgresql://me:secret@db:5432/app",
+            "postgresql://localhost/app",
+        ];
+
+        // When
+        let masked: Vec<String> = urls.iter().map(|u| mask_password(u)).collect();
+        let labels = [
+            log_label("script:just:test"),
+            log_label("postgres:migrate"),
+            log_label("api"),
+        ];
+
+        // Then
+        assert_eq!(
+            masked,
+            [
+                "postgresql://me:•••@db:5432/app",
+                "postgresql://localhost/app"
+            ]
+        );
+        assert_eq!(labels, ["test (just)", "postgres › migrate", "api"]);
     }
 }

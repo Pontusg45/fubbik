@@ -131,6 +131,20 @@ impl Workspace {
                         self.log_paused = None;
                         self.tab = Tab::Logs;
                     }
+                    "a" => match self.supervisor.tmux_session(&process.key) {
+                        Some(session) => self.run(Command::AttachRun(session), cx),
+                        None => return false,
+                    },
+                    "K" if !process.owned && process.status.is_up() => match process.pid {
+                        Some(pid) => self.run(
+                            Command::KillPid {
+                                pid,
+                                what: format!("{} (pid {pid})", process.spec.name),
+                            },
+                            cx,
+                        ),
+                        None => return false,
+                    },
                     "o" => match process.spec.port {
                         Some(port) if process.status.is_up() => {
                             cx.open_url(&format!("http://localhost:{port}"))
@@ -354,9 +368,19 @@ impl Workspace {
             .iter()
             .find(|(group, _, _)| *group == view)
             .map(|(_, keys, what)| format!("{keys}: {what}"));
+        // What ⏎ does here, exactly.
+        let enter = match self.tab {
+            Tab::Today => "do the line's action",
+            Tab::Agents | Tab::Sessions => "open the pane (or resume an ended one)",
+            Tab::Processes => "show the logs (start a stopped one)",
+            Tab::Worktrees => "branch context",
+            Tab::Plans => "the task's timeline",
+            Tab::Knowledge => "open in the web app",
+            _ => "open",
+        };
         Some(match keys {
-            Some(keys) => format!("j/k move · ⏎ open · {keys} · ⌘/ all shortcuts"),
-            None => "j/k move · ⏎ open · ⌘/ all shortcuts".into(),
+            Some(keys) => format!("j/k move · ⏎ {enter} · {keys} · ⌘/ all shortcuts"),
+            None => format!("j/k move · ⏎ {enter} · ⌘/ all shortcuts"),
         })
     }
 }

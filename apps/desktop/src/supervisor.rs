@@ -276,6 +276,12 @@ impl Supervisor {
             .map(|m| m.child.id())
     }
 
+    /// The file a tmux run logs to, when it has one.
+    pub fn log_file(&self, key: &str) -> Option<std::path::PathBuf> {
+        let path = self.runs.as_ref()?.log_path(key);
+        path.exists().then_some(path)
+    }
+
     pub fn logs(&self, key: &str) -> Vec<String> {
         if let Some(runs) = &self.runs
             && (self.run_states().contains_key(key)

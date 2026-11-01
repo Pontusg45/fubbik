@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use gpui::{Context, FontWeight, IntoElement, div, prelude::*, px};
 
 use super::palette::Command;
-use super::widgets::{button, muted};
+use super::widgets::button;
 use super::{BranchContext, Loadable, Panel, Workspace};
 use crate::fubbik::FubbikClient;
 use crate::sessions::AiSession;
@@ -439,6 +439,9 @@ impl Workspace {
     /// Test processes (`[process.report]`) that finished: report pass/fail.
     pub(super) fn report_test_exits(&mut self, cx: &mut Context<Self>) {
         for (key, code) in self.supervisor.take_exits() {
+            self.last_exit
+                .insert(key.clone(), (code, std::time::Instant::now()));
+            self.pending.remove(&key);
             let found = self.repos.iter().find_map(|view| {
                 let process = view
                     .snapshot
@@ -484,7 +487,7 @@ impl Workspace {
     pub(super) fn render_panel(&self, cx: &mut Context<Self>) -> Option<impl IntoElement> {
         let panel = self.panel.as_ref()?;
         let body = match &panel.body {
-            Loadable::Loading => muted("Asking fubbik…").into_any_element(),
+            Loadable::Loading => super::widgets::loading("Loading…").into_any_element(),
             Loadable::Done(Err(error)) => div()
                 .text_sm()
                 .text_color(theme::danger())
@@ -526,8 +529,10 @@ impl Workspace {
                 .child(
                     div()
                         .id("panel")
-                        .w(px(760.))
-                        .h(px(560.))
+                        // Sized to the window, within reason.
+                        .w(gpui::relative(0.8))
+                        .max_w(px(1100.))
+                        .h(gpui::relative(0.78))
                         .flex()
                         .flex_col()
                         .gap_3()
@@ -579,7 +584,7 @@ impl Workspace {
                             div()
                                 .id("panel-body")
                                 .flex_1()
-                                .overflow_y_scroll()
+                                .overflow_scroll()
                                 .child(body),
                         ),
                 ),

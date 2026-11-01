@@ -495,6 +495,12 @@ pub struct Workspace {
     user_stopped: HashSet<String>,
     /// Newest last; info fades after `TOAST_FOR`, errors stay until closed.
     toasts: Vec<Toast>,
+    /// How each process or script last ended, for "exited 1 · 2m ago".
+    last_exit: HashMap<String, (Option<i32>, Instant)>,
+    /// Runs started in a terminal tab or Terminal.app (the app cannot see them).
+    launched_in: HashMap<String, RunTarget>,
+    /// Starts and stops the next poll has not confirmed yet ("Starting…").
+    pending: HashMap<String, (Instant, &'static str)>,
     /// AI Sessions lists every ended session, not just the last few.
     sessions_all: bool,
     /// Today shows only this repo's lines (None: every repo).
@@ -601,6 +607,9 @@ impl Workspace {
             ports_all: false,
             today_filter: None,
             sessions_all: false,
+            last_exit: HashMap::new(),
+            launched_in: HashMap::new(),
+            pending: HashMap::new(),
             confirm: None,
             confirmed: false,
             polling: false,

@@ -366,6 +366,16 @@ impl TerminalView {
         let Some(search) = &mut self.search else {
             return false;
         };
+        // ⌘V pastes into the query, not into the shell behind it.
+        if keystroke.modifiers.platform && keystroke.key == "v" {
+            if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
+                search
+                    .query
+                    .push_str(text.lines().next().unwrap_or_default());
+                self.run_search();
+            }
+            return true;
+        }
         match keystroke.key.as_str() {
             "escape" => self.search = None,
             "enter" if !search.hits.is_empty() => {

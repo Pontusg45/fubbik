@@ -11,11 +11,14 @@ use crate::scripts::Script;
 
 /// Chips per group row before "+N more" (a filter shows them all).
 const FOLDED: usize = 9;
+/// Group rows per tool before "N more groups".
+const GROUPS_FOLDED: usize = 5;
 /// Scripts remembered per repo for the "Recent" row.
 const RECENT: usize = 6;
 
 impl Workspace {
-    /// Called when a script runs, for the "Recent" row.
+    /// Called when a script runs, for the "Recent" row (by its command, so
+    /// same-named scripts of two tools stay apart).
     pub(super) fn remember_script(&mut self, repo: usize, name: &str) {
         let Some(view) = self.repos.get(repo) else {
             return;
@@ -46,6 +49,25 @@ impl Workspace {
             .collect()
     }
 
+    /// What ⏎ in the filter runs: the first script whose name matches
+    /// (not one that matched only by tool or group).
+    pub(super) fn first_script_match<'a>(&self, snapshot: &'a RepoSnapshot) -> Option<&'a Script> {
+        let query = self.script_filter.text.trim().to_lowercase();
+        if query.is_empty() {
+            return None;
+        }
+        let matches = self.filtered_scripts(snapshot);
+        matches
+            .iter()
+            .find(|s| s.name.to_lowercase().starts_with(&query))
+            .or_else(|| {
+                matches
+                    .iter()
+                    .find(|s| s.name.to_lowercase().contains(&query))
+            })
+            .copied()
+    }
+
     /// ⏎ in the filter: runs the first match.
     pub(super) fn run_first_script_match(&mut self, cx: &mut Context<Self>) {
         let repo = self.selected;
@@ -54,8 +76,7 @@ impl Workspace {
             .get(repo)
             .and_then(|r| r.snapshot.as_ref())
             .and_then(|s| {
-                self.filtered_scripts(s)
-                    .first()
+                self.first_script_match(s)
                     .map(|s| (s.name.clone(), s.command.clone()))
             });
         match first {
@@ -81,7 +102,12 @@ impl Workspace {
         let key = self
             .repos
             .get(repo)
-            .map(|r| process_key(&r.entry.path, &format!("script:{}", script.name)))
+            .map(|r| {
+                process_key(
+                    &r.entry.path,
+                    &crate::scripts::run_name(&script.name, &script.command),
+                )
+            })
             .unwrap_or_default();
         let running = !key.is_empty() && self.supervisor.is_running(&key);
         let stop_key = key.clone();
@@ -133,7 +159,18 @@ impl Workspace {
                         .child("■"),
                 )
             })
-            .on_click(cx.listener(move |this, _, _, cx| {
+            .on_click(cx.listener(move |this, event: &gpui::ClickEvent, _, cx| {
+                if event.modifiers().alt && !running {
+                    // ⌥-click always asks where, whatever is saved.
+                    this.run_prompt = Some(super::RunWhat::Script {
+                        repo,
+                        name: name.clone(),
+                        command: command.clone(),
+                    });
+                    this.run_prompt_remember = false;
+                    cx.notify();
+                    return;
+                }
                 if running {
                     // Never restart silently: show what it is doing.
                     this.log_key = Some(key.clone());
@@ -190,7 +227,7 @@ impl Workspace {
             .get(&self.repos[index].entry.path)
             .into_iter()
             .flatten()
-            .filter_map(|name| snapshot.scripts.iter().find(|s| &s.name == name))
+            .filter_map(|command| snapshot.scripts.iter().find(|s| &s.command == command))
             .collect();
         if !filtering && !recent.is_empty() {
             let chips = recent
@@ -227,6 +264,13 @@ impl Workspace {
                 if !groups.contains(&script.group.as_deref()) {
                     groups.push(script.group.as_deref());
                 }
+            }
+            // Many groups: the first few, then "N more groups".
+            let groups_key = format!("{index}:{tool}:*");
+            let all_groups = filtering || self.scripts_expanded.contains(&groups_key);
+            let more_groups = groups.len().saturating_sub(GROUPS_FOLDED);
+            if !all_groups && more_groups > 0 {
+                groups.truncate(GROUPS_FOLDED);
             }
             for group in groups {
                 let scripts: Vec<&Script> = of_tool
@@ -272,7 +316,38 @@ impl Workspace {
                             .into_any_element(),
                     );
                 }
-                rows.push(Self::script_row(group.unwrap_or("").to_string(), chips));
+                rows.push(Self::script_row(
+                    group.unwrap_or("other").to_string(),
+                    chips,
+                ));
+            }
+            if (more_groups > 0 && !filtering)
+                || (all_groups && !filtering && self.scripts_expanded.contains(&groups_key))
+            {
+                let key = groups_key.clone();
+                let text = if all_groups {
+                    "Fewer groups".to_string()
+                } else {
+                    format!("{more_groups} more group(s)…")
+                };
+                rows.push(
+                    div()
+                        .id(SharedString::from(format!("groups-more-{key}")))
+                        .px_4()
+                        .py_1()
+                        .text_xs()
+                        .text_color(theme::accent())
+                        .cursor_pointer()
+                        .hover(|d| d.underline())
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            if !this.scripts_expanded.remove(&key) {
+                                this.scripts_expanded.insert(key.clone());
+                            }
+                            cx.notify();
+                        }))
+                        .child(text)
+                        .into_any_element(),
+                );
             }
         }
         if matches.is_empty() {
@@ -294,7 +369,24 @@ impl Workspace {
                     .items_center()
                     .gap_3()
                     .child(label("SCRIPTS"))
-                    .child(muted("output in Logs"))
+                    .child(muted(
+                        match self
+                            .config
+                            .run_in
+                            .as_deref()
+                            .and_then(super::RunTarget::from_key)
+                        {
+                            None => "asks where to run · ⌥-click to choose".to_string(),
+                            Some(target) => format!(
+                                "runs {} · ⌥-click to choose",
+                                target.title().to_lowercase()
+                            ),
+                        },
+                    ))
+                    .children(
+                        self.first_script_match(snapshot)
+                            .map(|s| muted(format!("⏎ runs {}", s.command))),
+                    )
                     .child(div().flex_1())
                     .child(div().w(px(240.)).child(self.field(
                         Field::ScriptFilter,

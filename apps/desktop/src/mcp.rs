@@ -106,7 +106,7 @@ fn tools() -> Value {
                 "type": "object",
                 "properties": {
                     "repo": repo,
-                    "process": { "type": "string", "description": "Process name from get_repo, or `script:<name>` for a script" },
+                    "process": { "type": "string", "description": "Process name from get_repo, or `script:<tool>:<name>` (e.g. `script:just:test`) for a script" },
                     "lines": { "type": "integer", "description": "How many lines from the end (default 200, at most 2000)" }
                 },
                 "required": ["repo", "process"]
@@ -131,7 +131,7 @@ fn tools() -> Value {
             "description": "Stops a process the app started (in tmux or in the background): its whole process group gets SIGTERM, then SIGKILL after 2 s. Processes started outside the app are left alone.",
             "inputSchema": {
                 "type": "object",
-                "properties": { "repo": repo, "process": { "type": "string", "description": "Process name, or `script:<name>` for a script" } },
+                "properties": { "repo": repo, "process": { "type": "string", "description": "Process name, or `script:<tool>:<name>` (e.g. `script:just:test`) for a script" } },
                 "required": ["repo", "process"]
             },
             "annotations": { "readOnlyHint": false, "destructiveHint": true }
@@ -148,7 +148,7 @@ fn tools() -> Value {
         },
         {
             "name": "run_script",
-            "description": "Runs one of a repo's scripts (just recipe, package.json script or make target; see get_repo's scripts). `where` as for start_process, default \"tmux\". Read its output with get_process_logs and process `script:<name>`.",
+            "description": "Runs one of a repo's scripts (just recipe, package.json script or make target; see get_repo's scripts). `where` as for start_process, default \"tmux\". Read its output with get_process_logs and process `script:<tool>:<name>` (e.g. `script:just:test`).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -319,7 +319,10 @@ fn call_tool_in(state: Published, name: &str, args: &Value) -> Result<Value, Str
                 (
                     crate::model::process_key(
                         std::path::Path::new(path),
-                        &format!("script:{wanted}"),
+                        &crate::scripts::run_name(
+                            wanted,
+                            script["command"].as_str().unwrap_or_default(),
+                        ),
                     ),
                     wanted.to_string(),
                     script["command"].as_str().unwrap_or_default().to_string(),

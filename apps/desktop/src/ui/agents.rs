@@ -109,7 +109,7 @@ impl Workspace {
         let sessions = sessions_in(snapshot, worktree);
         let live = sessions.iter().filter(|s| s.state.is_live()).count();
 
-        let mut badges = div().flex().gap_1();
+        let mut badges = div().flex().flex_wrap().gap_1();
         if worktree.main {
             badges = badges.child(pill("main", theme::accent()));
         }
@@ -146,7 +146,7 @@ impl Workspace {
         }
 
         let detail = if worktree.missing {
-            "folder is gone — Prune stale cleans it up".to_string()
+            "folder is gone — Prune removes git's record of it".to_string()
         } else {
             let mut parts = vec![format!("{} changed", worktree.changed_files)];
             if !worktree.main {
@@ -160,7 +160,17 @@ impl Workspace {
         };
 
         let path = worktree.path.clone();
-        let mut actions = div().flex().gap_1();
+        let mut actions = div()
+            .flex()
+            .flex_wrap()
+            .justify_end()
+            .gap_1()
+            .max_w(px(460.));
+        if worktree.missing {
+            actions = actions.child(button(id("prune"), "Prune").on_click(
+                cx.listener(move |this, _, _, cx| this.run(Command::PruneWorktrees(repo), cx)),
+            ));
+        }
         if !worktree.missing {
             let (editor, terminal, claude, context) =
                 (path.clone(), path.clone(), path.clone(), path.clone());
@@ -179,10 +189,10 @@ impl Workspace {
                 .child(button(id("editor"), "Editor").on_click(cx.listener(
                     move |this, _, _, cx| this.run(Command::OpenEditorAt(editor.clone()), cx),
                 )))
-                .child(button(id("terminal"), "Terminal").on_click(cx.listener(
+                .child(button(id("terminal"), "Terminal.app").on_click(cx.listener(
                     move |this, _, _, cx| this.run(Command::OpenTerminalAt(terminal.clone()), cx),
                 )))
-                .child(button(id("shell"), "Shell").on_click(cx.listener({
+                .child(button(id("shell"), "Shell tab").on_click(cx.listener({
                     let path = path.clone();
                     move |this, _, _, cx| this.run(Command::ShellAt(path.clone()), cx)
                 })))
