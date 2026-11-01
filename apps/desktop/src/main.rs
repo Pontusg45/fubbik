@@ -13,6 +13,7 @@ mod ghostty;
 mod git;
 mod global_hotkey;
 mod launch;
+mod mcp;
 mod model;
 mod poll;
 mod probe;
@@ -60,6 +61,12 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     // `fubbik-desktop --serve`: only the built-in server, no window, until
     // SIGTERM or Ctrl-C. "Quit, Keep Server Running" starts one of these.
+    // `fubbik-desktop --mcp`: the app's MCP server over stdio (forwarded to
+    // the running app's HTTP endpoint).
+    if args.get(1).map(String::as_str) == Some("--mcp") {
+        mcp::run_stdio_bridge();
+        return;
+    }
     if args.get(1).map(String::as_str) == Some("--serve") {
         serve_headless();
         return;
@@ -98,6 +105,9 @@ fn main() {
         }
     };
     let stop_on_close = stop_backend.clone();
+
+    mcp::set_supervisor(supervisor.clone());
+    mcp::start_http();
 
     Application::new().run(move |cx: &mut App| {
         ui::keymap::bind_all(cx, &ui::keymap::path());

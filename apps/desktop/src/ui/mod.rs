@@ -12,6 +12,7 @@ mod insights;
 pub mod keymap;
 mod knowledge;
 mod lists;
+mod mcp_publish;
 mod palette;
 mod plans;
 mod polling;

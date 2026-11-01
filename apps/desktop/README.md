@@ -58,6 +58,25 @@ Starting the app is all fubbik needs. Docker, `fubbik serve` and `just dev` aren
   yourself then.
 - **Files:** `auth-secret` in the data folder signs session cookies (generated once).
 
+## MCP server
+
+Other agents can read what the app shows through its own MCP server (read-only):
+
+- **HTTP:** `http://127.0.0.1:3100/mcp` while the app runs (MCP streamable HTTP with JSON replies; `FUBBIK_DESKTOP_MCP_PORT`
+  moves it). Requests with a non-local `Origin` are refused. Claude Code: `claude mcp add --transport http fubbik-desktop
+  http://127.0.0.1:3100/mcp`, or the `fubbik-desktop` entry in `agents/mcp/claude-code.json`.
+- **stdio:** `fubbik-desktop --mcp` (in the bundle: `~/Applications/fubbik.app/Contents/MacOS/fubbik-desktop --mcp`) forwards to
+  the running app, and says so when the app is not running.
+- **Tools:**
+  - `list_repos`: each repo's status, branch, changes, processes up, live sessions.
+  - `get_repo`: git, processes, databases, worktrees, AI sessions, overlaps, scripts, and the knowledge summary.
+  - `get_today`: the Today list.
+  - `list_sessions`: AI sessions, filtered by repo or state.
+  - `get_process_logs`: output of a process or script started from the app.
+  - `get_builtin_server`: the built-in server's status and paths.
+- **How it works:** the UI publishes a JSON view after every poll (`src/ui/mcp_publish.rs`), and `src/mcp.rs` answers from it,
+  so calls never wait on git or the network. For the knowledge base itself, use `fubbik mcp`.
+
 It is its own cargo workspace (not a member of the root one under `crates/`), so `cargo build --workspace` and CI never compile GPUI.
 It links `fubbik-api` and `fubbik-db` by path for the built-in server; their sqlx queries build from the checked-in `.sqlx/`
 (`SQLX_OFFLINE`, set in `apps/desktop/.cargo/config.toml`, the `start-desktop` recipe and `install-app.sh`).
@@ -266,6 +285,7 @@ src/model.rs       Status, ProcessState, DatabaseState, RepoSnapshot, roll-up
 src/poll.rs        one repo poll (runs on the background executor)
 src/launch.rs      editor, Terminal, notifications, login-shell PATH
 src/global_hotkey.rs  the system-wide summon key (Carbon RegisterEventHotKey)
+src/mcp.rs         the app's MCP server (HTTP on :3100, --mcp stdio bridge), answering from ui/mcp_publish.rs
 src/backend.rs     the built-in server: Postgres cluster, in-process API, import, backups, server.json, --serve
 src/ui/            Workspace entity (mod.rs: state; polling, commands, command_palette, fields, terminals,
                    chrome, preferences, tasks, today, insights), sidebar, tab views (agents.rs: worktrees + sessions; plans.rs; knowledge.rs;
