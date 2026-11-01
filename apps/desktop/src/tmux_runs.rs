@@ -52,9 +52,25 @@ pub fn attach_command(session: &str) -> String {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PaneState {
+    /// 0 for a dead pane: tmux 3.8 reports no pid once the process exits.
     pub pid: u32,
     pub dead: bool,
     pub exit: Option<i32>,
+}
+
+/// `pid<TAB>dead<TAB>status`. A dead pane may have an empty pid (tmux 3.8);
+/// a live one must have one.
+fn parse_pane(line: &str) -> Option<PaneState> {
+    let mut parts = line.split('\t');
+    let pid = parts.next()?;
+    let dead = parts.next() == Some("1");
+    let exit = parts.next().and_then(|s| s.parse().ok());
+    let pid = match pid.parse() {
+        Ok(pid) => pid,
+        Err(_) if dead => 0,
+        Err(_) => return None,
+    };
+    Some(PaneState { pid, dead, exit })
 }
 
 /// Where runs live: the app's tmux server and a folder for their logs.
@@ -83,11 +99,7 @@ impl Runs {
             ],
         )
         .ok()?;
-        let mut parts = out.lines().next()?.split('\t');
-        let pid = parts.next()?.parse().ok()?;
-        let dead = parts.next() == Some("1");
-        let exit = parts.next().and_then(|s| s.parse().ok());
-        Some(PaneState { pid, dead, exit })
+        parse_pane(out.lines().next()?)
     }
 
     pub fn alive(&self, key: &str) -> bool {
@@ -192,12 +204,9 @@ impl Runs {
         };
         out.lines()
             .filter_map(|line| {
-                let mut parts = line.split('\t');
-                let key = parts.next().filter(|k| !k.is_empty())?.to_string();
-                let pid = parts.next()?.parse().ok()?;
-                let dead = parts.next() == Some("1");
-                let exit = parts.next().and_then(|s| s.parse().ok());
-                Some((key, PaneState { pid, dead, exit }))
+                let (key, rest) = line.split_once('\t')?;
+                (!key.is_empty()).then_some(())?;
+                Some((key.to_string(), parse_pane(rest)?))
             })
             .collect()
     }
@@ -357,6 +366,23 @@ mod tests {
 
         // Then
         assert_eq!(last[..2], ["ok done".to_string(), "100%".to_string()]);
+    }
+
+    #[test]
+    fn a_dead_pane_without_a_pid_still_parses() {
+        // Given: tmux 3.8 leaves pane_pid empty once the process has exited
+        let dead = "\t1\t3";
+        let live_without_pid = "\t0\t";
+
+        // When
+        let parsed = parse_pane(dead);
+
+        // Then
+        assert_eq!(
+            parsed.map(|p| (p.pid, p.dead, p.exit)),
+            Some((0, true, Some(3)))
+        );
+        assert!(parse_pane(live_without_pid).is_none());
     }
 
     /// Start, log, exit code, restart and stop in a real tmux session (on a
