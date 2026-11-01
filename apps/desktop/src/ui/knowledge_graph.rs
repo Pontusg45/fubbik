@@ -360,10 +360,7 @@ impl Workspace {
             })
             .collect();
         let area_size = self.graph.area.clone();
-        let (dim, bright) = (
-            theme::text_muted().opacity(0.25),
-            theme::accent().opacity(0.9),
-        );
+        let (dim, bright) = (theme::text_muted(), theme::accent());
         let dimmed = focus.is_some();
         let lines = canvas(
             // Remember the size: the 3D projection keeps its aspect from it.
@@ -383,16 +380,18 @@ impl Workspace {
                         if *on != pass {
                             continue;
                         }
-                        let mut path = PathBuilder::stroke(px(if *on { 1.6 } else { 1. }));
+                        // Bolder lines; in 3D, far ones a little thinner.
+                        let width = if *on { 2.6 } else { 1.2 + 0.8 * alpha };
+                        let mut path = PathBuilder::stroke(px(width));
                         path.move_to(at(*x1, *y1));
                         path.line_to(at(*x2, *y2));
                         if let Ok(path) = path.build() {
                             let color = if *on {
                                 bright
                             } else if dimmed {
-                                dim.opacity(0.12)
+                                dim.opacity(0.15)
                             } else {
-                                dim.opacity(0.25 * alpha)
+                                dim.opacity(0.55 * alpha)
                             };
                             window.paint_path(path, color);
                         }
@@ -453,6 +452,25 @@ impl Workspace {
                             .flex_none()
                             .rounded_full()
                             .bg(color.opacity(if faded { 0.2 } else { 0.9 * place.alpha }))
+                            // A drop shadow under it and a glow in its own
+                            // color around it (weaker when faded or far).
+                            .shadow({
+                                let strength = if faded { 0.15 } else { place.alpha };
+                                vec![
+                                    gpui::BoxShadow {
+                                        color: gpui::black().opacity(0.8 * strength),
+                                        offset: point(px(0.), px(size * 0.22 + 1.5)),
+                                        blur_radius: px(size * 0.5 + 3.),
+                                        spread_radius: px(0.),
+                                    },
+                                    gpui::BoxShadow {
+                                        color: color.opacity(0.6 * strength),
+                                        offset: point(px(0.), px(0.)),
+                                        blur_radius: px(size * 1.1 + 4.),
+                                        spread_radius: px(1.),
+                                    },
+                                ]
+                            })
                             .border_2()
                             .border_color(if selected {
                                 theme::text()
