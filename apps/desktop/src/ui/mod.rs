@@ -398,6 +398,8 @@ pub struct Workspace {
     tab: Tab,
     /// Home: every project and the computer's stats, instead of one repo.
     home: bool,
+    /// The last repo tab shown, for coming back from Today or All agents.
+    repo_tab: Tab,
     supervisor: Supervisor,
     client: FubbikClient,
     focus: FocusHandle,
@@ -558,6 +560,7 @@ impl Workspace {
             selected: 0,
             tab: Tab::Overview,
             home: true,
+            repo_tab: Tab::Overview,
             supervisor,
             client,
             focus,
@@ -756,6 +759,10 @@ impl Workspace {
     fn select(&mut self, index: usize) {
         if index < self.repos.len() {
             self.home = false;
+            // Today and All agents are not a repo's: show its last repo tab.
+            if self.tab.is_global() {
+                self.tab = self.repo_tab;
+            }
             self.selected = index;
             self.list_cursor = None;
             self.board_cursor = None;

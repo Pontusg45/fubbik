@@ -1121,3 +1121,31 @@ fn removing_a_repo_asks_first(cx: &mut TestAppContext) {
     assert_eq!(after_cancel, (true, 2), "esc keeps it");
     assert_eq!(after_confirm, (true, 1), "enter removes it");
 }
+
+#[gpui::test]
+fn selecting_a_repo_leaves_today_and_all_agents(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: two repos, Processes seen last, then Today and All agents
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let (view, cx) = open(
+        cx,
+        &format!(
+            "[[repo]]\npath = {:?}\n\n[[repo]]\npath = {:?}\n",
+            a.path().display().to_string(),
+            b.path().display().to_string()
+        ),
+    );
+    view.update(cx, |w, cx| w.run(Command::ShowTab(Tab::Processes), cx));
+    view.update(cx, |w, cx| w.run(Command::ShowTab(Tab::Today), cx));
+
+    // When: a repo from Today, then from All agents
+    view.update(cx, |w, cx| w.run(Command::SelectRepo(1), cx));
+    let from_today = view.read_with(cx, |w, _| (w.home, w.selected, w.tab));
+    view.update(cx, |w, cx| w.run(Command::ShowTab(Tab::Agents), cx));
+    view.update(cx, |w, cx| w.run(Command::SelectRepo(0), cx));
+    let from_agents = view.read_with(cx, |w, _| (w.home, w.selected, w.tab));
+
+    // Then: the repo, on its last repo tab
+    assert_eq!(from_today, (false, 1, Tab::Processes));
+    assert_eq!(from_agents, (false, 0, Tab::Processes));
+}

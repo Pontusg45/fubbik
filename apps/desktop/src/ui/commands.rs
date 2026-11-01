@@ -669,7 +669,10 @@ impl Workspace {
                     self.list_cursor = None;
                     self.board_cursor = None;
                 }
-                self.tab = tab;
+                                self.tab = tab;
+                if !tab.is_global() {
+                    self.repo_tab = tab;
+                }
                 self.focus_terminal = tab == Tab::Terminal;
             }
             Command::RegisterRepo => self.register_repo(cx),
