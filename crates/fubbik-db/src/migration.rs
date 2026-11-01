@@ -327,3 +327,71 @@ pub(crate) async fn adopt_legacy_drizzle_baseline(
     );
     Ok(())
 }
+
+/// What migration 0004 adds. A database can record 0004 as applied and still
+/// lack them (seen on a database whose behavior tables were created after
+/// 0004 ran, then copied with that history); every query that touches a
+/// behavior rule then fails with "column does not exist".
+const BEHAVIOR_0004_COLUMNS: [&str; 4] = [
+    "rationale",
+    "alternatives",
+    "consequences",
+    "counterexample",
+];
+const BEHAVIOR_0004_TABLES: [&str; 3] = [
+    "behavior_rule_version",
+    "behavior_cell_code",
+    "behavior_test_result",
+];
+
+/// Re-runs migration 0004 when it is recorded as applied but what it adds is
+/// missing. 0004 is idempotent (every statement is `IF NOT EXISTS` or
+/// guarded), so running it again only fills the gaps. Returns whether it ran.
+pub(crate) async fn repair_behavior_completion(
+    conn: &mut PgConnection,
+) -> Result<bool, sqlx::Error> {
+    let applied: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM _sqlx_migrations WHERE version = 4 AND success)",
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .unwrap_or(false);
+    let has_rules: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.tables \
+         WHERE table_schema = 'public' AND table_name = 'behavior_rule')",
+    )
+    .fetch_one(&mut *conn)
+    .await?;
+    if !applied || !has_rules {
+        return Ok(false);
+    }
+    let columns: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM information_schema.columns \
+         WHERE table_schema = 'public' AND table_name = 'behavior_rule' AND column_name = ANY($1)",
+    )
+    .bind(BEHAVIOR_0004_COLUMNS.as_slice())
+    .fetch_one(&mut *conn)
+    .await?;
+    let tables: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM information_schema.tables \
+         WHERE table_schema = 'public' AND table_name = ANY($1)",
+    )
+    .bind(BEHAVIOR_0004_TABLES.as_slice())
+    .fetch_one(&mut *conn)
+    .await?;
+    if columns == BEHAVIOR_0004_COLUMNS.len() as i64 && tables == BEHAVIOR_0004_TABLES.len() as i64
+    {
+        return Ok(false);
+    }
+    let completion = MIGRATOR
+        .iter()
+        .find(|m| m.version == 4)
+        .expect("embedded migration set must contain version 4");
+    tracing::warn!(
+        columns,
+        tables,
+        "migration 0004 is recorded as applied but its columns or tables are missing; running it again"
+    );
+    sqlx::raw_sql(&completion.sql).execute(&mut *conn).await?;
+    Ok(true)
+}

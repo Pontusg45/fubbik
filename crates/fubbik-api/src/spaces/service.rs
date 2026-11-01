@@ -152,15 +152,28 @@ pub async fn delete(pool: &PgPool, user_id: &str, id: &str) -> AppResult<()> {
 /// `localPath` (JS-truthiness edge case, replicated via the `filter`
 /// chain). Neither given, or neither matches: `None`, which the route
 /// layer turns into an empty 200 body, not `null`/`{}`/404.
+/// The remote first (normalized, then as given: seeded spaces store the raw
+/// `git@host:owner/repo.git` form), then the local path. A remote nobody
+/// stored falls through to the path, so a clone of a fork still finds the
+/// space registered for its folder.
 pub async fn detect(pool: &PgPool, user_id: &str, query: DetectQuery) -> AppResult<Option<Space>> {
-    let normalized_url = query
+    if let Some(raw) = query
         .remote_url
+        .as_deref()
+        .map(str::trim)
         .filter(|s| !s.is_empty())
-        .map(|s| normalize_git_url(&s))
-        .filter(|s| !s.is_empty());
-
-    if let Some(url) = normalized_url {
-        return space::find_by_remote_url(pool, user_id, &url).await;
+    {
+        let normalized = normalize_git_url(raw);
+        if !normalized.is_empty()
+            && let Some(found) = space::find_by_remote_url(pool, user_id, &normalized).await?
+        {
+            return Ok(Some(found));
+        }
+        if normalized != raw
+            && let Some(found) = space::find_by_remote_url(pool, user_id, raw).await?
+        {
+            return Ok(Some(found));
+        }
     }
 
     if let Some(path) = query.local_path.filter(|s| !s.is_empty()) {

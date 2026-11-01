@@ -338,6 +338,64 @@ async fn detect_match_returns_bare_space_without_a_code_key(pool: sqlx::PgPool) 
 }
 
 #[sqlx::test(migrations = "../fubbik-db/migrations")]
+async fn detect_falls_back_to_the_local_path_and_reads_raw_stored_remotes(pool: sqlx::PgPool) {
+    // Given: a space whose stored remote is the raw ssh form (as the seed
+    // writes it), and one found only by its path
+    let app = fubbik_api::router(state(pool.clone()));
+    let cookie = signup(app.clone(), "alice-detectfallback@b.test", "Alice").await;
+    let raw = json_body(
+        create_space(
+            app.clone(),
+            &cookie,
+            serde_json::json!({ "name": "raw", "kind": "code", "remoteUrl": "github.com/acme/raw", "localPaths": ["/Users/alice/raw"] }),
+        )
+        .await,
+    )
+    .await;
+    sqlx::query("UPDATE space_code_metadata SET remote_url = 'git@github.com:acme/raw.git' WHERE space_id = $1")
+        .bind(raw["id"].as_str().unwrap())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let by_path = json_body(
+        create_space(
+            app.clone(),
+            &cookie,
+            serde_json::json!({ "name": "fork", "kind": "code", "localPaths": ["/Users/alice/fork"] }),
+        )
+        .await,
+    )
+    .await;
+
+    // When: the raw remote; then a remote nobody stored, with a known path
+    let raw_hit = json_body(
+        detect_space(
+            app.clone(),
+            &cookie,
+            "remoteUrl=git%40github.com%3Aacme%2Fraw.git",
+        )
+        .await,
+    )
+    .await;
+    let path_hit = json_body(
+        detect_space(
+            app.clone(),
+            &cookie,
+            "remoteUrl=git%40github.com%3Asomeone%2Ffork.git&localPath=%2FUsers%2Falice%2Ffork",
+        )
+        .await,
+    )
+    .await;
+
+    // Then
+    assert_eq!(raw_hit["id"], raw["id"]);
+    assert_eq!(
+        path_hit["id"], by_path["id"],
+        "an unmatched remote falls back to the path"
+    );
+}
+
+#[sqlx::test(migrations = "../fubbik-db/migrations")]
 async fn detect_no_match_returns_a_genuinely_empty_body(pool: sqlx::PgPool) {
     // Given
     let app = fubbik_api::router(state(pool));

@@ -424,3 +424,82 @@ async fn connect_refuses_to_adopt_an_incomplete_drizzle_database() {
     // Then
     result.expect("incomplete Drizzle refusal checks");
 }
+
+/// A database that records migration 0004 as applied but lacks what it adds
+/// gets it on the next connect.
+async fn check_connect_repairs_missing_0004_columns(scratch_url: &str) -> Result<(), String> {
+    let pool = fubbik_db::connect(scratch_url)
+        .await
+        .map_err(|e| e.to_string())?;
+    // Simulate the drifted database: 0004's columns and one table gone.
+    sqlx::raw_sql(
+        "ALTER TABLE behavior_rule DROP COLUMN rationale, DROP COLUMN counterexample; \
+         DROP TABLE behavior_test_result",
+    )
+    .execute(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    pool.close().await;
+
+    let pool = fubbik_db::connect(scratch_url)
+        .await
+        .map_err(|e| e.to_string())?;
+    let columns: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM information_schema.columns WHERE table_name = 'behavior_rule' \
+         AND column_name IN ('rationale', 'alternatives', 'consequences', 'counterexample')",
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    let table: Option<String> =
+        sqlx::query_scalar("SELECT to_regclass('public.behavior_test_result')::text")
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| e.to_string())?;
+    pool.close().await;
+    if columns != 4 {
+        return Err(format!("expected the 4 columns back, found {columns}"));
+    }
+    if table.is_none() {
+        return Err("behavior_test_result was not recreated".into());
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn connect_repairs_a_database_missing_what_0004_adds() {
+    // Given
+    let database_url = std::env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set to run this test against a real Postgres cluster");
+    let admin_url = url_for_database(&database_url, "postgres");
+    let admin_pool = PgPoolOptions::new()
+        .max_connections(2)
+        .connect(&admin_url)
+        .await
+        .expect("connect to the postgres maintenance database");
+    let db_name = format!("fubbik_connect_test_{}", fubbik_db::new_id());
+    sqlx::query(&format!(r#"CREATE DATABASE "{db_name}""#))
+        .execute(&admin_pool)
+        .await
+        .expect("create scratch database");
+    let scratch_url = url_for_database(&database_url, &db_name);
+
+    // When
+    let result = check_connect_repairs_missing_0004_columns(&scratch_url).await;
+
+    // Clean up regardless of the outcome.
+    let _ = sqlx::query(
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+         WHERE datname = $1 AND pid <> pg_backend_pid()",
+    )
+    .bind(&db_name)
+    .execute(&admin_pool)
+    .await;
+    sqlx::query(&format!(r#"DROP DATABASE IF EXISTS "{db_name}""#))
+        .execute(&admin_pool)
+        .await
+        .expect("drop scratch database");
+
+    // Then
+    result.expect("0004 repair");
+}
