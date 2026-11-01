@@ -16,6 +16,7 @@ mod palette;
 mod plans;
 mod polling;
 mod preferences;
+mod scripts_view;
 mod setup_view;
 mod sidebar;
 mod tasks;
@@ -223,6 +224,7 @@ impl Tab {
 enum Field {
     Palette,
     LogFilter,
+    ScriptFilter,
     NoteTitle,
     NoteBody,
     Group,
@@ -381,6 +383,9 @@ pub struct Workspace {
     focus: FocusHandle,
     palette_field: TextField,
     log_filter: TextField,
+    script_filter: TextField,
+    /// Scripts run last, per repo path, newest first (the "Recent" row).
+    script_recent: std::collections::HashMap<PathBuf, Vec<String>>,
     note_title: TextField,
     note_body: TextField,
     group_field: TextField,
@@ -501,6 +506,8 @@ impl Workspace {
             focus,
             palette_field: TextField::new(cx),
             log_filter: TextField::new(cx),
+            script_filter: TextField::new(cx),
+            script_recent: Default::default(),
             note_title: TextField::new(cx),
             note_body: TextField::new(cx),
             group_field: TextField::new(cx),

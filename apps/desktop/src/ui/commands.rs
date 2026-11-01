@@ -558,6 +558,7 @@ impl Workspace {
         };
         let key = process_key(&view.entry.path, &format!("script:{name}"));
         let cwd = view.entry.path.clone();
+        self.remember_script(repo, &name);
         self.log_key = Some(key.clone());
         self.user_stopped.insert(key.clone());
         let supervisor = self.supervisor.clone();

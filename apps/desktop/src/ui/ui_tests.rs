@@ -956,3 +956,49 @@ fn palette_prefixes_pick_what_is_listed_and_recent_comes_first(cx: &mut TestAppC
         "recent first"
     );
 }
+
+#[gpui::test]
+fn the_script_filter_runs_its_first_match_and_remembers_it(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a repo whose scripts are build, hello and test
+    let repo = tempfile::tempdir().unwrap();
+    let (view, cx) = open(
+        cx,
+        &format!("[[repo]]\npath = {:?}\n", repo.path().display().to_string()),
+    );
+    view.update(cx, |w, _| {
+        let script = |name: &str| crate::scripts::Script {
+            tool: "just".into(),
+            name: name.into(),
+            command: "true".into(),
+            group: None,
+        };
+        w.repos[0]
+            .snapshot
+            .get_or_insert_with(Default::default)
+            .scripts = vec![script("build"), script("hello"), script("test")];
+    });
+
+    // When: "hel" is typed and ⏎ pressed
+    let shown = view.update(cx, |w, cx| {
+        w.script_filter.text = "hel".into();
+        let shown: Vec<String> = w
+            .filtered_scripts(w.repos[0].snapshot.as_ref().unwrap())
+            .iter()
+            .map(|s| s.name.clone())
+            .collect();
+        w.run_first_script_match(cx);
+        shown
+    });
+
+    // Then
+    assert_eq!(shown, ["hello"]);
+    let (recent, log_key) = view.read_with(cx, |w, _| {
+        (
+            w.script_recent.get(&w.repos[0].entry.path).cloned(),
+            w.log_key.clone(),
+        )
+    });
+    assert_eq!(recent, Some(vec!["hello".to_string()]));
+    assert!(log_key.is_some_and(|k| k.ends_with("script:hello")));
+}

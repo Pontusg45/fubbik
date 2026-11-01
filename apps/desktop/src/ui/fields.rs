@@ -55,6 +55,7 @@ impl Workspace {
         match field {
             Field::Palette => &mut self.palette_field,
             Field::LogFilter => &mut self.log_filter,
+            Field::ScriptFilter => &mut self.script_filter,
             Field::NoteTitle => &mut self.note_title,
             Field::NoteBody => &mut self.note_body,
             Field::Group => &mut self.group_field,
@@ -130,6 +131,11 @@ impl Workspace {
                 self.submit_group();
                 self.focus.focus(window);
             }
+            (Field::ScriptFilter, KeyOutcome::Submit) => self.run_first_script_match(cx),
+            (Field::ScriptFilter, KeyOutcome::Cancel) => {
+                self.script_filter.text.clear();
+                self.focus.focus(window);
+            }
             (_, KeyOutcome::Cancel) => {
                 self.capture_open = false;
                 self.focus.focus(window);
@@ -150,6 +156,7 @@ impl Workspace {
         let text_field = match field {
             Field::Palette => &self.palette_field,
             Field::LogFilter => &self.log_filter,
+            Field::ScriptFilter => &self.script_filter,
             Field::NoteTitle => &self.note_title,
             Field::NoteBody => &self.note_body,
             Field::Group => &self.group_field,

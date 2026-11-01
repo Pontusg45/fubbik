@@ -6,7 +6,7 @@ use gpui::{
 
 use super::palette::Command;
 use super::widgets::{
-    button, label, muted, pill, row, section, sparkline, stat_card, status_dot, status_pill,
+    button, label, muted, row, section, sparkline, stat_card, status_dot, status_pill,
     top_highlight,
 };
 use super::{Field, RepoView, Tab, Workspace, display_path};
@@ -41,9 +41,6 @@ pub(super) fn repo_badge(name: &str, size: f32) -> impl IntoElement {
                 .to_string(),
         )
 }
-
-/// Script buttons shown per row before "+N more".
-const SCRIPTS_FOLDED: usize = 10;
 
 /// Log chips for the built-in server, shown in every repo's Logs tab.
 const BUILTIN_LOGS: [(&str, crate::backend::LogFile); 2] = [
@@ -101,7 +98,7 @@ impl Workspace {
                     .flex_col()
                     .gap_6()
                     .child(self.render_processes(index, snapshot, cx))
-                    .child(self.render_scripts(index, snapshot, cx))
+                    .child(self.render_scripts(index, snapshot, window, cx))
                     .into_any_element(),
                 Tab::Databases => self
                     .render_databases(index, snapshot, cx)
@@ -651,6 +648,7 @@ impl Workspace {
         &self,
         index: usize,
         snapshot: &RepoSnapshot,
+        window: &Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let profiles: Vec<String> = ServicesFile::load(&self.repos[index].entry.path)
@@ -680,95 +678,12 @@ impl Workspace {
                 }))
                 .child(muted("starts these, stops the repo's others"))
         });
-        // One row per tool, or per just group; long rows fold behind "+N more".
-        let mut groups: Vec<(String, Option<String>, Vec<&crate::scripts::Script>)> = Vec::new();
-        for script in &snapshot.scripts {
-            match groups
-                .iter_mut()
-                .find(|(tool, group, _)| *tool == script.tool && *group == script.group)
-            {
-                Some((_, _, list)) => list.push(script),
-                None => groups.push((script.tool.clone(), script.group.clone(), vec![script])),
-            }
-        }
-        let rows: Vec<AnyElement> = groups
-            .into_iter()
-            .map(|(tool, group, scripts)| {
-                let key = format!("{index}:{tool}:{}", group.as_deref().unwrap_or(""));
-                let expanded = self.scripts_expanded.contains(&key);
-                let hidden = scripts.len().saturating_sub(SCRIPTS_FOLDED);
-                let shown = if expanded {
-                    scripts.len()
-                } else {
-                    scripts.len().min(SCRIPTS_FOLDED)
-                };
-                let toggle = (hidden > 0).then(|| {
-                    let key = key.clone();
-                    button(
-                        SharedString::from(format!("scripts-more-{key}")),
-                        if expanded {
-                            "Fewer".to_string()
-                        } else {
-                            format!("+{hidden} more")
-                        },
-                    )
-                    .text_color(theme::text_muted())
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        if !this.scripts_expanded.remove(&key) {
-                            this.scripts_expanded.insert(key.clone());
-                        }
-                        cx.notify();
-                    }))
-                });
-                row()
-                    .items_start()
-                    .child(
-                        div()
-                            .w(px(128.))
-                            .flex_none()
-                            .flex()
-                            .flex_col()
-                            .items_start()
-                            .gap_1()
-                            .child(pill(tool.clone(), theme::tool(&tool)))
-                            .children(group.clone().map(muted)),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_1()
-                            .flex_wrap()
-                            .gap_1()
-                            .children(scripts.into_iter().take(shown).map(|script| {
-                                let (name, command) = (script.name.clone(), script.command.clone());
-                                button(
-                                    SharedString::from(format!("script-{tool}-{}", script.name)),
-                                    script.name.clone(),
-                                )
-                                .on_click(cx.listener(
-                                    move |this, _, _, cx| {
-                                        this.run(
-                                            Command::RunScript {
-                                                repo: index,
-                                                name: name.clone(),
-                                                command: command.clone(),
-                                            },
-                                            cx,
-                                        )
-                                    },
-                                ))
-                            }))
-                            .children(toggle),
-                    )
-                    .into_any_element()
-            })
-            .collect();
         div()
             .flex()
             .flex_col()
             .gap_3()
             .children(profile_row)
-            .child(section("Scripts · output in Logs", rows))
+            .child(self.render_scripts_panel(index, snapshot, window, cx))
     }
 
     fn process_row(
