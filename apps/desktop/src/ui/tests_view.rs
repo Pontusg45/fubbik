@@ -178,16 +178,16 @@ impl Workspace {
     fn render_runner(
         &self,
         index: usize,
-        repo: &PathBuf,
+        repo: &std::path::Path,
         runner: Runner,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let state = self.tests.runs.get(&(repo.clone(), runner));
+        let state = self.tests.runs.get(&(repo.to_path_buf(), runner));
         let running = state.and_then(|s| s.running);
         let report = state.and_then(|s| s.report.clone());
         let id =
             |what: &str| SharedString::from(format!("tests-{what}-{index}-{}", runner.label()));
-        let (repo_a, repo_b, repo_c) = (repo.clone(), repo.clone(), repo.clone());
+        let (repo_a, repo_b, repo_c) = (repo.to_path_buf(), repo.to_path_buf(), repo.to_path_buf());
         let mut header = div()
             .flex()
             .items_center()

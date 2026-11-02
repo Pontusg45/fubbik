@@ -308,10 +308,12 @@ pub fn location_in(text: &str) -> Option<(String, u32)> {
             _ => continue,
         };
         let has_ext = Path::new(path).extension().is_some();
-        if has_ext && !path.contains("://") && !path.is_empty() {
-            if let Ok(line) = line.parse() {
-                return Some((path.trim_start_matches("file://").to_string(), line));
-            }
+        if has_ext
+            && !path.contains("://")
+            && !path.is_empty()
+            && let Ok(line) = line.parse()
+        {
+            return Some((path.trim_start_matches("file://").to_string(), line));
         }
     }
     None
