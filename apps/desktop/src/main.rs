@@ -4,6 +4,7 @@
 mod activity;
 mod agent_task;
 mod backend;
+mod claude_hooks;
 mod claude_md;
 mod config;
 mod containers;

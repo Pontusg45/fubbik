@@ -547,6 +547,8 @@ pub struct Workspace {
     _watcher: Option<notify::RecommendedWatcher>,
     _watch_task: Task<()>,
     _events_task: Task<()>,
+    /// Re-polls when a Claude Code hook reports.
+    _hooks_task: Task<()>,
     /// Terminal tabs that rang the bell and have not been looked at since.
     bells: Vec<(usize, Instant)>,
     /// Watch alerts already toasted.
@@ -703,6 +705,7 @@ impl Workspace {
             _watcher: None,
             _watch_task: Task::ready(()),
             _events_task: Task::ready(()),
+            _hooks_task: Task::ready(()),
             bells: Vec::new(),
             alerts_seen: HashSet::new(),
             alerts_announced: false,
@@ -750,6 +753,7 @@ impl Workspace {
             workspace.restore_terminals(cx);
             workspace.watch_tmux_events(cx);
         }
+        workspace.watch_hooks(cx);
         // A developer hook for smoke runs: open on a tab by name.
         if !workspace.repos.is_empty() {
             workspace.tab = Tab::Today;

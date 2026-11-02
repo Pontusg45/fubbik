@@ -562,8 +562,9 @@ pub fn start_http() {
                     // Another copy of the app (or something else) has the port.
                     Err(error) => return eprintln!("fubbik: MCP server: {addr}: {error}"),
                 };
-                let app =
-                    axum::Router::new().route("/mcp", axum::routing::post(http_post).get(http_get));
+                let app = axum::Router::new()
+                    .route("/mcp", axum::routing::post(http_post).get(http_get))
+                    .route("/hook", axum::routing::post(http_hook));
                 if let Err(error) = axum::serve(listener, app).await {
                     eprintln!("fubbik: MCP server: {error}");
                 }
@@ -658,6 +659,41 @@ pub fn run_stdio_bridge() {
             let _ = stdout.flush();
         }
     }
+}
+
+/// The UI's wake-up when a hook reports (it re-polls at once).
+pub fn hook_wakes() -> &'static (async_channel::Sender<()>, async_channel::Receiver<()>) {
+    static CHANNEL: OnceLock<(async_channel::Sender<()>, async_channel::Receiver<()>)> =
+        OnceLock::new();
+    CHANNEL.get_or_init(|| async_channel::bounded(1))
+}
+
+/// `POST /hook`: a Claude Code hook's JSON (see `claude_hooks.rs`).
+async fn http_hook(body: axum::body::Bytes) -> axum::http::StatusCode {
+    let Ok(value) = serde_json::from_slice::<Value>(&body) else {
+        return axum::http::StatusCode::BAD_REQUEST;
+    };
+    let Some(event) = crate::claude_hooks::parse(&value) else {
+        return axum::http::StatusCode::BAD_REQUEST;
+    };
+    // The repo it ran in: by path, the repo's own folder or a worktree.
+    let repo = published().lock().unwrap().repos.iter().find_map(|r| {
+        let path = std::path::Path::new(r["path"].as_str()?);
+        let in_worktree = r["worktrees"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|w| w["path"].as_str())
+            .any(|w| event.cwd.starts_with(w));
+        (event.cwd.starts_with(path) || in_worktree)
+            .then(|| r["name"].as_str().map(str::to_string))?
+    });
+    if let Some((kind, text)) = crate::claude_hooks::feed_entry(&event) {
+        crate::mcp_events::hooked(&event.session);
+        crate::mcp_events::record(repo.as_deref(), kind, text);
+    }
+    let _ = hook_wakes().0.try_send(());
+    axum::http::StatusCode::NO_CONTENT
 }
 
 #[cfg(test)]

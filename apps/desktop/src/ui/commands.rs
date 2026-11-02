@@ -954,6 +954,22 @@ impl Workspace {
             }
             Command::ContainerAction { name, action } => self.container_action(name, action, cx),
             Command::CleanDisk { repo, kind } => self.clean_disk(repo, kind, cx),
+            Command::ClaudeHooks(install) => {
+                let path = crate::claude_hooks::settings_path();
+                let url = format!("http://{}/hook", crate::mcp::addr());
+                let result = if install {
+                    crate::claude_hooks::install_file(&path, &url)
+                } else {
+                    crate::claude_hooks::uninstall_file(&path)
+                };
+                match result {
+                    Ok(()) if install => self.show_info(
+                        "Claude Code hooks installed: new sessions report to the app (running ones after they restart)",
+                    ),
+                    Ok(()) => self.show_info("Claude Code hooks removed"),
+                    Err(error) => self.show_error(format!("Claude Code settings: {error}")),
+                }
+            }
             Command::OpenAtLine(path, line) => {
                 self.run_background(cx, "", move || launch::open_at(&path, Some(line)))
             }

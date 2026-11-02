@@ -221,6 +221,7 @@ impl Workspace {
             ))
             .child(muted(claude_md_note))
             .child(self.render_tracker_setup(cx))
+            .child(self.render_claude_hooks(cx))
             .child(self.render_preferences(window, cx))
             .child(self.render_keyboard_setup(cx))
     }
@@ -315,6 +316,55 @@ impl Workspace {
                         button("tracker-setup", if has_mcp { "Update" } else { "Set up" })
                             .on_click(cx.listener(|this, _, _, cx| this.run(super::palette::Command::SetupTracker, cx))),
                     )
+                    .into_any_element(),
+            ],
+        )
+    }
+}
+
+impl Workspace {
+    /// Setup → Claude Code hooks: live agent events instead of polling.
+    fn render_claude_hooks(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let path = crate::claude_hooks::settings_path();
+        let on = crate::claude_hooks::installed_file(&path);
+        let install = super::palette::Command::AskFirst(Box::new(super::palette::Confirm {
+            title: "Add the app's hooks to Claude Code?".into(),
+            detail: format!(
+                "Adds SessionStart, UserPromptSubmit, Stop, Notification and SessionEnd hooks to {} next to yours (backed up to settings.json.fubbik-backup). Each pipes the event to this app with a 1-second curl that never fails, so Claude is never slowed down.",
+                display_path(&path)
+            ),
+            action: "Add hooks".into(),
+            danger: false,
+            command: super::palette::Command::ClaudeHooks(true),
+        }));
+        section(
+            "Claude Code hooks",
+            vec![
+                row()
+                    .child(
+                        div()
+                            .flex_1()
+                            .flex()
+                            .flex_col()
+                            .gap_0p5()
+                            .child(div().text_sm().child(if on {
+                                "Installed: sessions report start, working, waiting and end as they happen"
+                            } else {
+                                "Not installed: agent state comes from polling session files"
+                            }))
+                            .child(muted(format!(
+                                "Hooks in {}; they report to http://{}/hook",
+                                display_path(&path),
+                                crate::mcp::addr()
+                            ))),
+                    )
+                    .child(if on {
+                        button("hooks-off", "Remove hooks").on_click(cx.listener(|this, _, _, cx| {
+                            this.run(super::palette::Command::ClaudeHooks(false), cx)
+                        }))
+                    } else {
+                        button("hooks-on", "Add hooks…").on_click(cx.listener(move |this, _, _, cx| this.run(install.clone(), cx)))
+                    })
                     .into_any_element(),
             ],
         )

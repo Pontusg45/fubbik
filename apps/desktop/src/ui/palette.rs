@@ -290,6 +290,8 @@ pub enum Command {
     SetEditor(Option<String>),
     /// A file at a line, in the editor.
     OpenAtLine(PathBuf, u32),
+    /// Claude Code hooks in ~/.claude/settings.json: in or out.
+    ClaudeHooks(bool),
     /// Removes a repo's build output or packages (after asking).
     CleanDisk {
         repo: PathBuf,

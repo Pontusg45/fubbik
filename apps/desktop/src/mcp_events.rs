@@ -128,6 +128,31 @@ fn feed() -> &'static Mutex<Feed> {
     })
 }
 
+/// Sessions that report through Claude Code hooks, and when they last did:
+/// their agent events come from the hooks, so the poll does not repeat them.
+fn hooked_sessions() -> &'static Mutex<std::collections::HashMap<String, std::time::Instant>> {
+    static HOOKED: OnceLock<Mutex<std::collections::HashMap<String, std::time::Instant>>> =
+        OnceLock::new();
+    HOOKED.get_or_init(Default::default)
+}
+
+pub fn hooked(session: &str) {
+    if !session.is_empty() {
+        hooked_sessions()
+            .lock()
+            .unwrap()
+            .insert(session.to_string(), std::time::Instant::now());
+    }
+}
+
+fn is_hooked(session: &str) -> bool {
+    hooked_sessions()
+        .lock()
+        .unwrap()
+        .get(session)
+        .is_some_and(|at| at.elapsed() < Duration::from_secs(6 * 3600))
+}
+
 /// Adds an event now.
 pub fn record(repo: Option<&str>, kind: &str, text: impl Into<String>) {
     let mut feed = feed().lock().unwrap();
@@ -246,6 +271,9 @@ pub fn diff(old: &[Value], new: &[Value]) -> Vec<(String, &'static str, String)>
         // Agents: started, waiting for the user, ended.
         let prev_sessions = by(&prev["sessions"], "id");
         for (id, session) in by(&repo["sessions"], "id") {
+            if is_hooked(&id) {
+                continue;
+            }
             let title = session["title"].as_str().unwrap_or("?");
             let agent = session["agent"].as_str().unwrap_or("agent");
             match prev_sessions.get(&id) {

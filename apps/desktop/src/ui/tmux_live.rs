@@ -125,4 +125,20 @@ impl Workspace {
             self.bells.retain(|(b, _)| *b != id);
         }
     }
+
+    /// A Claude Code hook just reported: poll now, so the agent's new state
+    /// shows at once.
+    pub(super) fn watch_hooks(&mut self, cx: &mut Context<Self>) {
+        let wakes = crate::mcp::hook_wakes().1.clone();
+        self._hooks_task = cx.spawn(async move |this, cx| {
+            while wakes.recv().await.is_ok() {
+                if this
+                    .update(cx, |this, cx| this.poll_now(false, cx))
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        });
+    }
 }
