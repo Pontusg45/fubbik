@@ -118,6 +118,13 @@ impl Workspace {
             self.ensure_graph(index, false, cx);
         }
         let mut tests = (self.tab == Tab::Tests).then(|| self.render_tests(index, cx));
+        let mut infra = match (&self.repos[index].snapshot, self.tab) {
+            (Some(snapshot), Tab::Databases) => {
+                let snapshot = snapshot.clone();
+                Some(self.render_infra(index, &snapshot, cx))
+            }
+            _ => None,
+        };
         let mut changes = match (&self.repos[index].snapshot, self.tab) {
             (Some(snapshot), Tab::Changes) => {
                 let snapshot = snapshot.clone();
@@ -141,8 +148,12 @@ impl Workspace {
                     .child(self.render_processes(index, snapshot, cx))
                     .child(self.render_scripts(index, snapshot, window, cx))
                     .into_any_element(),
-                Tab::Databases => self
-                    .render_databases(index, snapshot, cx)
+                Tab::Databases => div()
+                    .flex()
+                    .flex_col()
+                    .gap_6()
+                    .child(self.render_databases(index, snapshot, cx))
+                    .children(infra.take())
                     .into_any_element(),
                 Tab::Logs => self.render_logs(repo, window, cx).into_any_element(),
                 Tab::Knowledge => self.render_knowledge(index, window, cx).into_any_element(),

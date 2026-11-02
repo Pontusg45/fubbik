@@ -952,6 +952,8 @@ impl Workspace {
                 self.config.editor = editor;
                 self.save_config();
             }
+            Command::ContainerAction { name, action } => self.container_action(name, action, cx),
+            Command::CleanDisk { repo, kind } => self.clean_disk(repo, kind, cx),
             Command::OpenAtLine(path, line) => {
                 self.run_background(cx, "", move || launch::open_at(&path, Some(line)))
             }

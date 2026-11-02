@@ -9,8 +9,10 @@ mod command_palette;
 mod commands;
 mod deps_view;
 mod digest_view;
+mod disk_view;
 mod fields;
 mod hotkeys;
+mod infra_view;
 mod insights;
 pub mod keymap;
 mod knowledge;
@@ -468,6 +470,10 @@ pub struct Workspace {
     graph: knowledge_graph::GraphState,
     /// The Tests tab: runners and runs per repo.
     tests: tests_view::TestsState,
+    /// The Databases tab's details and containers.
+    infra: infra_view::InfraState,
+    /// Home → Tools → Disk.
+    disk: disk_view::DiskState,
     /// `gh` is on PATH (checked once at startup).
     gh_available: bool,
     changes: changes::ChangesState,
@@ -649,6 +655,8 @@ impl Workspace {
             deps: Default::default(),
             graph: Default::default(),
             tests: Default::default(),
+            infra: Default::default(),
+            disk: Default::default(),
             gh_available: std::process::Command::new("gh")
                 .arg("--version")
                 .output()

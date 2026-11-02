@@ -290,6 +290,16 @@ pub enum Command {
     SetEditor(Option<String>),
     /// A file at a line, in the editor.
     OpenAtLine(PathBuf, u32),
+    /// Removes a repo's build output or packages (after asking).
+    CleanDisk {
+        repo: PathBuf,
+        kind: &'static str,
+    },
+    /// `docker start|stop|restart` a container.
+    ContainerAction {
+        name: String,
+        action: &'static str,
+    },
     /// Saves the digest as a fubbik note in each repo's space.
     SaveDigest,
     /// One agent per repo behind on a dependency, each in a new worktree
