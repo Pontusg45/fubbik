@@ -53,6 +53,10 @@ pub struct AppConfig {
     /// PostgreSQL; `"off"`: it starts neither (run `fubbik serve` yourself).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backend: Option<String>,
+    /// Processes served at a `.test` domain through Caddy, as
+    /// `repo/process`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub domains: Vec<String>,
     #[serde(default, rename = "repo")]
     pub repos: Vec<RepoEntry>,
 }

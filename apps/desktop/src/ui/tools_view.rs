@@ -296,6 +296,7 @@ impl Workspace {
             .gap_4()
             .child(toolbar)
             .child(section("Services", services))
+            .child(self.render_domains(cx))
             .child(self.render_disk(cx))
             .child(section(
                 format!("Toolchain ({})", report.tools.len()),

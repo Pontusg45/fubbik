@@ -954,6 +954,8 @@ impl Workspace {
             }
             Command::ContainerAction { name, action } => self.container_action(name, action, cx),
             Command::CleanDisk { repo, kind } => self.clean_disk(repo, kind, cx),
+            Command::ToggleDomain(key) => self.toggle_domain(key),
+            Command::WriteCaddyfile => self.write_caddyfile(),
             Command::ClaudeHooks(install) => {
                 let path = crate::claude_hooks::settings_path();
                 let url = format!("http://{}/hook", crate::mcp::addr());

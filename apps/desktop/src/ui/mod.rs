@@ -10,6 +10,7 @@ mod commands;
 mod deps_view;
 mod digest_view;
 mod disk_view;
+mod domains_view;
 mod fields;
 mod hotkeys;
 mod infra_view;
@@ -474,6 +475,7 @@ pub struct Workspace {
     infra: infra_view::InfraState,
     /// Home → Tools → Disk.
     disk: disk_view::DiskState,
+    domains: domains_view::DomainsState,
     /// `gh` is on PATH (checked once at startup).
     gh_available: bool,
     changes: changes::ChangesState,
@@ -659,6 +661,7 @@ impl Workspace {
             tests: Default::default(),
             infra: Default::default(),
             disk: Default::default(),
+            domains: Default::default(),
             gh_available: std::process::Command::new("gh")
                 .arg("--version")
                 .output()

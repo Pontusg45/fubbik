@@ -27,6 +27,7 @@ mod model;
 mod pg;
 mod poll;
 mod probe;
+mod proxy;
 mod scripts;
 mod services;
 mod sessions;

@@ -292,6 +292,10 @@ pub enum Command {
     OpenAtLine(PathBuf, u32),
     /// Claude Code hooks in ~/.claude/settings.json: in or out.
     ClaudeHooks(bool),
+    /// A process's `.test` domain on or off (the app's config only).
+    ToggleDomain(String),
+    /// Writes the chosen domains into the Caddyfile (after asking).
+    WriteCaddyfile,
     /// Removes a repo's build output or packages (after asking).
     CleanDisk {
         repo: PathBuf,
