@@ -72,6 +72,16 @@ as a card with the computer beside them; **All agents** (⇧⌘A), every repo's 
   copy (a node from mise is not Homebrew's). Install, Upgrade, "Upgrade all" (asks first) and "brew update" run in a
   terminal tab.
 - **Utilities:** copy a new UUID, the Unix time or the UTC time, and open the app's config folder.
+- **Local domains** (`src/proxy.rs`): every process with a port can get `<process>.<repo>.test`, served by Caddy with
+  `tls internal` and `reverse_proxy localhost:<port>`. "Add domain" only marks it (desktop.toml `domains`); "Update
+  Caddyfile…" (asks first) writes the chosen sites into one marked block of `~/.config/caddy/Caddyfile`, backed up to
+  `Caddyfile.fubbik-backup`, leaving your own sites alone. "Add hosts entries…" runs `sudo tee -a /etc/hosts` in a
+  terminal tab (the password prompt shows there); "Start Caddy" runs `caddy run --watch` in a tab, so later writes reload
+  it. Each row says what is still missing (Caddyfile, hosts entry, Caddy running). Ports declared by two processes, in
+  one repo or across repos, are flagged red: those cannot run at once.
+- **Disk** (`src/disk.rs`): each repo's `target/`, `node_modules` (root and workspace packages) and `.turbo`, measured
+  with `du`, and Docker's `system df`. Remove (asks first; `cargo clean` for target/, with how to get it back) and
+  "Prune Docker…" (`docker system prune -f` in a tab: running containers, volumes and tagged images stay).
 
 **Dependencies** (⇧⌘L, `src/deps.rs`) compares what every registered repo declares: package.json (dependencies, dev, peer;
 pnpm `catalog:` resolved from pnpm-workspace.yaml), Cargo.toml (including `[workspace.dependencies]`), and toolchain pins
@@ -197,6 +207,33 @@ start = "…"                        # optional, overrides the compose default; 
 ```
 
 ## What it does
+
+- **Tests** (⇧⌘U, `src/test_runs.rs`): runs `cargo nextest` (libtest JSON), `cargo test` or vitest (JSON reporter) and
+  lists failing tests with their message; Open jumps to the failing file and line in the editor, "Rerun failed" reruns only
+  those, and "Send to agent" hands them to a Claude session. Failing tests show on Today, and runs go to the change feed
+  (`tests_failed`, `tests_passed`).
+- **Editor:** Preferences → Editor picks Zed, Cursor or VS Code (installed ones are listed); unset, `$VISUAL`/`$EDITOR`.
+  Files open at a line (`zed file:12`, `cursor -g file:12`); the Changes diff has "Open in editor" at its first changed
+  line.
+- **Containers** (Databases tab, `src/containers.rs`): the Docker / OrbStack containers that belong to the repo (its
+  compose project's folder, or a name or label starting with the repo's name), with state, ports and Logs, Start,
+  Restart and Stop (asks first).
+- **Database details** (`src/pg.rs`): version, size and connections for each `[[database]]` URL; sqlx migration drift
+  (files in the repo not applied, and applied versions with no file); psql in a tab; Snapshot (`pg_dump -Fc` into
+  `~/Library/Application Support/fubbik/snapshots`) and "Restore latest" (asks first; `pg_restore --clean`).
+- **Claude Code hooks** (Setup, `src/claude_hooks.rs`): "Add hooks…" (asks first) adds SessionStart, UserPromptSubmit,
+  Stop, Notification and SessionEnd hooks to `~/.claude/settings.json`, next to yours and backed up first. Each pipes the
+  event to `POST /hook` on the MCP port with a 1-second curl that never fails, so agent state (started, working,
+  waiting for you, ended) shows at once instead of on the next poll, and lands in the change feed. "Remove hooks"
+  takes out exactly those.
+- **.env drift** (Setup, `src/env_drift.rs`; off until turned on): each `.env.example` (or `.env.sample`,
+  `.env.template`, at the root and two levels down) against the `.env` beside it: keys missing from `.env` and keys the
+  example does not list. Key names only: each line is cut at `=` as it is read; values are never kept, shown or sent.
+- **Menu bar item** (`src/menu_bar.rs`): `fk`, or `fk 3` when three things need you; its menu lists them (each runs
+  Today's action for that line), then Open Today, All agents and Capture note. "Hide the menu bar item" in the command
+  palette turns it off (desktop.toml `menu_bar = false`).
+- **Raycast:** `integrations/raycast` has Today, Agents, Repos and Capture Note commands over the MCP server (see its
+  README).
 
 - **Status** every 3 s. Processes are Running if this app started them, External if someone else holds the port (with that PID and
   a Kill button), Degraded if the health URL fails, otherwise Stopped. Databases are checked through their compose service, or a TCP
@@ -403,6 +440,15 @@ src/model.rs       Status, ProcessState, DatabaseState, RepoSnapshot, roll-up
 src/poll.rs        one repo poll (runs on the background executor)
 src/launch.rs      editor, Terminal, notifications, login-shell PATH
 src/global_hotkey.rs  the system-wide summon key (Carbon RegisterEventHotKey)
+src/menu_bar.rs    the menu bar item (NSStatusItem) and its click channel
+src/claude_hooks.rs  Claude Code hooks in ~/.claude/settings.json: install, uninstall, parse a hook's report
+src/proxy.rs       .test domains: Caddyfile block, /etc/hosts entries, port conflicts
+src/env_drift.rs   .env key names vs .env.example (values never kept)
+src/test_runs.rs   test runners (nextest, cargo test, vitest) and their failures
+src/containers.rs  Docker containers per repo, docker system df
+src/pg.rs          PostgreSQL details, migration drift, psql, snapshots and restore
+src/disk.rs        build output and packages per repo: sizes, cleaning
+src/digest.rs      the daily digest from the change feed
 src/tmux_runs.rs   processes and scripts in tmux sessions (fk-run-*), their logs and exit codes
 src/system.rs      the computer's stats for Home (CPU, memory, disk, battery, network, top processes, ports)
 src/mcp.rs         the app's MCP server (HTTP on :3100, --mcp stdio bridge), answering from ui/mcp_publish.rs
