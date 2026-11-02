@@ -222,6 +222,7 @@ impl Workspace {
             .child(muted(claude_md_note))
             .child(self.render_tracker_setup(cx))
             .child(self.render_claude_hooks(cx))
+            .child(self.render_env_drift(repo, cx))
             .child(self.render_preferences(window, cx))
             .child(self.render_keyboard_setup(cx))
     }
@@ -368,5 +369,95 @@ impl Workspace {
                     .into_any_element(),
             ],
         )
+    }
+}
+
+impl Workspace {
+    /// Setup → .env files: key names in `.env.example` vs `.env`, opt-in.
+    fn render_env_drift(&self, repo: usize, cx: &mut Context<Self>) -> impl IntoElement {
+        let on = self.config.env_check;
+        let toggle = row()
+            .child(
+                div()
+                    .flex_1()
+                    .flex()
+                    .flex_col()
+                    .gap_0p5()
+                    .child(div().text_sm().child("Compare .env with .env.example"))
+                    .child(muted(
+                        "Key names only: values are never read into the app, shown or sent. Off by default.",
+                    )),
+            )
+            .child(
+                super::widgets::switch("env-check", on).on_click(cx.listener(move |this, _, _, cx| {
+                    this.run(super::palette::Command::SetEnvCheck(!on), cx)
+                })),
+            )
+            .into_any_element();
+        let mut rows = vec![toggle];
+        if on {
+            let path = self.repos[repo].entry.path.clone();
+            let drift = {
+                let mut cache = self.env_drift.borrow_mut();
+                let fresh = cache
+                    .get(&path)
+                    .is_some_and(|(at, _)| at.elapsed() < std::time::Duration::from_secs(30));
+                if !fresh {
+                    cache.insert(
+                        path.clone(),
+                        (std::time::Instant::now(), crate::env_drift::scan(&path)),
+                    );
+                }
+                cache[&path].1.clone()
+            };
+            if drift.is_empty() {
+                rows.push(muted("No .env.example in this repo").into_any_element());
+            }
+            for d in drift {
+                let folder = if d.dir.is_empty() {
+                    ".".to_string()
+                } else {
+                    d.dir.clone()
+                };
+                let (color, text) = if !d.has_env {
+                    (
+                        theme::danger(),
+                        format!("no .env yet ({} is there)", d.example),
+                    )
+                } else if d.is_clean() {
+                    (theme::text_muted(), format!("in step with {}", d.example))
+                } else {
+                    let mut parts = Vec::new();
+                    if !d.missing.is_empty() {
+                        parts.push(format!("missing {}", d.missing.join(", ")));
+                    }
+                    if !d.extra.is_empty() {
+                        parts.push(format!("not in {}: {}", d.example, d.extra.join(", ")));
+                    }
+                    (
+                        if d.missing.is_empty() {
+                            theme::text_muted()
+                        } else {
+                            theme::danger()
+                        },
+                        parts.join(" · "),
+                    )
+                };
+                rows.push(
+                    row()
+                        .child(div().w(px(160.)).flex_none().text_sm().child(folder))
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .text_sm()
+                                .text_color(color)
+                                .child(text),
+                        )
+                        .into_any_element(),
+                );
+            }
+        }
+        section(".env files", rows)
     }
 }

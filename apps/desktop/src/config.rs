@@ -57,6 +57,10 @@ pub struct AppConfig {
     /// `repo/process`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub domains: Vec<String>,
+    /// Compare each repo's `.env` with its `.env.example` (key names
+    /// only). Off unless turned on.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub env_check: bool,
     #[serde(default, rename = "repo")]
     pub repos: Vec<RepoEntry>,
 }

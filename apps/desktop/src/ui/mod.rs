@@ -476,6 +476,9 @@ pub struct Workspace {
     /// Home → Tools → Disk.
     disk: disk_view::DiskState,
     domains: domains_view::DomainsState,
+    /// `.env` drift per repo, re-read at most every 30 seconds.
+    env_drift:
+        std::cell::RefCell<HashMap<PathBuf, (std::time::Instant, Vec<crate::env_drift::Drift>)>>,
     /// `gh` is on PATH (checked once at startup).
     gh_available: bool,
     changes: changes::ChangesState,
@@ -662,6 +665,7 @@ impl Workspace {
             infra: Default::default(),
             disk: Default::default(),
             domains: Default::default(),
+            env_drift: Default::default(),
             gh_available: std::process::Command::new("gh")
                 .arg("--version")
                 .output()

@@ -956,6 +956,11 @@ impl Workspace {
             Command::CleanDisk { repo, kind } => self.clean_disk(repo, kind, cx),
             Command::ToggleDomain(key) => self.toggle_domain(key),
             Command::WriteCaddyfile => self.write_caddyfile(),
+            Command::SetEnvCheck(on) => {
+                self.config.env_check = on;
+                self.env_drift.borrow_mut().clear();
+                self.save_config();
+            }
             Command::ClaudeHooks(install) => {
                 let path = crate::claude_hooks::settings_path();
                 let url = format!("http://{}/hook", crate::mcp::addr());

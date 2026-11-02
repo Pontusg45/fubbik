@@ -12,6 +12,7 @@ mod deps;
 mod detect;
 mod digest;
 mod disk;
+mod env_drift;
 mod fubbik;
 mod gaps;
 mod ghostty;

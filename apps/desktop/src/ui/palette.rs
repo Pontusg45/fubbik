@@ -296,6 +296,8 @@ pub enum Command {
     ToggleDomain(String),
     /// Writes the chosen domains into the Caddyfile (after asking).
     WriteCaddyfile,
+    /// The `.env` key-name check on or off.
+    SetEnvCheck(bool),
     /// Removes a repo's build output or packages (after asking).
     CleanDisk {
         repo: PathBuf,
