@@ -286,6 +286,10 @@ pub enum Command {
     Push(usize),
     /// The last day's digest in the side panel.
     ShowDigest,
+    /// The editor that opens files: `zed`, `cursor`, `code`; None: automatic.
+    SetEditor(Option<String>),
+    /// A file at a line, in the editor.
+    OpenAtLine(PathBuf, u32),
     /// Saves the digest as a fubbik note in each repo's space.
     SaveDigest,
     /// One agent per repo behind on a dependency, each in a new worktree

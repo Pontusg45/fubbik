@@ -30,19 +30,86 @@ fn quote(path: &Path) -> String {
     format!("'{}'", path.display().to_string().replace('\'', r"'\''"))
 }
 
-/// `$VISUAL`, `$EDITOR`, then `zed`, then `code`.
-pub fn open_in_editor(repo: &Path) -> Result<(), String> {
-    let editor = ["VISUAL", "EDITOR"]
+/// The editors the app knows: key, app bundle, CLI.
+pub const EDITORS: [(&str, &str, &str); 3] = [
+    ("zed", "Zed", "zed"),
+    ("cursor", "Cursor", "cursor"),
+    ("code", "Visual Studio Code", "code"),
+];
+
+/// The editor picked in Preferences (`zed`, `cursor`, `code`); None: automatic.
+fn chosen() -> &'static std::sync::RwLock<Option<String>> {
+    static CHOSEN: std::sync::OnceLock<std::sync::RwLock<Option<String>>> =
+        std::sync::OnceLock::new();
+    CHOSEN.get_or_init(Default::default)
+}
+
+pub fn set_editor(editor: Option<String>) {
+    *chosen().write().unwrap() = editor;
+}
+
+/// The known editors installed here (an app in /Applications or a CLI).
+pub fn editors_installed() -> Vec<&'static str> {
+    let home_apps = std::env::var_os("HOME").map(|h| Path::new(&h).join("Applications"));
+    EDITORS
         .iter()
-        .find_map(|var| std::env::var(var).ok().filter(|v| !v.is_empty()))
-        .or_else(|| {
-            ["zed", "code"]
-                .iter()
-                .find(|p| on_path(p))
-                .map(|p| p.to_string())
+        .filter(|(_, app, cli)| {
+            Path::new("/Applications")
+                .join(format!("{app}.app"))
+                .exists()
+                || home_apps
+                    .as_ref()
+                    .is_some_and(|d| d.join(format!("{app}.app")).exists())
+                || on_path(cli)
         })
-        .ok_or("no editor found: set $EDITOR, or install zed or code")?;
-    spawn_detached(&format!("{editor} {}", quote(repo)), repo)
+        .map(|(key, _, _)| *key)
+        .collect()
+}
+
+/// The shell command that opens `path` (at `line`) in `editor`: its CLI
+/// when installed (`zed file:12`, `cursor -g file:12`), else `open -a`
+/// (no line). `editor` may also be a command such as `$EDITOR`'s value.
+pub fn editor_command(editor: &str, path: &Path, line: Option<u32>, cli_installed: bool) -> String {
+    let target = match line {
+        Some(n) => format!("{}:{n}", path.display()),
+        None => path.display().to_string(),
+    };
+    let target_q = format!("'{}'", target.replace('\'', r"'\''"));
+    match EDITORS.iter().find(|(key, _, _)| *key == editor) {
+        Some((_, app, cli)) if !cli_installed => format!("open -a '{app}' {}", quote(path)),
+        Some(("zed", _, cli)) => format!("{cli} {target_q}"),
+        Some((_, _, cli)) => format!("{cli} -g {target_q}"),
+        None => format!("{editor} {}", quote(path)),
+    }
+}
+
+/// Opens a folder or file in the chosen editor; else `$VISUAL` / `$EDITOR`;
+/// else the first installed of Zed, Cursor, VS Code.
+pub fn open_in_editor(path: &Path) -> Result<(), String> {
+    open_at(path, None)
+}
+
+/// Opens a file at a line in the editor (see [`open_in_editor`]).
+pub fn open_at(path: &Path, line: Option<u32>) -> Result<(), String> {
+    let picked = chosen().read().unwrap().clone();
+    let editor = picked
+        .or_else(|| {
+            ["VISUAL", "EDITOR"]
+                .iter()
+                .find_map(|var| std::env::var(var).ok().filter(|v| !v.is_empty()))
+        })
+        .or_else(|| editors_installed().first().map(|e| e.to_string()))
+        .ok_or("no editor found: pick one in Setup → Preferences, set $EDITOR, or install Zed, Cursor or VS Code")?;
+    let cli = EDITORS
+        .iter()
+        .find(|(key, _, _)| *key == editor)
+        .is_some_and(|(_, _, cli)| on_path(cli));
+    let cwd = if path.is_dir() {
+        path
+    } else {
+        path.parent().unwrap_or(path)
+    };
+    spawn_detached(&editor_command(&editor, path, line, cli), cwd)
 }
 
 pub fn open_in_terminal(repo: &Path) -> Result<(), String> {
@@ -169,5 +236,38 @@ mod locale_tests {
 
         // Then
         assert_eq!(results, [true, false, true]);
+    }
+}
+
+#[cfg(test)]
+mod editor_tests {
+    use super::*;
+
+    #[test]
+    fn editor_commands_open_at_a_line() {
+        // Given
+        let file = Path::new("/r/src/main.rs");
+
+        // When / Then
+        assert_eq!(
+            editor_command("zed", file, Some(12), true),
+            "zed '/r/src/main.rs:12'"
+        );
+        assert_eq!(
+            editor_command("cursor", file, Some(3), true),
+            "cursor -g '/r/src/main.rs:3'"
+        );
+        assert_eq!(
+            editor_command("code", file, None, true),
+            "code -g '/r/src/main.rs'"
+        );
+        assert_eq!(
+            editor_command("cursor", file, Some(3), false),
+            "open -a 'Cursor' '/r/src/main.rs'"
+        );
+        assert_eq!(
+            editor_command("nvim", file, Some(3), true),
+            "nvim '/r/src/main.rs'"
+        );
     }
 }

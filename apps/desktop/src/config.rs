@@ -45,6 +45,10 @@ pub struct AppConfig {
     /// `"tmux"`, `"tab"` or `"terminal"`. Unset: the app asks each time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run_in: Option<String>,
+    /// The editor that opens files and folders: `"zed"`, `"cursor"` or
+    /// `"code"`. Unset: `$VISUAL` / `$EDITOR`, else the first installed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub editor: Option<String>,
     /// `"embedded"` (the default): the app runs the fubbik API and its own
     /// PostgreSQL; `"off"`: it starts neither (run `fubbik serve` yourself).
     #[serde(default, skip_serializing_if = "Option::is_none")]

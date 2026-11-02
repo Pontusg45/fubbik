@@ -140,6 +140,44 @@ impl Workspace {
                 .into_any_element(),
             ),
             choice_row(
+                "Editor",
+                match self.config.editor.as_deref() {
+                    Some(key) => crate::launch::EDITORS
+                        .iter()
+                        .find(|(k, _, _)| *k == key)
+                        .map_or(key.to_string(), |(_, app, _)| app.to_string()),
+                    None => "automatic ($EDITOR, else the first installed)".into(),
+                },
+                div()
+                    .flex()
+                    .gap_1()
+                    .child(
+                        segment(
+                            "pref-editor-auto",
+                            "Automatic",
+                            self.config.editor.is_none(),
+                        )
+                        .on_click(
+                            cx.listener(|this, _, _, cx| this.run(Command::SetEditor(None), cx)),
+                        ),
+                    )
+                    .children(crate::launch::editors_installed().into_iter().map(|key| {
+                        let app = crate::launch::EDITORS
+                            .iter()
+                            .find(|(k, _, _)| *k == key)
+                            .map_or(key, |(_, app, _)| *app);
+                        segment(
+                            SharedString::from(format!("pref-editor-{key}")),
+                            app,
+                            self.config.editor.as_deref() == Some(key),
+                        )
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.run(Command::SetEditor(Some(key.to_string())), cx)
+                        }))
+                    }))
+                    .into_any_element(),
+            ),
+            choice_row(
                 "AI sessions open in",
                 if external {
                     "Terminal.app".into()

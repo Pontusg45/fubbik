@@ -131,6 +131,13 @@ pub fn diff(repo: &Path, path: &str, staged: bool, untracked: bool) -> Result<St
     git(repo, &args)
 }
 
+/// The first new-side line a diff changes (`@@ -10,4 +12,6 @@` → 12).
+pub fn first_changed_line(diff: &str) -> Option<u32> {
+    let header = diff.lines().find(|l| l.starts_with("@@ "))?;
+    let plus = header.split_whitespace().find(|w| w.starts_with('+'))?;
+    plus[1..].split(',').next()?.parse().ok()
+}
+
 /// `git add` these paths (all changes when empty).
 pub fn stage(repo: &Path, paths: &[String]) -> Result<(), String> {
     let mut args = vec!["add", "-A", "--"];
@@ -473,6 +480,17 @@ mod tests {
             .expect("a local feat now");
         assert!(feat.current);
         assert_eq!(feat.upstream.as_deref(), Some("origin/feat"));
+    }
+
+    #[test]
+    fn finds_the_first_changed_line() {
+        // Given
+        let diff =
+            "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -10,4 +12,6 @@ fn x\n-a\n+b\n@@ -40 +44 @@\n";
+
+        // When / Then
+        assert_eq!(first_changed_line(diff), Some(12));
+        assert_eq!(first_changed_line("no hunks"), None);
     }
 
     #[test]

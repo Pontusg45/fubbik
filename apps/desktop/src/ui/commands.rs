@@ -947,6 +947,14 @@ impl Workspace {
             Command::Pull(repo) => self.pull(repo, cx),
             Command::Push(repo) => self.push(repo, cx),
             Command::ShowDigest => self.show_digest(),
+            Command::SetEditor(editor) => {
+                crate::launch::set_editor(editor.clone());
+                self.config.editor = editor;
+                self.save_config();
+            }
+            Command::OpenAtLine(path, line) => {
+                self.run_background(cx, "", move || launch::open_at(&path, Some(line)))
+            }
             Command::SaveDigest => self.save_digest(false, cx),
             Command::AlignDependency { eco, name, now } => self.align_dependency(eco, name, now, cx),
             Command::DismissAlert(id) => {

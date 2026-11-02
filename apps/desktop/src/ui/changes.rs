@@ -683,12 +683,25 @@ impl Workspace {
                     .gap_4()
                     .items_start()
                     .child(list)
-                    .child(self.render_diff()),
+                    .child(self.render_diff(cx)),
             )
             .into_any_element()
     }
 
-    fn render_diff(&self) -> impl IntoElement {
+    fn render_diff(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        // "Open in editor" at the first changed line of the picked file.
+        let open = match (&self.changes.pick, &self.changes.diff, self.changes_dir()) {
+            (Some((path, _)), Some(Loadable::Done(Ok(text))), Some(dir)) => {
+                let file = dir.join(path);
+                let line = crate::git::first_changed_line(text).unwrap_or(1);
+                Some(
+                    button("diff-open-editor", "Open in editor").on_click(cx.listener(
+                        move |this, _, _, cx| this.run(Command::OpenAtLine(file.clone(), line), cx),
+                    )),
+                )
+            }
+            _ => None,
+        };
         let body: AnyElement = match (&self.changes.pick, &self.changes.diff) {
             (None, _) => muted("Pick a file to see its diff").into_any_element(),
             (Some(_), None | Some(Loadable::Loading)) => {
@@ -756,11 +769,20 @@ impl Workspace {
             .gap_2()
             .child(
                 div()
-                    .text_xs()
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .text_color(theme::text_muted())
-                    .truncate()
-                    .child(title.to_uppercase()),
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .text_xs()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(theme::text_muted())
+                            .truncate()
+                            .child(title.to_uppercase()),
+                    )
+                    .children(open),
             )
             .child(
                 div()

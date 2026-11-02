@@ -63,6 +63,7 @@ fn main() {
         });
     if let Some(config) = &config {
         theme::set_translucent(config.translucent());
+        launch::set_editor(config.editor.clone());
         if let Err(error) = theme::apply(config.ghostty_theme.as_deref()) {
             eprintln!("fubbik: {error}; using the built-in colors");
         }
