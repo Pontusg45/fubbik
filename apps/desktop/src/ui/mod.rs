@@ -31,6 +31,7 @@ mod sync;
 mod tasks;
 mod terminal_view;
 mod terminals;
+mod tests_view;
 mod text;
 mod tmux_live;
 pub mod today;
@@ -85,6 +86,7 @@ actions!(
         ShowChanges,
         ShowTools,
         ShowDeps,
+        ShowTests,
         ShowHome,
         CaptureNote,
         ToggleTheme,
@@ -163,13 +165,16 @@ pub enum Tab {
     Tools,
     /// Dependencies across repos, and where they disagree (a Home tab).
     Deps,
+    /// Test runners, failing tests, rerun and fix.
+    Tests,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 16] = [
+    pub const ALL: [Tab; 17] = [
         Tab::Today,
         Tab::Overview,
         Tab::Changes,
+        Tab::Tests,
         Tab::Processes,
         Tab::Logs,
         Tab::Worktrees,
@@ -199,6 +204,7 @@ impl Tab {
             Tab::Knowledge => theme::hue(Hue::Yellow),
             Tab::Setup | Tab::Tools => theme::text_muted(),
             Tab::Deps => theme::hue(Hue::Violet),
+            Tab::Tests => theme::hue(Hue::Green),
         }
     }
 
@@ -231,6 +237,7 @@ impl Tab {
             Tab::Changes => "show_changes",
             Tab::Tools => "show_tools",
             Tab::Deps => "show_deps",
+            Tab::Tests => "show_tests",
         }
     }
 
@@ -252,6 +259,7 @@ impl Tab {
             Tab::Changes => "Changes",
             Tab::Tools => "Tools",
             Tab::Deps => "Dependencies",
+            Tab::Tests => "Tests",
         }
     }
 }
@@ -458,6 +466,8 @@ pub struct Workspace {
     deps: deps_view::DepsState,
     /// The Knowledge tab's graph.
     graph: knowledge_graph::GraphState,
+    /// The Tests tab: runners and runs per repo.
+    tests: tests_view::TestsState,
     /// `gh` is on PATH (checked once at startup).
     gh_available: bool,
     changes: changes::ChangesState,
@@ -638,6 +648,7 @@ impl Workspace {
             tools_refreshing: false,
             deps: Default::default(),
             graph: Default::default(),
+            tests: Default::default(),
             gh_available: std::process::Command::new("gh")
                 .arg("--version")
                 .output()

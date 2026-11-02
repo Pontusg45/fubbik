@@ -99,6 +99,23 @@ impl Workspace {
                 secondary: Vec::new(),
             });
         }
+        // Test runs with failures.
+        for (path, runner, failed) in self.failing_test_runs() {
+            let Some(repo) = self.repos.iter().position(|r| r.entry.path == path) else {
+                continue;
+            };
+            rows.push(need(
+                &self.repos[repo].entry.name(),
+                "failing".into(),
+                theme::danger(),
+                format!("{failed} failing test(s) ({})", runner.label()),
+                "Show tests",
+                Command::Focus {
+                    repo,
+                    tab: Tab::Tests,
+                },
+            ));
+        }
         // Terminal tabs that rang the bell (a program wants you).
         for (id, _) in &self.bells {
             let Some(tab) = self.terminals.iter().find(|t| t.id == *id) else {

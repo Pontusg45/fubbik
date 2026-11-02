@@ -30,6 +30,7 @@ mod setup;
 mod supervisor;
 mod system;
 mod term;
+mod test_runs;
 mod theme;
 mod tmux;
 mod tmux_events;
@@ -49,7 +50,7 @@ use ui::{
     CaptureNote, ChooseTheme, NextRepo, PrevRepo, Quit, QuitKeepServer, Refresh, RegisterRepo,
     ShowAgents, ShowChanges, ShowDatabases, ShowDeps, ShowHome, ShowInsights, ShowKnowledge,
     ShowLogs, ShowOverview, ShowPlans, ShowProcesses, ShowSessions, ShowSetup, ShowTerminal,
-    ShowToday, ShowTools, ShowWorktrees, TogglePalette, ToggleTheme, Workspace,
+    ShowTests, ShowToday, ShowTools, ShowWorktrees, TogglePalette, ToggleTheme, Workspace,
 };
 
 fn main() {
@@ -173,6 +174,7 @@ fn main() {
                     MenuItem::action("All Agents", ShowAgents),
                     MenuItem::action("Insights", ShowInsights),
                     MenuItem::action("Changes", ShowChanges),
+                    MenuItem::action("Tests", ShowTests),
                     MenuItem::action("Tools", ShowTools),
                     MenuItem::action("Dependencies", ShowDeps),
                     MenuItem::action("Home", ShowHome),

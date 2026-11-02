@@ -117,6 +117,7 @@ impl Workspace {
         if self.tab == Tab::Knowledge {
             self.ensure_graph(index, false, cx);
         }
+        let mut tests = (self.tab == Tab::Tests).then(|| self.render_tests(index, cx));
         let mut changes = match (&self.repos[index].snapshot, self.tab) {
             (Some(snapshot), Tab::Changes) => {
                 let snapshot = snapshot.clone();
@@ -208,6 +209,9 @@ impl Workspace {
                     .take()
                     .unwrap_or_else(|| muted("…").into_any_element()),
                 Tab::Changes => changes
+                    .take()
+                    .unwrap_or_else(|| muted("…").into_any_element()),
+                Tab::Tests => tests
                     .take()
                     .unwrap_or_else(|| muted("…").into_any_element()),
             },
