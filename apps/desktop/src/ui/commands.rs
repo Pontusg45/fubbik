@@ -956,6 +956,11 @@ impl Workspace {
             Command::CleanDisk { repo, kind } => self.clean_disk(repo, kind, cx),
             Command::ToggleDomain(key) => self.toggle_domain(key),
             Command::WriteCaddyfile => self.write_caddyfile(),
+            Command::SetMenuBar(on) => {
+                self.config.menu_bar = Some(on);
+                self.save_config();
+                self.sync_menu_bar();
+            }
             Command::SetEnvCheck(on) => {
                 self.config.env_check = on;
                 self.env_drift.borrow_mut().clear();

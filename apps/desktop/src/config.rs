@@ -61,6 +61,9 @@ pub struct AppConfig {
     /// only). Off unless turned on.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub env_check: bool,
+    /// The menu bar item; on unless `false`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub menu_bar: Option<bool>,
     #[serde(default, rename = "repo")]
     pub repos: Vec<RepoEntry>,
 }

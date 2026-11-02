@@ -20,6 +20,7 @@ mod knowledge;
 mod knowledge_graph;
 mod lists;
 mod mcp_publish;
+mod menu_bar_sync;
 mod palette;
 mod plans;
 mod polling;
@@ -476,6 +477,8 @@ pub struct Workspace {
     /// Home → Tools → Disk.
     disk: disk_view::DiskState,
     domains: domains_view::DomainsState,
+    /// What each menu bar entry runs, by index.
+    menu_commands: Vec<Option<Command>>,
     /// `.env` drift per repo, re-read at most every 30 seconds.
     env_drift:
         std::cell::RefCell<HashMap<PathBuf, (std::time::Instant, Vec<crate::env_drift::Drift>)>>,
@@ -665,6 +668,7 @@ impl Workspace {
             infra: Default::default(),
             disk: Default::default(),
             domains: Default::default(),
+            menu_commands: Vec::new(),
             env_drift: Default::default(),
             gh_available: std::process::Command::new("gh")
                 .arg("--version")
@@ -761,6 +765,7 @@ impl Workspace {
             workspace.watch_tmux_events(cx);
         }
         workspace.watch_hooks(cx);
+        workspace.watch_menu_bar(cx);
         // A developer hook for smoke runs: open on a tab by name.
         if !workspace.repos.is_empty() {
             workspace.tab = Tab::Today;

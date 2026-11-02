@@ -269,6 +269,14 @@ impl Workspace {
                 command: Command::CaptureNote,
             },
             Entry {
+                label: if self.config.menu_bar != Some(false) {
+                    "Hide the menu bar item".into()
+                } else {
+                    "Show the menu bar item".into()
+                },
+                command: Command::SetMenuBar(self.config.menu_bar == Some(false)),
+            },
+            Entry {
                 label: "Home".into(),
                 command: Command::ShowHome,
             },

@@ -298,6 +298,8 @@ pub enum Command {
     WriteCaddyfile,
     /// The `.env` key-name check on or off.
     SetEnvCheck(bool),
+    /// The menu bar item on or off.
+    SetMenuBar(bool),
     /// Removes a repo's build output or packages (after asking).
     CleanDisk {
         repo: PathBuf,

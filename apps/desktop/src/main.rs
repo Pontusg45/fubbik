@@ -24,6 +24,7 @@ mod launch;
 mod mcp;
 mod mcp_events;
 mod mcp_more;
+mod menu_bar;
 mod model;
 mod pg;
 mod poll;
