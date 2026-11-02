@@ -1,0 +1,68 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "fubbik",
+  "title": "Fubbik",
+  "description": "What needs you across your projects, your coding agents and repos, and quick notes, from the fubbik desktop app.",
+  "icon": "icon.png",
+  "author": "Pontusg45",
+  "categories": ["Developer Tools", "Productivity"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "today",
+      "title": "Today",
+      "subtitle": "fubbik",
+      "description": "What needs you, what is in flight and what is next, across every repo.",
+      "mode": "view"
+    },
+    {
+      "name": "agents",
+      "title": "Agents",
+      "subtitle": "fubbik",
+      "description": "Coding agent sessions across your repos: working, waiting, ended.",
+      "mode": "view"
+    },
+    {
+      "name": "repos",
+      "title": "Repos",
+      "subtitle": "fubbik",
+      "description": "Registered repos: status, branch, changes, worktrees.",
+      "mode": "view"
+    },
+    {
+      "name": "capture-note",
+      "title": "Capture Note",
+      "subtitle": "fubbik",
+      "description": "Add a note, todo or decision to the fubbik desktop app.",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "mcpUrl",
+      "title": "MCP URL",
+      "description": "The desktop app's MCP server (it must be running).",
+      "type": "textfield",
+      "required": false,
+      "default": "http://127.0.0.1:3100/mcp"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^2.10.1",
+    "@raycast/utils": "^2.3.3"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.2.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.8.0"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "lint": "ray lint",
+    "typecheck": "tsc --noEmit"
+  }
+}
