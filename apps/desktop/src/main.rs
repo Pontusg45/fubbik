@@ -110,9 +110,15 @@ fn main() {
             path: repo.into(),
             group: None,
         };
+        let started = std::time::Instant::now();
         let mut snapshot = poll::snapshot(&entry, &supervisor, None);
+        let polled = started.elapsed();
         let index = std::sync::Mutex::new(sessions::SessionIndex::new());
         poll::agents(&entry, &mut snapshot, None, &index, true);
+        eprintln!(
+            "probe: snapshot {polled:?}, agents and worktrees {:?}",
+            started.elapsed() - polled
+        );
         println!("{snapshot:#?}");
         let root = std::path::Path::new(repo);
         println!(

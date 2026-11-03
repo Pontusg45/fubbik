@@ -136,34 +136,45 @@ impl Workspace {
         let index = self.session_index.clone();
         let refresh_worktrees = with_knowledge || std::mem::take(&mut self.refresh_worktrees);
         let work = cx.background_executor().spawn(async move {
-            jobs.into_iter()
-                .map(|(entry, prev)| {
-                    let mut snapshot = poll::snapshot(&entry, &supervisor, prev.as_ref());
-                    poll::agents(
-                        &entry,
-                        &mut snapshot,
-                        prev.as_ref(),
-                        &index,
-                        refresh_worktrees,
-                    );
-                    let knowledge = (with_knowledge && !snapshot.missing)
-                        .then(|| fetch_knowledge(&client, &entry, snapshot.remote.as_deref()));
-                    let setup = (with_knowledge && !snapshot.missing).then(|| {
-                        let space = knowledge
-                            .as_ref()
-                            .and_then(|k| k.as_ref().ok())
-                            .and_then(|k| k.space.as_ref())
-                            .map(|s| s.id.clone());
-                        read_setup(&client, &entry, &snapshot, space.as_deref())
-                    });
-                    PollResult {
-                        path: entry.path,
-                        snapshot,
-                        knowledge,
-                        setup,
-                    }
-                })
-                .collect::<Vec<_>>()
+            // One thread per repo: a slow repo (a big git status, many
+            // worktrees) no longer holds up the others.
+            let poll_one = |(entry, prev): (RepoEntry, Option<RepoSnapshot>)| {
+                let mut snapshot = poll::snapshot(&entry, &supervisor, prev.as_ref());
+                poll::agents(
+                    &entry,
+                    &mut snapshot,
+                    prev.as_ref(),
+                    &index,
+                    refresh_worktrees,
+                );
+                let knowledge = (with_knowledge && !snapshot.missing)
+                    .then(|| fetch_knowledge(&client, &entry, snapshot.remote.as_deref()));
+                let setup = (with_knowledge && !snapshot.missing).then(|| {
+                    let space = knowledge
+                        .as_ref()
+                        .and_then(|k| k.as_ref().ok())
+                        .and_then(|k| k.space.as_ref())
+                        .map(|s| s.id.clone());
+                    read_setup(&client, &entry, &snapshot, space.as_deref())
+                });
+                PollResult {
+                    path: entry.path,
+                    snapshot,
+                    knowledge,
+                    setup,
+                }
+            };
+            std::thread::scope(|scope| {
+                let poll_one = &poll_one;
+                let handles: Vec<_> = jobs
+                    .into_iter()
+                    .map(|job| scope.spawn(move || poll_one(job)))
+                    .collect();
+                handles
+                    .into_iter()
+                    .filter_map(|h| h.join().ok())
+                    .collect::<Vec<_>>()
+            })
         });
         let global = with_knowledge.then(|| {
             let client = self.client.clone();

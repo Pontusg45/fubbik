@@ -102,7 +102,8 @@ pub fn is_within(path: &Path, root: &Path) -> bool {
     path.starts_with(root)
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 struct TranscriptMeta {
     offset: u64,
     cwd: Option<PathBuf>,
@@ -111,8 +112,9 @@ struct TranscriptMeta {
     custom_title: Option<String>,
     /// Tokens across the transcript's assistant messages.
     tokens: u64,
-    /// Message ids already counted (a message can span several lines).
-    counted: std::collections::HashSet<String>,
+    /// The last message ids counted: a message's lines are next to each
+    /// other, so a short window stops one being counted twice.
+    counted: std::collections::VecDeque<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -141,7 +143,15 @@ pub struct SessionIndex {
     codex: HashMap<PathBuf, Option<CodexMeta>>,
     codex_titles: HashMap<String, String>,
     codex_index_mtime: Option<SystemTime>,
+    /// Where read positions are kept between launches (None in tests), so a
+    /// restart reads only what was appended instead of every transcript.
+    cache: Option<PathBuf>,
+    dirty: bool,
+    saved: Option<std::time::Instant>,
 }
+
+/// Saves at most this often.
+const SAVE_EVERY: Duration = Duration::from_secs(20);
 
 fn mtime(path: &Path) -> Option<SystemTime> {
     std::fs::metadata(path).and_then(|m| m.modified()).ok()
@@ -176,7 +186,11 @@ fn absorb_line(meta: &mut TranscriptMeta, line: &str) {
         && let Some(usage) = message.get("usage")
     {
         let id = str_field(message, "id").unwrap_or_else(|| line.len().to_string());
-        if meta.counted.insert(id) {
+        if !meta.counted.contains(&id) {
+            meta.counted.push_back(id);
+            if meta.counted.len() > COUNTED_WINDOW {
+                meta.counted.pop_front();
+            }
             meta.tokens += [
                 "input_tokens",
                 "cache_creation_input_tokens",
@@ -196,6 +210,9 @@ fn absorb_line(meta: &mut TranscriptMeta, line: &str) {
         _ => {}
     }
 }
+
+/// Message ids remembered per transcript (see `TranscriptMeta::counted`).
+const COUNTED_WINDOW: usize = 64;
 
 /// Reads complete lines appended since `meta.offset`.
 fn read_transcript(path: &Path, meta: &mut TranscriptMeta) {
@@ -325,7 +342,49 @@ impl SessionIndex {
         let home = std::env::var_os("HOME")
             .map(PathBuf::from)
             .unwrap_or_default();
-        Self::with_homes(home.join(".claude"), home.join(".codex"))
+        let mut index = Self::with_homes(home.join(".claude"), home.join(".codex"));
+        index.cache = Some(crate::backend::data_dir().join("session-index.json"));
+        index.load();
+        index
+    }
+
+    fn load(&mut self) {
+        let Some(text) = self
+            .cache
+            .as_ref()
+            .and_then(|p| std::fs::read_to_string(p).ok())
+        else {
+            return;
+        };
+        if let Ok(saved) = serde_json::from_str::<Vec<(PathBuf, TranscriptMeta)>>(&text) {
+            self.transcripts.extend(saved);
+        }
+    }
+
+    fn save_if_due(&mut self) {
+        let Some(path) = self.cache.clone() else {
+            return;
+        };
+        if !self.dirty || self.saved.is_some_and(|at| at.elapsed() < SAVE_EVERY) {
+            return;
+        }
+        // Only transcripts that still exist.
+        let entries: Vec<(&PathBuf, &TranscriptMeta)> = self
+            .transcripts
+            .iter()
+            .filter(|(p, _)| p.exists())
+            .collect();
+        if let Ok(text) = serde_json::to_string(&entries) {
+            if let Some(dir) = path.parent() {
+                let _ = std::fs::create_dir_all(dir);
+            }
+            let tmp = path.with_extension("json.tmp");
+            if std::fs::write(&tmp, text).is_ok() {
+                let _ = std::fs::rename(&tmp, &path);
+            }
+        }
+        self.dirty = false;
+        self.saved = Some(std::time::Instant::now());
     }
 
     pub fn with_homes(claude_home: PathBuf, codex_home: PathBuf) -> Self {
@@ -336,6 +395,9 @@ impl SessionIndex {
             codex: HashMap::new(),
             codex_titles: HashMap::new(),
             codex_index_mtime: None,
+            cache: None,
+            dirty: false,
+            saved: None,
         }
     }
 
@@ -381,7 +443,11 @@ impl SessionIndex {
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_default();
             let meta = self.transcripts.entry(path.clone()).or_default();
+            let before = meta.offset;
             read_transcript(&path, meta);
+            if meta.offset != before {
+                self.dirty = true;
+            }
             let Some(cwd) = meta.cwd.clone() else {
                 continue;
             };
@@ -519,6 +585,7 @@ impl SessionIndex {
         sessions.extend(self.codex_sessions(roots));
         sessions.sort_by_key(|s| (!s.state.is_live(), std::cmp::Reverse(s.last_activity)));
         sessions.truncate(RECENT);
+        self.save_if_due();
         sessions
     }
 }
@@ -596,6 +663,37 @@ mod tests {
         assert_eq!(sessions[0].title, "Fix login");
         assert_eq!(sessions[0].branch.as_deref(), Some("feat"));
         assert_eq!(sessions[0].state, SessionState::Ended);
+    }
+
+    #[test]
+    fn read_positions_survive_a_restart() {
+        // Given: a transcript scanned once with a cache file
+        let home = tempfile::tempdir().unwrap();
+        let repo = PathBuf::from("/code/app");
+        let dir = home
+            .path()
+            .join("claude/projects")
+            .join(claude_dir_name(&repo));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("s1.jsonl");
+        std::fs::write(&path, transcript_line(&repo)).unwrap();
+        let cache = home.path().join("data/session-index.json");
+        let open = || {
+            let mut index =
+                SessionIndex::with_homes(home.path().join("claude"), home.path().join("codex"));
+            index.cache = Some(cache.clone());
+            index.load();
+            index
+        };
+        open().scan(std::slice::from_ref(&repo));
+
+        // When: a new index (the next launch) loads it
+        let reloaded = open();
+
+        // Then
+        let meta = &reloaded.transcripts[&path];
+        assert_eq!(meta.offset, transcript_line(&repo).len() as u64);
+        assert_eq!(meta.cwd.as_deref(), Some(repo.as_path()));
     }
 
     #[test]
