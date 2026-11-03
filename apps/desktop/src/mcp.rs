@@ -596,10 +596,37 @@ fn local_origin(headers: &axum::http::HeaderMap) -> bool {
     }
 }
 
+/// The Host a request was sent to is this machine (a rebound DNS name such as
+/// `evil.example:3100` is refused even when it resolves here).
+fn local_host(headers: &axum::http::HeaderMap) -> bool {
+    match headers
+        .get(axum::http::header::HOST)
+        .and_then(|h| h.to_str().ok())
+    {
+        None => true,
+        Some(host) => {
+            let name = if host.starts_with('[') {
+                host.split(']')
+                    .next()
+                    .map(|h| format!("{h}]"))
+                    .unwrap_or_default()
+            } else {
+                host.split(':').next().unwrap_or("").to_string()
+            };
+            matches!(name.as_str(), "localhost" | "127.0.0.1" | "[::1]")
+        }
+    }
+}
+
+/// Both checks: a local page, sent to a local name.
+fn allowed(headers: &axum::http::HeaderMap) -> bool {
+    local_origin(headers) && local_host(headers)
+}
+
 async fn http_post(headers: axum::http::HeaderMap, body: String) -> axum::response::Response {
     use axum::http::StatusCode;
     use axum::response::IntoResponse;
-    if !local_origin(&headers) {
+    if !allowed(&headers) {
         return (StatusCode::FORBIDDEN, "origin not allowed").into_response();
     }
     let Ok(message) = serde_json::from_str::<Value>(&body) else {
@@ -669,7 +696,13 @@ pub fn hook_wakes() -> &'static (async_channel::Sender<()>, async_channel::Recei
 }
 
 /// `POST /hook`: a Claude Code hook's JSON (see `claude_hooks.rs`).
-async fn http_hook(body: axum::body::Bytes) -> axum::http::StatusCode {
+async fn http_hook(
+    headers: axum::http::HeaderMap,
+    body: axum::body::Bytes,
+) -> axum::http::StatusCode {
+    if !allowed(&headers) {
+        return axum::http::StatusCode::FORBIDDEN;
+    }
     let Ok(value) = serde_json::from_slice::<Value>(&body) else {
         return axum::http::StatusCode::BAD_REQUEST;
     };
@@ -791,5 +824,15 @@ mod tests {
         assert!(local_origin(&with("http://localhost:3001")));
         assert!(local_origin(&with("http://127.0.0.1:3000")));
         assert!(!local_origin(&with("https://evil.example")));
+        let host = |h: &str| {
+            let mut headers = axum::http::HeaderMap::new();
+            headers.insert(axum::http::header::HOST, h.parse().unwrap());
+            headers
+        };
+        assert!(local_host(&host("127.0.0.1:3100")));
+        assert!(local_host(&host("localhost:3100")));
+        assert!(local_host(&host("[::1]:3100")));
+        assert!(!local_host(&host("evil.example:3100")));
+        assert!(!allowed(&host("rebound.example")));
     }
 }
