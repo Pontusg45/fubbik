@@ -22,10 +22,27 @@ pub enum Entry {
     Separator,
 }
 
-fn clicks() -> &'static (async_channel::Sender<usize>, async_channel::Receiver<usize>) {
-    static CHANNEL: OnceLock<(async_channel::Sender<usize>, async_channel::Receiver<usize>)> =
-        OnceLock::new();
-    CHANNEL.get_or_init(async_channel::unbounded)
+type Clicks = (async_channel::Sender<usize>, async_channel::Receiver<usize>);
+
+fn channel() -> &'static std::sync::Mutex<Clicks> {
+    static CHANNEL: OnceLock<std::sync::Mutex<Clicks>> = OnceLock::new();
+    CHANNEL.get_or_init(|| std::sync::Mutex::new(async_channel::unbounded()))
+}
+
+fn clicks() -> Clicks {
+    channel().lock().unwrap().clone()
+}
+
+/// A fresh channel for a test (see `links::reset`).
+#[cfg(test)]
+pub fn reset() {
+    *channel().lock().unwrap() = async_channel::unbounded();
+}
+
+/// A click on entry `index`, as AppKit would send it (for tests).
+#[cfg(test)]
+pub fn test_click(index: usize) {
+    let _ = clicks().0.try_send(index);
 }
 
 /// Clicked entries' indexes.

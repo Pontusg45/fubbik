@@ -106,7 +106,7 @@ impl Workspace {
 
 impl Workspace {
     /// What a `fubbik://` link or the MCP `show` tool asks to see.
-    fn link_command(&self, link: &crate::links::Link) -> Result<Command, String> {
+    pub(super) fn link_command(&self, link: &crate::links::Link) -> Result<Command, String> {
         let tab = match &link.tab {
             None => None,
             Some(name) => Some(

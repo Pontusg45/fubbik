@@ -45,6 +45,8 @@ fn open_home<'a>(
     )
     .unwrap();
     theme::set_translucent(false);
+    crate::links::reset();
+    crate::menu_bar::reset();
     let (view, cx) = cx.add_window_view(|window, cx| Workspace::new(Supervisor::new(), window, cx));
     cx.run_until_parked();
     (view, cx)
@@ -1442,4 +1444,86 @@ fn new_views_render_with_data(cx: &mut TestAppContext) {
     assert_eq!(conflicts, 1, "both processes declare 39901");
     let drift = crate::env_drift::scan(repo.path());
     assert_eq!(drift[0].missing, ["B"]);
+}
+
+#[gpui::test]
+fn links_route_to_tabs_and_repos(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: two repos
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let config = format!(
+        "menu_bar = false\n[[repo]]\npath = {:?}\n\n[[repo]]\npath = {:?}\n",
+        a.path().display().to_string(),
+        b.path().display().to_string()
+    );
+    let (view, cx) = open(cx, &config);
+    let b_name = b.path().file_name().unwrap().to_string_lossy().into_owned();
+    let link = |tab: Option<&str>, repo: Option<&str>| crate::links::Link {
+        tab: tab.map(str::to_string),
+        repo: repo.map(str::to_string),
+    };
+
+    // When
+    let routes = view.read_with(cx, |w, _| {
+        [
+            w.link_command(&link(Some("today"), None)),
+            w.link_command(&link(Some("ALL AGENTS"), None)),
+            w.link_command(&link(Some("deps"), None)),
+            w.link_command(&link(None, Some(&b_name))),
+            w.link_command(&link(Some("changes"), Some(&b_name))),
+            w.link_command(&link(Some("ai sessions"), Some(&b_name))),
+            w.link_command(&link(Some("today"), Some(&b_name))),
+            w.link_command(&link(Some("nope"), None)),
+            w.link_command(&link(None, Some("missing-repo"))),
+        ]
+        .map(|r| r.map(|c| format!("{c:?}")))
+    });
+
+    // Then
+    assert_eq!(routes[0].as_deref(), Ok("ShowTab(Today)"));
+    assert_eq!(routes[1].as_deref(), Ok("ShowTab(Agents)"));
+    assert_eq!(routes[2].as_deref(), Ok("ShowTab(Deps)"));
+    assert_eq!(routes[3].as_deref(), Ok("Focus { repo: 1, tab: Overview }"));
+    assert_eq!(routes[4].as_deref(), Ok("Focus { repo: 1, tab: Changes }"));
+    assert_eq!(routes[5].as_deref(), Ok("Focus { repo: 1, tab: Sessions }"));
+    assert_eq!(
+        routes[6].as_deref(),
+        Ok("Focus { repo: 1, tab: Overview }"),
+        "a Home tab with a repo opens the repo"
+    );
+    assert!(routes[7].as_ref().unwrap_err().contains("no tab"));
+    assert!(routes[8].as_ref().unwrap_err().contains("no repo"));
+
+    // And a link sent from outside is acted on
+    crate::links::send(link(Some("changes"), Some(&b_name)));
+    cx.run_until_parked();
+    assert_eq!(
+        view.read_with(cx, |w, _| (w.selected, w.tab)),
+        (1, Tab::Changes)
+    );
+}
+
+#[gpui::test]
+fn the_menu_bar_lists_what_needs_you_and_runs_it(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given
+    let (view, cx) = open(cx, "");
+
+    // When
+    let commands = view.update(cx, |w, _| {
+        w.sync_menu_bar();
+        w.menu_commands.clone()
+    });
+    let today_at = commands
+        .iter()
+        .position(|c| matches!(c, Some(Command::ShowTab(Tab::Today))))
+        .unwrap();
+    view.update(cx, |w, cx| w.run(Command::ShowTab(Tab::Tools), cx));
+    crate::menu_bar::test_click(today_at);
+    cx.run_until_parked();
+
+    // Then: a label first, the three shortcuts last, and a click runs one
+    assert!(commands[0].is_none(), "the heading is not clickable");
+    assert!(matches!(commands.last(), Some(Some(Command::CaptureNote))));
+    assert_eq!(view.read_with(cx, |w, _| w.tab), Tab::Today);
 }

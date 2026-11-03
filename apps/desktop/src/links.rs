@@ -68,18 +68,26 @@ fn decode(part: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-fn channel() -> &'static (async_channel::Sender<Link>, async_channel::Receiver<Link>) {
-    static CHANNEL: OnceLock<(async_channel::Sender<Link>, async_channel::Receiver<Link>)> =
-        OnceLock::new();
-    CHANNEL.get_or_init(async_channel::unbounded)
+type Channel = (async_channel::Sender<Link>, async_channel::Receiver<Link>);
+
+fn channel() -> &'static std::sync::Mutex<Channel> {
+    static CHANNEL: OnceLock<std::sync::Mutex<Channel>> = OnceLock::new();
+    CHANNEL.get_or_init(|| std::sync::Mutex::new(async_channel::unbounded()))
 }
 
 pub fn send(link: Link) {
-    let _ = channel().0.try_send(link);
+    let _ = channel().lock().unwrap().0.try_send(link);
 }
 
 pub fn receiver() -> async_channel::Receiver<Link> {
-    channel().1.clone()
+    channel().lock().unwrap().1.clone()
+}
+
+/// A fresh channel, so a test's workspace is the only listener (an earlier
+/// test's app can leave a waiting receiver that would be woken instead).
+#[cfg(test)]
+pub fn reset() {
+    *channel().lock().unwrap() = async_channel::unbounded();
 }
 
 #[cfg(test)]
