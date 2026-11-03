@@ -1,0 +1,28 @@
+name: raycast
+on:
+    push:
+        paths:
+            - "integrations/raycast/**"
+            - ".github/workflows/raycast.yml"
+    pull_request:
+        paths:
+            - "integrations/raycast/**"
+            - ".github/workflows/raycast.yml"
+
+# integrations/raycast is outside the pnpm workspace (Raycast extensions use
+# npm). `ray lint` is left out: it checks the author against the Raycast Store.
+jobs:
+    typecheck:
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: integrations/raycast
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+                  cache-dependency-path: integrations/raycast/package-lock.json
+            - run: npm ci
+            - run: npm run typecheck
