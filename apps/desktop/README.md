@@ -127,7 +127,8 @@ it, or switches back to asking. Keys in the prompt: 1–4 choose, A toggles "alw
 Other agents can read what the app shows, and start and stop its processes and scripts, through its own MCP server:
 
 - **HTTP:** `http://127.0.0.1:3100/mcp` while the app runs (MCP streamable HTTP with JSON replies; `FUBBIK_DESKTOP_MCP_PORT`
-  moves it). Requests with a non-local `Origin` are refused. Claude Code: `claude mcp add --transport http fubbik-desktop
+  moves it). Requests with a non-local `Origin` or `Host` are refused (on `/mcp` and `/hook`), so a web page cannot reach it,
+  even through DNS rebinding. Claude Code: `claude mcp add --transport http fubbik-desktop
   http://127.0.0.1:3100/mcp`, or the `fubbik-desktop` entry in `agents/mcp/claude-code.json`.
 - **stdio:** `fubbik-desktop --mcp` (in the bundle: `~/Applications/fubbik.app/Contents/MacOS/fubbik-desktop --mcp`) forwards to
   the running app, and says so when the app is not running.
@@ -160,6 +161,11 @@ Other agents can read what the app shows, and start and stop its processes and s
     checks watches while it runs; one that fires raises an alert (`list_alerts`, `dismiss_alert`): a "Needs you" line
     on Today, a toast, and a `watch_fired` feed event. One alert per episode.
   - The feed is also kept in `~/.config/fubbik/events.jsonl` (the newest 2000, read back at start).
+  - Infrastructure (read-only): `get_test_results(repo?)` (the Tests tab's last runs), `get_containers(repo?)`,
+    `get_database_details(repo)` (version, size, connections, migration drift), `get_disk` (builds, packages, Docker),
+    `get_domains` (.test domains, Caddy, hosts, port conflicts) and `get_env_drift(repo?)` (key names only, and only
+    when the check is on in Setup).
+  - `show(tab?, repo?)`: brings the app forward at a tab, like a `fubbik://` link.
 - **Testing a second copy:** set `FUBBIK_DESKTOP_TMUX_SERVER` (with `XDG_CONFIG_HOME`, `FUBBIK_DESKTOP_DATA`, the two
   ports) so it gets its own tmux server, hooks, events and tracker files and never touches the running app's.
 - **A tracker workspace:** Setup → "Projects tracker" (or ⌘K "Set up the projects tracker") writes, in the repos' common
@@ -232,6 +238,13 @@ start = "…"                        # optional, overrides the compose default; 
 - **Menu bar item** (`src/menu_bar.rs`): `fk`, or `fk 3` when three things need you; its menu lists them (each runs
   Today's action for that line), then Open Today, All agents and Capture note. "Hide the menu bar item" in the command
   palette turns it off (desktop.toml `menu_bar = false`).
+- **Links:** `fubbik://today`, `fubbik://agents`, `fubbik://tools`, `fubbik://repo/<name>` and
+  `fubbik://repo/<name>/<tab>` (tab names as shown, or `changes`, `tests`, `sessions`…) open the app there; the
+  installed app registers the scheme (`open fubbik://repo/fubbik/changes`).
+- **Disk nudge:** two minutes after launch and then daily, the app measures builds and packages in the background;
+  past 30 GB, Today's "Next up" says so, with "Show disk".
+- **Startup:** repos poll in parallel, and the session index keeps how far it has read each Claude transcript in
+  `session-index.json` in the data folder, so a restart reads only what was appended.
 - **Raycast:** `integrations/raycast` has Today, Agents, Repos and Capture Note commands over the MCP server (see its
   README).
 
@@ -441,6 +454,7 @@ src/poll.rs        one repo poll (runs on the background executor)
 src/launch.rs      editor, Terminal, notifications, login-shell PATH
 src/global_hotkey.rs  the system-wide summon key (Carbon RegisterEventHotKey)
 src/menu_bar.rs    the menu bar item (NSStatusItem) and its click channel
+src/links.rs       fubbik:// links and the MCP show tool → a tab or repo
 src/claude_hooks.rs  Claude Code hooks in ~/.claude/settings.json: install, uninstall, parse a hook's report
 src/proxy.rs       .test domains: Caddyfile block, /etc/hosts entries, port conflicts
 src/env_drift.rs   .env key names vs .env.example (values never kept)
