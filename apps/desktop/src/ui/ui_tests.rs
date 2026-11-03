@@ -230,8 +230,15 @@ fn a_new_services_file_is_picked_up_without_waiting_for_the_tick(cx: &mut TestAp
     .unwrap();
     let mut processes = Vec::new();
     let mut advanced = Duration::ZERO;
+    // Real time for the FS event first (it can lag while the whole suite
+    // runs): the debounce timer starts only once the event is handled, and
+    // the fake clock must move after that.
+    for _ in 0..20 {
+        std::thread::sleep(Duration::from_millis(100));
+        cx.run_until_parked();
+    }
     for _ in 0..40 {
-        std::thread::sleep(Duration::from_millis(100)); // real time for the FS event
+        std::thread::sleep(Duration::from_millis(100)); // more real time, if needed
         if advanced < WATCH_DEBOUNCE + Duration::from_millis(100) {
             // Past the debounce, never as far as the first 1 s tick.
             cx.executor().advance_clock(Duration::from_millis(100));
