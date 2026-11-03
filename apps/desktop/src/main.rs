@@ -57,8 +57,9 @@ use supervisor::Supervisor;
 use ui::{
     CaptureNote, ChooseTheme, NextRepo, PrevRepo, Quit, QuitKeepServer, Refresh, RegisterRepo,
     ShowAgents, ShowChanges, ShowDatabases, ShowDeps, ShowHome, ShowInsights, ShowKnowledge,
-    ShowLogs, ShowOverview, ShowPlans, ShowProcesses, ShowSessions, ShowSetup, ShowTerminal,
-    ShowTests, ShowToday, ShowTools, ShowWorktrees, TogglePalette, ToggleTheme, Workspace,
+    ShowLogs, ShowOverview, ShowPlans, ShowProcesses, ShowSessions, ShowSettings, ShowSetup,
+    ShowTerminal, ShowTests, ShowToday, ShowTools, ShowWorktrees, TogglePalette, ToggleTheme,
+    Workspace,
 };
 
 fn main() {
@@ -162,6 +163,8 @@ fn main() {
             Menu {
                 name: "fubbik".into(),
                 items: vec![
+                    MenuItem::action("Settings…", ShowSettings),
+                    MenuItem::separator(),
                     MenuItem::action("Quit, Keep Server Running", QuitKeepServer),
                     MenuItem::action("Quit fubbik", Quit),
                 ],
@@ -191,7 +194,7 @@ fn main() {
                     MenuItem::action("AI Sessions", ShowSessions),
                     MenuItem::action("Plans", ShowPlans),
                     MenuItem::action("Knowledge", ShowKnowledge),
-                    MenuItem::action("Setup", ShowSetup),
+                    MenuItem::action("Repo Setup", ShowSetup),
                     MenuItem::action("Terminal", ShowTerminal),
                     MenuItem::action("Today", ShowToday),
                     MenuItem::action("All Agents", ShowAgents),

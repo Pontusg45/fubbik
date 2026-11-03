@@ -92,6 +92,7 @@ actions!(
         ShowTools,
         ShowDeps,
         ShowTests,
+        ShowSettings,
         ShowHome,
         CaptureNote,
         ToggleTheme,
@@ -172,10 +173,13 @@ pub enum Tab {
     Deps,
     /// Test runners, failing tests, rerun and fix.
     Tests,
+    /// App-wide settings: preferences, the server, Claude Code, keys (a
+    /// Home tab; a repo's own setup stays in Setup).
+    Settings,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 17] = [
+    pub const ALL: [Tab; 18] = [
         Tab::Today,
         Tab::Overview,
         Tab::Changes,
@@ -193,6 +197,7 @@ impl Tab {
         Tab::Tools,
         Tab::Deps,
         Tab::Setup,
+        Tab::Settings,
     ];
 
     /// The tab's own color: its dot and underline in the tab strip.
@@ -207,7 +212,7 @@ impl Tab {
             Tab::Sessions | Tab::Agents => theme::hue(Hue::Orange),
             Tab::Plans | Tab::Insights => theme::hue(Hue::Pink),
             Tab::Knowledge => theme::hue(Hue::Yellow),
-            Tab::Setup | Tab::Tools => theme::text_muted(),
+            Tab::Setup | Tab::Tools | Tab::Settings => theme::text_muted(),
             Tab::Deps => theme::hue(Hue::Violet),
             Tab::Tests => theme::hue(Hue::Green),
         }
@@ -215,7 +220,10 @@ impl Tab {
 
     /// Views across every repo (shown outside a repo, next to Home).
     pub fn is_global(self) -> bool {
-        matches!(self, Tab::Today | Tab::Agents | Tab::Tools | Tab::Deps)
+        matches!(
+            self,
+            Tab::Today | Tab::Agents | Tab::Tools | Tab::Deps | Tab::Settings
+        )
     }
 
     /// The key that shows the tab, as currently bound (keymap.toml).
@@ -243,6 +251,7 @@ impl Tab {
             Tab::Tools => "show_tools",
             Tab::Deps => "show_deps",
             Tab::Tests => "show_tests",
+            Tab::Settings => "show_settings",
         }
     }
 
@@ -265,6 +274,7 @@ impl Tab {
             Tab::Tools => "Tools",
             Tab::Deps => "Dependencies",
             Tab::Tests => "Tests",
+            Tab::Settings => "Settings",
         }
     }
 }

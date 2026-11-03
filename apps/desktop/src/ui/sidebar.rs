@@ -87,7 +87,7 @@ impl Workspace {
                             .text_color(theme::text_muted())
                             .cursor_pointer()
                             .on_click(cx.listener(|this, _, _, cx| {
-                                this.run(Command::ShowTab(super::Tab::Setup), cx);
+                                this.run(Command::ShowTab(super::Tab::Settings), cx);
                                 cx.notify();
                             }))
                             .child(div().size(px(7.)).rounded_full().bg(color))

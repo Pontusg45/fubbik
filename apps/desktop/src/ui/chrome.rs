@@ -638,6 +638,9 @@ impl Render for Workspace {
             .on_action(
                 cx.listener(|this, _: &ShowDeps, _, cx| this.run(Command::ShowTab(Tab::Deps), cx)),
             )
+            .on_action(cx.listener(|this, _: &ShowSettings, _, cx| {
+                this.run(Command::ShowTab(Tab::Settings), cx)
+            }))
             .on_action(
                 cx.listener(|this, _: &ShowTests, _, cx| {
                     this.run(Command::ShowTab(Tab::Tests), cx)

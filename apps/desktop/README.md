@@ -38,23 +38,23 @@ Starting the app is all fubbik needs. Docker, `fubbik serve` and `just dev` aren
   - **Major versions:** the data folder only opens with the PostgreSQL major that created it. A folder from another version is
     refused with what to do: back it up with that version's `pg_dump`, move the folder aside, restart, then import the dump
     (or run `pg_upgrade`).
-- **Status:** the sidebar's footer shows it (running, starting, using another server, or failed; click it for Setup). A
+- **Status:** the sidebar's footer shows it (running, starting, using another server, or failed; click it for Settings). A
   failure raises a toast. Logs → "built-in server" is the API's log (`backend.log`, `RUST_LOG` filters it), and "built-in
   postgres" is `postgres.log`.
 - **Already running?** When something healthy answers on the port (for example `just dev`), the app uses it and starts nothing.
   `just kill-dev` refuses to kill the app's server.
-- **Existing data:** Setup → "Import existing data" lists the default `postgresql://localhost:5432/fubbik` and the PostgreSQL
+- **Existing data:** Settings → "Import existing data" lists the default `postgresql://localhost:5432/fubbik` and the PostgreSQL
   databases in your repos' services files.
   - Import runs live: the API pauses, the built-in database is replaced by a copy (the source is only read, with `pg_dump`),
     and the API comes back.
   - A toast says how many objects were skipped (AGE's graph, when the bundle has no AGE). `import.log` has `pg_restore`'s
     messages.
 - **Backups:** one a day while the server runs, the last 7 kept, in `…/fubbik/backups` (`pg_dump -Fc`; restore one with
-  `pg_restore`). Setup has "Back up now" and "Show in Finder".
-- **Quitting** stops the server. "Quit, Keep Server Running" (the fubbik menu, or Setup) hands it to a background copy of the
-  app (`fubbik-desktop --serve`, no window), so MCP and the CLI keep working. The next launch uses that server, and Setup →
+  `pg_restore`). Settings has "Back up now" and "Show in Finder".
+- **Quitting** stops the server. "Quit, Keep Server Running" (the fubbik menu, or Settings) hands it to a background copy of the
+  app (`fubbik-desktop --serve`, no window), so MCP and the CLI keep working. The next launch uses that server, and Settings →
   "Stop background server" ends it.
-- **Turning it off:** `backend = "off"` in `desktop.toml` (or the Setup toggle) makes the app start nothing. Run `fubbik serve`
+- **Turning it off:** `backend = "off"` in `desktop.toml` (or the Settings toggle) makes the app start nothing. Run `fubbik serve`
   yourself then.
 - **Files:** `auth-secret` in the data folder signs session cookies (generated once).
 
@@ -119,7 +119,7 @@ Starting a process ("Start", "Start all", a profile, the palette, the list keys)
 3. **In a terminal tab:** a tab in the Terminal view, where you can type into it.
 4. **In Terminal.app.**
 
-The prompt's "Always use this" (A) saves the choice as `run_in` in `desktop.toml`. Setup → "Start processes and scripts" changes
+The prompt's "Always use this" (A) saves the choice as `run_in` in `desktop.toml`. Settings → "Start processes and scripts" changes
 it, or switches back to asking. Keys in the prompt: 1–4 choose, A toggles "always", esc cancels.
 
 ## MCP server
@@ -164,11 +164,11 @@ Other agents can read what the app shows, and start and stop its processes and s
   - Infrastructure (read-only): `get_test_results(repo?)` (the Tests tab's last runs), `get_containers(repo?)`,
     `get_database_details(repo)` (version, size, connections, migration drift), `get_disk` (builds, packages, Docker),
     `get_domains` (.test domains, Caddy, hosts, port conflicts) and `get_env_drift(repo?)` (key names only, and only
-    when the check is on in Setup).
+    when the check is on in Settings).
   - `show(tab?, repo?)`: brings the app forward at a tab, like a `fubbik://` link.
 - **Testing a second copy:** set `FUBBIK_DESKTOP_TMUX_SERVER` (with `XDG_CONFIG_HOME`, `FUBBIK_DESKTOP_DATA`, the two
   ports) so it gets its own tmux server, hooks, events and tracker files and never touches the running app's.
-- **A tracker workspace:** Setup → "Projects tracker" (or ⌘K "Set up the projects tracker") writes, in the repos' common
+- **A tracker workspace:** Settings → "Projects tracker" (or ⌘K "Set up the projects tracker") writes, in the repos' common
   folder (`~/projects`), a `.mcp.json` with both servers (`fubbik-desktop` over HTTP and `fubbik mcp`), merged into an
   existing one, and a `CLAUDE.md` with the tracker's job (each check: the change feed from a saved cursor, then Today;
   weekly: dependencies, toolchain, worktrees; read-only, never commits or pushes). An existing CLAUDE.md is kept. Run
@@ -227,12 +227,12 @@ start = "…"                        # optional, overrides the compose default; 
 - **Database details** (`src/pg.rs`): version, size and connections for each `[[database]]` URL; sqlx migration drift
   (files in the repo not applied, and applied versions with no file); psql in a tab; Snapshot (`pg_dump -Fc` into
   `~/Library/Application Support/fubbik/snapshots`) and "Restore latest" (asks first; `pg_restore --clean`).
-- **Claude Code hooks** (Setup, `src/claude_hooks.rs`): "Add hooks…" (asks first) adds SessionStart, UserPromptSubmit,
+- **Claude Code hooks** (Settings, `src/claude_hooks.rs`): "Add hooks…" (asks first) adds SessionStart, UserPromptSubmit,
   Stop, Notification and SessionEnd hooks to `~/.claude/settings.json`, next to yours and backed up first. Each pipes the
   event to `POST /hook` on the MCP port with a 1-second curl that never fails, so agent state (started, working,
   waiting for you, ended) shows at once instead of on the next poll, and lands in the change feed. "Remove hooks"
   takes out exactly those.
-- **.env drift** (Setup, `src/env_drift.rs`; off until turned on): each `.env.example` (or `.env.sample`,
+- **.env drift** (switched on in Settings, which lists every repo; a repo's Setup shows its own; `src/env_drift.rs`; off until turned on): each `.env.example` (or `.env.sample`,
   `.env.template`, at the root and two levels down) against the `.env` beside it: keys missing from `.env` and keys the
   example does not list. Key names only: each line is cut at `=` as it is read; values are never kept, shown or sent.
 - **Menu bar item** (`src/menu_bar.rs`): `fk`, or `fk 3` when three things need you; its menu lists them (each runs
@@ -278,13 +278,17 @@ start = "…"                        # optional, overrides the compose default; 
   state, Enrich all); a gaps scan like `fubbik gaps` (one request per file, first 400); failing and untested requirements
   (Mark passing / failing) and behaviour matrices with violated cells; feature overlays (turn on / off); a quick note. The
   sidebar shows "✕ N failing checks" for failing requirements plus violated cells.
-- **Setup** (⌘9), a fuller `fubbik doctor`: server health and enabled groups, the Rust `fubbik` binary (configured
-  `fubbik_bin`, a build in a registered fubbik checkout, `~/.cargo/bin`, then `PATH` — only if `--version` prints
-  `fubbik <version>`, since the legacy TypeScript CLI has no `mcp`; "Build fubbik" runs `cargo build --release -p fubbik`),
-  the fubbik MCP server in `.mcp.json` or `~/.claude.json` ("Add to .mcp.json"), and for each worktree the pre-commit hook
-  (the same script as `fubbik hooks install`; another hook is left alone) and the generated CLAUDE.md (in sync / stale / not
-  generated against `/api/chunks/export/claude-md`, written verbatim like `fubbik sync`; needs `claudeMd` in
-  `fubbik.config.json`).
+- **Settings** (⌘, or the fubbik menu → Settings…, a Home tab) holds what applies to every repo: server health and
+  enabled groups, the Rust `fubbik` binary, preferences (colors, editor, terminals, where processes start, the built-in
+  server, import, backups, URLs), the menu bar item, Claude Code hooks, the `.env` check, the projects tracker and keys.
+- **Setup** (⇧⌘,) is the repo's own: the fubbik MCP server in its `.mcp.json` or `~/.claude.json` ("Add to .mcp.json"),
+  and for each worktree the pre-commit hook (the same script as `fubbik hooks install`; another hook is left alone) and
+  the generated CLAUDE.md (in sync / stale / not generated against `/api/chunks/export/claude-md`, written verbatim like
+  `fubbik sync`; needs `claudeMd` in `fubbik.config.json`); its `.env` drift when the check is on; and a pointer to
+  Settings when the server is not answering.
+- **The fubbik binary** (Settings): the configured `fubbik_bin`, a build in a registered fubbik checkout, `~/.cargo/bin`,
+  then `PATH`, only if `--version` prints `fubbik <version>` (the legacy TypeScript CLI has no `mcp`); "Build fubbik"
+  runs `cargo build --release -p fubbik`.
 - **Branch context:** "Context" on a worktree lists the chunks its changes touch: `for-files` context for the files changed
   against main (committed and uncommitted), and the `check-files` view of chunks linked to a changed file by file-ref or
   applies-to.
@@ -387,16 +391,16 @@ start = "…"                        # optional, overrides the compose default; 
 - **Codex waiting:** Codex has no live-session registry, so a Codex screen that changed and then stayed still for three
   polls counts as waiting for input, with a notification like Claude's.
 - **Alerts:** notifications also raise a toast; clicking it jumps to the repo and tab it is about.
-- **Preferences** at the top of Setup (and on the first-launch screen, with a getting-started checklist): colors,
+- **Preferences** in Settings (and on the first-launch screen, with a getting-started checklist): colors,
   translucency, tmux persistence, where AI sessions open, and the fubbik server, web app and binary.
 - **Events over timers:** file changes in a repo's root or Claude's live-session registry trigger a poll at once (300 ms
   debounce); the 1 s tick only redraws for toasts and the live log; knowledge fetches back off while the fubbik API is
   down (60 s, doubling to 5 min).
 - **Keys:** ⌘/ shows every shortcut, and ⌘K lists each command's key beside it. Tabs: ⌘1 Today, ⌘2 Overview, ⌘3 Processes,
   ⌘4 Logs, ⌘5 Worktrees, ⌘6 Sessions, ⌘7 Plans, ⌘8 Knowledge, ⌘9 Terminal, ⇧⌘D Databases, ⇧⌘I Insights, ⇧⌘G Changes, ⇧⌘A Agents, ⇧⌘T Tools, ⇧⌘L Dependencies, ⌘,
-  Setup. ⌃1–⌃9 pick a repo, ⇧⌘J jumps to the next thing that needs you, ⇧⌘R replies to the agent that has waited longest,
+  Settings, ⇧⌘, the repo's Setup. ⌃1–⌃9 pick a repo, ⇧⌘J jumps to the next thing that needs you, ⇧⌘R replies to the agent that has waited longest,
   ⇧⌘S starts the next ready task in the background, ⇧⌘N captures a note. In a terminal: ⌘T new shell, ⌘W close, ⌘1–⌘9 and
-  ⇧⌘[ / ⇧⌘] switch tabs, ⌘D split, ⇧⌘K clear. Rebind any of them in `~/.config/fubbik/keymap.toml` (Setup → Keyboard
+  ⇧⌘[ / ⇧⌘] switch tabs, ⌘D split, ⇧⌘K clear. Rebind any of them in `~/.config/fubbik/keymap.toml` (Settings → Keyboard
   writes a commented starter; `""` unbinds; conflicts and unknown actions are listed there).
 - **Keyboard lists:** when no text field or terminal has focus, j/k (↓/↑) move a highlight in Today, Processes, Worktrees,
   AI Sessions and the Knowledge inbox, ⏎ does the row's main thing, and letters do the rest (Processes: s start/stop, r

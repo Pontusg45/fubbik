@@ -822,7 +822,13 @@ fn keys_from_the_keymap_drive_the_app(cx: &mut TestAppContext) {
 
     // When / Then
     cx.simulate_keystrokes("cmd-,");
-    assert_eq!(state(&view, cx).0, Tab::Setup);
+    assert_eq!(state(&view, cx).0, Tab::Settings, "⌘, is app-wide Settings");
+    cx.simulate_keystrokes("cmd-shift-,");
+    assert_eq!(
+        state(&view, cx).0,
+        Tab::Setup,
+        "⇧⌘, is the repo's own setup"
+    );
     cx.simulate_keystrokes("cmd-1");
     assert_eq!(state(&view, cx).0, Tab::Today);
     cx.simulate_keystrokes("ctrl-2");
@@ -1420,6 +1426,7 @@ fn new_views_render_with_data(cx: &mut TestAppContext) {
     // When: each new view is shown and drawn
     for (home, tab) in [
         (true, Tab::Tools),
+        (true, Tab::Settings),
         (false, Tab::Setup),
         (false, Tab::Tests),
         (false, Tab::Databases),

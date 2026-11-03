@@ -38,80 +38,13 @@ fn check(title: &str, ok: bool, detail: String) -> gpui::Div {
 }
 
 impl Workspace {
-    pub(super) fn render_setup(
-        &self,
-        repo: usize,
-        window: &gpui::Window,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
+    pub(super) fn render_setup(&self, repo: usize, cx: &mut Context<Self>) -> impl IntoElement {
         let view = &self.repos[repo];
-        let global = self.global.as_ref();
 
-        // ── doctor ──
-        let (server_ok, server_detail) = match global.map(|g| &g.api) {
-            None => (false, "checking…".to_string()),
-            Some(Ok((health, features))) => (
-                health.status == "ok" && health.db == "connected",
-                format!(
-                    "{} — {} · db {} · groups: {}",
-                    self.config.fubbik_url(),
-                    health.status,
-                    health.db,
-                    features.join(", ")
-                ),
-            ),
-            Some(Err(error)) => (false, format!("{} — {error}", self.config.fubbik_url())),
-        };
-        let bin = global.and_then(|g| g.fubbik_bin.clone());
-        let checkout = self
-            .repos
-            .iter()
-            .map(|r| r.entry.path.clone())
-            .find(|p| setup::is_fubbik_checkout(p));
-        let mut bin_row = check(
-            "Rust fubbik binary",
-            bin.is_some(),
-            match &bin {
-                Some(path) => display_path(path),
-                None => "not found. The `fubbik` on PATH may be the legacy TypeScript CLI, which has no `mcp` command. Set fubbik_bin in the desktop config, or build it.".into(),
-            },
+        let server_ok = matches!(
+            self.global.as_ref().map(|g| &g.api),
+            Some(Ok((health, _))) if health.status == "ok" && health.db == "connected"
         );
-        if bin.is_none()
-            && let Some(checkout) = checkout
-        {
-            bin_row = bin_row.child(button("build-fubbik", "Build fubbik").on_click(
-                cx.listener(move |this, _, _, cx| this.build_fubbik(checkout.clone(), cx)),
-            ));
-        }
-        let mut server_row = check("fubbik server", server_ok, server_detail);
-        if server_ok {
-            server_row = server_row.child(button("open-web", "Open web app").on_click(
-                cx.listener(|this, _, _, cx| {
-                    this.run(super::palette::Command::OpenWeb("/dashboard".into()), cx)
-                }),
-            ));
-        } else {
-            // Something to do about it, not just a link.
-            server_row = server_row
-                .child(button("server-retry", "Retry").on_click(
-                    cx.listener(|this, _, _, cx| this.run(super::palette::Command::Refresh, cx)),
-                ))
-                .child(button("server-logs", "Show logs").on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.log_key = Some("builtin::server".into());
-                        this.log_paused = None;
-                        this.run(super::palette::Command::ShowTab(super::Tab::Logs), cx)
-                    },
-                )))
-                .when(!self.config.embedded_backend(), |r| {
-                    r.child(button("server-on", "Turn on the built-in server").on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.run(super::palette::Command::SetEmbeddedBackend(true), cx)
-                        }),
-                    ))
-                });
-        }
-
         let setup_state = view.setup.as_ref();
         let mcp = setup_state.map(|s| s.mcp.clone());
         let mut mcp_row = check(
@@ -197,19 +130,27 @@ impl Workspace {
             },
         };
 
+        let env_rows = self.env_drift_rows(repo);
         div()
             .flex()
             .flex_col()
             .gap_6()
-            // What is broken first; preferences after.
+            // What is broken first.
             .child(section(
-                "Doctor",
-                vec![
-                    server_row.into_any_element(),
-                    bin_row.into_any_element(),
-                    mcp_row.into_any_element(),
-                ],
+                "This repo",
+                vec![mcp_row.into_any_element()],
             ))
+            .when(!server_ok, |d| {
+                d.child(
+                    row()
+                        .child(div().flex_1().text_sm().text_color(theme::warning()).child(
+                            "The fubbik server is not answering: knowledge, plans and boards here are unavailable",
+                        ))
+                        .child(button("setup-server", "Open Settings").on_click(cx.listener(
+                            |this, _, _, cx| this.run(super::palette::Command::ShowTab(super::Tab::Settings), cx),
+                        ))),
+                )
+            })
             .child(section_or(
                 "Worktrees: hooks and CLAUDE.md",
                 worktree_rows,
@@ -220,11 +161,108 @@ impl Workspace {
                 },
             ))
             .child(muted(claude_md_note))
-            .child(self.render_tracker_setup(cx))
-            .child(self.render_claude_hooks(cx))
-            .child(self.render_env_drift(repo, cx))
+            .when(self.config.env_check, |d| {
+                d.child(section_or(".env files", env_rows, "No .env.example in this repo"))
+            })
+            .child(
+                row()
+                    .child(div().flex_1().child(muted(
+                        "Preferences, the server, Claude Code hooks, the projects tracker, the .env check and keys are app-wide: they are in Settings.",
+                    )))
+                    .child(button("setup-settings", format!("Settings {}", super::Tab::Settings.shortcut())).on_click(
+                        cx.listener(|this, _, _, cx| this.run(super::palette::Command::ShowTab(super::Tab::Settings), cx)),
+                    )),
+            )
+    }
+
+    /// Home → Settings: what applies to every repo.
+    pub(super) fn render_settings(
+        &self,
+        window: &gpui::Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_6()
+            .pb_6()
+            .child(section("fubbik", self.server_rows(cx)))
             .child(self.render_preferences(window, cx))
+            .child(self.render_app_switches(cx))
+            .child(self.render_claude_hooks(cx))
+            .child(self.render_env_check(cx))
+            .child(self.render_tracker_setup(cx))
             .child(self.render_keyboard_setup(cx))
+    }
+
+    /// The server and the binary: checked once for the whole app.
+    fn server_rows(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+        let global = self.global.as_ref();
+        let (server_ok, server_detail) = match global.map(|g| &g.api) {
+            None => (false, "checking…".to_string()),
+            Some(Ok((health, features))) => (
+                health.status == "ok" && health.db == "connected",
+                format!(
+                    "{} — {} · db {} · groups: {}",
+                    self.config.fubbik_url(),
+                    health.status,
+                    health.db,
+                    features.join(", ")
+                ),
+            ),
+            Some(Err(error)) => (false, format!("{} — {error}", self.config.fubbik_url())),
+        };
+        let bin = global.and_then(|g| g.fubbik_bin.clone());
+        let checkout = self
+            .repos
+            .iter()
+            .map(|r| r.entry.path.clone())
+            .find(|p| setup::is_fubbik_checkout(p));
+        let mut bin_row = check(
+            "Rust fubbik binary",
+            bin.is_some(),
+            match &bin {
+                Some(path) => display_path(path),
+                None => "not found. The `fubbik` on PATH may be the legacy TypeScript CLI, which has no `mcp` command. Set fubbik_bin in the desktop config, or build it.".into(),
+            },
+        );
+        if bin.is_none()
+            && let Some(checkout) = checkout
+        {
+            bin_row = bin_row.child(button("build-fubbik", "Build fubbik").on_click(
+                cx.listener(move |this, _, _, cx| this.build_fubbik(checkout.clone(), cx)),
+            ));
+        }
+        let mut server_row = check("fubbik server", server_ok, server_detail);
+        if server_ok {
+            server_row = server_row.child(button("open-web", "Open web app").on_click(
+                cx.listener(|this, _, _, cx| {
+                    this.run(super::palette::Command::OpenWeb("/dashboard".into()), cx)
+                }),
+            ));
+        } else {
+            // Something to do about it, not just a link.
+            server_row = server_row
+                .child(button("server-retry", "Retry").on_click(
+                    cx.listener(|this, _, _, cx| this.run(super::palette::Command::Refresh, cx)),
+                ))
+                .child(button("server-logs", "Show logs").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.log_key = Some("builtin::server".into());
+                        this.log_paused = None;
+                        this.run(super::palette::Command::ShowTab(super::Tab::Logs), cx)
+                    },
+                )))
+                .when(!self.config.embedded_backend(), |r| {
+                    r.child(button("server-on", "Turn on the built-in server").on_click(
+                        cx.listener(|this, _, _, cx| {
+                            this.run(super::palette::Command::SetEmbeddedBackend(true), cx)
+                        }),
+                    ))
+                });
+        }
+
+        vec![server_row.into_any_element(), bin_row.into_any_element()]
     }
 
     /// Keyboard: where keymap.toml is, what is wrong in it, and clashes.
@@ -371,47 +409,29 @@ impl Workspace {
 }
 
 impl Workspace {
-    /// Setup → .env files: key names in `.env.example` vs `.env`, opt-in.
-    fn render_env_drift(&self, repo: usize, cx: &mut Context<Self>) -> impl IntoElement {
-        let on = self.config.env_check;
-        let toggle = row()
-            .child(
-                div()
-                    .flex_1()
-                    .flex()
-                    .flex_col()
-                    .gap_0p5()
-                    .child(div().text_sm().child("Compare .env with .env.example"))
-                    .child(muted(
-                        "Key names only: values are never read into the app, shown or sent. Off by default.",
-                    )),
-            )
-            .child(
-                super::widgets::switch("env-check", on).on_click(cx.listener(move |this, _, _, cx| {
-                    this.run(super::palette::Command::SetEnvCheck(!on), cx)
-                })),
-            )
-            .into_any_element();
-        let mut rows = vec![toggle];
-        if on {
-            let path = self.repos[repo].entry.path.clone();
-            let drift = {
-                let mut cache = self.env_drift.borrow_mut();
-                let fresh = cache
-                    .get(&path)
-                    .is_some_and(|(at, _)| at.elapsed() < std::time::Duration::from_secs(30));
-                if !fresh {
-                    cache.insert(
-                        path.clone(),
-                        (std::time::Instant::now(), crate::env_drift::scan(&path)),
-                    );
-                }
-                cache[&path].1.clone()
-            };
-            if drift.is_empty() {
-                rows.push(muted("No .env.example in this repo").into_any_element());
+    /// A repo's `.env` drift rows (key names only), re-read at most every
+    /// 30 seconds. Empty when the check is off.
+    fn env_drift_rows(&self, repo: usize) -> Vec<AnyElement> {
+        if !self.config.env_check {
+            return Vec::new();
+        }
+        let path = self.repos[repo].entry.path.clone();
+        let drift = {
+            let mut cache = self.env_drift.borrow_mut();
+            let fresh = cache
+                .get(&path)
+                .is_some_and(|(at, _)| at.elapsed() < std::time::Duration::from_secs(30));
+            if !fresh {
+                cache.insert(
+                    path.clone(),
+                    (std::time::Instant::now(), crate::env_drift::scan(&path)),
+                );
             }
-            for d in drift {
+            cache[&path].1.clone()
+        };
+        drift
+            .into_iter()
+            .map(|d| {
                 let folder = if d.dir.is_empty() {
                     ".".to_string()
                 } else {
@@ -441,22 +461,92 @@ impl Workspace {
                         parts.join(" · "),
                     )
                 };
+                row()
+                    .child(div().w(px(160.)).flex_none().text_sm().child(folder))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .text_sm()
+                            .text_color(color)
+                            .child(text),
+                    )
+                    .into_any_element()
+            })
+            .collect()
+    }
+
+    /// Settings → .env files: the opt-in switch, then every repo's drift.
+    fn render_env_check(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let on = self.config.env_check;
+        let mut rows = vec![
+            row()
+                .child(
+                    div()
+                        .flex_1()
+                        .flex()
+                        .flex_col()
+                        .gap_0p5()
+                        .child(div().text_sm().child("Compare .env with .env.example"))
+                        .child(muted(
+                            "In every repo. Key names only: values are never read into the app, shown or sent. Off by default.",
+                        )),
+                )
+                .child(super::widgets::switch("env-check", on).on_click(cx.listener(
+                    move |this, _, _, cx| this.run(super::palette::Command::SetEnvCheck(!on), cx),
+                )))
+                .into_any_element(),
+        ];
+        if on {
+            for (i, view) in self.repos.iter().enumerate() {
+                let found = self.env_drift_rows(i);
+                if found.is_empty() {
+                    continue;
+                }
                 rows.push(
-                    row()
-                        .child(div().w(px(160.)).flex_none().text_sm().child(folder))
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .text_sm()
-                                .text_color(color)
-                                .child(text),
-                        )
+                    div()
+                        .px_4()
+                        .pt_2()
+                        .text_xs()
+                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                        .text_color(theme::text_muted())
+                        .child(view.entry.name())
                         .into_any_element(),
                 );
+                rows.extend(found);
             }
         }
         section(".env files", rows)
+    }
+
+    /// Settings → app switches that have no other home: the menu bar item.
+    fn render_app_switches(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let menu_bar = self.config.menu_bar != Some(false);
+        section(
+            "App",
+            vec![
+                row()
+                    .child(
+                        div()
+                            .flex_1()
+                            .flex()
+                            .flex_col()
+                            .gap_0p5()
+                            .child(div().text_sm().child("Menu bar item"))
+                            .child(muted(
+                                "fk N in the menu bar: what needs you, Today, agents, Capture note",
+                            )),
+                    )
+                    .child(
+                        super::widgets::switch("menu-bar", menu_bar).on_click(cx.listener(
+                            move |this, _, _, cx| {
+                                this.run(super::palette::Command::SetMenuBar(!menu_bar), cx)
+                            },
+                        )),
+                    )
+                    .into_any_element(),
+            ],
+        )
     }
 }
 

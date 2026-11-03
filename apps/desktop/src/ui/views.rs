@@ -158,7 +158,7 @@ impl Workspace {
                 Tab::Logs => self.render_logs(repo, window, cx).into_any_element(),
                 Tab::Knowledge => self.render_knowledge(index, window, cx).into_any_element(),
                 Tab::Plans => self.render_plans(index, cx).into_any_element(),
-                Tab::Setup => self.render_setup(index, window, cx).into_any_element(),
+                Tab::Setup => self.render_setup(index, cx).into_any_element(),
                 Tab::Terminal => {
                     let dir = self.repos[index].entry.path.clone();
                     let claude_dir = dir.clone();
@@ -215,7 +215,9 @@ impl Workspace {
                     .into_any_element(),
                 Tab::Agents => self.render_all_agents(window, cx),
                 Tab::Today => self.render_today(cx),
-                Tab::Tools | Tab::Deps => muted("This is on Home").into_any_element(),
+                Tab::Tools | Tab::Deps | Tab::Settings => {
+                    muted("This is on Home").into_any_element()
+                }
                 Tab::Insights => insights
                     .take()
                     .unwrap_or_else(|| muted("…").into_any_element()),
@@ -716,7 +718,7 @@ impl Workspace {
                 Tab::Knowledge,
             ),
             Some(Ok(_)) => ("no space — set up".into(), Tab::Setup),
-            Some(Err(_)) => ("offline — see Setup".into(), Tab::Setup),
+            Some(Err(_)) => ("offline — see Settings".into(), Tab::Settings),
             None => ("…".into(), Tab::Knowledge),
         };
         let (working, waiting) = {

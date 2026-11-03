@@ -158,12 +158,13 @@ impl Workspace {
         let on_agents = !self.home && self.tab == Tab::Agents;
         let on_tools = !self.home && self.tab == Tab::Tools;
         let on_deps = !self.home && self.tab == Tab::Deps;
+        let on_settings = !self.home && self.tab == Tab::Settings;
         let projects = super::views::tab_item(
             "home-projects",
             "Projects",
             Tab::Overview.color(),
             Tab::Overview.color(),
-            !on_agents && !on_tools && !on_deps,
+            !on_agents && !on_tools && !on_deps && !on_settings,
             0,
             keymap::keys_for("show_home")
                 .map(|k| keymap::pretty(&k))
@@ -221,10 +222,20 @@ impl Workspace {
             Tab::Deps.shortcut(),
         )
         .on_click(cx.listener(|this, _, _, cx| this.run(Command::ShowTab(Tab::Deps), cx)));
+        let settings = super::views::tab_item(
+            "home-settings",
+            "Settings",
+            Tab::Settings.color(),
+            theme::accent(),
+            on_settings,
+            0,
+            Tab::Settings.shortcut(),
+        )
+        .on_click(cx.listener(|this, _, _, cx| this.run(Command::ShowTab(Tab::Settings), cx)));
         div().pt(px(32.)).child(super::views::tab_strip(
             "home-tabs",
             &self.home_tabs_scroll,
-            vec![projects, agents, tools, deps],
+            vec![projects, agents, tools, deps, settings],
             cx,
         ))
     }
@@ -273,7 +284,11 @@ impl Workspace {
             .cursor_pointer()
             // Home holds All agents too.
             .when(
-                self.home || matches!(self.tab, Tab::Agents | Tab::Tools | Tab::Deps),
+                self.home
+                    || matches!(
+                        self.tab,
+                        Tab::Agents | Tab::Tools | Tab::Deps | Tab::Settings
+                    ),
                 |d| d.bg(theme::surface_hover()),
             )
             .hover(|d| d.bg(theme::surface_hover()))
@@ -344,11 +359,15 @@ impl Workspace {
     /// Today or All agents: outside any repo, like Home.
     pub(super) fn render_global(&mut self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         // All agents and Tools are Home tabs; Today stands alone.
-        let agents = matches!(self.tab, Tab::Agents | Tab::Tools | Tab::Deps);
+        let agents = matches!(
+            self.tab,
+            Tab::Agents | Tab::Tools | Tab::Deps | Tab::Settings
+        );
         let body = match self.tab {
             Tab::Agents => self.render_all_agents(window, cx),
             Tab::Tools => self.render_tools(cx),
             Tab::Deps => self.render_deps(cx),
+            Tab::Settings => self.render_settings(window, cx).into_any_element(),
             _ => self.render_today(cx),
         };
         div()
