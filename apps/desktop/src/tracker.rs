@@ -345,13 +345,30 @@ impl Store {
             .filter(|w| matches!(w.rule, Rule::AgentWaiting { .. }))
             .map(|w| w.id.as_str())
             .collect();
-        for alert in self.alerts.iter_mut().filter(|a| {
-            !a.dismissed
-                && waiting_watches.contains(a.watch.as_str())
-                && episodes.alerted.contains(&a.key)
-                && !live.contains(&a.key)
-        }) {
-            alert.dismissed = true;
+        // Judged from the repos themselves, not this run's memory, so an
+        // alert saved before a restart goes too. A repo not polled yet (no
+        // `sessions`) says nothing either way.
+        let still_waiting = |repo: &str, session: &str| -> Option<bool> {
+            let repo = repos.iter().find(|r| r["name"] == repo)?;
+            let sessions = repo["sessions"].as_array()?;
+            Some(
+                sessions
+                    .iter()
+                    .any(|s| s["id"] == session && s["state"] == "Waiting"),
+            )
+        };
+        for alert in self
+            .alerts
+            .iter_mut()
+            .filter(|a| !a.dismissed && waiting_watches.contains(a.watch.as_str()))
+        {
+            let Some(repo) = alert.repo.as_deref() else {
+                continue;
+            };
+            let session = alert.key.rsplit_once('|').map_or("", |(_, s)| s);
+            if still_waiting(repo, session) == Some(false) {
+                alert.dismissed = true;
+            }
         }
         // A process back up, or an agent no longer waiting, ends its episode.
         episodes.since.retain(|k, _| live.contains(k));
@@ -788,6 +805,24 @@ mod tests {
         resumed[0]["sessions"][0]["state"] = json!("Working");
         store.on_state(&resumed, &mut down, 3000);
         assert!(!open(&store), "the agent moved on: its alert is dismissed");
+
+        // An alert saved before a restart (a fresh `Episodes`) also goes once
+        // its repo is polled, but not while the repo is not polled yet.
+        let mut saved = store.clone();
+        let stale = saved
+            .alerts
+            .iter_mut()
+            .find(|a| a.id == agent_alert)
+            .unwrap();
+        stale.dismissed = false;
+        let mut fresh = Episodes::default();
+        saved.on_state(&[json!({ "name": "app" })], &mut fresh, 4000);
+        assert!(open(&saved), "not polled yet: kept");
+        saved.on_state(&resumed, &mut fresh, 4001);
+        assert!(
+            !open(&saved),
+            "polled and not waiting: dismissed after a restart too"
+        );
     }
 
     #[test]
