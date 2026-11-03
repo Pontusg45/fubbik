@@ -338,6 +338,21 @@ impl Store {
                 }
             }
         }
+        // An agent no longer waiting: its alert has done its job and goes
+        // (left open, it would come back on Today after the agent moved on).
+        let waiting_watches: HashSet<&str> = watches
+            .iter()
+            .filter(|w| matches!(w.rule, Rule::AgentWaiting { .. }))
+            .map(|w| w.id.as_str())
+            .collect();
+        for alert in self.alerts.iter_mut().filter(|a| {
+            !a.dismissed
+                && waiting_watches.contains(a.watch.as_str())
+                && episodes.alerted.contains(&a.key)
+                && !live.contains(&a.key)
+        }) {
+            alert.dismissed = true;
+        }
         // A process back up, or an agent no longer waiting, ends its episode.
         episodes.since.retain(|k, _| live.contains(k));
         episodes.alerted.retain(|k| live.contains(k));
@@ -761,6 +776,18 @@ mod tests {
         store.dismiss(&six_min[0].id).unwrap();
         let later = store.on_state(&repos(false), &mut down, 2000 + 300);
         assert_eq!(later.len(), 1, "a new episode alerts again");
+        let agent_alert = first[0].id.clone();
+        let open = |store: &Store| {
+            store
+                .alerts
+                .iter()
+                .any(|a| a.id == agent_alert && !a.dismissed)
+        };
+        assert!(open(&store), "still waiting: the alert stays");
+        let mut resumed = repos(false);
+        resumed[0]["sessions"][0]["state"] = json!("Working");
+        store.on_state(&resumed, &mut down, 3000);
+        assert!(!open(&store), "the agent moved on: its alert is dismissed");
     }
 
     #[test]

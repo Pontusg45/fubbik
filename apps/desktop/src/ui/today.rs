@@ -63,7 +63,23 @@ impl Workspace {
         };
         // The tracker: alerts from watches need you; open todos are next.
         let tracker = crate::tracker::snapshot();
-        for alert in tracker.alerts.iter().filter(|a| !a.dismissed) {
+        // A waiting agent has its own row below; its watch alert would say
+        // the same thing twice.
+        let waiting: HashSet<String> = self
+            .repos
+            .iter()
+            .filter_map(|r| r.snapshot.as_ref())
+            .flat_map(|s| s.sessions.iter())
+            .filter(|s| s.state == SessionState::Idle)
+            .map(|s| s.id.clone())
+            .collect();
+        for alert in tracker.alerts.iter().filter(|a| {
+            !a.dismissed
+                && !a
+                    .key
+                    .rsplit_once('|')
+                    .is_some_and(|(_, session)| waiting.contains(session))
+        }) {
             let mut row = need(
                 alert.repo.as_deref().unwrap_or(""),
                 "watch".into(),
