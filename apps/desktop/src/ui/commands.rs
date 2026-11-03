@@ -654,6 +654,9 @@ impl Workspace {
     }
 
     pub(super) fn run(&mut self, command: Command, cx: &mut Context<Self>) {
+        // Whatever the command changes shows on the next frame.
+        self.today_cache.clear();
+        self.setup_files.clear();
         match command {
             Command::SelectRepo(i) => self.select(i),
             Command::StartProcess(r, p) => {

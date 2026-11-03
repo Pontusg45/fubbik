@@ -286,9 +286,7 @@ impl Workspace {
     /// Setup → a folder where an agent keeps track of every project.
     fn render_tracker_setup(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let dir = self.tracker_dir();
-        let has_mcp = std::fs::read_to_string(dir.join(".mcp.json"))
-            .is_ok_and(|t| t.contains("fubbik-desktop"));
-        let has_claude = dir.join("CLAUDE.md").exists();
+        let (has_mcp, has_claude, _) = self.setup_file_checks();
         let state = match (has_mcp, has_claude) {
             (true, true) => "set up: .mcp.json has fubbik-desktop, CLAUDE.md exists",
             (true, false) => ".mcp.json is set up; no CLAUDE.md yet",
@@ -327,7 +325,7 @@ impl Workspace {
     /// Setup → Claude Code hooks: live agent events instead of polling.
     fn render_claude_hooks(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let path = crate::claude_hooks::settings_path();
-        let on = crate::claude_hooks::installed_file(&path);
+        let (_, _, on) = self.setup_file_checks();
         let install = super::palette::Command::AskFirst(Box::new(super::palette::Confirm {
             title: "Add the app's hooks to Claude Code?".into(),
             detail: format!(
@@ -459,5 +457,20 @@ impl Workspace {
             }
         }
         section(".env files", rows)
+    }
+}
+
+impl Workspace {
+    /// Setup's file reads, kept a few seconds instead of read every frame.
+    fn setup_file_checks(&self) -> (bool, bool, bool) {
+        self.setup_files.get(|| {
+            let dir = self.tracker_dir();
+            (
+                std::fs::read_to_string(dir.join(".mcp.json"))
+                    .is_ok_and(|t| t.contains("fubbik-desktop")),
+                dir.join("CLAUDE.md").exists(),
+                crate::claude_hooks::installed_file(&crate::claude_hooks::settings_path()),
+            )
+        })
     }
 }

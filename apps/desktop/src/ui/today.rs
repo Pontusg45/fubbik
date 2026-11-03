@@ -43,7 +43,13 @@ pub struct TodayRow {
 }
 
 impl Workspace {
+    /// Today's rows, kept for half a second: the sidebar count, Today and
+    /// the menu bar all ask within one frame.
     pub(super) fn today_rows(&self) -> Vec<TodayRow> {
+        self.today_cache.get(|| self.build_today_rows())
+    }
+
+    fn build_today_rows(&self) -> Vec<TodayRow> {
         let mut rows = Vec::new();
         let now = activity::now();
         let need = |repo: &str,

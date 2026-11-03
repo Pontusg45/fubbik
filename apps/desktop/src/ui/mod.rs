@@ -3,6 +3,7 @@
 
 mod actions;
 mod agents;
+mod cache;
 mod changes;
 mod chrome;
 mod command_palette;
@@ -479,6 +480,10 @@ pub struct Workspace {
     domains: domains_view::DomainsState,
     /// What each menu bar entry runs, by index.
     menu_commands: Vec<Option<Command>>,
+    /// Today's rows, shared by the sidebar, Today and the menu bar within a frame.
+    today_cache: cache::Ttl<Vec<today::TodayRow>>,
+    /// Setup's file checks: tracker .mcp.json, its CLAUDE.md, Claude Code hooks.
+    setup_files: cache::Ttl<(bool, bool, bool)>,
     /// `.env` drift per repo, re-read at most every 30 seconds.
     env_drift:
         std::cell::RefCell<HashMap<PathBuf, (std::time::Instant, Vec<crate::env_drift::Drift>)>>,
@@ -669,6 +674,8 @@ impl Workspace {
             disk: Default::default(),
             domains: Default::default(),
             menu_commands: Vec::new(),
+            today_cache: cache::Ttl::new(std::time::Duration::from_millis(500)),
+            setup_files: cache::Ttl::new(std::time::Duration::from_secs(3)),
             env_drift: Default::default(),
             gh_available: std::process::Command::new("gh")
                 .arg("--version")
