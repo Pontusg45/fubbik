@@ -1390,3 +1390,56 @@ fn the_changes_tab_does_not_reload_on_every_frame_with_untracked_folders(cx: &mu
     // Then: the list is there and not being read again
     assert_eq!(state, (Some(2), false));
 }
+
+#[gpui::test]
+fn new_views_render_with_data(cx: &mut TestAppContext) {
+    let _guard = serial();
+    // Given: a repo with two processes on one port, a .env.example and a
+    // node_modules, with the .env check on
+    let repo = tempfile::tempdir().unwrap();
+    std::fs::write(
+        repo.path().join("fubbik.services.toml"),
+        "[[process]]\nname = \"web\"\ncommand = \"true\"\nport = 39901\n\n[[process]]\nname = \"docs\"\ncommand = \"true\"\nport = 39901\n",
+    )
+    .unwrap();
+    std::fs::write(repo.path().join(".env.example"), "A=\nB=\n").unwrap();
+    std::fs::write(repo.path().join(".env"), "A=secret\n").unwrap();
+    std::fs::create_dir_all(repo.path().join("node_modules/x")).unwrap();
+    let config = format!(
+        "env_check = true\nmenu_bar = false\n[[repo]]\npath = {:?}\n",
+        repo.path().display().to_string()
+    );
+    let (view, cx) = open(cx, &config);
+    let draw = |cx: &mut VisualTestContext| {
+        cx.simulate_resize(gpui::size(px(1400.), px(900.)));
+        cx.run_until_parked();
+    };
+
+    // When: each new view is shown and drawn
+    for (home, tab) in [
+        (true, Tab::Tools),
+        (false, Tab::Setup),
+        (false, Tab::Tests),
+        (false, Tab::Databases),
+        (true, Tab::Today),
+    ] {
+        view.update(cx, |w, cx| {
+            w.home = false;
+            w.run(Command::ShowTab(tab), cx);
+            if !home {
+                w.run(Command::Focus { repo: 0, tab }, cx);
+            }
+        });
+        draw(cx);
+    }
+
+    // Then: the data behind them is what the files say
+    let (sites, conflicts) = view.read_with(cx, |w, _| {
+        let sites = w.sites();
+        (sites.len(), crate::proxy::conflicts(&sites).len())
+    });
+    assert_eq!(sites, 2);
+    assert_eq!(conflicts, 1, "both processes declare 39901");
+    let drift = crate::env_drift::scan(repo.path());
+    assert_eq!(drift[0].missing, ["B"]);
+}
