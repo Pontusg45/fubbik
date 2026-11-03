@@ -90,6 +90,29 @@ fn repo_path(repo: &Value) -> PathBuf {
 }
 
 fn infra_call(repos: &[Value], name: &str, args: &Value) -> Option<Result<Value, String>> {
+    if !matches!(
+        name,
+        "get_test_results"
+            | "get_containers"
+            | "get_database_details"
+            | "get_disk"
+            | "get_domains"
+            | "get_env_drift"
+            | "show"
+    ) {
+        return None;
+    }
+    let config = crate::config::AppConfig::load_from(&crate::config::path()).unwrap_or_default();
+    infra_call_with(repos, name, args, &config)
+}
+
+/// The infrastructure tools, with the app's config passed in (tests).
+fn infra_call_with(
+    repos: &[Value],
+    name: &str,
+    args: &Value,
+    config: &crate::config::AppConfig,
+) -> Option<Result<Value, String>> {
     let wanted = args.get("repo").and_then(Value::as_str);
     let result = match name {
         "get_test_results" => chosen(repos, wanted).map(|list| {
@@ -159,7 +182,6 @@ fn infra_call(repos: &[Value], name: &str, args: &Value) -> Option<Result<Value,
             },
         })),
         "get_domains" => {
-            let config = crate::config::AppConfig::load_from(&crate::config::path()).unwrap_or_default();
             let sites: Vec<crate::proxy::Site> = repos.iter().flat_map(|r| {
                 let repo = r["name"].as_str().unwrap_or_default().to_string();
                 r["processes"].as_array().cloned().unwrap_or_default().into_iter().filter_map(move |p| {
@@ -199,7 +221,6 @@ fn infra_call(repos: &[Value], name: &str, args: &Value) -> Option<Result<Value,
             Ok(json!({ "shown": true }))
         }
         "get_env_drift" => {
-            let config = crate::config::AppConfig::load_from(&crate::config::path()).unwrap_or_default();
             if !config.env_check {
                 Err("the .env check is off; the user can turn it on in the app's Setup (key names only)".to_string())
             } else {
@@ -597,5 +618,96 @@ mod tests {
         assert_eq!(open["pull_requests"][0]["repo"], "app");
         assert_eq!(all["pull_requests"].as_array().unwrap().len(), 2);
         assert_eq!(open["errors"], json!([]));
+    }
+
+    fn infra_repo(path: &std::path::Path) -> Value {
+        json!({
+            "name": "app",
+            "path": path,
+            "processes": [
+                { "name": "web", "port": 3001 },
+                { "name": "docs", "port": 3001 },
+                { "name": "worker", "port": null }
+            ],
+            "databases": [
+                { "name": "cache", "url": "redis://127.0.0.1:6379" },
+                { "name": "pg", "url": "postgresql://127.0.0.1:1/nothing" }
+            ],
+            "tests": [{ "runner": "cargo test", "report": { "failed": 1 } }]
+        })
+    }
+
+    #[test]
+    fn infrastructure_tools_answer_from_the_repos_and_config() {
+        // Given: one repo with a duplicate port, a .env pair and two databases
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".env.example"), "A=\nB=\n").unwrap();
+        std::fs::write(dir.path().join(".env"), "A=topsecret\n").unwrap();
+        let repos = vec![infra_repo(dir.path())];
+        let off = crate::config::AppConfig::default();
+        let on = crate::config::AppConfig {
+            env_check: true,
+            domains: vec!["app/web".into()],
+            ..Default::default()
+        };
+        let call = |name: &str, args: Value, config: &crate::config::AppConfig| {
+            infra_call_with(&repos, name, &args, config).expect("a known tool")
+        };
+
+        // When
+        let tests = call("get_test_results", json!({ "repo": "app" }), &off).unwrap();
+        let unknown = call("get_test_results", json!({ "repo": "nope" }), &off);
+        let domains = call("get_domains", json!({}), &on).unwrap();
+        let env_off = call("get_env_drift", json!({}), &off);
+        let env_on = call("get_env_drift", json!({}), &on).unwrap();
+        let db_needs_repo = call("get_database_details", json!({}), &off);
+        let dbs = call("get_database_details", json!({ "repo": "app" }), &off).unwrap();
+
+        // Then
+        assert_eq!(tests[0]["runs"][0]["report"]["failed"], 1);
+        assert!(unknown.is_err());
+        let sites = domains["sites"].as_array().unwrap();
+        assert_eq!(sites.len(), 2, "the process without a port has no domain");
+        assert_eq!(sites[0]["domain"], "web.app.test");
+        assert_eq!(sites[0]["chosen"], true);
+        assert_eq!(sites[1]["chosen"], false);
+        assert_eq!(domains["port_conflicts"][0]["port"], 3001);
+        assert!(env_off.unwrap_err().contains("off"));
+        assert_eq!(env_on[0]["files"][0]["missing"], json!(["B"]));
+        assert!(!env_on.to_string().contains("topsecret"), "never a value");
+        assert!(db_needs_repo.is_err());
+        let dbs = dbs.as_array().unwrap();
+        assert_eq!(dbs.len(), 1, "only PostgreSQL URLs are inspected");
+        assert!(
+            dbs[0]["error"].is_string(),
+            "an unreachable one says why: {dbs:?}"
+        );
+        assert!(infra_call_with(&repos, "list_repos", &json!({}), &off).is_none());
+    }
+
+    #[test]
+    fn every_listed_tool_is_handled() {
+        // Given
+        // Read-only ones only: the others would change the tracker's store or
+        // send links to a UI test running at the same time.
+        let names: Vec<String> = definitions()
+            .iter()
+            .filter(|d| d["annotations"]["readOnlyHint"] == true)
+            .filter_map(|d| d["name"].as_str().map(str::to_string))
+            .collect();
+
+        // When: each is called with no arguments
+        assert!(names.len() >= 10, "{names:?}");
+        let unhandled: Vec<&String> = names
+            .iter()
+            .filter(|name| !name.starts_with("get_disk") && !name.starts_with("get_containers"))
+            .filter(|name| call(&[], name, &json!({})).is_none())
+            .collect();
+
+        // Then
+        assert!(
+            unhandled.is_empty(),
+            "listed but not handled: {unhandled:?}"
+        );
     }
 }
