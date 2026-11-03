@@ -10,6 +10,9 @@ use super::widgets::{button, disabled_button, loading, muted, row, section_or};
 use super::*;
 use crate::disk::{self, Item, Kind};
 
+/// Today suggests a cleanup past this much build output and packages.
+pub const NUDGE_BYTES: u64 = 30 * 1024 * 1024 * 1024;
+
 #[derive(Debug, Clone)]
 pub struct DiskReport {
     pub repos: Vec<(String, PathBuf, Vec<Item>)>,
@@ -60,6 +63,22 @@ impl Workspace {
                 cx.notify();
             })
             .ok();
+        })
+        .detach();
+    }
+
+    /// Measures in the background two minutes after launch, then daily, so
+    /// Today can say when builds take too much room.
+    pub(super) fn watch_disk(&mut self, cx: &mut Context<Self>) {
+        cx.spawn(async move |this, cx| {
+            let mut wait = std::time::Duration::from_secs(120);
+            loop {
+                cx.background_executor().timer(wait).await;
+                if this.update(cx, |this, cx| this.scan_disk(cx)).is_err() {
+                    break;
+                }
+                wait = std::time::Duration::from_secs(24 * 3600);
+            }
         })
         .detach();
     }

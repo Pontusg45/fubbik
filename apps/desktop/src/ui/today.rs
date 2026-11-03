@@ -109,6 +109,27 @@ impl Workspace {
             }
             rows.push(row);
         }
+        // Builds and packages past the threshold (measured daily, see
+        // `watch_disk`): a nudge, not an alarm.
+        if let Some(Loadable::Done(Ok(report))) = &self.disk.report {
+            let total: u64 = report
+                .repos
+                .iter()
+                .flat_map(|(_, _, items)| items.iter().map(|i| i.bytes))
+                .sum();
+            if total >= super::disk_view::NUDGE_BYTES {
+                rows.push(TodayRow {
+                    section: Section::Next,
+                    repo: String::new(),
+                    tag: Some(("disk".into(), theme::text_muted())),
+                    title: format!("Builds and packages take {}", crate::pg::human_size(total)),
+                    detail: Some("target/, node_modules and .turbo across your repos".into()),
+                    primary: Some(Command::ShowTab(Tab::Tools)),
+                    primary_label: "Show disk",
+                    secondary: Vec::new(),
+                });
+            }
+        }
         for note in tracker.notes.iter().filter(|n| n.kind == "todo" && !n.done) {
             rows.push(TodayRow {
                 section: Section::Next,

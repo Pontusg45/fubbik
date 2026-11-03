@@ -773,6 +773,7 @@ impl Workspace {
         }
         workspace.watch_hooks(cx);
         workspace.watch_menu_bar(cx);
+        workspace.watch_disk(cx);
         // A developer hook for smoke runs: open on a tab by name.
         if !workspace.repos.is_empty() {
             workspace.tab = Tab::Today;
