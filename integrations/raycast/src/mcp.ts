@@ -1,5 +1,4 @@
-import { execFile } from "node:child_process";
-import { getPreferenceValues } from "@raycast/api";
+import { getPreferenceValues, open } from "@raycast/api";
 
 const DEFAULT_URL = "http://127.0.0.1:3100/mcp";
 
@@ -30,9 +29,10 @@ export async function callTool<T>(name: string, args: Record<string, unknown> = 
   }
 }
 
-/** Brings the desktop app forward. */
-export async function openApp() {
-  await new Promise<void>((resolve, reject) =>
-    execFile("/usr/bin/open", ["-b", "dev.fubbik.desktop"], (error) => (error ? reject(error) : resolve())),
-  );
+/** Opens the desktop app at a tab: `today`, or a repo (and one of its tabs). */
+export async function openApp(where: { tab?: string; repo?: string } = {}) {
+  const path = where.repo
+    ? `repo/${encodeURIComponent(where.repo)}${where.tab ? `/${encodeURIComponent(where.tab)}` : ""}`
+    : (where.tab ?? "today");
+  await open(`fubbik://${path}`);
 }

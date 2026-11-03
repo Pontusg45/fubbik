@@ -1,0 +1,101 @@
+//! `fubbik://` links and the MCP `show` tool: open the app at a tab, for
+//! every repo or one. `fubbik://today`, `fubbik://agents`,
+//! `fubbik://repo/fubbik`, `fubbik://repo/fubbik/changes`.
+
+use std::sync::OnceLock;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Link {
+    /// A tab name as the app labels it, any case (`today`, `changes`,
+    /// `ai sessions`); None: the repo's last tab, or Home.
+    pub tab: Option<String>,
+    pub repo: Option<String>,
+}
+
+/// `fubbik://today` → Today; `fubbik://repo/<name>[/<tab>]` → that repo.
+/// Percent-escapes in names are decoded (`ai%20sessions`).
+pub fn parse(url: &str) -> Option<Link> {
+    let rest = url.strip_prefix("fubbik://")?;
+    let rest = rest.split(['?', '#']).next().unwrap_or_default();
+    let parts: Vec<String> = rest
+        .split('/')
+        .filter(|p| !p.is_empty())
+        .map(decode)
+        .collect();
+    match parts.as_slice() {
+        [] => Some(Link {
+            tab: None,
+            repo: None,
+        }),
+        [first, name, tab @ ..] if first == "repo" => Some(Link {
+            repo: Some(name.clone()),
+            tab: tab.first().cloned(),
+        }),
+        [first] if first == "repo" => None,
+        [tab] => Some(Link {
+            tab: Some(tab.clone()),
+            repo: None,
+        }),
+        _ => None,
+    }
+}
+
+fn decode(part: &str) -> String {
+    let bytes = part.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%'
+            && i + 2 < bytes.len()
+            && let Ok(byte) = u8::from_str_radix(&part[i + 1..i + 3], 16)
+        {
+            out.push(byte);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+fn channel() -> &'static (async_channel::Sender<Link>, async_channel::Receiver<Link>) {
+    static CHANNEL: OnceLock<(async_channel::Sender<Link>, async_channel::Receiver<Link>)> =
+        OnceLock::new();
+    CHANNEL.get_or_init(async_channel::unbounded)
+}
+
+pub fn send(link: Link) {
+    let _ = channel().0.try_send(link);
+}
+
+pub fn receiver() -> async_channel::Receiver<Link> {
+    channel().1.clone()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_tabs_and_repos() {
+        // Given / When / Then
+        let link = |tab: Option<&str>, repo: Option<&str>| Link {
+            tab: tab.map(str::to_string),
+            repo: repo.map(str::to_string),
+        };
+        assert_eq!(parse("fubbik://today"), Some(link(Some("today"), None)));
+        assert_eq!(parse("fubbik://"), Some(link(None, None)));
+        assert_eq!(
+            parse("fubbik://repo/fubbik"),
+            Some(link(None, Some("fubbik")))
+        );
+        assert_eq!(
+            parse("fubbik://repo/vpg-bot-v2/ai%20sessions?x=1"),
+            Some(link(Some("ai sessions"), Some("vpg-bot-v2")))
+        );
+        assert_eq!(parse("fubbik://repo"), None);
+        assert_eq!(parse("https://today"), None);
+        assert_eq!(parse("fubbik://a/b"), None);
+    }
+}

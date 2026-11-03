@@ -21,6 +21,7 @@ mod github;
 mod global_hotkey;
 mod graph_layout;
 mod launch;
+mod links;
 mod mcp;
 mod mcp_events;
 mod mcp_more;
@@ -146,7 +147,16 @@ fn main() {
     mcp::set_supervisor(supervisor.clone());
     mcp::start_http();
 
-    Application::new().run(move |cx: &mut App| {
+    let application = Application::new();
+    // `fubbik://…` links (Raycast, scripts, other apps) open the app there.
+    application.on_open_urls(|urls| {
+        for url in urls {
+            if let Some(link) = links::parse(&url) {
+                links::send(link);
+            }
+        }
+    });
+    application.run(move |cx: &mut App| {
         ui::keymap::bind_all(cx, &ui::keymap::path());
         cx.set_menus(vec![
             Menu {

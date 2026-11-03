@@ -35,7 +35,12 @@ export default function Today() {
                 accessories={[...(item.tag ? [{ tag: item.tag }] : []), { text: item.repo }]}
                 actions={
                   <ActionPanel>
-                    <Action title="Open Fubbik" icon={Icon.AppWindow} onAction={openApp} />
+                    <Action
+                      title="Open in Fubbik"
+                      icon={Icon.AppWindow}
+                      onAction={() => openApp(item.repo ? { repo: item.repo } : { tab: "today" })}
+                    />
+                    <Action title="Open Today" icon={Icon.Calendar} onAction={() => openApp({ tab: "today" })} />
                     <Action.CopyToClipboard title="Copy Title" content={item.title} />
                     <Action
                       title="Refresh"

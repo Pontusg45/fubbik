@@ -50,7 +50,12 @@ export default function Repos() {
           ]}
           actions={
             <ActionPanel>
-              <Action title="Open Fubbik" icon={Icon.AppWindow} onAction={openApp} />
+              <Action title="Open in Fubbik" icon={Icon.AppWindow} onAction={() => openApp({ repo: repo.name })} />
+              <Action
+                title="Open Changes"
+                icon={Icon.Document}
+                onAction={() => openApp({ repo: repo.name, tab: "changes" })}
+              />
               <Action.ShowInFinder path={repo.path} />
               <Action.OpenWith path={repo.path} />
               <Action.CopyToClipboard title="Copy Path" content={repo.path} />

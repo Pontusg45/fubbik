@@ -122,6 +122,13 @@ cat > "$app/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>fubbik</string>
   <key>CFBundleDisplayName</key><string>fubbik</string>
   <key>CFBundleIdentifier</key><string>dev.fubbik.desktop</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key><string>dev.fubbik.desktop</string>
+      <key>CFBundleURLSchemes</key><array><string>fubbik</string></array>
+    </dict>
+  </array>
   <key>CFBundleExecutable</key><string>fubbik-desktop</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>

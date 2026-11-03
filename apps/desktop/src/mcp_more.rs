@@ -61,6 +61,14 @@ fn infra_definitions() -> Vec<Value> {
             "annotations": { "readOnlyHint": true }
         }),
         json!({
+            "name": "show",
+            "description": "Brings the app forward at a tab: a Home tab (today, agents, tools, dependencies) or, with `repo`, that repo at one of its tabs (overview, changes, tests, processes, logs, worktrees, sessions, plans, knowledge, terminal, databases, insights, setup). The same as opening fubbik://today or fubbik://repo/<name>/<tab>.",
+            "inputSchema": { "type": "object", "properties": {
+                "tab": { "type": "string", "description": "Tab name (default: Today, or the repo's Overview)" },
+                "repo": { "type": "string", "description": "Repo name" }
+            } }
+        }),
+        json!({
             "name": "get_env_drift",
             "description": "Key NAMES in each .env.example (or .env.sample/.env.template) that the .env beside it lacks, and keys in .env the example does not list. Never values. Only when the user turned the check on in the app's Setup; otherwise an error says so.",
             "inputSchema": { "type": "object", "properties": { "repo": repo } },
@@ -182,6 +190,13 @@ fn infra_call(repos: &[Value], name: &str, args: &Value) -> Option<Result<Value,
                 })).collect::<Vec<_>>(),
                 "port_conflicts": crate::proxy::conflicts(&sites).into_iter().map(|(port, keys)| json!({ "port": port, "processes": keys })).collect::<Vec<_>>(),
             }))
+        }
+        "show" => {
+            crate::links::send(crate::links::Link {
+                tab: args.get("tab").and_then(Value::as_str).map(str::to_string),
+                repo: wanted.map(str::to_string),
+            });
+            Ok(json!({ "shown": true }))
         }
         "get_env_drift" => {
             let config = crate::config::AppConfig::load_from(&crate::config::path()).unwrap_or_default();

@@ -46,7 +46,11 @@ export default function Agents() {
       ]}
       actions={
         <ActionPanel>
-          <Action title="Open Fubbik" icon={Icon.AppWindow} onAction={openApp} />
+          <Action
+            title="Open in Fubbik"
+            icon={Icon.AppWindow}
+            onAction={() => openApp({ repo: s.repo, tab: "sessions" })}
+          />
           <Action.ShowInFinder path={s.cwd} />
           <Action.CopyToClipboard title="Copy Session ID" content={s.id} />
           <Action

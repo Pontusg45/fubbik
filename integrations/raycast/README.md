@@ -8,7 +8,8 @@ Four commands that read the fubbik desktop app (`apps/desktop`) through its MCP 
 - **Repos**: status, branch, changed files, agents, processes and worktree overlaps (`list_repos`)
 - **Capture Note**: a note, todo (shows on Today) or decision, optionally for one repo (`add_note`)
 
-"Open Fubbik" brings the app forward (`open -b dev.fubbik.desktop`).
+"Open in Fubbik" opens the app at that repo or tab through its `fubbik://` links (`fubbik://today`,
+`fubbik://repo/<name>/<tab>`), which the installed app registers.
 
 ## Install
 

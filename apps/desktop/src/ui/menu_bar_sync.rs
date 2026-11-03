@@ -103,3 +103,59 @@ impl Workspace {
         .detach();
     }
 }
+
+impl Workspace {
+    /// What a `fubbik://` link or the MCP `show` tool asks to see.
+    fn link_command(&self, link: &crate::links::Link) -> Result<Command, String> {
+        let tab = match &link.tab {
+            None => None,
+            Some(name) => Some(
+                Tab::ALL
+                    .into_iter()
+                    .find(|t| {
+                        t.label().eq_ignore_ascii_case(name)
+                            || t.action_id()
+                                .trim_start_matches("show_")
+                                .eq_ignore_ascii_case(name)
+                    })
+                    .ok_or_else(|| format!("no tab named {name:?}"))?,
+            ),
+        };
+        match &link.repo {
+            Some(name) => {
+                let repo = self
+                    .repos
+                    .iter()
+                    .position(|r| {
+                        r.entry.name() == *name || r.entry.path.to_string_lossy() == *name
+                    })
+                    .ok_or_else(|| format!("no repo named {name:?}"))?;
+                Ok(Command::Focus {
+                    repo,
+                    tab: tab.filter(|t| !t.is_global()).unwrap_or(Tab::Overview),
+                })
+            }
+            None => Ok(Command::ShowTab(tab.unwrap_or(Tab::Today))),
+        }
+    }
+
+    pub(super) fn watch_links(&mut self, cx: &mut Context<Self>) {
+        let links = crate::links::receiver();
+        cx.spawn(async move |this, cx| {
+            while let Ok(link) = links.recv().await {
+                let alive = this.update(cx, |this, cx| {
+                    cx.activate(true);
+                    match this.link_command(&link) {
+                        Ok(command) => this.run(command, cx),
+                        Err(error) => this.show_error(format!("Link: {error}")),
+                    }
+                    cx.notify();
+                });
+                if alive.is_err() {
+                    break;
+                }
+            }
+        })
+        .detach();
+    }
+}
