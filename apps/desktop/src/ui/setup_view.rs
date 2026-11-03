@@ -419,7 +419,7 @@ impl Workspace {
                 };
                 let (color, text) = if !d.has_env {
                     (
-                        theme::danger(),
+                        theme::warning(),
                         format!("no .env yet ({} is there)", d.example),
                     )
                 } else if d.is_clean() {
@@ -436,7 +436,7 @@ impl Workspace {
                         if d.missing.is_empty() {
                             theme::text_muted()
                         } else {
-                            theme::danger()
+                            theme::warning()
                         },
                         parts.join(" · "),
                     )

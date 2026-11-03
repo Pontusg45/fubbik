@@ -425,6 +425,12 @@ pub fn danger() -> Hsla {
     rgb(palette().danger).into()
 }
 
+/// Needs attention, not broken (missing .env keys, a degraded process):
+/// the same amber as a degraded process.
+pub fn warning() -> Hsla {
+    rgb(palette().degraded).into()
+}
+
 pub fn overlay() -> Hsla {
     gpui::black().opacity(if is_translucent() { 0.3 } else { 0.45 })
 }
