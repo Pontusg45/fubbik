@@ -143,18 +143,21 @@ mod tests {
 
     #[test]
     fn free_port_not_listening() {
-        // Given
-        let port = TcpListener::bind("127.0.0.1:0")
-            .unwrap()
-            .local_addr()
-            .unwrap()
-            .port();
+        // Given: ports just freed (another test running at the same time can
+        // take one in between, so a few are tried)
+        let free = || {
+            TcpListener::bind("127.0.0.1:0")
+                .unwrap()
+                .local_addr()
+                .unwrap()
+                .port()
+        };
 
         // When
-        let listening = port_listening(port);
+        let seen_free = (0..5).any(|_| !port_listening(free()));
 
         // Then
-        assert!(!listening);
+        assert!(seen_free);
     }
 
     #[test]
