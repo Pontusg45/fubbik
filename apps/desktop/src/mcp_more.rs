@@ -22,7 +22,187 @@ pub fn definitions() -> Vec<Value> {
         "annotations": { "readOnlyHint": true }
     }));
     all.extend(crate::tracker::mcp_definitions());
+    all.extend(infra_definitions());
     all
+}
+
+fn infra_definitions() -> Vec<Value> {
+    let repo =
+        json!({ "type": "string", "description": "Repo name or path (default: every repo)" });
+    vec![
+        json!({
+            "name": "get_test_results",
+            "description": "The last test run per runner (nextest, cargo test, vitest) that the app's Tests tab ran: passed / failed / ignored, failures with message and file:line, or why the run produced no results. Runs only happen when the user starts them; empty means none ran since the app started.",
+            "inputSchema": { "type": "object", "properties": { "repo": repo.clone() } },
+            "annotations": { "readOnlyHint": true }
+        }),
+        json!({
+            "name": "get_containers",
+            "description": "Docker / OrbStack containers per repo (its compose project's folder, or a name or label starting with the repo's name): name, image, state, status, ports, compose service. `error` when Docker is not running.",
+            "inputSchema": { "type": "object", "properties": { "repo": repo.clone() } },
+            "annotations": { "readOnlyHint": true }
+        }),
+        json!({
+            "name": "get_database_details",
+            "description": "For each PostgreSQL database in the repo's services file: version, size, connections, and sqlx migration drift (migration files in the repo not applied yet; applied versions with no file). Needs psql (Postgres.app or Homebrew libpq).",
+            "inputSchema": { "type": "object", "properties": { "repo": { "type": "string", "description": "Repo name or path" } }, "required": ["repo"] },
+            "annotations": { "readOnlyHint": true }
+        }),
+        json!({
+            "name": "get_disk",
+            "description": "What builds and packages take per repo (target/, node_modules, .turbo, measured with du; can take a few seconds) and Docker's disk use (docker system df). Read only: cleaning is done in the app (Tools → Disk), which asks first.",
+            "inputSchema": { "type": "object", "properties": {} },
+            "annotations": { "readOnlyHint": true }
+        }),
+        json!({
+            "name": "get_domains",
+            "description": "Local .test domains: every process with a port and its domain (<process>.<repo>.test), whether it is chosen, written to the Caddyfile and in /etc/hosts, whether Caddy runs, and ports declared by more than one process (those cannot run at once).",
+            "inputSchema": { "type": "object", "properties": {} },
+            "annotations": { "readOnlyHint": true }
+        }),
+        json!({
+            "name": "get_env_drift",
+            "description": "Key NAMES in each .env.example (or .env.sample/.env.template) that the .env beside it lacks, and keys in .env the example does not list. Never values. Only when the user turned the check on in the app's Setup; otherwise an error says so.",
+            "inputSchema": { "type": "object", "properties": { "repo": repo } },
+            "annotations": { "readOnlyHint": true }
+        }),
+    ]
+}
+
+/// The repos a tool covers: one when `repo` is given, else all.
+fn chosen<'a>(repos: &'a [Value], wanted: Option<&str>) -> Result<Vec<&'a Value>, String> {
+    match wanted {
+        Some(wanted) => find_repo(repos, wanted).map(|r| vec![r]),
+        None => Ok(repos.iter().collect()),
+    }
+}
+
+fn repo_path(repo: &Value) -> PathBuf {
+    PathBuf::from(repo["path"].as_str().unwrap_or_default())
+}
+
+fn infra_call(repos: &[Value], name: &str, args: &Value) -> Option<Result<Value, String>> {
+    let wanted = args.get("repo").and_then(Value::as_str);
+    let result = match name {
+        "get_test_results" => chosen(repos, wanted).map(|list| {
+            json!(list.iter().map(|r| json!({ "repo": r["name"], "runs": r["tests"] })).collect::<Vec<_>>())
+        }),
+        "get_containers" => chosen(repos, wanted).map(|list| match crate::containers::list() {
+            Err(error) => json!({ "error": error }),
+            Ok(all) => json!(list.iter().map(|r| {
+                let path = repo_path(r);
+                let name = r["name"].as_str().unwrap_or_default();
+                json!({
+                    "repo": name,
+                    "containers": all.iter().filter(|c| c.belongs_to(&path, name)).map(|c| json!({
+                        "name": c.name,
+                        "image": c.image,
+                        "state": c.state,
+                        "status": c.status,
+                        "ports": c.ports,
+                        "service": c.service(),
+                    })).collect::<Vec<_>>(),
+                })
+            }).collect::<Vec<_>>()),
+        }),
+        "get_database_details" => wanted
+            .ok_or_else(|| "repo is required".to_string())
+            .and_then(|w| find_repo(repos, w))
+            .map(|r| {
+                let sets = crate::pg::migration_sets(&repo_path(r));
+                json!(r["databases"].as_array().into_iter().flatten().filter_map(|d| {
+                    let url = d["url"].as_str()?;
+                    if !url.starts_with("postgres") {
+                        return None;
+                    }
+                    Some(match crate::pg::inspect(url) {
+                        Err(error) => json!({ "name": d["name"], "error": error }),
+                        Ok(info) => {
+                            let drift = info.applied.as_ref().map(|applied| {
+                                let files = crate::pg::best_set(applied, &sets);
+                                let drift = crate::pg::drift(applied, &files);
+                                json!({ "pending": drift.pending, "unknown_applied": drift.unknown })
+                            });
+                            json!({
+                                "name": d["name"],
+                                "version": info.version,
+                                "size": crate::pg::human_size(info.size_bytes),
+                                "size_bytes": info.size_bytes,
+                                "connections": info.connections,
+                                "migrations": drift,
+                            })
+                        }
+                    })
+                }).collect::<Vec<_>>())
+            }),
+        "get_disk" => Ok(json!({
+            "repos": repos.iter().map(|r| json!({
+                "repo": r["name"],
+                "items": crate::disk::scan(&repo_path(r)).iter().map(|i| json!({
+                    "kind": i.kind.label(),
+                    "size": crate::pg::human_size(i.bytes),
+                    "bytes": i.bytes,
+                    "folders": i.paths.len(),
+                })).collect::<Vec<_>>(),
+            })).collect::<Vec<_>>(),
+            "docker": match crate::containers::disk() {
+                Ok(lines) => json!(lines.iter().map(|d| json!({ "kind": d.kind, "count": d.count, "size": d.size, "reclaimable": d.reclaimable })).collect::<Vec<_>>()),
+                Err(error) => json!({ "error": error }),
+            },
+        })),
+        "get_domains" => {
+            let config = crate::config::AppConfig::load_from(&crate::config::path()).unwrap_or_default();
+            let sites: Vec<crate::proxy::Site> = repos.iter().flat_map(|r| {
+                let repo = r["name"].as_str().unwrap_or_default().to_string();
+                r["processes"].as_array().cloned().unwrap_or_default().into_iter().filter_map(move |p| {
+                    Some(crate::proxy::Site {
+                        repo: repo.clone(),
+                        process: p["name"].as_str()?.to_string(),
+                        port: u16::try_from(p["port"].as_u64()?).ok()?,
+                    })
+                })
+            }).collect();
+            let caddyfile = std::fs::read_to_string(crate::proxy::caddyfile_path()).unwrap_or_default();
+            let written = crate::proxy::managed_domains(&caddyfile);
+            let hosts = crate::proxy::hosts_text();
+            let domains: Vec<String> = sites.iter().map(|s| s.domain()).collect();
+            let missing = crate::proxy::missing_hosts(&hosts, &domains);
+            Ok(json!({
+                "caddy_running": crate::proxy::caddy_running(),
+                "caddy_installed": crate::proxy::caddy_bin().is_some(),
+                "caddyfile": crate::proxy::caddyfile_path(),
+                "sites": sites.iter().map(|s| json!({
+                    "repo": s.repo,
+                    "process": s.process,
+                    "port": s.port,
+                    "domain": s.domain(),
+                    "chosen": config.domains.contains(&s.key()),
+                    "in_caddyfile": written.contains(&s.domain()),
+                    "in_hosts": !missing.contains(&s.domain()),
+                })).collect::<Vec<_>>(),
+                "port_conflicts": crate::proxy::conflicts(&sites).into_iter().map(|(port, keys)| json!({ "port": port, "processes": keys })).collect::<Vec<_>>(),
+            }))
+        }
+        "get_env_drift" => {
+            let config = crate::config::AppConfig::load_from(&crate::config::path()).unwrap_or_default();
+            if !config.env_check {
+                Err("the .env check is off; the user can turn it on in the app's Setup (key names only)".to_string())
+            } else {
+                chosen(repos, wanted).map(|list| json!(list.iter().map(|r| json!({
+                    "repo": r["name"],
+                    "files": crate::env_drift::scan(&repo_path(r)).iter().map(|d| json!({
+                        "folder": if d.dir.is_empty() { "." } else { d.dir.as_str() },
+                        "example": d.example,
+                        "has_env": d.has_env,
+                        "missing": d.missing,
+                        "extra": d.extra,
+                    })).collect::<Vec<_>>(),
+                })).collect::<Vec<_>>()))
+            }
+        }
+        _ => return None,
+    };
+    Some(result)
 }
 
 fn base_definitions() -> Vec<Value> {
@@ -231,6 +411,9 @@ fn dependencies(repos: &[Value], args: &Value) -> Result<Value, String> {
 
 /// Answers the tools defined here; None for any other name.
 pub fn call(repos: &[Value], name: &str, args: &Value) -> Option<Result<Value, String>> {
+    if let Some(result) = infra_call(repos, name, args) {
+        return Some(result);
+    }
     let arg = |key: &str| args.get(key).and_then(Value::as_str);
     let result = match name {
         "get_changes_since" => {

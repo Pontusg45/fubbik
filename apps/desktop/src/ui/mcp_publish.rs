@@ -19,7 +19,11 @@ impl Workspace {
         let repos = self
             .repos
             .iter()
-            .map(|view| repo_json(view, &self.supervisor))
+            .map(|view| {
+                let mut repo = repo_json(view, &self.supervisor);
+                repo["tests"] = self.tests_json(&view.entry.path);
+                repo
+            })
             .collect();
         let today = self
             .today_rows()
@@ -81,7 +85,7 @@ fn repo_json(view: &RepoView, supervisor: &crate::supervisor::Supervisor) -> Val
     let databases: Vec<Value> = snapshot
         .databases
         .iter()
-        .map(|d| json!({ "name": d.spec.name, "engine": d.spec.engine, "status": d.status.label(), "up": d.status.is_up() }))
+        .map(|d| json!({ "name": d.spec.name, "engine": d.spec.engine, "url": d.spec.url, "status": d.status.label(), "up": d.status.is_up() }))
         .collect();
     let prs = match &view.prs.by_branch {
         Some(Ok(map)) => Some(map),
@@ -222,4 +226,37 @@ fn repo_json(view: &RepoView, supervisor: &crate::supervisor::Supervisor) -> Val
             _ => None,
         },
     })
+}
+
+impl Workspace {
+    /// The repo's last test run per runner, for `get_test_results`.
+    fn tests_json(&self, repo: &std::path::Path) -> Value {
+        let runs: Vec<Value> = self
+            .tests
+            .runs
+            .iter()
+            .filter(|((path, _), _)| path == repo)
+            .map(|((_, runner), run)| {
+                json!({
+                    "runner": runner.label(),
+                    "running": run.running.is_some(),
+                    "finished_seconds_ago": run.finished.map(|at| at.elapsed().as_secs()),
+                    "only_failed_rerun": run.partial,
+                    "report": run.report.as_ref().map(|r| json!({
+                        "passed": r.passed,
+                        "failed": r.failed,
+                        "ignored": r.ignored,
+                        "error": r.error,
+                        "failures": r.failures.iter().map(|f| json!({
+                            "name": f.name,
+                            "message": f.message,
+                            "file": f.file,
+                            "location": f.location().map(|(file, line)| format!("{file}:{line}")),
+                        })).collect::<Vec<_>>(),
+                    })),
+                })
+            })
+            .collect();
+        Value::Array(runs)
+    }
 }
