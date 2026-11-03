@@ -40,20 +40,29 @@ pub fn parse(url: &str) -> Option<Link> {
     }
 }
 
+/// Percent-decoding on bytes: a `%` not followed by two hex digits stays as
+/// it is (never a panic on a link from outside).
 fn decode(part: &str) -> String {
+    fn hex(b: u8) -> Option<u8> {
+        (b as char).to_digit(16).map(|d| d as u8)
+    }
     let bytes = part.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
-        if bytes[i] == b'%'
-            && i + 2 < bytes.len()
-            && let Ok(byte) = u8::from_str_radix(&part[i + 1..i + 3], 16)
-        {
-            out.push(byte);
-            i += 3;
-        } else {
-            out.push(bytes[i]);
-            i += 1;
+        match (
+            bytes[i],
+            bytes.get(i + 1).copied().and_then(hex),
+            bytes.get(i + 2).copied().and_then(hex),
+        ) {
+            (b'%', Some(high), Some(low)) => {
+                out.push(high << 4 | low);
+                i += 3;
+            }
+            (byte, _, _) => {
+                out.push(byte);
+                i += 1;
+            }
         }
     }
     String::from_utf8_lossy(&out).into_owned()
@@ -97,5 +106,32 @@ mod tests {
         assert_eq!(parse("fubbik://repo"), None);
         assert_eq!(parse("https://today"), None);
         assert_eq!(parse("fubbik://a/b"), None);
+    }
+
+    #[test]
+    fn odd_escapes_never_panic() {
+        // Given: escapes cut short, not hex, or next to multi-byte letters
+        let urls = [
+            "fubbik://repo/%",
+            "fubbik://repo/a%2",
+            "fubbik://repo/%zz/changes",
+            "fubbik://repo/%aé",
+            "fubbik://repo/é%41",
+            "fubbik://repo/%E2%9C%93",
+            "fubbik://today/",
+            "fubbik:///today",
+        ];
+
+        // When
+        let parsed: Vec<Option<Link>> = urls.iter().map(|u| parse(u)).collect();
+
+        // Then
+        assert_eq!(parsed[0].as_ref().unwrap().repo.as_deref(), Some("%"));
+        assert_eq!(parsed[2].as_ref().unwrap().repo.as_deref(), Some("%zz"));
+        assert_eq!(parsed[3].as_ref().unwrap().repo.as_deref(), Some("%aé"));
+        assert_eq!(parsed[4].as_ref().unwrap().repo.as_deref(), Some("éA"));
+        assert_eq!(parsed[5].as_ref().unwrap().repo.as_deref(), Some("✓"));
+        assert_eq!(parsed[6].as_ref().unwrap().tab.as_deref(), Some("today"));
+        assert_eq!(parsed[7].as_ref().unwrap().tab.as_deref(), Some("today"));
     }
 }

@@ -51,7 +51,8 @@ pub fn keys(path: &Path) -> Option<Vec<String>> {
     let mut out: Vec<String> = std::io::BufReader::new(file)
         .lines()
         .map_while(Result::ok)
-        .filter_map(|line| key(&line).map(str::to_string))
+        // A byte-order mark (editors on Windows) is not part of the first key.
+        .filter_map(|line| key(line.trim_start_matches('\u{feff}')).map(str::to_string))
         .collect();
     out.sort();
     out.dedup();
@@ -178,5 +179,34 @@ mod tests {
         );
         assert_eq!(drift[1].dir, "apps/web");
         assert!(!drift[1].has_env && !drift[1].is_clean());
+    }
+
+    #[test]
+    fn odd_lines_are_names_or_nothing() {
+        // Given / When / Then
+        assert_eq!(key("KEY=\"a=b\""), Some("KEY"));
+        assert_eq!(key("KEY="), Some("KEY"));
+        assert_eq!(key("=value"), None);
+        assert!(
+            key("\u{feff}BOM=1").is_none(),
+            "a BOM is not part of a name"
+        );
+        assert_eq!(key("  # KEY=1"), None);
+        assert_eq!(key("KEY: 1"), None);
+        assert_eq!(key("lower_case=1"), Some("lower_case"));
+    }
+
+    #[test]
+    fn crlf_bom_and_duplicates_do_not_count_as_drift() {
+        // Given: the same keys, one file with CRLF, a BOM and a duplicate
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".env.example"), "\u{feff}A=\r\nB=\r\n").unwrap();
+        std::fs::write(dir.path().join(".env"), "A=1\nB=2\nB=3\n").unwrap();
+
+        // When
+        let drift = scan(dir.path());
+
+        // Then
+        assert!(drift[0].is_clean(), "{drift:?}");
     }
 }

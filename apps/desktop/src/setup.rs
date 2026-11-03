@@ -80,11 +80,15 @@ pub fn mcp_status(repo: &Path, claude_json: &Path) -> McpStatus {
     McpStatus::Missing
 }
 
+/// `~/.claude.json`, or `$CLAUDE_CONFIG_DIR/.claude.json` when that is set.
 pub fn claude_json() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_default()
-        .join(".claude.json")
+    match std::env::var_os("CLAUDE_CONFIG_DIR").filter(|d| !d.is_empty()) {
+        Some(dir) => PathBuf::from(dir).join(".claude.json"),
+        None => std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_default()
+            .join(".claude.json"),
+    }
 }
 
 /// Adds a `fubbik` server to `<repo>/.mcp.json`, keeping every other entry.

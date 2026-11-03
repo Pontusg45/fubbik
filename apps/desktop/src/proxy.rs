@@ -38,8 +38,14 @@ impl Site {
     }
 }
 
-/// A DNS label: lowercase letters, digits and dashes.
+/// A DNS label: lowercase letters, digits and dashes; a name with none of
+/// those (`Ünïcödé` keeps `n-c-d`, `—` keeps nothing) falls back to `site`.
 fn label(name: &str) -> String {
+    let out = raw_label(name);
+    if out.is_empty() { "site".into() } else { out }
+}
+
+fn raw_label(name: &str) -> String {
     let mut out = String::new();
     for c in name.chars() {
         if c.is_ascii_alphanumeric() {
@@ -292,5 +298,65 @@ mod tests {
             "printf '127.0.0.1 api.fubbik.test\\n' | sudo tee -a /etc/hosts >/dev/null && echo 'Added api.fubbik.test to /etc/hosts'"
         );
         assert!(hosts_command(&[]).is_none());
+    }
+
+    #[test]
+    fn names_that_are_not_ascii_still_make_a_domain() {
+        // Given: names with nothing a DNS label can keep, and odd spacing
+        let odd = [
+            site("Ünïcödé", "web", 1),
+            site("app", "—", 2),
+            site("--x--", "a  b", 3),
+        ];
+
+        // When
+        let domains: Vec<String> = odd.iter().map(Site::domain).collect();
+
+        // Then: every label is non-empty and the name is a valid host
+        for d in &domains {
+            assert!(d.split('.').all(|l| !l.is_empty()), "{d}");
+            assert!(
+                d.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-'),
+                "{d}"
+            );
+        }
+        assert_eq!(domains[2], "a-b.x.test");
+    }
+
+    #[test]
+    fn a_broken_block_is_not_half_replaced() {
+        // Given: a BEGIN marker with no END (hand-edited), and CRLF lines
+        let broken = format!("site.test {{\r\n}}\r\n{BEGIN}\nweb.app.test {{\n}}\n");
+        let mine = "mine.test {\n\treverse_proxy localhost:1\n}\n";
+
+        // When
+        let out = apply(&broken, &block(&[site("app", "web", 3000)]));
+        let again = apply(
+            &apply(mine, &block(&[site("app", "web", 3000)])),
+            &block(&[site("app", "web", 3000)]),
+        );
+
+        // Then: nothing of the user's is lost, and repeated writes are stable
+        assert!(out.contains("site.test"));
+        assert_eq!(out.matches(END).count(), 1);
+        assert_eq!(again, apply(mine, &block(&[site("app", "web", 3000)])));
+    }
+
+    #[test]
+    fn hosts_lines_with_tabs_and_many_names_count() {
+        // Given
+        let hosts =
+            "127.0.0.1\tlocalhost a.app.test\tb.app.test\n::1 c.app.test\n10.0.0.1 d.app.test\n";
+        let domains: Vec<String> = ["a", "b", "c", "d"]
+            .iter()
+            .map(|n| format!("{n}.app.test"))
+            .collect();
+
+        // When
+        let missing = missing_hosts(hosts, &domains);
+
+        // Then: elsewhere-pointed d is missing (it would not reach Caddy)
+        assert_eq!(missing, ["d.app.test"]);
     }
 }

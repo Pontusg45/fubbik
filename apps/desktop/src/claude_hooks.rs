@@ -24,11 +24,20 @@ pub const EVENTS: [&str; 5] = [
     "SessionEnd",
 ];
 
+/// Claude Code's user settings: `$CLAUDE_CONFIG_DIR/settings.json` when
+/// that is set (as Claude Code itself reads it), else `~/.claude`.
 pub fn settings_path() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_default()
-        .join(".claude/settings.json")
+    claude_dir().join("settings.json")
+}
+
+pub fn claude_dir() -> PathBuf {
+    match std::env::var_os("CLAUDE_CONFIG_DIR").filter(|d| !d.is_empty()) {
+        Some(dir) => PathBuf::from(dir),
+        None => std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_default()
+            .join(".claude"),
+    }
 }
 
 /// The hook command for an endpoint (`http://127.0.0.1:3100/hook`).
@@ -253,5 +262,30 @@ mod tests {
         );
         assert!(parse(&json!({})).is_none());
         assert!(command("http://x/hook").ends_with("|| true # fubbik-desktop"));
+    }
+
+    #[test]
+    fn odd_settings_are_handled_without_losing_them() {
+        // Given: hooks that are not an object, an event that is not a list,
+        // and a file that is not JSON
+        let not_object = json!({ "hooks": [] , "keep": true });
+        let not_list = json!({ "hooks": { "Stop": "say hi" } });
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        std::fs::write(&path, "{ not json").unwrap();
+
+        // When
+        let a = install(not_object, "http://x/hook");
+        let b = install(not_list.clone(), "http://x/hook");
+        let file = install_file(&path, "http://x/hook");
+
+        // Then
+        assert!(installed(&a) && a["keep"] == true);
+        assert_eq!(
+            b["hooks"]["Stop"], "say hi",
+            "a value it does not understand stays as it was"
+        );
+        assert!(file.is_err(), "a broken file is not overwritten");
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "{ not json");
     }
 }

@@ -342,7 +342,7 @@ impl SessionIndex {
         let home = std::env::var_os("HOME")
             .map(PathBuf::from)
             .unwrap_or_default();
-        let mut index = Self::with_homes(home.join(".claude"), home.join(".codex"));
+        let mut index = Self::with_homes(crate::claude_hooks::claude_dir(), home.join(".codex"));
         index.cache = Some(crate::backend::data_dir().join("session-index.json"));
         index.load();
         index

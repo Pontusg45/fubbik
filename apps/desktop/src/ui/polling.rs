@@ -74,10 +74,7 @@ impl Workspace {
         let Ok(mut watcher) = watcher else {
             return; // polling still covers everything
         };
-        let claude_sessions = std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_default()
-            .join(".claude/sessions");
+        let claude_sessions = crate::claude_hooks::claude_dir().join("sessions");
         let dirs = self
             .repos
             .iter()
