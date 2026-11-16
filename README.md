@@ -12,6 +12,11 @@ context before it starts. If it slips anyway, the review harness flags it.
 
 Fubbik is an **opinionated, personal toolkit**, not a general-purpose product. See [Making it yours](#making-it-yours).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/graph-dark.jpg">
+  <img alt="Fubbik knowledge graph: chunks grouped by type, with their connections" src="docs/assets/screenshots/graph-light.jpg">
+</picture>
+
 ---
 
 ## How it fits together
@@ -108,6 +113,55 @@ A small Rust binary (`crates/kit`) for the git and dev chores an AI agent runs m
 - **CLI**: pipeable and scriptable, with `--json` output, git hooks and `CLAUDE.md` sync.
 - **Web UI**: dashboard, knowledge graph, editors, plans and matrices.
 - **VS Code extension**: shows the chunks relevant to the file you have open.
+
+### 📸 Screenshots
+
+<table>
+<tr>
+<td width="50%">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/chunk-detail-dark.jpg">
+  <img alt="A knowledge chunk with its table of contents, tags and health score" src="docs/assets/screenshots/chunk-detail-light.jpg">
+</picture>
+
+A knowledge chunk with its table of contents, tags and health score
+
+</td>
+<td width="50%">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/chunks-dark.jpg">
+  <img alt="The chunk list, filtered by type and tag" src="docs/assets/screenshots/chunks-light.jpg">
+</picture>
+
+The chunk list, filtered by type and tag
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/plan-dark.jpg">
+  <img alt="A plan with tasks, assigned agents, a journal and risks" src="docs/assets/screenshots/plan-light.jpg">
+</picture>
+
+A plan with tasks, assigned agents, a journal and risks
+
+</td>
+<td width="50%">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/matrix-dark.jpg">
+  <img alt="A behavior matrix: which actors can use which capabilities" src="docs/assets/screenshots/matrix-light.jpg">
+</picture>
+
+A behavior matrix: which actors can use which capabilities
+
+</td>
+</tr>
+</table>
 
 ---
 
